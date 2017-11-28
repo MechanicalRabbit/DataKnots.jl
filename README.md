@@ -13,7 +13,7 @@ embedded query language.*
 [travis-img]: https://travis-ci.org/rbt-lang/QueryCombinators.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/QueryCombinators.jl
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/rbt-lang/QueryCombinators.jl?branch=master&svg=true
-[appveyor-url]: https://ci.appveyor.com/project/rbt-lang/dataknots-jl/branch/master
+[appveyor-url]: https://ci.appveyor.com/project/rbt-lang/querycombinators-jl/branch/master
 [codecov-img]: https://codecov.io/gh/rbt-lang/QueryCombinators.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/rbt-lang/QueryCombinators.jl
 [issues-img]: https://img.shields.io/github/issues/rbt-lang/QueryCombinators.jl.svg
