@@ -1,5 +1,7 @@
+#
+# Combinator-based embedded query language.
+#
+
 module QueryCombinators
 
-# package code goes here
-
-end # module
+end
