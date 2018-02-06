@@ -5,35 +5,75 @@
 struct Query
     op::AbstractOperation
     args::Vector{Query}
-    isig::InputSignature
-    osig::OutputSignature
+    idom::Domain
+    dom::Domain
 end
+
+let NO_ARGS = Query[]
+    Query(op::AbstractPrimitive, idom::Domain, dom::Domain) =
+        Query(op, NO_ARGS, idom, dom)
+end
+
+show(io::IO, q::Query) =
+    Layouts.render_single_layout(io, q)
+
+show(io::IO, ::MIME"text/plain", q::Query) =
+    Layouts.render_best_layout(io, q)
+
+Layouts.layout(q::Query) =
+    Layouts.layout(q.op, q.args)
+
+Layouts.layout(op::AbstractOperation, args::Vector{Query}) =
+    Layouts.layout(op, Layouts.Layout[Layouts.layout(arg) for arg in args])
+
+Layouts.layout(op::AbstractPrimitive, ::Vector{Query}) =
+    Layouts.layout(op)
 
 operation(q::Query) = q.op
 
 arguments(q::Query) = q.args
 
-isignature(q::Query) = q.isig
+getitem(q::Query, ::Colon) = q.args
 
-idomain(q::Query) = domain(q.isig)
+idomain(q::Query) = q.idom
 
-imode(q::Query) = mode(q.isig)
+ishape(q::Query) = shape(q.idom)
 
-signature(q::Query) = q.osig
+domain(q::Query) = q.dom
 
-domain(q::Query) = domain(q.osig)
+shape(q::Query) = shape(q.dom)
 
-mode(q::Query) = mode(q.osig)
+cardinality(q::Query) = cardinality(q.dom)
 
-execute(q::Query) =
-    let input = [Void],
-        output = apply(q, input)
-        output[1]
-    end
+function execute(q::Query, input::KnotVector)
+    #println("$q : $(q.idom) -> $(q.dom)")
+    @assert fits(input.dom, q.idom) "input $(input.dom) does not match the query signature $q : $(q.idom) -> $(q.dom))"
+    output = execute(q.op, q.args, q.idom, q.dom, input)
+    @assert fits(output.dom, q.dom) "output $(output.dom) does not match the query signature $q : $(q.idom) -> $(q.dom))"
+    output
+end
 
-apply(q::Query, input::AbstractVector) =
-    apply(q.op, q.args, q.isig, q.osig, input)
+@inline execute(op::AbstractOperation, args::Vector{Query}, idom::Domain, dom::Domain, input::KnotVector) =
+    execute(op, args, input)
 
-apply(op::AbstractPrimitive, args::Vector{Query}, isig::InputSignature, osig::OutputSignature, input::AbstractVector) =
-    apply(op, isig, osig, input)
+@inline execute(op::AbstractPrimitive, ::Vector{Query}, idom::Domain, dom::Domain, input::KnotVector) =
+    execute(op, idom, dom, input)
+
+@inline execute(op::AbstractPrimitive, ::Domain, ::Domain, input::KnotVector) =
+    execute(op, input)
+
+stub(q::Query) =
+    stub(domain(q)[])
+
+istub(q::Query) =
+    stub(idomain(q)[])
+
+stub(ty::Type) =
+    stub(convert(Domain, ty))
+
+stub(dom::Domain) =
+    Query(ItOp(), InputDomain(dom), OutputDomain(dom))
+
+fits(q::Query, r::Query) =
+    fits(domain(q)[], idomain(r)[])
 
