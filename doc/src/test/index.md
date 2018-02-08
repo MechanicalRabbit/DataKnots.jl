@@ -2,5 +2,6 @@
 
 ```@contents
 Pages = [
+    "layouts.md",
 ]
 ```

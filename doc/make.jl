@@ -1,5 +1,6 @@
 #!/usr/bin/env julia
 
+using Pkg
 if Pkg.installed("Documenter") == nothing
     Pkg.add("Documenter")
 end
@@ -8,7 +9,8 @@ using Documenter
 using QueryCombinators
 
 # Highlight indented code blocks as Julia code.
-Base.Markdown.Code(code) = Base.Markdown.Code("julia", code)
+using Markdown
+Markdown.Code(code) = Markdown.Code("julia", code)
 
 makedocs(
     format = :html,
@@ -17,6 +19,7 @@ makedocs(
         "index.md",
         "reference.md",
         "test/index.md",
+        hide("test/layouts.md"),
     ],
     modules = [QueryCombinators])
 

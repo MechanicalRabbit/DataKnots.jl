@@ -4,5 +4,6 @@
 
 module QueryCombinators
 
+include("layouts.jl")
 
 end

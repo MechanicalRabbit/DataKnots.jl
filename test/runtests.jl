@@ -3,6 +3,7 @@
 try
     using NarrativeTest
 catch
+    using Pkg
     Pkg.clone("https://github.com/rbt-lang/NarrativeTest.jl")
 end
 
