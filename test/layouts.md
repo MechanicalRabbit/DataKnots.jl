@@ -88,3 +88,22 @@ For some built-in data structures, automatic layout is already provided.
       salary = 60780)]
     =#
 
+Finally, we can format and print Julia expressions.
+
+    Q = :(
+        Employee
+        >> ThenFilter(Department >> Name .== "POLICE")
+        >> ThenSort(Salary >> Desc)
+        >> ThenSelect(Name, Position, Salary)
+        >> ThenTake(10)
+    )
+
+    print_code(Q)
+    #=>
+    Employee
+    >> ThenFilter(Department >> Name .== "POLICE")
+    >> ThenSort(Salary >> Desc)
+    >> ThenSelect(Name, Position, Salary)
+    >> ThenTake(10)
+    =#
+

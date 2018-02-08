@@ -6,7 +6,8 @@
 module Layouts
 
 export
-    pretty_print
+    pretty_print,
+    print_code
 
 import Base:
     IndexStyle,
@@ -21,6 +22,7 @@ const DEFAULT_SPILL_COST = 2
 
 include("layouts/tile.jl")
 include("layouts/fit.jl")
+include("layouts/code.jl")
 
 """
     Layouts.pretty_print([io::IO], data)
@@ -37,5 +39,16 @@ function pretty_print(io::IO, lt::Layout)
     render(io, best(fit(io, lt)))
     nothing
 end
+
+"""
+    Layouts.print_code([io::IO], code)
+
+Formats a Julia expression.
+"""
+print_code(ex) =
+    print_code(STDOUT, ex)
+
+print_code(io::IO, ex) =
+    pretty_print(io, tile_code(ex))
 
 end
