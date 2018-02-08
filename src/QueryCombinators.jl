@@ -5,5 +5,6 @@
 module QueryCombinators
 
 include("layouts.jl")
+include("planar.jl")
 
 end
