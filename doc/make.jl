@@ -22,7 +22,7 @@ makedocs(
 
 deploydocs(
     repo = "github.com/rbt-lang/QueryCombinators.jl.git",
-    julia = "0.6",
+    julia = "nightly",
     osname = "linux",
     target = "build",
     deps = nothing,
