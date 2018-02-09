@@ -20,6 +20,7 @@ makedocs(
         "reference.md",
         "test/index.md",
         hide("test/layouts.md"),
+        hide("test/planar.md"),
     ],
     modules = [QueryCombinators])
 

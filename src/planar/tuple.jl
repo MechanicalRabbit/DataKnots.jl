@@ -43,11 +43,11 @@ let NO_LBLS = Symbol[]
         TupleVector(NO_LBLS, len, AbstractVector[])
 end
 
-function TupleVector(lcol1::Pair{Symbol,<:AbstractVector}, lcolrest::Pair{Symbol,<:AbstractVector}...)
-    len = length(lcol1.second)
-    lcols = (lcol1, lcolrest...)
-    lbls = Symbol[lbl for (lbl, col) in lcols]
-    cols = AbstractVector[col for (lbl, col) in lcols]
+function TupleVector(lc1::Pair{Symbol,<:AbstractVector}, lcrest::Pair{Symbol,<:AbstractVector}...)
+    len = length(lc1.second)
+    lcs = (lc1, lcrest...)
+    lbls = Symbol[lbl for (lbl, col) in lcs]
+    cols = AbstractVector[col for (lbl, col) in lcs]
     TupleVector(lbls, len, cols)
 end
 

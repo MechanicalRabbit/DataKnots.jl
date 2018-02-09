@@ -3,5 +3,6 @@
 ```@contents
 Pages = [
     "layouts.md",
+    "planar.md",
 ]
 ```

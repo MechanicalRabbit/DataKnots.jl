@@ -5,6 +5,7 @@
 module Planar
 
 export
+    @Planar,
     BlockVector,
     IndexVector,
     TupleVector,
@@ -33,6 +34,6 @@ include("planar/block.jl")
 include("planar/index.jl")
 include("planar/chunk.jl")
 include("planar/show.jl")
-include("planar/build.jl")
+include("planar/construct.jl")
 
 end
