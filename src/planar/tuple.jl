@@ -15,19 +15,25 @@ struct TupleVector{I<:AbstractVector{Int}} <: AbstractVector{Any}
     idxs::I
     cols::Vector{AbstractVector}
     icols::Vector{AbstractVector}   # [col[idxs] for col in cols]
+
+    @inline function TupleVector{I}(lbls::Vector{Symbol}, idxs::I, cols::Vector{AbstractVector}) where {I<:AbstractVector{Int}}
+        @boundscheck _checktuple(lbls, idxs, cols)
+        icols = Vector{AbstractVector}(uninitialized, length(cols))
+        new{I}(lbls, idxs, cols, icols)
+    end
+
+    @inline function TupleVector{I}(lbls::Vector{Symbol}, len::Int, cols::Vector{AbstractVector}) where {I<:OneTo{Int}}
+        @boundscheck _checktuple(lbls, len, cols)
+        idxs = OneTo(len)
+        new{I}(lbls, idxs, cols, cols)
+    end
 end
 
-@inline function TupleVector(lbls::Vector{Symbol}, idxs::I, cols::Vector{AbstractVector}) where {I<:AbstractVector{Int}}
-    @boundscheck _checktuple(lbls, idxs, cols)
-    icols = Vector{AbstractVector}(uninitialized, length(cols))
-    TupleVector{I}(lbls, idxs, cols, icols)
-end
+@inline TupleVector(lbls::Vector{Symbol}, idxs::I, cols::Vector{AbstractVector}) where {I<:AbstractVector{Int}} =
+    TupleVector{I}(lbls, idxs, cols)
 
-@inline function TupleVector(lbls::Vector{Symbol}, len::Int, cols::Vector{AbstractVector})
-    @boundscheck _checktuple(lbls, len, cols)
-    idxs = OneTo(len)
-    TupleVector{OneTo{Int}}(lbls, idxs, cols, cols)
-end
+@inline TupleVector(lbls::Vector{Symbol}, len::Int, cols::Vector{AbstractVector}) =
+    TupleVector{OneTo{Int}}(lbls, len, cols)
 
 let NO_LBLS = Symbol[]
 
@@ -57,7 +63,7 @@ function _checktuple(lbls::Vector{Symbol}, idxs::AbstractVector{Int}, cols::Vect
         seen = Set{Symbol}()
         for lbl in lbls
             !(lbl in seen) || error("duplicate column label $(repr(lbl))")
-            push!(lbl, seen)
+            push!(seen, lbl)
         end
     end
     if !isempty(idxs)

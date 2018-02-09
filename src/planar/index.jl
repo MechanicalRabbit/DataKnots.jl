@@ -12,9 +12,6 @@ struct IndexVector{I<:AbstractVector{Int}} <: AbstractVector{Int}
     idxs::I
 end
 
-@inline IndexVector(ident::Symbol, idxs::I) where {I<:AbstractVector{Int}} =
-    IndexVector{I}(ident, idxs)
-
 # Printing.
 
 signature_expr(iv::IndexVector) =

@@ -14,12 +14,15 @@ vector of offsets.
 struct BlockVector{O<:AbstractVector{Int},E<:AbstractVector} <: AbstractVector{Any}
     offs::O
     elts::E
+
+    @inline function BlockVector{O,E}(offs::O, elts::E) where {O<:AbstractVector{Int},E<:AbstractVector}
+        @boundscheck _checkblock(length(elts), offs)
+        new{O,E}(offs, elts)
+    end
 end
 
-@inline function BlockVector(offs::O, elts::E) where {O<:AbstractVector{Int},E<:AbstractVector}
-    @boundscheck _checkblock(length(elts), offs)
+@inline BlockVector(offs::O, elts::E) where {O<:AbstractVector{Int},E<:AbstractVector} =
     BlockVector{O,E}(offs, elts)
-end
 
 @inline function BlockVector(::Colon, elts::AbstractVector)
     @inbounds bv = BlockVector(OneTo{Int}(length(elts)+1), elts)
