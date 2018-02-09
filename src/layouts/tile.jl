@@ -42,13 +42,13 @@ end
 # Visualization.
 
 show(io::IO, lt::Layout) =
-    fit_and_print(io, tile(lt))
+    pretty_print(io, tile(lt))
 
 # Layout combinators.
 
 function _flatten(T::Type{<:AbstractBlock}, args::Vector{Layout})
     if isempty(args) || all(!(arg.blk isa T) for arg in args)
-        return args
+        return _collapse(T, args)
     end
     args′ = Layout[]
     for arg in args
@@ -58,17 +58,35 @@ function _flatten(T::Type{<:AbstractBlock}, args::Vector{Layout})
             push!(args′, arg)
         end
     end
-    return args′
+    return _collapse(T, args′)
+end
+
+function _collapse(T::Type{<:AbstractBlock}, args::Vector{Layout})
+    if !(T <: HorizontalBlock)
+        return Layout(T(), args)
+    end
+    args′ = Layout[]
+    istext = false
+    for arg in args
+        if istext && arg.blk isa TextBlock
+            args′[end] = literal(args′[end].blk.text * arg.blk.text)
+        else
+            push!(args′, arg)
+        end
+        istext = arg.blk isa TextBlock
+    end
+    length(args′) == 1 ?
+        args′[1] : Layout(T(), length(args′) < length(args) ? args′ : args)
 end
 
 (*)(lt::Layout, lts::Layout...) =
-    Layout(HorizontalBlock(), _flatten(HorizontalBlock, collect(Layout, (lt, lts...))))
+    _flatten(HorizontalBlock, collect(Layout, (lt, lts...)))
 
 (/)(lt::Layout, lts::Layout...) =
-    Layout(VerticalBlock(), _flatten(VerticalBlock, collect(Layout, (lt, lts...))))
+    _flatten(VerticalBlock, collect(Layout, (lt, lts...)))
 
 (|)(lt::Layout, lts::Layout...) =
-    Layout(ChoiceBlock(), _flatten(ChoiceBlock, collect(Layout, (lt, lts...))))
+    _flatten(ChoiceBlock, collect(Layout, (lt, lts...)))
 
 # Convert to a single-line layout.
 
@@ -104,7 +122,7 @@ function nobreaks(lt::Layout)
     if same
         lt
     else
-        return Layout(lt.blk, _flatten(typeof(lt.blk), args′))
+        return _flatten(typeof(lt.blk), args′)
     end
 end
 
@@ -198,7 +216,7 @@ function tile(lt::Layout; precedence::Int=0)
         args = Layout[]
         first = true
         for arg in lt.args
-            arg = layout(arg, precedence=(first ? precedence′ : precedence′ + 1))
+            arg = tile(arg, precedence=(first ? precedence′ : precedence′ + 1))
             push!(args, arg)
             first = false
         end
@@ -206,7 +224,7 @@ function tile(lt::Layout; precedence::Int=0)
         sep = lt.blk isa HorizontalBlock ? (" * ", "* ", "") :
               lt.blk isa VerticalBlock ? (" / ", "/ ", "") :
               lt.blk isa ChoiceBlock ? (" | ", "| ", "") : ("", "", "")
-        return layout(args, brk=brk, sep=sep)
+        return tile(args, brk=brk, sep=sep)
     end
 end
 

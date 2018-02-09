@@ -94,7 +94,7 @@ function fit(fmt::Formatter, blk::TextBlock, args::Vector{Layout}, tail::Rope)
         extend!(rope, 0, w, 0, 0, lt)
         extend!(rope, fmt.line_width - w, w, 0, fmt.spill_cost, lt)
     else
-        extend!(rope, 0, w, (fmt.line_width - w) * fmt.spill_cost, fmt.spill_cost, lt)
+        extend!(rope, 0, w, (w - fmt.line_width) * fmt.spill_cost, fmt.spill_cost, lt)
     end
     return horizontal(fmt, rope, tail)
 end
@@ -232,12 +232,12 @@ function choice(fmt::Formatter, rope1::Rope, rope2::Rope)
         cost2 = icept2 + (col - col2) * slope2
         if cost1 < cost2 || cost1 == cost2 && slope1 <= slope2
             span = span1
-            icept = icept1
+            icept = cost1
             slope = slope1
             lt = lt1
         else
             span = span2
-            icept = icept2
+            icept = cost2
             slope = slope2
             lt = lt2
         end

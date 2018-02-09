@@ -8,19 +8,19 @@ code layout engine.
 For example, let us represent a simple tree structure.
 
     struct Node
-        name::String
+        name::Symbol
         arms::Vector{Node}
     end
 
     Node(name) = Node(name, [])
 
     tree =
-        Node("a", [Node("an", [Node("anchor", [Node("anchorage"), Node("anchorite")]),
-                               Node("anchovy"),
-                               Node("antic", [Node("anticipation")])]),
-                   Node("arc", [Node("arch", [Node("archduke"), Node("archer")])]),
-                   Node("awl")])
-    #-> Main.layouts.md.Node("a", Main.layouts.md.Node[ … ])
+        Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage), Node(:anchorite)]),
+                               Node(:anchovy),
+                               Node(:antic, [Node(:anticipation)])]),
+                   Node(:arc, [Node(:arch, [Node(:archduke), Node(:archer)])]),
+                   Node(:awl)])
+    #-> Main.layouts.md.Node(:a, Main.layouts.md.Node[ … ])
 
 We override the function `Layouts.tile()` and use `Layouts.literal()` with
 combinators `*` (horizontal composition), `/` (vertical composition), and `|`
@@ -51,24 +51,42 @@ representation of the tree.
 
     pretty_print(STDOUT, tree)
     #=>
-    Node("a", [Node("an", [Node("anchor", [Node("anchorage"), Node("anchorite")]),
-                           Node("anchovy"),
-                           Node("antic", [Node("anticipation")])]),
-               Node("arc", [Node("arch", [Node("archduke"), Node("archer")])]),
-               Node("awl")])
+    Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage), Node(:anchorite)]),
+                         Node(:anchovy),
+                         Node(:antic, [Node(:anticipation)])]),
+              Node(:arc, [Node(:arch, [Node(:archduke), Node(:archer)])]),
+              Node(:awl)])
     =#
 
 We can control the width of the output.
 
     pretty_print(IOContext(STDOUT, :displaysize => (24, 60)), tree)
     #=>
-    Node("a", [Node("an", [Node("anchor", [Node("anchorage"),
-                                           Node("anchorite")]),
-                           Node("anchovy"),
-                           Node("antic", [Node("anticipation")])]),
-               Node("arc", [Node("arch", [Node("archduke"),
-                                          Node("archer")])]),
-               Node("awl")])
+    Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage),
+                                        Node(:anchorite)]),
+                         Node(:anchovy),
+                         Node(:antic, [Node(:anticipation)])]),
+              Node(:arc, [Node(:arch, [Node(:archduke),
+                                       Node(:archer)])]),
+              Node(:awl)])
+    =#
+
+We can easily display the original and the optimized layouts.
+
+    Layouts.tile(tree)
+    #=>
+    literal("Node(:a, [")
+    * (literal("Node(:an, [")
+       * (literal("Node(:anchor, [")
+       ⋮
+    =#
+
+    Layouts.best(Layouts.fit(STDOUT, Layouts.tile(tree)))
+    #=>
+    literal("Node(:a, [")
+    * (literal("Node(:an, [")
+       * (literal("Node(:anchor, [Node(:anchorage), Node(:anchorite)]),")
+       ⋮
     =#
 
 For some built-in data structures, automatic layout is already provided.
