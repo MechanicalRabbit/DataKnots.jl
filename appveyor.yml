@@ -32,7 +32,7 @@ build_script:
   # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
-      Pkg.clone(pwd(), \"QueryCombinators\"); Pkg.build(\"QueryCombinators\")"
+      using Pkg; Pkg.clone(pwd(), \"QueryCombinators\"); Pkg.build(\"QueryCombinators\")"
 
 test_script:
-  - C:\projects\julia\bin\julia -e "Pkg.test(\"QueryCombinators\")"
+  - C:\projects\julia\bin\julia -e "using Pkg; Pkg.test(\"QueryCombinators\")"
