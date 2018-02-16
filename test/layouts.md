@@ -20,7 +20,7 @@ For example, let us represent a simple tree structure.
                                Node(:antic, [Node(:anticipation)])]),
                    Node(:arc, [Node(:arch, [Node(:archduke), Node(:archer)])]),
                    Node(:awl)])
-    #-> Main.layouts.md.Node(:a, Main.layouts.md.Node[ … ])
+    #-> Node(:a, Main.layouts.md.Node[ … ])
 
 We override the function `Layouts.tile()` and use `Layouts.literal()` with
 combinators `*` (horizontal composition), `/` (vertical composition), and `|`

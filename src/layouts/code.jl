@@ -14,6 +14,9 @@ tile_code(qn::QuoteNode; precedence=0) =
 function tile_code(ex::Expr; precedence=0)
     if ex.head == :call
         func = ex.args[1]
+        if func isa Function
+            func = nameof(func)
+        end
         args = _flatten(func, ex.args[2:end])
         precedence′ = Base.operator_precedence(func)
         arg_lts = Layout[tile_code(arg, precedence=precedence′) for arg in args]
@@ -38,8 +41,8 @@ function tile_code(ex::Expr; precedence=0)
     end
 end
 
-function _flatten(func::Symbol, args)
-    if !(func == :(>>) || func == :(|>))
+function _flatten(func, args)
+    if !(func === :(>>) || func === :(|>))
         return args
     end
     args′ = []
