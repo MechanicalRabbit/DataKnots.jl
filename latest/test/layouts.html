@@ -12,7 +12,7 @@ tree =
                            Node(:antic, [Node(:anticipation)])]),
                Node(:arc, [Node(:arch, [Node(:archduke), Node(:archer)])]),
                Node(:awl)])
-#-&gt; Main.layouts.md.Node(:a, Main.layouts.md.Node[ … ])</code></pre><p>We override the function <code>Layouts.tile()</code> and use <code>Layouts.literal()</code> with combinators <code>*</code> (horizontal composition), <code>/</code> (vertical composition), and <code>|</code> (choice) to generate the layout expression.</p><pre><code class="language-julia">function Layouts.tile(tree::Node)
+#-&gt; Node(:a, Main.layouts.md.Node[ … ])</code></pre><p>We override the function <code>Layouts.tile()</code> and use <code>Layouts.literal()</code> with combinators <code>*</code> (horizontal composition), <code>/</code> (vertical composition), and <code>|</code> (choice) to generate the layout expression.</p><pre><code class="language-julia">function Layouts.tile(tree::Node)
     if isempty(tree.arms)
         return Layouts.literal(&quot;Node($(repr(tree.name)))&quot;)
     end
