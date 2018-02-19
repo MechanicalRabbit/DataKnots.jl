@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Type system · QueryCombinators.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>QueryCombinators.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">QueryCombinators.jl Documentation</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="shapes.html">Type system</a><ul class="internal"><li><a class="toctext" href="#Cardinality-1">Cardinality</a></li><li><a class="toctext" href="#Data-shapes-1">Data shapes</a></li><li><a class="toctext" href="#Shape-ordering-1">Shape ordering</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="shapes.html">Type system</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/QueryCombinators.jl/blob/master/test/shapes.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Type system</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Type-system-1" href="#Type-system-1">Type system</a></h1><p>This module lets us describe the shape of the data.</p><pre><code class="language-julia">using QueryCombinators.Shapes</code></pre><h2><a class="nav-anchor" id="Cardinality-1" href="#Cardinality-1">Cardinality</a></h2><p>Enumerated type <code>Cardinality</code> is used to constrain the cardinality of a data block.  A block of data is called <em>regular</em> if it must contain exactly one element; <em>optional</em> if it may have no elements; and <em>plural</em> if it may have more than one element.  This gives us four different cardinality constraints.</p><pre><code class="language-julia">display(Cardinality)
+#=&gt;
+Enum Cardinality:
+REG = 0
+OPT = 1
+PLU = 2
+OPT|PLU = 3
+=#</code></pre><p>Cardinality values support bitwise operations.</p><pre><code class="language-julia">REG|OPT|PLU             #-&gt; OPT|PLU
+PLU&amp;~PLU                #-&gt; REG</code></pre><p>We can use predicates <code>isregular()</code>, <code>isoptional()</code>, <code>isplural()</code> to check cardinality values.</p><pre><code class="language-julia">isregular(REG)          #-&gt; true
+isregular(OPT)          #-&gt; false
+isregular(PLU)          #-&gt; false
+isoptional(OPT)         #-&gt; true
+isoptional(PLU)         #-&gt; false
+isplural(PLU)           #-&gt; true
+isplural(OPT)           #-&gt; false</code></pre><p><code>Cardinality</code> supports standard operations on enumerated types.</p><pre><code class="language-julia">typemin(Cardinality)    #-&gt; REG
+typemax(Cardinality)    #-&gt; OPT|PLU
+REG &lt; OPT|PLU           #-&gt; true
+
+Cardinality(3)
+#-&gt; OPT|PLU
+read(IOBuffer(&quot;\x03&quot;), Cardinality)
+#-&gt; OPT|PLU</code></pre><p>There is a partial ordering defined on <code>Cardinality</code> values.  We can determine the greatest and the least cardinality; the least upper bound and the greatest lower bound of a collection of <code>Cardinality</code> values; and, for two <code>Cardinality</code> values, determine whether one of the values is smaller than the other.</p><pre><code class="language-julia">bound(Cardinality)      #-&gt; REG
+ibound(Cardinality)     #-&gt; OPT|PLU
+
+bound(OPT, PLU)         #-&gt; OPT|PLU
+ibound(PLU, OPT)        #-&gt; REG
+
+fits(OPT, PLU)          #-&gt; false
+fits(REG, OPT|PLU)      #-&gt; true</code></pre><h2><a class="nav-anchor" id="Data-shapes-1" href="#Data-shapes-1">Data shapes</a></h2><p>The structure of composite data is specified with <em>shape</em> objects.</p><p><code>NativeShape</code> specifies the type of a regular Julia value.</p><pre><code class="language-julia">str_shp = NativeShape(String)
+#-&gt; NativeShape(String)
+
+eltype(str_shp)
+#-&gt; String</code></pre><p><code>IndexShape</code> indicates that the value is an index in a vector.  Its <em>class name</em> is used to find the shape of the target vector.</p><pre><code class="language-julia">idx_shp = IndexShape(:Emp)
+#-&gt; IndexShape(:Emp)
+
+class(idx_shp)
+#-&gt; :Emp</code></pre><p>A shape which does not contain any indexes is called closed.</p><pre><code class="language-julia">isclosed(idx_shp)
+#-&gt; false
+
+isclosed(str_shp)
+#-&gt; true</code></pre><p>For a data block, <code>BlockShape</code> specifies its cardinality and the type of the elements.</p><pre><code class="language-julia">blk_shp = BlockShape(OPT|PLU, IndexShape(:Emp))
+#-&gt; BlockShape(OPT|PLU, IndexShape(:Emp))
+
+cardinality(blk_shp)
+#-&gt; OPT|PLU
+
+blk_shp[]
+#-&gt; IndexShape(:Emp)</code></pre><p><code>TupleShape</code> lets us specify the field types of a tuple value.</p><pre><code class="language-julia">tpl_shp = TupleShape(BlockShape(REG, NativeShape(String)),
+                     BlockShape(OPT|PLU, IndexShape(:Emp)))
+#=&gt;
+TupleShape(BlockShape(REG, NativeShape(String)),
+           BlockShape(OPT|PLU, IndexShape(:Emp)))
+=#
+
+foreach(println, tpl_shp[:])
+#=&gt;
+BlockShape(REG, NativeShape(String))
+BlockShape(OPT|PLU, IndexShape(:Emp))
+=#</code></pre><p>Two special shape types are used to indicate that the value may have any shape, or cannot exist.</p><pre><code class="language-julia">any_shp = AnyShape()
+#-&gt; AnyShape()
+
+none_shp = NoneShape()
+#-&gt; NoneShape()</code></pre><p>By default, <code>AnyShape</code> is assumed open-ended, but we can also indicate that it is closed.</p><pre><code class="language-julia">isclosed(AnyShape())
+#-&gt; false
+
+isclosed(AnyShape(true))
+#-&gt; true</code></pre><p>To any shape, we can attach an arbitrary set of attributes, which are called <em>decorations</em>.  In particular, we can label the values.</p><pre><code class="language-julia">decor_shp = str_shp |&gt; decorate(:tag =&gt; :position)
+#-&gt; NativeShape(String) |&gt; decorate(:tag =&gt; :position)</code></pre><p>The value of a decoration could be extracted.</p><pre><code class="language-julia">decoration(decor_shp, :tag)</code></pre><p>We can enforce the type and the default value of the decoration.</p><pre><code class="language-julia">decoration(decor_shp, :tag, Symbol, Symbol(&quot;&quot;))
+#-&gt; :position
+decoration(decor_shp, :tag, String, &quot;&quot;)
+#-&gt; &quot;&quot;
+decoration(str_shp, :tag, String, &quot;&quot;)
+#-&gt; &quot;&quot;</code></pre><p><code>InputShape</code> and <code>OutputShape</code> are nominal shapes that describe the structure of the query input and the query output.</p><p>To describe the query input, we specify the shape of the input elements, the shapes of the parameters, and whether or not the input is framed.</p><pre><code class="language-julia">i_shp = InputShape(IndexShape(:Emp),
+                   [:D =&gt; OutputShape(NativeShape(String))],
+                   true)
+#-&gt; InputShape(IndexShape(:Emp), [:D =&gt; OutputShape(NativeShape(String))], true)
+
+i_shp[]
+#-&gt; IndexShape(:Emp)</code></pre><p>To describe the query output, we specify the shape and the cardinality of the output elements.</p><pre><code class="language-julia">o_shp = OutputShape(NativeShape(Int), OPT|PLU)
+#-&gt; OutputShape(NativeShape(Int), OPT|PLU)
+
+o_shp[]
+#-&gt; NativeShape(Int)
+
+cardinality(o_shp)
+#-&gt; OPT|PLU</code></pre><p>Function <code>denominalize()</code> converts a nominal shape to the underlying structural shape.</p><pre><code class="language-julia">denominalize(i_shp)
+#-&gt; BlockShape(PLU, TupleShape(IndexShape(:Emp), OutputShape(NativeShape(String))))
+
+denominalize(o_shp)
+#-&gt; BlockShape(OPT|PLU, NativeShape(Int))</code></pre><p><code>CapsuleShape</code> encapsulates the value shape with the shapes of the indexes. Using <code>CapsuleShape</code> we can fully specify self-referential data.</p><pre><code class="language-julia">dept_shp = TupleShape(OutputShape(String) |&gt; decorate(:tag =&gt; :name),
+                      OutputShape(:Emp, OPT|PLU) |&gt; decorate(:tag =&gt; :employee))
+
+emp_shp = TupleShape(OutputShape(String) |&gt; decorate(:tag =&gt; :name),
+                     OutputShape(:Dept) |&gt; decorate(:tag =&gt; :department),
+                     OutputShape(String) |&gt; decorate(:tag =&gt; :position),
+                     OutputShape(Int) |&gt; decorate(:tag =&gt; :salary),
+                     OutputShape(:Emp, OPT) |&gt; decorate(:tag =&gt; :manager),
+                     OutputShape(:Emp, OPT|PLU) |&gt; decorate(:tag =&gt; :subordinate))
+
+db_shp = TupleShape(OutputShape(:Dept, OPT|PLU) |&gt; decorate(:tag =&gt; :department),
+                    OutputShape(:Emp, OPT|PLU) |&gt; decorate(:tag =&gt; :employee))
+
+CapsuleShape(db_shp, :Dept =&gt; dept_shp, :Emp =&gt; emp_shp)
+#=&gt;
+CapsuleShape(
+    TupleShape(OutputShape(IndexShape(:Dept) |&gt; decorate(:tag =&gt; :department),
+                           OPT|PLU),
+               OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
+                           OPT|PLU)),
+    :Dept =&gt; TupleShape(
+                 OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
+                 OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
+                             OPT|PLU)),
+    :Emp =&gt;
+        TupleShape(
+            OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
+            OutputShape(IndexShape(:Dept) |&gt; decorate(:tag =&gt; :department)),
+            OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :position)),
+            OutputShape(NativeShape(Int) |&gt; decorate(:tag =&gt; :salary)),
+            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :manager), OPT),
+            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :subordinate),
+                        OPT|PLU)))
+=#</code></pre><h2><a class="nav-anchor" id="Shape-ordering-1" href="#Shape-ordering-1">Shape ordering</a></h2><p>The same data can satisfy many different shape constraints.  For example, a vector <code>BlockVector([Chicago])</code> can be said to have, among others, the shape <code>BlockShape(REG, String)</code>, the shape <code>BlockShape(OPT|PLU, Any)</code> or the shape <code>AnyShape()</code>.  We can tell, for any two shapes, if one of them is more specific than the other.</p><pre><code class="language-julia">fits(NativeShape(Int), NativeShape(Number))     #-&gt; true
+fits(NativeShape(Int), NativeShape(String))     #-&gt; false
+
+fits(IndexShape(:Emp), IndexShape(:Emp))        #-&gt; true
+fits(IndexShape(:Emp), IndexShape(:Dept))       #-&gt; false
+
+fits(BlockShape(REG, Int), BlockShape(OPT, Number))     #-&gt; true
+fits(BlockShape(PLU, Int), BlockShape(OPT, Number))     #-&gt; false
+fits(BlockShape(REG, Int), BlockShape(OPT, String))     #-&gt; false
+
+fits(TupleShape(BlockShape(REG, Int),
+                BlockShape(OPT, String)),
+     TupleShape(BlockShape(REG, Number),
+                BlockShape(OPT|PLU, String)))       #-&gt; true
+fits(TupleShape(BlockShape(OPT, Int),
+                BlockShape(REG, String)),
+     TupleShape(BlockShape(REG, Number),
+                BlockShape(OPT|PLU, String)))       #-&gt; false
+fits(TupleShape(BlockShape(REG, Int)),
+     TupleShape(BlockShape(REG, Number),
+                BlockShape(OPT|PLU, String)))       #-&gt; false</code></pre><p>Shapes of different kinds are typically not compatible with each other.  The exceptions are <code>AnyShape</code> and <code>NullShape</code>.</p><pre><code class="language-julia">fits(NativeShape(Int), IndexShape(:Emp))    #-&gt; false
+fits(NativeShape(Int), AnyShape())          #-&gt; true
+fits(NoneShape(), IndexShape(:Emp))         #-&gt; true</code></pre><p>Shape decorations are treated as additional shape constraints.</p><pre><code class="language-julia">fits(NativeShape(String) |&gt; decorate(:tag =&gt; :name),
+     NativeShape(String) |&gt; decorate(:tag =&gt; :name))        #-&gt; true
+fits(NativeShape(String),
+     NativeShape(String) |&gt; decorate(:tag =&gt; :name))        #-&gt; false
+fits(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
+     NativeShape(String))                                   #-&gt; true
+fits(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
+     NativeShape(String) |&gt; decorate(:tag =&gt; :name))        #-&gt; false</code></pre><p>For any given number of shapes, we can find their upper bound, the shape that is more general than each of them.  We can also find their lower bound.</p><pre><code class="language-julia">bound(NativeShape(Int), NativeShape(Number))
+#-&gt; NativeShape(Number)
+ibound(NativeShape(Int), NativeShape(Number))
+#-&gt; NativeShape(Int)
+
+bound(IndexShape(:Emp), IndexShape(:Emp))
+#-&gt; IndexShape(:Emp)
+ibound(IndexShape(:Emp), IndexShape(:Emp))
+#-&gt; IndexShape(:Emp)
+bound(IndexShape(:Emp), IndexShape(:Dept))
+#-&gt; AnyShape()
+ibound(IndexShape(:Emp), IndexShape(:Dept))
+#-&gt; NoneShape()
+
+bound(BlockShape(OPT, String), BlockShape(PLU, String))
+#-&gt; BlockShape(OPT|PLU, NativeShape(String))
+ibound(BlockShape(OPT, String), BlockShape(PLU, String))
+#-&gt; BlockShape(REG, NativeShape(String))
+
+bound(TupleShape(BlockShape(OPT, :Emp), BlockShape(REG, String)),
+      TupleShape(BlockShape(OPT, :Dept), BlockShape(PLU, String)))
+#-&gt; TupleShape(BlockShape(OPT, AnyShape()), BlockShape(PLU, NativeShape(String)))
+ibound(TupleShape(BlockShape(OPT, :Emp), BlockShape(REG, String)),
+       TupleShape(BlockShape(OPT, :Dept), BlockShape(PLU, String)))
+#-&gt; TupleShape(BlockShape(OPT, NoneShape()), BlockShape(REG, NativeShape(String)))</code></pre><p>For decorated shapes, incompatible decoration constraints are replaced with <code>nothing</code>.</p><pre><code class="language-julia">bound(NativeShape(String) |&gt; decorate(:show =&gt; false, :tag =&gt; :name),
+      NativeShape(String) |&gt; decorate(:hide =&gt; true, :tag =&gt; :name))
+#-&gt; NativeShape(String) |&gt; decorate(:tag =&gt; :name)
+
+ibound(NativeShape(String) |&gt; decorate(:show =&gt; false, :tag =&gt; :name),
+       NativeShape(String) |&gt; decorate(:hide =&gt; true, :tag =&gt; :name))
+#-&gt; NativeShape(String) |&gt; decorate(:hide =&gt; true, :show =&gt; false, :tag =&gt; :name)
+
+bound(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
+      NativeShape(Number) |&gt; decorate(:tag =&gt; :salary))
+#-&gt; AnyShape(true)
+
+ibound(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
+       NativeShape(Number) |&gt; decorate(:tag =&gt; :salary))
+#-&gt; NoneShape() |&gt; decorate(:tag =&gt; nothing)
+
+bound(NativeShape(Int),
+      NativeShape(Number) |&gt; decorate(:tag =&gt; :salary))
+#-&gt; NativeShape(Number)
+
+ibound(NativeShape(Int),
+       NativeShape(Number) |&gt; decorate(:tag =&gt; :salary))
+#-&gt; NativeShape(Int) |&gt; decorate(:tag =&gt; :salary)</code></pre><footer><hr/><a class="previous" href="planar.html"><span class="direction">Previous</span><span class="title">Planar Vectors</span></a></footer></article></body></html>
