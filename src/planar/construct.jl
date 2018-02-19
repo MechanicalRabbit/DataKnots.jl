@@ -66,7 +66,18 @@ mutable struct VectorConstructor <: AbstractVectorConstructor
 end
 
 function planarize(ctor::AbstractVectorConstructor, ex)
-    if ex isa Expr && (ex.head == :vect || ex.head == :vcat)
+    if ex isa Expr && ex.head == :where && length(ex.args) >= 1
+        vec = planarize(ctor, ex.args[1])
+        refs = Any[]
+        for arg in ex.args[2:end]
+            if arg isa Expr && arg.head == :(=) && length(arg.args) == 2 && arg.args[1] isa Symbol
+                push!(refs, Expr(:call, :(=>), QuoteNode(arg.args[1]), arg.args[2]))
+            else
+                error("expected an assignment; got $(repr(arg))")
+            end
+        end
+        return Expr(:call, CapsuleVector, vec, refs...)
+    elseif ex isa Expr && (ex.head == :vect || ex.head == :vcat)
         for arg in ex.args
             rearrange!(ctor, arg)
         end

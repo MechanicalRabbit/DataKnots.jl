@@ -218,6 +218,53 @@ desired reference vector is not in the list.
     #-> [1, 1, 1, 2]
 
 
+## `CapsuleVector`
+
+`CapsuleVector` provides references for a planar vector with nested indexes,
+which lets us represent self-referential data.
+
+    cv = CapsuleVector(TupleVector(:ref => iv), :REF => refv)
+    #-> @Planar (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
+
+    display(cv)
+    #=>
+    CapsuleVector of 4 × (ref = &REF,):
+     (ref = 1,)
+     (ref = 1,)
+     (ref = 1,)
+     (ref = 2,)
+    where
+     REF = ["COMISSIONER", "DEPUTY COMISSIONER" … ]
+    =#
+
+Function `decapsulate()` decomposes a capsule into the underlying vector and a
+list of references.
+
+    decapsulate(cv)
+    #-> (@Planar (ref = &REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])
+
+Function `recapsulate()` applies the given function to the underlying vector
+and encapsulates the output of the function.
+
+    cv′ = recapsulate(v -> v[:, :ref], cv)
+    #-> @Planar &REF [1, 1, 1, 2] where {REF = [ … ]}
+
+We could dereference `CapsuleVector` if it wraps an `IndexVector` instance.
+Function `dereference()` has no effect otherwise.
+
+    dereference(cv′)
+    #-> ["COMISSIONER", "COMISSIONER", "COMISSIONER", "DEPUTY COMISSIONER"]
+
+    dereference(cv)
+    #-> @Planar (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
+
+Indexing `CapsuleVector` by a vector produces another instance of
+`CapsuleVector`.
+
+    cv[[4,2]]
+    #-> @Planar (ref = &REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}
+
+
 ## `@Planar`
 
 We can use `@Planar` macro to convert vector literals to a planar form.
@@ -250,7 +297,25 @@ For `TupleVector`, column labels are optional.
     @Planar (String, Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
     #-> @Planar (String, Int) [("GARRY M", 260004) … ]
 
-Ill-formed `TupleVector` contructors are rejected.
+`BlockVector` and `IndexVector` can also be constructed.
+
+    @Planar [String] [
+        "HEALTH",
+        ["FINANCE", "HUMAN RESOURCES"],
+        missing,
+        ["POLICE", "FIRE"],
+    ]
+    #-> @Planar [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
+
+    @Planar &REF [1, 1, 1, 2]
+    #-> @Planar &REF [1, 1, 1, 2]
+
+A `CapsuleVector` could be constructed using `where` syntax.
+
+    @Planar &REF [1, 1, 1, 2] where {REF = refv}
+    #-> @Planar &REF [1, 1, 1, 2] where {REF = ["COMISSIONER", "DEPUTY COMISSIONER"  … ]}
+
+Ill-formed `@Planar` contructors are rejected.
 
     @Planar (String, Int) ("GARRY M", 260004)
     #=>
@@ -282,36 +347,14 @@ Ill-formed `TupleVector` contructors are rejected.
     in expression starting at none:2
     =#
 
-`BlockVector` and `IndexVector` can also be constructed.
-
-    @Planar [String] [
-        "HEALTH",
-        ["FINANCE", "HUMAN RESOURCES"],
-        missing,
-        ["POLICE", "FIRE"],
-    ]
-    #-> @Planar [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
-
-    @Planar &REF [1, 1, 1, 2]
-    #-> @Planar &REF [1, 1, 1, 2]
-
-Using `@Planar`, we can easily construct hierarchical and self-referential
-data.
-
-    ref_data = @Planar (position = [String], manager = [&SELF]) [
-        "COMISSIONER"           missing
-        "DEPUTY COMISSIONER"    1
-        "ZONING ADMINISTRATOR"  1
-        "PROJECT MANAGER"       2
-    ]
-    display(ref_data)
+    @Planar &REF [[]] where (:REF => [])
     #=>
-    TupleVector of 4 × (position = [String], manager = [&SELF]):
-     (position = "COMISSIONER", manager = missing)
-     (position = "DEPUTY COMISSIONER", manager = 1)
-     (position = "ZONING ADMINISTRATOR", manager = 1)
-     (position = "PROJECT MANAGER", manager = 2)
+    ERROR: LoadError: expected an assignment; got :(:REF => [])
+    in expression starting at none:2
     =#
+
+Using `@Planar`, we can easily construct hierarchical and mutually referential
+data.
 
     hier_data = @Planar (name = [String], employee = [(name = [String], salary = [Int])]) [
         "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
@@ -322,5 +365,30 @@ data.
     TupleVector of 2 × (name = [String], employee = [(name = [String], salary = [Int])]):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
+    =#
+
+    mref_data = @Planar (department = [&DEPT], employee = [&EMP]) [
+        [1, 2]  [1, 2, 3, 4, 5]
+    ] where {
+        DEPT = @Planar (name = [String], employee = [&EMP]) [
+            "POLICE"    [1, 2, 3]
+            "FIRE"      [4, 5]
+        ]
+        ,
+        EMP = @Planar (name = [String], department = [&DEPT], salary = [Int]) [
+            "GARRY M"   1   260004
+            "ANTHONY R" 1   185364
+            "DANA A"    1   170112
+            "JOSE S"    2   202728
+            "CHARLES S" 2   197736
+        ]
+    }
+    display(mref_data)
+    #=>
+    CapsuleVector of 1 × (department = [&DEPT], employee = [&EMP]):
+     (department = [1, 2], employee = [1, 2, 3, 4, 5])
+    where
+     DEPT = @Planar (name = [String], employee = [&EMP]) [(name = "POLICE", employee = [1, 2, 3]) … ]
+     EMP = @Planar (name = [String], department = [&DEPT], salary = [Int]) [(name = "GARRY M", department = 1, salary = 260004) … ]
     =#
 

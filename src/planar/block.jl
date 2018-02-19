@@ -69,8 +69,8 @@ end
 
 # Printing.
 
-signature_expr(bv::BlockVector) =
-    Expr(:vect, signature_expr(bv.elts))
+signature_syntax(bv::BlockVector) =
+    Expr(:vect, signature_syntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
     show_planar(io, bv)

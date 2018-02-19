@@ -22,7 +22,7 @@ end
 
 # Printing.
 
-signature_expr(iv::IndexVector) =
+signature_syntax(iv::IndexVector) =
     Expr(:&, iv.ident)
 
 show(io::IO, iv::IndexVector) =

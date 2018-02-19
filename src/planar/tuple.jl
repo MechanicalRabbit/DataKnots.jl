@@ -96,11 +96,11 @@ end
 
 # Printing.
 
-signature_expr(tv::TupleVector) =
+signature_syntax(tv::TupleVector) =
     if isempty(tv.lbls)
-        Expr(:tuple, [signature_expr(col) for col in tv.cols]...)
+        Expr(:tuple, [signature_syntax(col) for col in tv.cols]...)
     else
-        Expr(:tuple, [Expr(:(=), lbl, signature_expr(col)) for (lbl, col) in zip(tv.lbls, tv.cols)]...)
+        Expr(:tuple, [Expr(:(=), lbl, signature_syntax(col)) for (lbl, col) in zip(tv.lbls, tv.cols)]...)
     end
 
 show(io::IO, tv::TupleVector) =

@@ -70,16 +70,33 @@ end
 
 # Printing.
 
-signature_expr(cv::CapsuleVector) =
-    Expr(:where,
-         signature_expr(cv.vals),
-         (Expr(:(<:), ref.first, signature_expr(ref.second)) for ref in cv.refs)...)
+signature_syntax(cv::CapsuleVector) = signature_syntax(cv.vals)
 
-show(io::IO, cv::CapsuleVector) =
-    show_planar(io, bv)
+function show(io::IO, cv::CapsuleVector)
+    show_planar(io, cv)
+    io = IOContext(io, :limit => true)
+    print(io, " where {")
+    first = true
+    for ref in cv.refs
+        if !first
+            print(io, ", ")
+        end
+        first = false
+        print(io, ref.first, " = ", ref.second)
+    end
+    print(io, "}")
+end
 
-show(io::IO, ::MIME"text/plain", cv::CapsuleVector) =
+function show(io::IO, ::MIME"text/plain", cv::CapsuleVector)
     display_planar(io, cv)
+    io = IOContext(io, :limit => true)
+    println(io)
+    print(io, "where")
+    for ref in cv.refs
+        println(io)
+        print(io, " ", ref.first, " = ", ref.second)
+    end
+end
 
 # Vector interface.
 

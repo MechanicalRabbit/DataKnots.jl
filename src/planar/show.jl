@@ -2,19 +2,19 @@
 # Printing planar vectors.
 #
 
-const SomePlanarVector = Union{BlockVector,IndexVector,TupleVector}
+const SomePlanarVector = Union{BlockVector,IndexVector,TupleVector,CapsuleVector}
 
-signature_expr(v::AbstractVector) = eltype(v)
+signature_syntax(v::AbstractVector) = eltype(v)
 
 Base.typeinfo_prefix(io::IO, pv::SomePlanarVector) =
     if !get(io, :compact, false)::Bool
-        "@Planar $(signature_expr(pv)) "
+        "@Planar $(signature_syntax(pv)) "
     else
         ""
     end
 
 summary(io::IO, pv::SomePlanarVector) =
-    print(io, "$(typeof(pv).name.name) of $(length(pv)) × $(signature_expr(pv))")
+    print(io, "$(typeof(pv).name.name) of $(length(pv)) × $(signature_syntax(pv))")
 
 show_planar(io::IO, v::AbstractVector) =
     Base.show_vector(io, v)
