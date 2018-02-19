@@ -2,6 +2,12 @@
 # Vector of vectors (blocks) in a planar form.
 #
 
+# Abstract interface.
+
+abstract type AbstractBlockVector{T} <: AbstractVector{T} end
+
+const SomeBlockVector{T} = Union{AbstractBlockVector{T},WrapperVector{<:AbstractBlockVector{T}}}
+
 # Constructors.
 
 """
@@ -11,7 +17,7 @@
 Vector of vectors (blocks) stored as a vector of elements partitioned by a
 vector of offsets.
 """
-struct BlockVector{O<:AbstractVector{Int},E<:AbstractVector} <: AbstractVector{Any}
+struct BlockVector{O<:AbstractVector{Int},E<:AbstractVector} <: AbstractBlockVector{Any}
     offs::O
     elts::E
 

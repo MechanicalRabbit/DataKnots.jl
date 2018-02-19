@@ -2,12 +2,20 @@
 # Vector of indexes in some named vector.
 #
 
+# Abstract interface.
+
+abstract type AbstractIndexVector{T} <: AbstractVector{T} end
+
+const SomeIndexVector{T} = Union{AbstractIndexVector{T},WrapperVector{<:AbstractIndexVector{T}}}
+
+# Constructor.
+
 """
     IndexVector(ident::Symbol, idxs::AbstractVector{Int})
 
 Vector of indexes in some named vector.
 """
-struct IndexVector{I<:AbstractVector{Int}} <: AbstractVector{Int}
+struct IndexVector{I<:AbstractVector{Int}} <: AbstractIndexVector{Int}
     ident::Symbol
     idxs::I
 end

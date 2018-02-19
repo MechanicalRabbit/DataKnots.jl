@@ -2,6 +2,12 @@
 # Vector of tuples in a planar form.
 #
 
+# Abstract interface.
+
+abstract type AbstractTupleVector{T} <: AbstractVector{T} end
+
+const SomeTupleVector{T} = Union{AbstractTupleVector{T},WrapperVector{<:AbstractTupleVector{T}}}
+
 # Constructors.
 
 """
@@ -10,7 +16,7 @@
 
 Vector of tuples stored as a collection of column vectors.
 """
-struct TupleVector{I<:AbstractVector{Int}} <: AbstractVector{Any}
+struct TupleVector{I<:AbstractVector{Int}} <: AbstractTupleVector{Any}
     lbls::Vector{Symbol}            # isempty(lbls) means plain tuples
     idxs::I
     cols::Vector{AbstractVector}
@@ -114,25 +120,25 @@ show(io::IO, ::MIME"text/plain", tv::TupleVector) =
     tv.icols
 end
 
-@inline function column(tv::TupleVector, i::Int)
-    _indexcolumn(tv, i)
-    tv.icols[i]
+@inline function column(tv::TupleVector, j::Int)
+    _indexcolumn(tv, j)
+    tv.icols[j]
 end
 
 @inline column(tv::TupleVector, lbl::Symbol) =
     column(tv, findfirst(equalto(lbl), tv.lbls))
 
 function _indexcolumns(tv::TupleVector)
-    for i = 1:length(tv.cols)
-        if !isassigned(tv.icols, i)
-            @inbounds tv.icols[i] = tv.cols[i][tv.idxs]
+    for j = 1:length(tv.cols)
+        if !isassigned(tv.icols, j)
+            @inbounds tv.icols[j] = tv.cols[j][tv.idxs]
         end
     end
 end
 
-function _indexcolumn(tv::TupleVector, i)
-    if !isassigned(tv.icols, i)
-        @inbounds tv.icols[i] = tv.cols[i][tv.idxs]
+function _indexcolumn(tv::TupleVector, j)
+    if !isassigned(tv.icols, j)
+        @inbounds tv.icols[j] = tv.cols[j][tv.idxs]
     end
 end
 
@@ -159,6 +165,15 @@ end
     @boundscheck checkbounds(tv, ks)
     @inbounds idxs′ = tv.idxs[ks]
     @inbounds tv′ = TupleVector(tv.lbls, idxs′, tv.cols)
+    tv′
+end
+
+@inline getindex(tv::TupleVector, ::Colon, j::Union{Int,Symbol}) =
+    column(tv, j)
+
+@inline function getindex(tv::TupleVector, ::Colon, js::AbstractVector)
+    @boundscheck checkbounds(tv.cols, js)
+    @inbounds tv′ = TupleVector(tv.lbls, tv.idxs, tv.cols[js])
     tv′
 end
 
