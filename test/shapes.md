@@ -1,9 +1,8 @@
-# Self-Referential Data
+# Type system
 
-We employ a number of data types and structures to describe and represent
-self-referential data.
+This module lets us describe the shape of the data.
 
-    using QueryCombinators.Knots
+    using QueryCombinators.Shapes
 
 
 ## Cardinality

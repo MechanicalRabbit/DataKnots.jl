@@ -21,6 +21,7 @@ makedocs(
         "test/index.md",
         hide("test/layouts.md"),
         hide("test/planar.md"),
+        hide("test/shapes.md"),
     ],
     modules = [QueryCombinators])
 

@@ -15,6 +15,8 @@ syntax_abbr(shp::AbstractShape) =
 show(io::IO, shp::AbstractShape) =
     Layouts.print_code(io, syntax(shp))
 
+# Arbitrary properties attached to any shape.
+
 struct DecoratedShape{S<:AbstractShape} <: AbstractShape
     vals::S
     decors::Vector{Pair{Symbol,Any}}
@@ -64,6 +66,8 @@ decorate(decors::Pair{Symbol}...) =
         obj -> decorate(obj, decors)
     end
 
+# Indicates arbitrary data (with/without nested indexes).
+
 struct AnyShape <: AbstractShape
     closed::Bool
 end
@@ -79,12 +83,16 @@ syntax(shp::AnyShape) =
 
 isclosed(shp::AnyShape) = shp.closed
 
+# Indicates contradictory constraints on the data.
+
 struct NoneShape <: AbstractShape
 end
 
 syntax(::NoneShape) = Expr(:call, nameof(NoneShape))
 
 isclosed(::NoneShape) = true
+
+# A regular Julia value of the given type.
 
 struct NativeShape <: AbstractShape
     ty::Type
@@ -100,6 +108,8 @@ eltype(shp::NativeShape) = shp.ty
 eltype(shp::DecoratedShape{NativeShape}) = eltype(undecorate(shp))
 
 isclosed(::NativeShape) = true
+
+# Tuple with the given fields.
 
 struct TupleShape <: AbstractShape
     cols::Vector{AbstractShape}
@@ -125,6 +135,23 @@ getindex(shp::DecoratedShape{TupleShape}, i) = getindex(undecorate(shp), i)
 
 isclosed(shp::TupleShape) = shp.closed
 
+# Data has one of the given shapes.
+
+struct UnionShape <: AbstractShape
+    vars::Vector{AbstractShape}
+end
+
+UnionShape(itr...) =
+    UnionShape(collect(AbstractShape, itr))
+
+syntax(shp::UnionShape) =
+    Expr(:call, nameof(UnionShape), map(syntax, shp.vars)...)
+
+isclosed(shp::UnionShape) =
+    all(isclosed, shp.vars)
+
+# Block of data with the given cardinality.
+
 struct BlockShape <: AbstractShape
     card::Cardinality
     elts::AbstractShape
@@ -142,6 +169,9 @@ getindex(shp::BlockShape) = shp.elts
 getindex(shp::DecoratedShape{BlockShape}) = getindex(undecorate(shp))
 
 isclosed(shp::BlockShape) = isclosed(shp.elts)
+
+# Data is a pointer to some other value.  The class name lets us find
+# the shape of the target value.
 
 struct IndexShape <: AbstractShape
     cls::Symbol
@@ -170,7 +200,29 @@ function dereference(shp::IndexShape, refs::Vector{Pair{Symbol,AbstractShape}})
     shp
 end
 
+# Nominal shapes have the underlying structural representation.
+
 abstract type NominalShape <: AbstractShape end
+
+# A record is a tuple of blocks.
+
+struct RecordShape <: NominalShape
+    flds::Vector{Tuple{Union{Symbol,Missing},AbstractShape,Cardinality}}
+end
+
+function RecordShape(itr...)
+    lbls = Union{Symbol,Missing}[]
+    flds = AbstractShape[]
+    cards = Cardinality[]
+    for item in itr
+        (lbl, fld, card) = _recordfield(item)
+        push!(lbls, lbl)
+        push!(flds, fld)
+        push!(cards, card)
+    end
+end
+
+# Shape of the query output.
 
 struct OutputShape <: NominalShape
     vals::AbstractShape
@@ -200,6 +252,8 @@ isclosed(shp::OutputShape) = isclosed(shp.vals)
 
 denominalize(shp::OutputShape) =
     BlockShape(shp.card, shp.vals)
+
+# Shape of the query input.
 
 struct InputShape <: NominalShape
     vals::AbstractShape
@@ -254,6 +308,8 @@ function denominalize(shp::InputShape)
     end
     shp′
 end
+
+# Encapsulate a shape with specifications for nested indexes.
 
 struct CapsuleShape{S<:AbstractShape} <: AbstractShape
     vals::S
@@ -558,6 +614,4 @@ struct ShapeAwareVector{T,V<:AbstractVector{T}} <: AbstractVector{T}
     shp::AbstractShape
     vals::V
 end
-
-
 

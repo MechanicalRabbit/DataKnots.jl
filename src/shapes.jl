@@ -1,8 +1,8 @@
 #
-# Encapsulation of self-referential data.
+# Type system.
 #
 
-module Knots
+module Shapes
 
 export
     OPT,
@@ -48,9 +48,9 @@ import Base:
 
 using ..Layouts
 
-include("knots/sorteddict.jl")
-include("knots/bound.jl")
-include("knots/cardinality.jl")
-include("knots/shape.jl")
+include("shapes/sorteddict.jl")
+include("shapes/bound.jl")
+include("shapes/cardinality.jl")
+include("shapes/shape.jl")
 
 end

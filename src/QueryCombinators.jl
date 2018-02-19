@@ -6,6 +6,6 @@ module QueryCombinators
 
 include("layouts.jl")
 include("planar.jl")
-include("knots.jl")
+include("shapes.jl")
 
 end
