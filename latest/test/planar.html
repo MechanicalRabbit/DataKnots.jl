@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Planar Vectors · QueryCombinators.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>QueryCombinators.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">QueryCombinators.jl Documentation</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="planar.html">Planar Vectors</a><ul class="internal"><li><a class="toctext" href="#TupleVector-1"><code>TupleVector</code></a></li><li><a class="toctext" href="#BlockVector-1"><code>BlockVector</code></a></li><li><a class="toctext" href="#IndexVector-1"><code>IndexVector</code></a></li><li><a class="toctext" href="#@Planar-1"><code>@Planar</code></a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="planar.html">Planar Vectors</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/QueryCombinators.jl/blob/master/test/planar.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Planar Vectors</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Planar-Vectors-1" href="#Planar-Vectors-1">Planar Vectors</a></h1><p>For efficient data processing, the data can be stored in a planar (also known as columnar or SoA) form.</p><pre><code class="language-julia">using QueryCombinators.Planar</code></pre><h2><a class="nav-anchor" id="TupleVector-1" href="#TupleVector-1"><code>TupleVector</code></a></h2><p><code>TupleVector</code> is a vector of tuples stored as a tuple of vectors.</p><pre><code class="language-julia">tv = TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;],
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Planar Vectors · QueryCombinators.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>QueryCombinators.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">QueryCombinators.jl Documentation</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="planar.html">Planar Vectors</a><ul class="internal"><li><a class="toctext" href="#TupleVector-1"><code>TupleVector</code></a></li><li><a class="toctext" href="#BlockVector-1"><code>BlockVector</code></a></li><li><a class="toctext" href="#IndexVector-1"><code>IndexVector</code></a></li><li><a class="toctext" href="#CapsuleVector-1"><code>CapsuleVector</code></a></li><li><a class="toctext" href="#@Planar-1"><code>@Planar</code></a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="planar.html">Planar Vectors</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/QueryCombinators.jl/blob/master/test/planar.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Planar Vectors</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Planar-Vectors-1" href="#Planar-Vectors-1">Planar Vectors</a></h1><p>For efficient data processing, the data can be stored in a planar (also known as columnar or SoA) form.</p><pre><code class="language-julia">using QueryCombinators.Planar</code></pre><h2><a class="nav-anchor" id="TupleVector-1" href="#TupleVector-1"><code>TupleVector</code></a></h2><p><code>TupleVector</code> is a vector of tuples stored as a tuple of vectors.</p><pre><code class="language-julia">tv = TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;],
                  :salary =&gt; [260004, 185364, 170112])
 #-&gt; @Planar (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
 
@@ -124,7 +124,26 @@ dereference(iv, [:REF =&gt; refv])
 #-&gt; @Planar &amp;REF [1, 1, 1, 2]
 
 dereference([1, 1, 1, 2], [:REF =&gt; refv])
-#-&gt; [1, 1, 1, 2]</code></pre><h2><a class="nav-anchor" id="@Planar-1" href="#@Planar-1"><code>@Planar</code></a></h2><p>We can use <code>@Planar</code> macro to convert vector literals to a planar form.</p><p><code>TupleVector</code> is created from a matrix or a vector of (named) tuples.</p><pre><code class="language-julia">@Planar (name = String, salary = Int) [
+#-&gt; [1, 1, 1, 2]</code></pre><h2><a class="nav-anchor" id="CapsuleVector-1" href="#CapsuleVector-1"><code>CapsuleVector</code></a></h2><p><code>CapsuleVector</code> provides references for a planar vector with nested indexes, which lets us represent self-referential data.</p><pre><code class="language-julia">cv = CapsuleVector(TupleVector(:ref =&gt; iv), :REF =&gt; refv)
+#-&gt; @Planar (ref = &amp;REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
+
+display(cv)
+#=&gt;
+CapsuleVector of 4 × (ref = &amp;REF,):
+ (ref = 1,)
+ (ref = 1,)
+ (ref = 1,)
+ (ref = 2,)
+where
+ REF = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot; … ]
+=#</code></pre><p>Function <code>decapsulate()</code> decomposes a capsule into the underlying vector and a list of references.</p><pre><code class="language-julia">decapsulate(cv)
+#-&gt; (@Planar (ref = &amp;REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])</code></pre><p>Function <code>recapsulate()</code> applies the given function to the underlying vector and encapsulates the output of the function.</p><pre><code class="language-julia">cv′ = recapsulate(v -&gt; v[:, :ref], cv)
+#-&gt; @Planar &amp;REF [1, 1, 1, 2] where {REF = [ … ]}</code></pre><p>We could dereference <code>CapsuleVector</code> if it wraps an <code>IndexVector</code> instance. Function <code>dereference()</code> has no effect otherwise.</p><pre><code class="language-julia">dereference(cv′)
+#-&gt; [&quot;COMISSIONER&quot;, &quot;COMISSIONER&quot;, &quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;]
+
+dereference(cv)
+#-&gt; @Planar (ref = &amp;REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}</code></pre><p>Indexing <code>CapsuleVector</code> by a vector produces another instance of <code>CapsuleVector</code>.</p><pre><code class="language-julia">cv[[4,2]]
+#-&gt; @Planar (ref = &amp;REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}</code></pre><h2><a class="nav-anchor" id="@Planar-1" href="#@Planar-1"><code>@Planar</code></a></h2><p>We can use <code>@Planar</code> macro to convert vector literals to a planar form.</p><p><code>TupleVector</code> is created from a matrix or a vector of (named) tuples.</p><pre><code class="language-julia">@Planar (name = String, salary = Int) [
     &quot;GARRY M&quot;   260004
     &quot;ANTHONY R&quot; 185364
     &quot;DANA A&quot;    170112
@@ -144,7 +163,17 @@ dereference([1, 1, 1, 2], [:REF =&gt; refv])
     (name = &quot;DANA A&quot;, salary = 170112),
 ]
 #-&gt; @Planar (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]</code></pre><p>For <code>TupleVector</code>, column labels are optional.</p><pre><code class="language-julia">@Planar (String, Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
-#-&gt; @Planar (String, Int) [(&quot;GARRY M&quot;, 260004) … ]</code></pre><p>Ill-formed <code>TupleVector</code> contructors are rejected.</p><pre><code class="language-julia">@Planar (String, Int) (&quot;GARRY M&quot;, 260004)
+#-&gt; @Planar (String, Int) [(&quot;GARRY M&quot;, 260004) … ]</code></pre><p><code>BlockVector</code> and <code>IndexVector</code> can also be constructed.</p><pre><code class="language-julia">@Planar [String] [
+    &quot;HEALTH&quot;,
+    [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;],
+    missing,
+    [&quot;POLICE&quot;, &quot;FIRE&quot;],
+]
+#-&gt; @Planar [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
+
+@Planar &amp;REF [1, 1, 1, 2]
+#-&gt; @Planar &amp;REF [1, 1, 1, 2]</code></pre><p>A <code>CapsuleVector</code> could be constructed using <code>where</code> syntax.</p><pre><code class="language-julia">@Planar &amp;REF [1, 1, 1, 2] where {REF = refv}
+#-&gt; @Planar &amp;REF [1, 1, 1, 2] where {REF = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;  … ]}</code></pre><p>Ill-formed <code>@Planar</code> contructors are rejected.</p><pre><code class="language-julia">@Planar (String, Int) (&quot;GARRY M&quot;, 260004)
 #=&gt;
 ERROR: LoadError: expected a vector literal; got :((&quot;GARRY M&quot;, 260004))
 in expression starting at none:2
@@ -172,31 +201,13 @@ in expression starting at none:2
 #=&gt;
 ERROR: LoadError: expected a tuple or a row literal; got &quot;GARRY M&quot;
 in expression starting at none:2
-=#</code></pre><p><code>BlockVector</code> and <code>IndexVector</code> can also be constructed.</p><pre><code class="language-julia">@Planar [String] [
-    &quot;HEALTH&quot;,
-    [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;],
-    missing,
-    [&quot;POLICE&quot;, &quot;FIRE&quot;],
-]
-#-&gt; @Planar [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
-
-@Planar &amp;REF [1, 1, 1, 2]
-#-&gt; @Planar &amp;REF [1, 1, 1, 2]</code></pre><p>Using <code>@Planar</code>, we can easily construct hierarchical and self-referential data.</p><pre><code class="language-julia">ref_data = @Planar (position = [String], manager = [&amp;SELF]) [
-    &quot;COMISSIONER&quot;           missing
-    &quot;DEPUTY COMISSIONER&quot;    1
-    &quot;ZONING ADMINISTRATOR&quot;  1
-    &quot;PROJECT MANAGER&quot;       2
-]
-display(ref_data)
-#=&gt;
-TupleVector of 4 × (position = [String], manager = [&amp;SELF]):
- (position = &quot;COMISSIONER&quot;, manager = missing)
- (position = &quot;DEPUTY COMISSIONER&quot;, manager = 1)
- (position = &quot;ZONING ADMINISTRATOR&quot;, manager = 1)
- (position = &quot;PROJECT MANAGER&quot;, manager = 2)
 =#
 
-hier_data = @Planar (name = [String], employee = [(name = [String], salary = [Int])]) [
+@Planar &amp;REF [[]] where (:REF =&gt; [])
+#=&gt;
+ERROR: LoadError: expected an assignment; got :(:REF =&gt; [])
+in expression starting at none:2
+=#</code></pre><p>Using <code>@Planar</code>, we can easily construct hierarchical and mutually referential data.</p><pre><code class="language-julia">hier_data = @Planar (name = [String], employee = [(name = [String], salary = [Int])]) [
     &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
     &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
 ]
@@ -205,4 +216,29 @@ display(hier_data)
 TupleVector of 2 × (name = [String], employee = [(name = [String], salary = [Int])]):
  (name = &quot;POLICE&quot;, employee = [(name = &quot;GARRY M&quot;, salary = 260004) … ])
  (name = &quot;FIRE&quot;, employee = [(name = &quot;JOSE S&quot;, salary = 202728) … ])
+=#
+
+mref_data = @Planar (department = [&amp;DEPT], employee = [&amp;EMP]) [
+    [1, 2]  [1, 2, 3, 4, 5]
+] where {
+    DEPT = @Planar (name = [String], employee = [&amp;EMP]) [
+        &quot;POLICE&quot;    [1, 2, 3]
+        &quot;FIRE&quot;      [4, 5]
+    ]
+    ,
+    EMP = @Planar (name = [String], department = [&amp;DEPT], salary = [Int]) [
+        &quot;GARRY M&quot;   1   260004
+        &quot;ANTHONY R&quot; 1   185364
+        &quot;DANA A&quot;    1   170112
+        &quot;JOSE S&quot;    2   202728
+        &quot;CHARLES S&quot; 2   197736
+    ]
+}
+display(mref_data)
+#=&gt;
+CapsuleVector of 1 × (department = [&amp;DEPT], employee = [&amp;EMP]):
+ (department = [1, 2], employee = [1, 2, 3, 4, 5])
+where
+ DEPT = @Planar (name = [String], employee = [&amp;EMP]) [(name = &quot;POLICE&quot;, employee = [1, 2, 3]) … ]
+ EMP = @Planar (name = [String], department = [&amp;DEPT], salary = [Int]) [(name = &quot;GARRY M&quot;, department = 1, salary = 260004) … ]
 =#</code></pre><footer><hr/><a class="previous" href="layouts.html"><span class="direction">Previous</span><span class="title">Optimal Layouts</span></a><a class="next" href="shapes.html"><span class="direction">Next</span><span class="title">Type system</span></a></footer></article></body></html>
