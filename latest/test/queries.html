@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · QueryCombinators.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>QueryCombinators.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">QueryCombinators.jl Documentation</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="queries.html">Query Algebra</a><ul class="internal"><li><a class="toctext" href="#Lifting-scalar-functions-1">Lifting scalar functions</a></li><li><a class="toctext" href="#Tuple-functions-1">Tuple functions</a></li><li><a class="toctext" href="#Block-functions-1">Block functions</a></li><li><a class="toctext" href="#Index-functions-1">Index functions</a></li><li><a class="toctext" href="#Composition-1">Composition</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="queries.html">Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/QueryCombinators.jl/blob/master/test/queries.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><p>The <code>Queries</code> module provides a simple combinator algebra of vector functions.</p><pre><code class="language-julia">using QueryCombinators.Planar
+using QueryCombinators.Queries</code></pre><h2><a class="nav-anchor" id="Lifting-scalar-functions-1" href="#Lifting-scalar-functions-1">Lifting scalar functions</a></h2><p>Any scalar function could be lifted to a vector function by applying it to each element of the input vector.</p><pre><code class="language-julia">q = lift(titlecase)
+#-&gt; lift(titlecase)
+
+q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; [&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;]</code></pre><p>We could also lift a scalar function of several arguments and then apply it to a tuple vector.</p><pre><code class="language-julia">q = lift_to_tuple(&gt;)
+#-&gt; lift_to_tuple(&gt;)
+
+q(@Planar (Int, Int) [260004 200000; 185364 200000; 170112 200000])
+#-&gt; Bool[true, false, false]</code></pre><h2><a class="nav-anchor" id="Tuple-functions-1" href="#Tuple-functions-1">Tuple functions</a></h2><p>To create tuple vectors, we use the combinator <code>tuple_of()</code>. Its parameters are used to generate the columns of the tuple.</p><pre><code class="language-julia">q = tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
+#-&gt; tuple_of([:title, :last], lift(titlecase), lift(last))
+
+q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]) |&gt; display
+#=&gt;
+TupleVector of 3 × (title = String, last = Char):
+ (title = &quot;Garry M&quot;, last = &#39;M&#39;)
+ (title = &quot;Anthony R&quot;, last = &#39;R&#39;)
+ (title = &quot;Dana A&quot;, last = &#39;A&#39;)
+=#</code></pre><p>In the opposite direction, <code>column()</code> extracts a column of a tuple vector.</p><pre><code class="language-julia">q = column(1)
+#-&gt; column(1)
+
+q(@Planar (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112])
+#-&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>We can also identify the column by name.</p><pre><code class="language-julia">q = column(:salary)
+#-&gt; column(:salary)
+
+q(@Planar (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112])
+#-&gt; [260004, 185364, 170112]</code></pre><p>Finally, we can apply an arbitrary transformation to a single column of a tuple vector.</p><pre><code class="language-julia">q = in_tuple(:name, lift(titlecase))
+#-&gt; in_tuple(:name, lift(titlecase))
+
+q(@Planar (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]) |&gt; display
+#=&gt;
+TupleVector of 3 × (name = String, salary = Int):
+ (name = &quot;Garry M&quot;, salary = 260004)
+ (name = &quot;Anthony R&quot;, salary = 185364)
+ (name = &quot;Dana A&quot;, salary = 170112)
+=#</code></pre><h2><a class="nav-anchor" id="Block-functions-1" href="#Block-functions-1">Block functions</a></h2><p>Primitive <code>as_block()</code> wraps the elements of the input vector to one-element blocks.</p><pre><code class="language-julia">q = as_block()
+#-&gt; as_block()
+
+q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; @Planar [String] [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>In the opposite direction, primitive <code>flat_block()</code> flattens a block vector whose elements are also blocks.</p><pre><code class="language-julia">q = flat_block()
+#-&gt; flat_block()
+
+q(@Planar [[String]] [[[&quot;GARRY M&quot;], [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]], [missing, [&quot;JOSE S&quot;], [&quot;CHARLES S&quot;]]])
+#-&gt; @Planar [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]</code></pre><p>Finally, we can apply an arbitrary transformation to every element of a block vector.</p><pre><code class="language-julia">q = in_block(lift(titlecase))
+#-&gt; in_block(lift(titlecase))
+
+q(@Planar [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
+#-&gt; @Planar [String] [[&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;], [&quot;Jose S&quot;, &quot;Charles S&quot;]]</code></pre><h2><a class="nav-anchor" id="Index-functions-1" href="#Index-functions-1">Index functions</a></h2><p>Any index vector could be dereferenced using the <code>dereference()</code> primitive.</p><pre><code class="language-julia">q = dereference()
+#-&gt; dereference()
+
+q(@Planar &amp;DEPT [1, 1, 1, 2] where {DEPT = [&quot;POLICE&quot;, &quot;FIRE&quot;]})
+#-&gt; [&quot;POLICE&quot;, &quot;POLICE&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><h2><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h2><p>We can compose a sequence of transformations using <code>chain_of()</code> combinator.</p><pre><code class="language-julia">q = chain_of(
+        column(:employee),
+        in_block(lift(titlecase)))
+#-&gt; chain_of(column(:employee), in_block(lift(titlecase)))
+
+q(@Planar (department = String, employee = [String]) [
+    &quot;POLICE&quot;    [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
+    &quot;FIRE&quot;      [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
+#-&gt; @Planar [String] [[&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;], [&quot;Jose S&quot;, &quot;Charles S&quot;]]</code></pre><p>The empty chain <code>chain_of()</code> has an alias <code>pass()</code></p><pre><code class="language-julia">q = pass()
+#-&gt; pass()
+
+q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><footer><hr/><a class="previous" href="shapes.html"><span class="direction">Previous</span><span class="title">Type System</span></a></footer></article></body></html>

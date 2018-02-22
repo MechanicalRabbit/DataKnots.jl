@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test Suite",
     "title": "Test Suite",
     "category": "section",
-    "text": "Pages = [\n    \"layouts.md\",\n    \"planar.md\",\n    \"shapes.md\",\n]"
+    "text": "Pages = [\n    \"layouts.md\",\n    \"planar.md\",\n    \"shapes.md\",\n    \"queries.md\",\n]"
 },
 
 {
@@ -138,23 +138,23 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "test/shapes.html#",
-    "page": "Type system",
-    "title": "Type system",
+    "page": "Type System",
+    "title": "Type System",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "test/shapes.html#Type-system-1",
-    "page": "Type system",
-    "title": "Type system",
+    "location": "test/shapes.html#Type-System-1",
+    "page": "Type System",
+    "title": "Type System",
     "category": "section",
     "text": "This module lets us describe the shape of the data.using QueryCombinators.Shapes"
 },
 
 {
     "location": "test/shapes.html#Cardinality-1",
-    "page": "Type system",
+    "page": "Type System",
     "title": "Cardinality",
     "category": "section",
     "text": "Enumerated type Cardinality is used to constrain the cardinality of a data block.  A block of data is called regular if it must contain exactly one element; optional if it may have no elements; and plural if it may have more than one element.  This gives us four different cardinality constraints.display(Cardinality)\n#=>\nEnum Cardinality:\nREG = 0\nOPT = 1\nPLU = 2\nOPT|PLU = 3\n=#Cardinality values support bitwise operations.REG|OPT|PLU             #-> OPT|PLU\nPLU&~PLU                #-> REGWe can use predicates isregular(), isoptional(), isplural() to check cardinality values.isregular(REG)          #-> true\nisregular(OPT)          #-> false\nisregular(PLU)          #-> false\nisoptional(OPT)         #-> true\nisoptional(PLU)         #-> false\nisplural(PLU)           #-> true\nisplural(OPT)           #-> falseCardinality supports standard operations on enumerated types.typemin(Cardinality)    #-> REG\ntypemax(Cardinality)    #-> OPT|PLU\nREG < OPT|PLU           #-> true\n\nCardinality(3)\n#-> OPT|PLU\nread(IOBuffer(\"\\x03\"), Cardinality)\n#-> OPT|PLUThere is a partial ordering defined on Cardinality values.  We can determine the greatest and the least cardinality; the least upper bound and the greatest lower bound of a collection of Cardinality values; and, for two Cardinality values, determine whether one of the values is smaller than the other.bound(Cardinality)      #-> REG\nibound(Cardinality)     #-> OPT|PLU\n\nbound(OPT, PLU)         #-> OPT|PLU\nibound(PLU, OPT)        #-> REG\n\nfits(OPT, PLU)          #-> false\nfits(REG, OPT|PLU)      #-> true"
@@ -162,7 +162,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "test/shapes.html#Data-shapes-1",
-    "page": "Type system",
+    "page": "Type System",
     "title": "Data shapes",
     "category": "section",
     "text": "The structure of composite data is specified with shape objects.NativeShape specifies the type of a regular Julia value.str_shp = NativeShape(String)\n#-> NativeShape(String)\n\neltype(str_shp)\n#-> StringIndexShape indicates that the value is an index in a vector.  Its class name is used to find the shape of the target vector.idx_shp = IndexShape(:Emp)\n#-> IndexShape(:Emp)\n\nclass(idx_shp)\n#-> :EmpA shape which does not contain any indexes is called closed.isclosed(idx_shp)\n#-> false\n\nisclosed(str_shp)\n#-> trueFor a data block, BlockShape specifies its cardinality and the type of the elements.blk_shp = BlockShape(OPT|PLU, IndexShape(:Emp))\n#-> BlockShape(OPT|PLU, IndexShape(:Emp))\n\ncardinality(blk_shp)\n#-> OPT|PLU\n\nblk_shp[]\n#-> IndexShape(:Emp)TupleShape lets us specify the field types of a tuple value.tpl_shp = TupleShape(BlockShape(REG, NativeShape(String)),\n                     BlockShape(OPT|PLU, IndexShape(:Emp)))\n#=>\nTupleShape(BlockShape(REG, NativeShape(String)),\n           BlockShape(OPT|PLU, IndexShape(:Emp)))\n=#\n\nforeach(println, tpl_shp[:])\n#=>\nBlockShape(REG, NativeShape(String))\nBlockShape(OPT|PLU, IndexShape(:Emp))\n=#Two special shape types are used to indicate that the value may have any shape, or cannot exist.any_shp = AnyShape()\n#-> AnyShape()\n\nnone_shp = NoneShape()\n#-> NoneShape()By default, AnyShape is assumed open-ended, but we can also indicate that it is closed.isclosed(AnyShape())\n#-> false\n\nisclosed(AnyShape(true))\n#-> trueTo any shape, we can attach an arbitrary set of attributes, which are called decorations.  In particular, we can label the values.decor_shp = str_shp |> decorate(:tag => :position)\n#-> NativeShape(String) |> decorate(:tag => :position)The value of a decoration could be extracted.decoration(decor_shp, :tag)We can enforce the type and the default value of the decoration.decoration(decor_shp, :tag, Symbol, Symbol(\"\"))\n#-> :position\ndecoration(decor_shp, :tag, String, \"\")\n#-> \"\"\ndecoration(str_shp, :tag, String, \"\")\n#-> \"\"InputShape and OutputShape are nominal shapes that describe the structure of the query input and the query output.To describe the query input, we specify the shape of the input elements, the shapes of the parameters, and whether or not the input is framed.i_shp = InputShape(IndexShape(:Emp),\n                   [:D => OutputShape(NativeShape(String))],\n                   true)\n#-> InputShape(IndexShape(:Emp), [:D => OutputShape(NativeShape(String))], true)\n\ni_shp[]\n#-> IndexShape(:Emp)To describe the query output, we specify the shape and the cardinality of the output elements.o_shp = OutputShape(NativeShape(Int), OPT|PLU)\n#-> OutputShape(NativeShape(Int), OPT|PLU)\n\no_shp[]\n#-> NativeShape(Int)\n\ncardinality(o_shp)\n#-> OPT|PLUFunction denominalize() converts a nominal shape to the underlying structural shape.denominalize(i_shp)\n#-> BlockShape(PLU, TupleShape(IndexShape(:Emp), OutputShape(NativeShape(String))))\n\ndenominalize(o_shp)\n#-> BlockShape(OPT|PLU, NativeShape(Int))CapsuleShape encapsulates the value shape with the shapes of the indexes. Using CapsuleShape we can fully specify self-referential data.dept_shp = TupleShape(OutputShape(String) |> decorate(:tag => :name),\n                      OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))\n\nemp_shp = TupleShape(OutputShape(String) |> decorate(:tag => :name),\n                     OutputShape(:Dept) |> decorate(:tag => :department),\n                     OutputShape(String) |> decorate(:tag => :position),\n                     OutputShape(Int) |> decorate(:tag => :salary),\n                     OutputShape(:Emp, OPT) |> decorate(:tag => :manager),\n                     OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :subordinate))\n\ndb_shp = TupleShape(OutputShape(:Dept, OPT|PLU) |> decorate(:tag => :department),\n                    OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))\n\nCapsuleShape(db_shp, :Dept => dept_shp, :Emp => emp_shp)\n#=>\nCapsuleShape(\n    TupleShape(OutputShape(IndexShape(:Dept) |> decorate(:tag => :department),\n                           OPT|PLU),\n               OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),\n                           OPT|PLU)),\n    :Dept => TupleShape(\n                 OutputShape(NativeShape(String) |> decorate(:tag => :name)),\n                 OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),\n                             OPT|PLU)),\n    :Emp =>\n        TupleShape(\n            OutputShape(NativeShape(String) |> decorate(:tag => :name)),\n            OutputShape(IndexShape(:Dept) |> decorate(:tag => :department)),\n            OutputShape(NativeShape(String) |> decorate(:tag => :position)),\n            OutputShape(NativeShape(Int) |> decorate(:tag => :salary)),\n            OutputShape(IndexShape(:Emp) |> decorate(:tag => :manager), OPT),\n            OutputShape(IndexShape(:Emp) |> decorate(:tag => :subordinate),\n                        OPT|PLU)))\n=#"
@@ -170,10 +170,66 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "test/shapes.html#Shape-ordering-1",
-    "page": "Type system",
+    "page": "Type System",
     "title": "Shape ordering",
     "category": "section",
     "text": "The same data can satisfy many different shape constraints.  For example, a vector BlockVector([Chicago]) can be said to have, among others, the shape BlockShape(REG, String), the shape BlockShape(OPT|PLU, Any) or the shape AnyShape().  We can tell, for any two shapes, if one of them is more specific than the other.fits(NativeShape(Int), NativeShape(Number))     #-> true\nfits(NativeShape(Int), NativeShape(String))     #-> false\n\nfits(IndexShape(:Emp), IndexShape(:Emp))        #-> true\nfits(IndexShape(:Emp), IndexShape(:Dept))       #-> false\n\nfits(BlockShape(REG, Int), BlockShape(OPT, Number))     #-> true\nfits(BlockShape(PLU, Int), BlockShape(OPT, Number))     #-> false\nfits(BlockShape(REG, Int), BlockShape(OPT, String))     #-> false\n\nfits(TupleShape(BlockShape(REG, Int),\n                BlockShape(OPT, String)),\n     TupleShape(BlockShape(REG, Number),\n                BlockShape(OPT|PLU, String)))       #-> true\nfits(TupleShape(BlockShape(OPT, Int),\n                BlockShape(REG, String)),\n     TupleShape(BlockShape(REG, Number),\n                BlockShape(OPT|PLU, String)))       #-> false\nfits(TupleShape(BlockShape(REG, Int)),\n     TupleShape(BlockShape(REG, Number),\n                BlockShape(OPT|PLU, String)))       #-> falseShapes of different kinds are typically not compatible with each other.  The exceptions are AnyShape and NullShape.fits(NativeShape(Int), IndexShape(:Emp))    #-> false\nfits(NativeShape(Int), AnyShape())          #-> true\nfits(NoneShape(), IndexShape(:Emp))         #-> trueShape decorations are treated as additional shape constraints.fits(NativeShape(String) |> decorate(:tag => :name),\n     NativeShape(String) |> decorate(:tag => :name))        #-> true\nfits(NativeShape(String),\n     NativeShape(String) |> decorate(:tag => :name))        #-> false\nfits(NativeShape(String) |> decorate(:tag => :position),\n     NativeShape(String))                                   #-> true\nfits(NativeShape(String) |> decorate(:tag => :position),\n     NativeShape(String) |> decorate(:tag => :name))        #-> falseFor any given number of shapes, we can find their upper bound, the shape that is more general than each of them.  We can also find their lower bound.bound(NativeShape(Int), NativeShape(Number))\n#-> NativeShape(Number)\nibound(NativeShape(Int), NativeShape(Number))\n#-> NativeShape(Int)\n\nbound(IndexShape(:Emp), IndexShape(:Emp))\n#-> IndexShape(:Emp)\nibound(IndexShape(:Emp), IndexShape(:Emp))\n#-> IndexShape(:Emp)\nbound(IndexShape(:Emp), IndexShape(:Dept))\n#-> AnyShape()\nibound(IndexShape(:Emp), IndexShape(:Dept))\n#-> NoneShape()\n\nbound(BlockShape(OPT, String), BlockShape(PLU, String))\n#-> BlockShape(OPT|PLU, NativeShape(String))\nibound(BlockShape(OPT, String), BlockShape(PLU, String))\n#-> BlockShape(REG, NativeShape(String))\n\nbound(TupleShape(BlockShape(OPT, :Emp), BlockShape(REG, String)),\n      TupleShape(BlockShape(OPT, :Dept), BlockShape(PLU, String)))\n#-> TupleShape(BlockShape(OPT, AnyShape()), BlockShape(PLU, NativeShape(String)))\nibound(TupleShape(BlockShape(OPT, :Emp), BlockShape(REG, String)),\n       TupleShape(BlockShape(OPT, :Dept), BlockShape(PLU, String)))\n#-> TupleShape(BlockShape(OPT, NoneShape()), BlockShape(REG, NativeShape(String)))For decorated shapes, incompatible decoration constraints are replaced with nothing.bound(NativeShape(String) |> decorate(:show => false, :tag => :name),\n      NativeShape(String) |> decorate(:hide => true, :tag => :name))\n#-> NativeShape(String) |> decorate(:tag => :name)\n\nibound(NativeShape(String) |> decorate(:show => false, :tag => :name),\n       NativeShape(String) |> decorate(:hide => true, :tag => :name))\n#-> NativeShape(String) |> decorate(:hide => true, :show => false, :tag => :name)\n\nbound(NativeShape(String) |> decorate(:tag => :position),\n      NativeShape(Number) |> decorate(:tag => :salary))\n#-> AnyShape(true)\n\nibound(NativeShape(String) |> decorate(:tag => :position),\n       NativeShape(Number) |> decorate(:tag => :salary))\n#-> NoneShape() |> decorate(:tag => nothing)\n\nbound(NativeShape(Int),\n      NativeShape(Number) |> decorate(:tag => :salary))\n#-> NativeShape(Number)\n\nibound(NativeShape(Int),\n       NativeShape(Number) |> decorate(:tag => :salary))\n#-> NativeShape(Int) |> decorate(:tag => :salary)"
+},
+
+{
+    "location": "test/queries.html#",
+    "page": "Query Algebra",
+    "title": "Query Algebra",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "test/queries.html#Query-Algebra-1",
+    "page": "Query Algebra",
+    "title": "Query Algebra",
+    "category": "section",
+    "text": "The Queries module provides a simple combinator algebra of vector functions.using QueryCombinators.Planar\nusing QueryCombinators.Queries"
+},
+
+{
+    "location": "test/queries.html#Lifting-scalar-functions-1",
+    "page": "Query Algebra",
+    "title": "Lifting scalar functions",
+    "category": "section",
+    "text": "Any scalar function could be lifted to a vector function by applying it to each element of the input vector.q = lift(titlecase)\n#-> lift(titlecase)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"Garry M\", \"Anthony R\", \"Dana A\"]We could also lift a scalar function of several arguments and then apply it to a tuple vector.q = lift_to_tuple(>)\n#-> lift_to_tuple(>)\n\nq(@Planar (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]"
+},
+
+{
+    "location": "test/queries.html#Tuple-functions-1",
+    "page": "Query Algebra",
+    "title": "Tuple functions",
+    "category": "section",
+    "text": "To create tuple vectors, we use the combinator tuple_of(). Its parameters are used to generate the columns of the tuple.q = tuple_of(:title => lift(titlecase), :last => lift(last))\n#-> tuple_of([:title, :last], lift(titlecase), lift(last))\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]) |> display\n#=>\nTupleVector of 3 × (title = String, last = Char):\n (title = \"Garry M\", last = \'M\')\n (title = \"Anthony R\", last = \'R\')\n (title = \"Dana A\", last = \'A\')\n=#In the opposite direction, column() extracts a column of a tuple vector.q = column(1)\n#-> column(1)\n\nq(@Planar (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]We can also identify the column by name.q = column(:salary)\n#-> column(:salary)\n\nq(@Planar (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [260004, 185364, 170112]Finally, we can apply an arbitrary transformation to a single column of a tuple vector.q = in_tuple(:name, lift(titlecase))\n#-> in_tuple(:name, lift(titlecase))\n\nq(@Planar (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"Garry M\", salary = 260004)\n (name = \"Anthony R\", salary = 185364)\n (name = \"Dana A\", salary = 170112)\n=#"
+},
+
+{
+    "location": "test/queries.html#Block-functions-1",
+    "page": "Query Algebra",
+    "title": "Block functions",
+    "category": "section",
+    "text": "Primitive as_block() wraps the elements of the input vector to one-element blocks.q = as_block()\n#-> as_block()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @Planar [String] [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]In the opposite direction, primitive flat_block() flattens a block vector whose elements are also blocks.q = flat_block()\n#-> flat_block()\n\nq(@Planar [[String]] [[[\"GARRY M\"], [\"ANTHONY R\", \"DANA A\"]], [missing, [\"JOSE S\"], [\"CHARLES S\"]]])\n#-> @Planar [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]]Finally, we can apply an arbitrary transformation to every element of a block vector.q = in_block(lift(titlecase))\n#-> in_block(lift(titlecase))\n\nq(@Planar [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> @Planar [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]"
+},
+
+{
+    "location": "test/queries.html#Index-functions-1",
+    "page": "Query Algebra",
+    "title": "Index functions",
+    "category": "section",
+    "text": "Any index vector could be dereferenced using the dereference() primitive.q = dereference()\n#-> dereference()\n\nq(@Planar &DEPT [1, 1, 1, 2] where {DEPT = [\"POLICE\", \"FIRE\"]})\n#-> [\"POLICE\", \"POLICE\", \"POLICE\", \"FIRE\"]"
+},
+
+{
+    "location": "test/queries.html#Composition-1",
+    "page": "Query Algebra",
+    "title": "Composition",
+    "category": "section",
+    "text": "We can compose a sequence of transformations using chain_of() combinator.q = chain_of(\n        column(:employee),\n        in_block(lift(titlecase)))\n#-> chain_of(column(:employee), in_block(lift(titlecase)))\n\nq(@Planar (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]])\n#-> @Planar [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The empty chain chain_of() has an alias pass()q = pass()\n#-> pass()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]"
 },
 
 ]}
