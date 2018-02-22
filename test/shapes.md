@@ -1,4 +1,4 @@
-# Type system
+# Type System
 
 This module lets us describe the shape of the data.
 

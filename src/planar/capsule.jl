@@ -68,6 +68,9 @@ end
 @inline encapsulate(vals::AbstractVector, refs::Vector{Pair{Symbol,AbstractVector}}) =
     isclosed(vals) ? vals : CapsuleVector(vals, refs)
 
+@inline encapsulate(cv::CapsuleVector, refs::Vector{Pair{Symbol,AbstractVector}}) =
+    cv.refs === refs ? cv : CapsuleVector(cv.vals, merge(cv.refs, refs))
+
 # Printing.
 
 signature_syntax(cv::CapsuleVector) = signature_syntax(cv.vals)

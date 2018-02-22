@@ -6,6 +6,7 @@ module Planar
 
 export
     @Planar,
+    BlockCursor,
     BlockVector,
     CapsuleVector,
     IndexVector,
@@ -15,6 +16,7 @@ export
     TupleVector,
     column,
     columns,
+    cursor,
     decapsulate,
     dereference,
     elements,
@@ -23,6 +25,9 @@ export
     indexes,
     isclosed,
     labels,
+    locate,
+    move!,
+    next!,
     offsets,
     partition,
     recapsulate,
@@ -31,9 +36,13 @@ export
 import Base:
     IndexStyle,
     OneTo,
+    done,
     getindex,
-    size,
+    next,
+    setindex!,
     show,
+    size,
+    start,
     summary
 
 include("planar/wrapper.jl")

@@ -166,3 +166,74 @@ function _getindex(bv::BlockVector{OneTo{Int}}, ks::OneTo)
     bv′
 end
 
+# Mutable view over a block vector.
+
+mutable struct BlockCursor{T,O<:AbstractVector{Int},E<:AbstractVector{T}} <: AbstractVector{T}
+    pos::Int
+    l::Int
+    r::Int
+    offs::O
+    elts::E
+
+    @inline BlockCursor{T,O,V}(bv::BlockVector) where {T,O<:AbstractVector{Int},V<:AbstractVector{T}} =
+        new{T,O,V}(0, 1, 1, bv.offs, bv.elts)
+
+    @inline function BlockCursor{T,O,V}(pos, bv::BlockVector) where {T,O<:AbstractVector{Int},V<:AbstractVector{T}}
+        @boundscheck checkbounds(bv.offs, pos:pos+1)
+        @inbounds cr = new{T,O,V}(pos, bv.offs[pos], bv.offs[pos+1], bv.offs, bv.elts)
+        cr
+    end
+end
+
+BlockCursor(bv::BlockVector{O,E}) where {T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
+    BlockCursor{T,O,E}(bv)
+
+BlockCursor(pos, l, r, bv::BlockVector{O,E}) where {T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
+    BlockCursor{T,V}(pos, l, r, bv)
+
+# Cursor interface for block vector.
+
+@inline cursor(bv::BlockVector) =
+    BlockCursor(bv)
+
+@inline function cursor(bv::BlockVector, pos::Int)
+    BlockCursor(pos, bv)
+end
+
+@inline function move!(cr::BlockCursor, pos::Int)
+    @boundscheck checkbounds(cr.offs, pos:pos+1)
+    cr.pos = pos
+    @inbounds cr.l = cr.offs[pos]
+    @inbounds cr.r = cr.offs[pos+1]
+    cr
+end
+
+@inline function next!(cr::BlockCursor)
+    @boundscheck checkbounds(cr.offs, cr.pos+1)
+    cr.pos += 1
+    cr.l = cr.r
+    @inbounds cr.r = cr.offs[cr.pos+1]
+    cr
+end
+
+@inline done(cr::BlockCursor) =
+    cr.pos+1 >= length(cr.offs)
+
+# Vector interface for cursor.
+
+@inline size(cr::BlockCursor) = (cr.r - cr.l,)
+
+IndexStyle(::Type{<:BlockCursor}) = IndexLinear()
+
+@inline function getindex(cr::BlockCursor, k::Int)
+    @boundscheck checkbounds(cr, k)
+    @inbounds elt = cr.elts[cr.l + k - 1]
+    elt
+end
+
+@inline function setindex!(cr::BlockCursor, elt, k::Int)
+    @boundscheck checkbounds(cr, k)
+    @inbounds cr.elts[cr.l + k - 1] = elt
+    cr
+end
+

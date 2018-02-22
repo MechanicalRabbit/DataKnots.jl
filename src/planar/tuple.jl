@@ -55,11 +55,11 @@ let NO_LBLS = Symbol[]
         TupleVector(NO_LBLS, len, AbstractVector[])
 end
 
-function TupleVector(lc1::Pair{Symbol,<:AbstractVector}, lcrest::Pair{Symbol,<:AbstractVector}...)
-    len = length(lc1.second)
-    lcs = (lc1, lcrest...)
-    lbls = Symbol[lbl for (lbl, col) in lcs]
-    cols = AbstractVector[col for (lbl, col) in lcs]
+function TupleVector(lcol1::Pair{Symbol,<:AbstractVector}, more::Pair{Symbol,<:AbstractVector}...)
+    len = length(lcol1.second)
+    lcols = (lcol1, more...)
+    lbls = collect(Symbol, first.(lcols))
+    cols = collect(AbstractVector, last.(lcols))
     TupleVector(lbls, len, cols)
 end
 
@@ -125,6 +125,12 @@ end
     tv.icols[j]
 end
 
+@inline locate(tv::TupleVector, j::Int) =
+    1 <= j <= length(tv.cols) ? j : nothing
+
+@inline locate(tv::TupleVector, lbl::Symbol) =
+    findfirst(equalto(lbl), tv.lbls)
+
 @inline column(tv::TupleVector, lbl::Symbol) =
     column(tv, findfirst(equalto(lbl), tv.lbls))
 
@@ -153,7 +159,7 @@ IndexStyle(::Type{<:TupleVector}) = IndexLinear()
 @inline function getindex(tv::TupleVector, k::Int)
     @boundscheck checkbounds(tv, k)
     @inbounds k′ = tv.idxs[k]
-    @inbounds t = ([col[k′] for col in tv.cols]...,)
+    @inbounds t = getindex.((tv.cols...,), k′)
     if !isempty(tv.lbls)
         NamedTuple{(tv.lbls...,)}(t)
     else
