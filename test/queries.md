@@ -1,12 +1,12 @@
-# Query Algebra
+# Operations on Planar Vectors
 
-The `Queries` module provides a simple combinator algebra of vector functions.
+The `Queries` module is a combinator library of operations on planar vectors.
 
     using QueryCombinators.Planar
     using QueryCombinators.Queries
 
 
-## Lifting scalar functions
+## Lifting
 
 Any scalar function could be lifted to a vector function by applying it to each
 element of the input vector.
@@ -17,8 +17,8 @@ element of the input vector.
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> ["Garry M", "Anthony R", "Dana A"]
 
-We could also lift a scalar function of several arguments and then apply it to
-a tuple vector.
+Similarly, any scalar function of several arguments could be lifted to an
+operation on tuple vectors.
 
     q = lift_to_tuple(>)
     #-> lift_to_tuple(>)
@@ -26,11 +26,72 @@ a tuple vector.
     q(@Planar (Int, Int) [260004 200000; 185364 200000; 170112 200000])
     #-> Bool[true, false, false]
 
+Any function that takes a vector argument can be lifted to an operation on
+block vectors.
 
-## Tuple functions
+    q = lift_to_block(length)
+    #-> lift_to_block(length)
 
-To create tuple vectors, we use the combinator `tuple_of()`. Its parameters
-are used to generate the columns of the tuple.
+    q(@Planar [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
+    #-> [3, 2]
+
+Some vector functions may expect a non-empty vector as an argument.  In this
+case, we should provide the value to replace empty blocks.
+
+    q = lift_to_block(maximum, missing)
+    #-> lift_to_block(maximum, missing)
+
+    q(@Planar [Int] [[260004, 185364, 170112], [], [202728, 197736]])
+    #-> Union{Missing, Int}[260004, missing, 202728]
+
+
+## Decoding vectors
+
+Any vector of tuples can be converted to a planar tuple vector.
+
+    q = decode_tuple()
+    #-> decode_tuple()
+
+    q([("GARRY M", 260004), ("ANTHONY R", 185364), ("DANA A", 170112)]) |> display
+    #=>
+    TupleVector of 3 × (String, Int):
+     ("GARRY M", 260004)
+     ("ANTHONY R", 185364)
+     ("DANA A", 170112)
+    =#
+
+Vectors of named tuples are also supported.
+
+    q([(name="GARRY M", salary=260004), (name="ANTHONY R", salary=185364), (name="DANA A", salary=170112)]) |> display
+    #=>
+    TupleVector of 3 × (name = String, salary = Int):
+     (name = "GARRY M", salary = 260004)
+     (name = "ANTHONY R", salary = 185364)
+     (name = "DANA A", salary = 170112)
+    =#
+
+A vector of vector objects can be converted to a planar block vector.
+
+    q = decode_vector()
+    #-> decode_vector()
+
+    q([[260004, 185364, 170112], Int[], [202728, 197736]])
+    #-> @Planar [Int] [[260004, 185364, 170112], missing, [202728, 197736]]
+
+Similarly, a vector containing `missing` values can be converted to a planar
+block vector with zero- and one-element blocks.
+
+    q = decode_missing()
+    #-> decode_missing()
+
+    q([260004, 185364, 170112, missing, 202728, 197736])
+    #-> @Planar [Int] [260004, 185364, 170112, missing, 202728, 197736]
+
+
+## Tuple vectors
+
+To create a tuple vector, we use the combinator `tuple_of()`. Its arguments are
+the functions that generate the columns of the tuple.
 
     q = tuple_of(:title => lift(titlecase), :last => lift(last))
     #-> tuple_of([:title, :last], lift(titlecase), lift(last))
@@ -43,7 +104,8 @@ are used to generate the columns of the tuple.
      (title = "Dana A", last = 'A')
     =#
 
-In the opposite direction, `column()` extracts a column of a tuple vector.
+To extract a column of a tuple vector, we use the primitive `column()`.  It
+accepts either the column position or the column name.
 
     q = column(1)
     #-> column(1)
@@ -51,15 +113,14 @@ In the opposite direction, `column()` extracts a column of a tuple vector.
     q(@Planar (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
     #-> ["GARRY M", "ANTHONY R", "DANA A"]
 
-We can also identify the column by name.
-
     q = column(:salary)
     #-> column(:salary)
 
     q(@Planar (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
     #-> [260004, 185364, 170112]
 
-Finally, we can apply an arbitrary transformation to a single column of a tuple vector.
+Finally, we can apply an arbitrary transformation to a selected column of a
+tuple vector.
 
     q = in_tuple(:name, lift(titlecase))
     #-> in_tuple(:name, lift(titlecase))
@@ -73,7 +134,7 @@ Finally, we can apply an arbitrary transformation to a single column of a tuple 
     =#
 
 
-## Block functions
+## Block vectors
 
 Primitive `as_block()` wraps the elements of the input vector to one-element blocks.
 
@@ -83,8 +144,8 @@ Primitive `as_block()` wraps the elements of the input vector to one-element blo
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> @Planar [String] ["GARRY M", "ANTHONY R", "DANA A"]
 
-In the opposite direction, primitive `flat_block()` flattens a block vector whose elements
-are also blocks.
+In the opposite direction, primitive `flat_block()` flattens a block vector
+with block elements.
 
     q = flat_block()
     #-> flat_block()
@@ -101,9 +162,9 @@ Finally, we can apply an arbitrary transformation to every element of a block ve
     #-> @Planar [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
 
 
-## Index functions
+## Index vectors
 
-Any index vector could be dereferenced using the `dereference()` primitive.
+An index vector could be dereferenced using the `dereference()` primitive.
 
     q = dereference()
     #-> dereference()
@@ -114,7 +175,7 @@ Any index vector could be dereferenced using the `dereference()` primitive.
 
 ## Composition
 
-We can compose a sequence of transformations using `chain_of()` combinator.
+We can compose a sequence of transformations using the `chain_of()` combinator.
 
     q = chain_of(
             column(:employee),
@@ -126,7 +187,7 @@ We can compose a sequence of transformations using `chain_of()` combinator.
         "FIRE"      ["JOSE S", "CHARLES S"]])
     #-> @Planar [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
 
-The empty chain `chain_of()` has an alias `pass()`
+The empty chain `chain_of()` has an alias `pass()`.
 
     q = pass()
     #-> pass()
