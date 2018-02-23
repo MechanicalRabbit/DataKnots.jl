@@ -53,6 +53,15 @@ operation on tuple vectors.
     q(@Planar (Int, Int) [260004 200000; 185364 200000; 170112 200000])
     #-> Bool[true, false, false]
 
+It is also possible to apply a scalar function of several arguments to a tuple
+vector that has block vectors for its columns.  In this case, the function is
+applied to every combination of values from all the blocks on the same row.
+
+    q = lift_to_block_tuple(>)
+
+    q(@Planar ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
+    #-> @Planar [Bool] [Bool[true, false, false], missing, Bool[true, true, false, false]]
+
 Any function that takes a vector argument can be lifted to an operation on
 block vectors.
 
@@ -187,6 +196,41 @@ Finally, we can apply an arbitrary transformation to every element of a block ve
 
     q(@Planar [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
     #-> @Planar [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
+
+The `pull_block()` primitive converts a tuple vector with a block column to a
+block vector of tuples.
+
+    q = pull_block(1)
+    #-> pull_block(1)
+
+    q(@Planar ([Int], [Int]) [
+        [260004, 185364, 170112]    200000
+        missing                     200000
+        [202728, 197736]            [200000, 200000]]
+    ) |> display
+    #=>
+    BlockVector of 3 × [(Int, [Int])]:
+     [(260004, 200000), (185364, 200000), (170112, 200000)]
+     missing
+     [(202728, [200000, 200000]), (197736, [200000, 200000])]
+    =#
+
+It is also possible to pull all block columns from a tuple vector.
+
+    q = pull_every_block()
+    #-> pull_every_block()
+
+    q(@Planar ([Int], [Int]) [
+        [260004, 185364, 170112]    200000
+        missing                     200000
+        [202728, 197736]            [200000, 200000]]
+    ) |> display
+    #=>
+    BlockVector of 3 × [(Int, Int)]:
+     [(260004, 200000), (185364, 200000), (170112, 200000)]
+     missing
+     [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
+    =#
 
 
 ## Index vectors

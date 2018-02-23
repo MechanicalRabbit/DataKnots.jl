@@ -21,8 +21,11 @@ export
     lift_const,
     lift_null,
     lift_to_block,
+    lift_to_block_tuple,
     lift_to_tuple,
     pass,
+    pull_block,
+    pull_every_block,
     tuple_of
 
 using ..Layouts

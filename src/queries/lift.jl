@@ -24,14 +24,17 @@ lift_to_tuple(f) =
         _lift_to_tuple(f, length(input), columns(input)...)
     end
 
-function _lift_to_tuple(f, len::Int, cols::AbstractVector...)
-    I = Tuple{eltype.(cols)...}
-    O = Core.Compiler.return_type(f, I)
-    output = Vector{O}(uninitialized, len)
-    @inbounds for k = 1:len
-        output[k] = f(getindex.(cols, k)...)
+@generated function _lift_to_tuple(f, len::Int, cols::AbstractVector...)
+    D = length(cols)
+    return quote
+        I = Tuple{eltype.(cols)...}
+        O = Core.Compiler.return_type(f, I)
+        output = Vector{O}(uninitialized, len)
+        @inbounds for k = 1:len
+            output[k] = @ncall $D f (d -> cols[d][k])
+        end
+        output
     end
-    output
 end
 
 
@@ -75,6 +78,57 @@ function _lift_to_block(f, default, input)
         output[cr.pos] = !isempty(cr) ? f(cr) : default
     end
     output
+end
+
+
+"""
+    lift_to_block_tuple(f)
+
+Lifts an n-ary function to a tuple vector with block columns.  Applies the
+function to every combinations of values from adjacent blocks.
+"""
+lift_to_block_tuple(f) =
+    Query(lift_to_block_tuple, f) do env, input
+        input isa SomeTupleVector || error("expected a tuple vector; got $input")
+        cols = columns(input)
+        for col in cols
+            col isa SomeBlockVector || error("expected a block vector; got $col")
+        end
+        _lift_to_block_tuple(f, length(input), cols...)
+    end
+
+@generated function _lift_to_block_tuple(f, len::Int, cols::SomeBlockVector...)
+    D = length(cols)
+    return quote
+        @nextract $D offs (d -> offsets(cols[d]))
+        @nextract $D elts (d -> elements(cols[d]))
+        if @nall $D (d -> offs_d isa OneTo{Int})
+            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...))
+        end
+        len′ = 0
+        regular = true
+        @inbounds for k = 1:len
+            sz = @ncall $D (*) (d -> (offs_d[k+1] - offs_d[k]))
+            len′ += sz
+            regular = regular && sz == 1
+        end
+        if regular
+            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...))
+        end
+        I = Tuple{eltype.(@ntuple $D elts)...}
+        O = Core.Compiler.return_type(f, I)
+        offs′ = Vector{Int}(uninitialized, len+1)
+        elts′ = Vector{O}(uninitialized, len′)
+        @inbounds offs′[1] = top = 1
+        @inbounds for k = 1:len
+            @nloops $D n (d -> offs_{$D-d+1}[k]:offs_{$D-d+1}[k+1]-1) (d -> elt_{$D-d+1} = elts_{$D-d+1}[n_d]) begin
+                elts′[top] = @ncall $D f (d -> elt_d)
+                top += 1
+            end
+            offs′[k+1] = top
+        end
+        return BlockVector(offs′, elts′)
+    end
 end
 
 
