@@ -77,3 +77,48 @@ function _lift_to_block(f, default, input)
     output
 end
 
+
+"""
+    lift_const(val)
+
+Produces a vector filled with the given value.
+"""
+lift_const(val) =
+    Query(lift_const, val) do env, input
+        fill(val, length(input))
+    end
+
+
+"""
+    lift_null()
+
+Produces a block vector of empty blocks.
+"""
+lift_null() =
+    Query(lift_null) do env, input
+        BlockVector(fill(1, length(input)+1), Union{}[])
+    end
+
+
+"""
+    lift_block(block)
+
+Produces a block vector filled with the given block.
+"""
+lift_block(block) =
+    Query(lift_block, block) do env, input
+        if isempty(input)
+            return BlockVector(:, block[[]])
+        elseif length(input) == 1
+            return BlockVector([1, length(block)+1], block)
+        else
+            len = length(input)
+            sz = length(block)
+            perm = Vector{Int}(uninitialized, len*sz)
+            for k in eachindex(input)
+                copyto!(perm, 1 + sz * (k - 1), 1:sz)
+            end
+            return BlockVector(1:sz:(len*sz+1), block[perm])
+        end
+    end
+
