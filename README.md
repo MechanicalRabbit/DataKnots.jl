@@ -13,7 +13,7 @@ query language.*
 [travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/rbt-lang/DataKnots.jl?branch=master&svg=true
-[appveyor-url]: https://ci.appveyor.com/project/rbt-lang/querycombinators-jl/branch/master
+[appveyor-url]: https://ci.appveyor.com/project/rbt-lang/dataknots-jl/branch/master
 [codecov-img]: https://codecov.io/gh/rbt-lang/DataKnots.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/rbt-lang/DataKnots.jl
 [issues-img]: https://img.shields.io/github/issues/rbt-lang/DataKnots.jl.svg
