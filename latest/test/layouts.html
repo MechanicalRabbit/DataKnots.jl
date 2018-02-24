@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Optimal Layouts · QueryCombinators.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>QueryCombinators.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">QueryCombinators.jl Documentation</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="layouts.html">Optimal Layouts</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="layouts.html">Optimal Layouts</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/QueryCombinators.jl/blob/master/test/layouts.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Optimal Layouts</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Optimal-Layouts-1" href="#Optimal-Layouts-1">Optimal Layouts</a></h1><p>To represent complex structures on a fixed width screen, we can use a source code layout engine.</p><pre><code class="language-julia">using QueryCombinators.Layouts</code></pre><p>For example, let us represent a simple tree structure.</p><pre><code class="language-julia">struct Node
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Optimal Layouts · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">DataKnots.jl</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="layouts.html">Optimal Layouts</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="layouts.html">Optimal Layouts</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/test/layouts.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Optimal Layouts</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Optimal-Layouts-1" href="#Optimal-Layouts-1">Optimal Layouts</a></h1><p>To represent complex structures on a fixed width screen, we can use a source code layout engine.</p><pre><code class="language-julia">using DataKnots.Layouts</code></pre><p>For example, let us represent a simple tree structure.</p><pre><code class="language-julia">struct Node
     name::Symbol
     arms::Vector{Node}
 end
@@ -30,14 +30,14 @@ tree =
     return Layouts.literal(&quot;Node($(repr(tree.name)), [&quot;) *
            (v_lt | h_lt) *
            Layouts.literal(&quot;])&quot;)
-end</code></pre><p>Now we can use function <code>pretty_print()</code> to render a nicely formatted representation of the tree.</p><pre><code class="language-julia">pretty_print(STDOUT, tree)
+end</code></pre><p>Now we can use function <code>pretty_print()</code> to render a nicely formatted representation of the tree.</p><pre><code class="language-julia">pretty_print(stdout, tree)
 #=&gt;
 Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage), Node(:anchorite)]),
                      Node(:anchovy),
                      Node(:antic, [Node(:anticipation)])]),
           Node(:arc, [Node(:arch, [Node(:archduke), Node(:archer)])]),
           Node(:awl)])
-=#</code></pre><p>We can control the width of the output.</p><pre><code class="language-julia">pretty_print(IOContext(STDOUT, :displaysize =&gt; (24, 60)), tree)
+=#</code></pre><p>We can control the width of the output.</p><pre><code class="language-julia">pretty_print(IOContext(stdout, :displaysize =&gt; (24, 60)), tree)
 #=&gt;
 Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage),
                                     Node(:anchorite)]),
@@ -54,7 +54,7 @@ literal(&quot;Node(:a, [&quot;)
    ⋮
 =#
 
-Layouts.best(Layouts.fit(STDOUT, Layouts.tile(tree)))
+Layouts.best(Layouts.fit(stdout, Layouts.tile(tree)))
 #=&gt;
 literal(&quot;Node(:a, [&quot;)
 * (literal(&quot;Node(:an, [&quot;)
@@ -88,4 +88,4 @@ Employee
 &gt;&gt; ThenSort(Salary &gt;&gt; Desc)
 &gt;&gt; ThenSelect(Name, Position, Salary)
 &gt;&gt; ThenTake(10)
-=#</code></pre><footer><hr/><a class="previous" href="index.html"><span class="direction">Previous</span><span class="title">Test Suite</span></a><a class="next" href="planar.html"><span class="direction">Next</span><span class="title">Planar Vectors</span></a></footer></article></body></html>
+=#</code></pre><footer><hr/><a class="previous" href="index.html"><span class="direction">Previous</span><span class="title">Test Suite</span></a><a class="next" href="vectors.html"><span class="direction">Next</span><span class="title">Parallel Vectors</span></a></footer></article></body></html>
