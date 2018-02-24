@@ -33,8 +33,8 @@ export
 
 using ..Layouts
 
-using ..Planar
-import ..Planar:
+using ..Vectors
+import ..Vectors:
     column,
     dereference
 

@@ -1,5 +1,5 @@
 #
-# Vector of vectors (blocks) in a planar form.
+# Vector of vectors (blocks) in a parallel form.
 #
 
 # Abstract interface.
@@ -73,10 +73,10 @@ signature_syntax(bv::BlockVector) =
     Expr(:vect, signature_syntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
-    show_planar(io, bv)
+    show_parallel(io, bv)
 
 show(io::IO, ::MIME"text/plain", bv::BlockVector) =
-    display_planar(io, bv)
+    display_parallel(io, bv)
 
 # Properties.
 

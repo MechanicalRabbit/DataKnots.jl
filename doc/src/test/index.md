@@ -3,7 +3,7 @@
 ```@contents
 Pages = [
     "layouts.md",
-    "planar.md",
+    "vectors.md",
     "shapes.md",
     "queries.md",
 ]

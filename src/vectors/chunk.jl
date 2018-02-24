@@ -1,3 +1,3 @@
 #
-# TODO: chunked vectors, concatenating planar vectors.
+# TODO: chunked vectors, concatenating parallel vectors.
 #

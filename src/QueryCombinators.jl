@@ -5,7 +5,7 @@
 module QueryCombinators
 
 include("layouts.jl")
-include("planar.jl")
+include("vectors.jl")
 include("shapes.jl")
 include("queries.jl")
 

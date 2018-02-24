@@ -1,5 +1,5 @@
 #
-# Vector of tuples in a planar form.
+# Vector of tuples in the parallel form.
 #
 
 # Abstract interface.
@@ -104,10 +104,10 @@ signature_syntax(tv::TupleVector) =
     end
 
 show(io::IO, tv::TupleVector) =
-    show_planar(io, tv)
+    show_parallel(io, tv)
 
 show(io::IO, ::MIME"text/plain", tv::TupleVector) =
-    display_planar(io, tv)
+    display_parallel(io, tv)
 
 # Properties.
 

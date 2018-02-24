@@ -1,11 +1,11 @@
 #
-# Vector types for planar (aka column-oriented or SoA) storage.
+# Vector types for parallel (aka column-oriented or SoA) storage.
 #
 
-module Planar
+module Vectors
 
 export
-    @Planar,
+    @Parallel,
     BlockCursor,
     BlockVector,
     CapsuleVector,
@@ -45,13 +45,13 @@ import Base:
     start,
     summary
 
-include("planar/wrapper.jl")
-include("planar/tuple.jl")
-include("planar/block.jl")
-include("planar/index.jl")
-include("planar/capsule.jl")
-include("planar/chunk.jl")
-include("planar/show.jl")
-include("planar/construct.jl")
+include("vectors/wrapper.jl")
+include("vectors/tuple.jl")
+include("vectors/block.jl")
+include("vectors/index.jl")
+include("vectors/capsule.jl")
+include("vectors/chunk.jl")
+include("vectors/show.jl")
+include("vectors/parallel.jl")
 
 end

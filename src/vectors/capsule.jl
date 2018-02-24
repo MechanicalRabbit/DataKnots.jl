@@ -1,11 +1,11 @@
 #
-# Attaches the references for any nested indexes.
+# Encapsulates reference vectors for any nested indexes.
 #
 
 """
     CapsuleVector(vals::AbstractVector, refs::Pair{Symbol,<:AbstractVector}...)
 
-To any composite vector, attaches the references for any nested indexes.
+To any composite vector, attaches the reference vectors for any nested indexes.
 """
 struct CapsuleVector{T,V<:AbstractVector{T}} <: AbstractVector{T}
     vals::V
@@ -76,7 +76,7 @@ end
 signature_syntax(cv::CapsuleVector) = signature_syntax(cv.vals)
 
 function show(io::IO, cv::CapsuleVector)
-    show_planar(io, cv)
+    show_parallel(io, cv)
     io = IOContext(io, :limit => true)
     print(io, " where {")
     first = true
@@ -91,7 +91,7 @@ function show(io::IO, cv::CapsuleVector)
 end
 
 function show(io::IO, ::MIME"text/plain", cv::CapsuleVector)
-    display_planar(io, cv)
+    display_parallel(io, cv)
     io = IOContext(io, :limit => true)
     println(io)
     print(io, "where")

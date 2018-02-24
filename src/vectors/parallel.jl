@@ -1,10 +1,10 @@
 #
-# @Planar constructor.
+# @Parallel constructor.
 #
 
-macro Planar(sig, ex)
+macro Parallel(sig, ex)
     ctor = sig2ctor(sig)
-    ex = planarize(ctor, ex)
+    ex = parallelize(ctor, ex)
     return esc(ex)
 end
 
@@ -65,9 +65,9 @@ mutable struct VectorConstructor <: AbstractVectorConstructor
     VectorConstructor(ty) = new(ty, [])
 end
 
-function planarize(ctor::AbstractVectorConstructor, ex)
+function parallelize(ctor::AbstractVectorConstructor, ex)
     if ex isa Expr && ex.head == :where && length(ex.args) >= 1
-        vec = planarize(ctor, ex.args[1])
+        vec = parallelize(ctor, ex.args[1])
         refs = Any[]
         for arg in ex.args[2:end]
             if arg isa Expr && arg.head == :(=) && length(arg.args) == 2 && arg.args[1] isa Symbol

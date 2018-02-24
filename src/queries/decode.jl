@@ -1,5 +1,5 @@
 #
-# Decoding regular vectors of composite values as planar vectors.
+# Decoding regular vectors of composite values as parallel vectors.
 #
 
 
