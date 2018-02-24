@@ -2,7 +2,7 @@
 # Combinator-based embedded query language.
 #
 
-module QueryCombinators
+module DataKnots
 
 include("layouts.jl")
 include("vectors.jl")

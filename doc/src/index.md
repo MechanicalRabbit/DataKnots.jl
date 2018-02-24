@@ -1,7 +1,7 @@
-# QueryCombinators.jl Documentation
+# DataKnots.jl
 
-QueryCombinators is a Julia library that implements a combinator-based embedded
-query language.
+DataKnots is a Julia library that implements a combinator-based embedded query
+language.
 
 
 ## Contents

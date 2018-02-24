@@ -6,7 +6,7 @@ if Pkg.installed("Documenter") == nothing
 end
 
 using Documenter
-using QueryCombinators
+using DataKnots
 
 # Highlight indented code blocks as Julia code.
 using Markdown
@@ -14,7 +14,7 @@ Markdown.Code(code) = Markdown.Code("julia", code)
 
 makedocs(
     format = :html,
-    sitename = "QueryCombinators.jl",
+    sitename = "DataKnots.jl",
     pages = [
         "index.md",
         "reference.md",
@@ -24,10 +24,10 @@ makedocs(
         hide("test/shapes.md"),
         hide("test/queries.md"),
     ],
-    modules = [QueryCombinators])
+    modules = [DataKnots])
 
 deploydocs(
-    repo = "github.com/rbt-lang/QueryCombinators.jl.git",
+    repo = "github.com/rbt-lang/DataKnots.jl.git",
     julia = "nightly",
     osname = "linux",
     target = "build",

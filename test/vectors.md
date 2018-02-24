@@ -2,7 +2,7 @@
 
 For efficient data processing, the data can be stored in parallel arrays.
 
-    using QueryCombinators.Vectors
+    using DataKnots.Vectors
 
 
 ## `TupleVector`

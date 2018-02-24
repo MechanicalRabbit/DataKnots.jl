@@ -2,7 +2,7 @@
 
 This module lets us describe the shape of the data.
 
-    using QueryCombinators.Shapes
+    using DataKnots.Shapes
 
 
 ## Cardinality

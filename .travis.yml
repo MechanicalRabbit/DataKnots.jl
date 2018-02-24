@@ -21,6 +21,6 @@ env:
 
 after_success:
   # push coverage results
-  - julia -e 'using Pkg; cd(Pkg.dir("QueryCombinators")); include("test/coverage.jl")'
+  - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("test/coverage.jl")'
   # deploy documentation
-  - julia -e 'using Pkg; cd(Pkg.dir("QueryCombinators")); include("doc/make.jl")'
+  - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("doc/make.jl")'

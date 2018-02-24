@@ -3,7 +3,7 @@
 To represent complex structures on a fixed width screen, we can use a source
 code layout engine.
 
-    using QueryCombinators.Layouts
+    using DataKnots.Layouts
 
 For example, let us represent a simple tree structure.
 

@@ -3,8 +3,8 @@
 The `Queries` module contains primitive operations and combinators for
 transforming parallel vectors.
 
-    using QueryCombinators.Vectors
-    using QueryCombinators.Queries
+    using DataKnots.Vectors
+    using DataKnots.Queries
 
 
 ## Lifting
