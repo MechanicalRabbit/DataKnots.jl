@@ -145,3 +145,60 @@ pull_every_block() =
     end
 end
 
+
+"""
+    count_block()
+
+Maps a block vector to a vector of block lengths.
+"""
+count_block() =
+    Query(count_block) do env, input
+        input isa SomeBlockVector || error("expected a block vector; got $input")
+        _count_block(offsets(input))
+    end
+
+_count_block(offs::OneTo{Int}) =
+    fill(1, length(offs)-1)
+
+function _count_block(offs::AbstractVector{Int})
+    len = length(offs) - 1
+    output = Vector{Int}(uninitialized, len)
+    @inbounds for k = 1:len
+        output[k] = offs[k+1] - offs[k]
+    end
+    output
+end
+
+
+"""
+    any_block()
+
+Checks if there is one `true` value in a block of `Bool` values.
+"""
+any_block() =
+    Query(any_block) do env, input
+        input isa SomeBlockVector || error("expected a block vector; got $input")
+        len = length(input)
+        offs = offsets(input)
+        elts = elements(input)
+        elts isa AbstractVector{Bool} || error("expected a Bool vector; got $elts")
+        if offs isa OneTo
+            return elts
+        end
+        output = Vector{Bool}(unitialized, len)
+        l = r = 1
+        @inbounds for k = 1:len
+            val = false
+            l = r
+            r = offs[k+1]
+            for i = l:r-1
+                if elts[i]
+                    val = true
+                    break
+                end
+            end
+            output[k] = val
+        end
+        return output
+    end
+

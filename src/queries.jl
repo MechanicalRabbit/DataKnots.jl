@@ -5,9 +5,11 @@
 module Queries
 
 export
+    any_block,
     as_block,
     chain_of,
     column,
+    count_block,
     decode_missing,
     decode_tuple,
     decode_vector,
@@ -26,6 +28,7 @@ export
     pass,
     pull_block,
     pull_every_block,
+    sieve,
     tuple_of
 
 using ..Layouts
@@ -75,5 +78,6 @@ include("queries/chain.jl")
 include("queries/tuple.jl")
 include("queries/block.jl")
 include("queries/index.jl")
+include("queries/sieve.jl")
 
 end
