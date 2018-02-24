@@ -30,7 +30,7 @@ include("layouts/code.jl")
 Formats the data so that it fits the width of the output screen.
 """
 pretty_print(args...; kwds...) =
-    pretty_print(STDOUT, args...; kwds...)
+    pretty_print(stdout, args...; kwds...)
 
 pretty_print(io::IO, args...; kwds...) =
     pretty_print(io, tile(args...; kwds...))
@@ -46,7 +46,7 @@ end
 Formats a Julia expression.
 """
 print_code(ex) =
-    print_code(STDOUT, ex)
+    print_code(stdout, ex)
 
 print_code(io::IO, ex) =
     pretty_print(io, tile_code(ex))

@@ -49,7 +49,7 @@ combinators `*` (horizontal composition), `/` (vertical composition), and `|`
 Now we can use function `pretty_print()` to render a nicely formatted
 representation of the tree.
 
-    pretty_print(STDOUT, tree)
+    pretty_print(stdout, tree)
     #=>
     Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage), Node(:anchorite)]),
                          Node(:anchovy),
@@ -60,7 +60,7 @@ representation of the tree.
 
 We can control the width of the output.
 
-    pretty_print(IOContext(STDOUT, :displaysize => (24, 60)), tree)
+    pretty_print(IOContext(stdout, :displaysize => (24, 60)), tree)
     #=>
     Node(:a, [Node(:an, [Node(:anchor, [Node(:anchorage),
                                         Node(:anchorite)]),
@@ -81,7 +81,7 @@ We can easily display the original and the optimized layouts.
        ⋮
     =#
 
-    Layouts.best(Layouts.fit(STDOUT, Layouts.tile(tree)))
+    Layouts.best(Layouts.fit(stdout, Layouts.tile(tree)))
     #=>
     literal("Node(:a, [")
     * (literal("Node(:an, [")
