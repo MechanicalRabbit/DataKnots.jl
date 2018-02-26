@@ -130,7 +130,7 @@ To create a tuple vector, we use the combinator `tuple_of()`. Its arguments are
 the functions that generate the columns of the tuple.
 
     q = tuple_of(:title => lift(titlecase), :last => lift(last))
-    #-> tuple_of([:title, :last], lift(titlecase), lift(last))
+    #-> tuple_of([:title, :last], [lift(titlecase), lift(last)])
 
     q(["GARRY M", "ANTHONY R", "DANA A"]) |> display
     #=>
@@ -251,7 +251,7 @@ We can compose a sequence of transformations using the `chain_of()` combinator.
     q = chain_of(
             column(:employee),
             in_block(lift(titlecase)))
-    #-> chain_of(column(:employee), in_block(lift(titlecase)))
+    #-> chain_of([column(:employee), in_block(lift(titlecase))])
 
     q(@Parallel (department = String, employee = [String]) [
         "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]

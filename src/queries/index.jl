@@ -7,9 +7,10 @@
 
 Dereferences an index vector.
 """
-dereference() =
-    Query(dereference) do env, input
-        input isa SomeIndexVector || error("expected an index vector; got $input")
-        dereference(input, env.refs)
-    end
+dereference() = Query(dereference)
+
+function dereference(env::QueryEnvironment, input::AbstractVector)
+    input isa SomeIndexVector || error("expected an index vector; got $input")
+    dereference(input, env.refs)
+end
 

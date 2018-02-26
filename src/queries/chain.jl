@@ -7,23 +7,32 @@
 
 Identity map.
 """
-pass() =
-    Query(pass) do env, input
-        input
-    end
+pass() = Query(pass)
+
+pass(env::QueryEnvironment, input::AbstractVector) =
+    input
 
 
 """
     chain_of(q₁, q₂ … qₙ)
 
-Sequentially applied q₁, q₂ … qₙ.
+Sequentially applies q₁, q₂ … qₙ.
 """
-chain_of(qs...) =
-    Query(chain_of, qs...) do env, input
-        _chain_of(env, input, qs...)
-    end
+chain_of() = pass()
 
-_chain_of(env, input) = input
-_chain_of(env, input, q1, more...) =
-    _chain_of(env, q1(env, input), more...)
+chain_of(q) = q
+
+chain_of(qs...) =
+    Query(chain_of, collect(qs))
+
+chain_of(qs::Vector) =
+    Query(chain_of, qs)
+
+function chain_of(env::QueryEnvironment, input::AbstractVector, qs)
+    output = input
+    for q in qs
+        output = q(env, output)
+    end
+    output
+end
 

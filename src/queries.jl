@@ -1,5 +1,5 @@
 #
-# Combinators for vector functions.
+# Backend algebra.
 #
 
 module Queries
@@ -38,40 +38,15 @@ import ..Vectors:
     column,
     dereference
 
+using ..Shapes: AbstractShape, AnyShape, NoneShape
+
 using Base: OneTo
 import Base:
     show
 
 using Base.Cartesian
 
-mutable struct QueryEnvironment
-    refs::Vector{Pair{Symbol,AbstractVector}}
-end
-
-struct Query
-    impl
-    ctor::Function
-    args::Vector{Any}
-
-    Query(impl, ctor::Function, args...; kws...) =
-        new(impl, ctor, collect(Any, args))
-end
-
-function (q::Query)(input::AbstractVector)
-    input, refs = decapsulate(input)
-    env = QueryEnvironment(copy(refs))
-    output = q(env, input)
-    encapsulate(output, env.refs)
-end
-
-(q::Query)(env::QueryEnvironment, input::AbstractVector) = q.impl(env, input)
-
-Layouts.tile(q::Query) =
-    Layouts.tile(Layouts.Layout[Layouts.tile(arg) for arg in q.args], brk=("$(nameof(q.ctor))(", ")"))
-
-show(io::IO, q::Query) =
-    pretty_print(io, q)
-
+include("queries/query.jl")
 include("queries/lift.jl")
 include("queries/decode.jl")
 include("queries/chain.jl")

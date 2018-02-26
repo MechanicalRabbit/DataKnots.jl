@@ -8,10 +8,10 @@
 
 Wraps input values to one-element blocks.
 """
-as_block() =
-    Query(as_block) do env, input
-        BlockVector(:, input)
-    end
+as_block() = Query(as_block)
+
+as_block(env::QueryEnvironment, input::AbstractVector) =
+    BlockVector(:, input)
 
 
 """
@@ -19,11 +19,12 @@ as_block() =
 
 Using q, transfors the elements of the input blocks.
 """
-in_block(q) =
-    Query(in_block, q) do env, input
-        input isa SomeBlockVector || error("expected a block vector; got $input")
-        BlockVector(offsets(input), q(env, elements(input)))
-    end
+in_block(q) = Query(in_block, q)
+
+function in_block(env::QueryEnvironment, input::AbstractVector, q)
+    input isa SomeBlockVector || error("expected a block vector; got $input")
+    BlockVector(offsets(input), q(env, elements(input)))
+end
 
 
 """
@@ -31,16 +32,17 @@ in_block(q) =
 
 Flattens a nested block vector.
 """
-flat_block() =
-    Query(flat_block) do env, input
-        input isa SomeBlockVector || error("expected a block vector; got $input")
-        offs = offsets(input)
-        nested = elements(input)
-        nested isa SomeBlockVector || error("expected a block vector; got $nested")
-        nested_offs = offsets(nested)
-        elts = elements(nested)
-        BlockVector(_flat_block(offs, nested_offs), elts)
-    end
+flat_block() = Query(flat_block)
+
+function flat_block(env::QueryEnvironment, input::AbstractVector)
+    input isa SomeBlockVector || error("expected a block vector; got $input")
+    offs = offsets(input)
+    nested = elements(input)
+    nested isa SomeBlockVector || error("expected a block vector; got $nested")
+    nested_offs = offsets(nested)
+    elts = elements(nested)
+    BlockVector(_flat_block(offs, nested_offs), elts)
+end
 
 _flat_block(offs1::AbstractVector{Int}, offs2::AbstractVector{Int}) =
     Int[offs2[off] for off in offs1]
@@ -57,43 +59,44 @@ _flat_block(offs1::AbstractVector{Int}, offs2::OneTo{Int}) = offs1
 
 Converts a tuple with a block column to a block of tuples.
 """
-pull_block(lbl) =
-    Query(pull_block, lbl) do env, input
-        input isa SomeTupleVector || error("expected a tuple vector; got $input")
-        j = locate(input, lbl)
-        j !== nothing || error("invalid column $lbl of $input")
-        len = length(input)
-        lbls = labels(input)
-        cols = columns(input)
-        col = cols[j]
-        col isa SomeBlockVector || error("expected a block vector; got $col")
-        offs = offsets(col)
-        col′ = elements(col)
-        cols′ = copy(cols)
-        if offs isa OneTo{Int}
-            cols′[j] = col′
-            return BlockVector(offs, TupleVector(lbls, len, cols′))
-        end
-        len′ = length(col′)
-        perm = Vector{Int}(uninitialized, len′)
-        l = r = 1
-        @inbounds for k = 1:len
-            l = r
-            r = offs[k+1]
-            for n = l:r-1
-                perm[n] = k
-            end
-        end
-        for i in eachindex(cols′)
-            cols′[i] =
-                if i == j
-                    col′
-                else
-                    cols′[i][perm]
-                end
-        end
-        return BlockVector(offs, TupleVector(lbls, len′, cols′))
+pull_block(lbl) = Query(pull_block, lbl)
+
+function pull_block(env::QueryEnvironment, input::AbstractVector, lbl)
+    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    j = locate(input, lbl)
+    j !== nothing || error("invalid column $lbl of $input")
+    len = length(input)
+    lbls = labels(input)
+    cols = columns(input)
+    col = cols[j]
+    col isa SomeBlockVector || error("expected a block vector; got $col")
+    offs = offsets(col)
+    col′ = elements(col)
+    cols′ = copy(cols)
+    if offs isa OneTo{Int}
+        cols′[j] = col′
+        return BlockVector(offs, TupleVector(lbls, len, cols′))
     end
+    len′ = length(col′)
+    perm = Vector{Int}(uninitialized, len′)
+    l = r = 1
+    @inbounds for k = 1:len
+        l = r
+        r = offs[k+1]
+        for n = l:r-1
+            perm[n] = k
+        end
+    end
+    for i in eachindex(cols′)
+        cols′[i] =
+            if i == j
+                col′
+            else
+                cols′[i][perm]
+            end
+    end
+    return BlockVector(offs, TupleVector(lbls, len′, cols′))
+end
 
 
 """
@@ -102,15 +105,16 @@ pull_block(lbl) =
 Converts a tuple vector with block columns to a block vector over a tuple
 vector.
 """
-pull_every_block() =
-    Query(pull_every_block) do env, input
-        input isa SomeTupleVector || error("expected a tuple vector; got $input")
-        cols = columns(input)
-        for col in cols
-            col isa SomeBlockVector || error("expected a block vector; got $col")
-        end
-        _pull_every_block(labels(input), length(input), cols...)
+pull_every_block() = Query(pull_every_block)
+
+function pull_every_block(env::QueryEnvironment, input::AbstractVector)
+    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    cols = columns(input)
+    for col in cols
+        col isa SomeBlockVector || error("expected a block vector; got $col")
     end
+    _pull_every_block(labels(input), length(input), cols...)
+end
 
 @generated function _pull_every_block(lbls::Vector{Symbol}, len::Int, cols::SomeBlockVector...)
     D = length(cols)
@@ -151,11 +155,12 @@ end
 
 Maps a block vector to a vector of block lengths.
 """
-count_block() =
-    Query(count_block) do env, input
-        input isa SomeBlockVector || error("expected a block vector; got $input")
-        _count_block(offsets(input))
-    end
+count_block() = Query(count_block)
+
+function count_block(env::QueryEnvironment, input::AbstractVector)
+    input isa SomeBlockVector || error("expected a block vector; got $input")
+    _count_block(offsets(input))
+end
 
 _count_block(offs::OneTo{Int}) =
     fill(1, length(offs)-1)
@@ -175,30 +180,31 @@ end
 
 Checks if there is one `true` value in a block of `Bool` values.
 """
-any_block() =
-    Query(any_block) do env, input
-        input isa SomeBlockVector || error("expected a block vector; got $input")
-        len = length(input)
-        offs = offsets(input)
-        elts = elements(input)
-        elts isa AbstractVector{Bool} || error("expected a Bool vector; got $elts")
-        if offs isa OneTo
-            return elts
-        end
-        output = Vector{Bool}(unitialized, len)
-        l = r = 1
-        @inbounds for k = 1:len
-            val = false
-            l = r
-            r = offs[k+1]
-            for i = l:r-1
-                if elts[i]
-                    val = true
-                    break
-                end
-            end
-            output[k] = val
-        end
-        return output
+any_block() = Query(any_block)
+
+function any_block(env::QueryEnvironment, input::AbstractVector)
+    input isa SomeBlockVector || error("expected a block vector; got $input")
+    len = length(input)
+    offs = offsets(input)
+    elts = elements(input)
+    elts isa AbstractVector{Bool} || error("expected a Bool vector; got $elts")
+    if offs isa OneTo
+        return elts
     end
+    output = Vector{Bool}(unitialized, len)
+    l = r = 1
+    @inbounds for k = 1:len
+        val = false
+        l = r
+        r = offs[k+1]
+        for i = l:r-1
+            if elts[i]
+                val = true
+                break
+            end
+        end
+        output[k] = val
+    end
+    return output
+end
 
