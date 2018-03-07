@@ -14,11 +14,13 @@ export
     CapsuleShape,
     Cardinality,
     DecoratedShape,
+    FieldShape,
     IndexShape,
     InputShape,
     NativeShape,
     NoneShape,
     OutputShape,
+    RecordShape,
     TupleShape,
     bound,
     cardinality,
@@ -47,6 +49,7 @@ import Base:
     &, |, ~
 
 using ..Layouts
+import ..Layouts: syntax
 
 include("shapes/sorteddict.jl")
 include("shapes/bound.jl")

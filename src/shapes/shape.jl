@@ -9,9 +9,6 @@ abstract type AbstractShape end
 syntax(shp::AbstractShape) =
     Expr(:call, nameof(typeof(shp)), Symbol(" … "))
 
-syntax_abbr(shp::AbstractShape) =
-    syntax(shp::AbstractShape)
-
 show(io::IO, shp::AbstractShape) =
     Layouts.print_code(io, syntax(shp))
 
@@ -204,23 +201,41 @@ end
 
 abstract type NominalShape <: AbstractShape end
 
+# Shape of a record field.
+
+struct FieldShape <: NominalShape
+    lbl::Union{Missing,Symbol}
+    elts::AbstractShape
+    card::Cardinality
+end
+
+FieldShape(elts, card) =
+    FieldShape(missing, elts, card)
+
+syntax(shp::FieldShape) =
+    if shp.lbl === missing
+        Expr(:call, nameof(FieldShape), syntax(shp.elts), shp.cardinality)
+    elseif shp.lbl === nothing
+        Expr(:call, nameof(FieldShape), QuoteNode(shp.lbl), shp.cardinality)
+    end
+
+label(shp::FieldShape) = shp.lbl
+
+getindex(shp::FieldShape) = shp.elts
+
+cardinality(shp::FieldShape) = shp.card
+
 # A record is a tuple of blocks.
 
 struct RecordShape <: NominalShape
-    flds::Vector{Tuple{Union{Symbol,Missing},AbstractShape,Cardinality}}
+    flds::Vector{FieldShape}
 end
 
-function RecordShape(itr...)
-    lbls = Union{Symbol,Missing}[]
-    flds = AbstractShape[]
-    cards = Cardinality[]
-    for item in itr
-        (lbl, fld, card) = _recordfield(item)
-        push!(lbls, lbl)
-        push!(flds, fld)
-        push!(cards, card)
-    end
-end
+RecordShape(itr...) =
+    RecordShape(collect(FieldShape, itr))
+
+syntax(shp::RecordShape) =
+    Expr(:call, nameof(RecordShape), syntax.(shp.flds)...)
 
 # Shape of the query output.
 
@@ -272,7 +287,7 @@ let NO_SLOTS = Pair{Symbol,OutputShape}[]
         InpuShape(vals, NO_SLOTS, rel)
 
     InputShape(vals) =
-        Inputshape(vals, NO_SLOTS, false)
+        InputShape(vals, NO_SLOTS, false)
 end
 
 function syntax(shp::InputShape)
