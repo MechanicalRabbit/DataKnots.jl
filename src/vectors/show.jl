@@ -1,25 +1,25 @@
 #
-# Printing parallel vectors.
+# Printing columnar vectors.
 #
 
-const SomeParallelVector = Union{BlockVector,IndexVector,TupleVector,CapsuleVector}
+const SomeColumnarVector = Union{BlockVector,IndexVector,TupleVector,CapsuleVector}
 
 signature_syntax(v::AbstractVector) = eltype(v)
 
-Base.typeinfo_prefix(io::IO, pv::SomeParallelVector) =
+Base.typeinfo_prefix(io::IO, pv::SomeColumnarVector) =
     if !get(io, :compact, false)::Bool
-        "@Parallel $(signature_syntax(pv)) "
+        "@VectorTree $(signature_syntax(pv)) "
     else
         ""
     end
 
-summary(io::IO, pv::SomeParallelVector) =
+summary(io::IO, pv::SomeColumnarVector) =
     print(io, "$(typeof(pv).name.name) of $(length(pv)) × $(signature_syntax(pv))")
 
-show_parallel(io::IO, v::AbstractVector) =
+show_columnar(io::IO, v::AbstractVector) =
     Base.show_vector(io, v)
 
-function display_parallel(io::IO, v::AbstractVector)
+function display_columnar(io::IO, v::AbstractVector)
     summary(io, v)
     !isempty(v) || return
     println(io, ":")

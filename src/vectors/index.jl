@@ -26,10 +26,10 @@ signature_syntax(iv::IndexVector) =
     Expr(:&, iv.ident)
 
 show(io::IO, iv::IndexVector) =
-    show_parallel(io, iv)
+    show_columnar(io, iv)
 
 show(io::IO, ::MIME"text/plain", iv::IndexVector) =
-    display_parallel(io, iv)
+    display_columnar(io, iv)
 
 # Properties.
 

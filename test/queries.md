@@ -1,7 +1,7 @@
 # Query Backend
 
 The `Queries` module contains primitive operations and combinators for
-transforming parallel vectors.
+transforming atomic and composite vectors.
 
     using DataKnots.Vectors
     using DataKnots.Queries
@@ -26,14 +26,14 @@ block.
     #-> lift_block(["POLICE", "FIRE"])
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @Parallel [String] [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
+    #-> @VectorTree [String] [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
 
 A variant of `lift_block()` called `lift_null()` outputs a block vector with
 empty blocks.
 
     q = lift_null()
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @Parallel [Union{}] [missing, missing, missing]
+    #-> @VectorTree [Union{}] [missing, missing, missing]
 
 Any scalar function could be lifted to a vector operation by applying it to
 each element of the input vector.
@@ -50,7 +50,7 @@ operation on tuple vectors.
     q = lift_to_tuple(>)
     #-> lift_to_tuple(>)
 
-    q(@Parallel (Int, Int) [260004 200000; 185364 200000; 170112 200000])
+    q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
     #-> Bool[true, false, false]
 
 It is also possible to apply a scalar function of several arguments to a tuple
@@ -59,8 +59,8 @@ applied to every combination of values from all the blocks on the same row.
 
     q = lift_to_block_tuple(>)
 
-    q(@Parallel ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-    #-> @Parallel [Bool] [Bool[true, false, false], missing, Bool[true, true, false, false]]
+    q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
+    #-> @VectorTree [Bool] [Bool[true, false, false], missing, Bool[true, true, false, false]]
 
 Any function that takes a vector argument can be lifted to an operation on
 block vectors.
@@ -68,7 +68,7 @@ block vectors.
     q = lift_to_block(length)
     #-> lift_to_block(length)
 
-    q(@Parallel [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
     #-> [3, 2]
 
 Some vector functions may expect a non-empty vector as an argument.  In this
@@ -77,7 +77,7 @@ case, we should provide the value to replace empty blocks.
     q = lift_to_block(maximum, missing)
     #-> lift_to_block(maximum, missing)
 
-    q(@Parallel [Int] [[260004, 185364, 170112], [], [202728, 197736]])
+    q(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])
     #-> Union{Missing, Int}[260004, missing, 202728]
 
 
@@ -112,7 +112,7 @@ A vector of vector objects can be converted to a block vector.
     #-> decode_vector()
 
     q([[260004, 185364, 170112], Int[], [202728, 197736]])
-    #-> @Parallel [Int] [[260004, 185364, 170112], missing, [202728, 197736]]
+    #-> @VectorTree [Int] [[260004, 185364, 170112], missing, [202728, 197736]]
 
 Similarly, a vector containing `missing` values can be converted to a block
 vector with zero- and one-element blocks.
@@ -121,7 +121,7 @@ vector with zero- and one-element blocks.
     #-> decode_missing()
 
     q([260004, 185364, 170112, missing, 202728, 197736])
-    #-> @Parallel [Int] [260004, 185364, 170112, missing, 202728, 197736]
+    #-> @VectorTree [Int] [260004, 185364, 170112, missing, 202728, 197736]
 
 
 ## Tuple vectors
@@ -146,13 +146,13 @@ accepts either the column position or the column name.
     q = column(1)
     #-> column(1)
 
-    q(@Parallel (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
+    q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
     #-> ["GARRY M", "ANTHONY R", "DANA A"]
 
     q = column(:salary)
     #-> column(:salary)
 
-    q(@Parallel (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
+    q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
     #-> [260004, 185364, 170112]
 
 Finally, we can apply an arbitrary transformation to a selected column of a
@@ -161,7 +161,7 @@ tuple vector.
     q = in_tuple(:name, lift(titlecase))
     #-> in_tuple(:name, lift(titlecase))
 
-    q(@Parallel (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]) |> display
+    q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]) |> display
     #=>
     TupleVector of 3 × (name = String, salary = Int):
      (name = "Garry M", salary = 260004)
@@ -178,7 +178,7 @@ Primitive `as_block()` wraps the elements of the input vector to one-element blo
     #-> as_block()
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @Parallel [String] ["GARRY M", "ANTHONY R", "DANA A"]
+    #-> @VectorTree [String] ["GARRY M", "ANTHONY R", "DANA A"]
 
 In the opposite direction, primitive `flat_block()` flattens a block vector
 with block elements.
@@ -186,16 +186,16 @@ with block elements.
     q = flat_block()
     #-> flat_block()
 
-    q(@Parallel [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [missing, ["JOSE S"], ["CHARLES S"]]])
-    #-> @Parallel [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
+    q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [missing, ["JOSE S"], ["CHARLES S"]]])
+    #-> @VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
 
 Finally, we can apply an arbitrary transformation to every element of a block vector.
 
     q = in_block(lift(titlecase))
     #-> in_block(lift(titlecase))
 
-    q(@Parallel [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
-    #-> @Parallel [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
+    #-> @VectorTree [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
 
 The `pull_block()` primitive converts a tuple vector with a block column to a
 block vector of tuples.
@@ -203,7 +203,7 @@ block vector of tuples.
     q = pull_block(1)
     #-> pull_block(1)
 
-    q(@Parallel ([Int], [Int]) [
+    q(@VectorTree ([Int], [Int]) [
         [260004, 185364, 170112]    200000
         missing                     200000
         [202728, 197736]            [200000, 200000]]
@@ -220,7 +220,7 @@ It is also possible to pull all block columns from a tuple vector.
     q = pull_every_block()
     #-> pull_every_block()
 
-    q(@Parallel ([Int], [Int]) [
+    q(@VectorTree ([Int], [Int]) [
         [260004, 185364, 170112]    200000
         missing                     200000
         [202728, 197736]            [200000, 200000]]
@@ -240,7 +240,7 @@ An index vector could be dereferenced using the `dereference()` primitive.
     q = dereference()
     #-> dereference()
 
-    q(@Parallel &DEPT [1, 1, 1, 2] where {DEPT = ["POLICE", "FIRE"]})
+    q(@VectorTree &DEPT [1, 1, 1, 2] where {DEPT = ["POLICE", "FIRE"]})
     #-> ["POLICE", "POLICE", "POLICE", "FIRE"]
 
 
@@ -253,10 +253,10 @@ We can compose a sequence of transformations using the `chain_of()` combinator.
             in_block(lift(titlecase)))
     #-> chain_of(column(:employee), in_block(lift(titlecase)))
 
-    q(@Parallel (department = String, employee = [String]) [
+    q(@VectorTree (department = String, employee = [String]) [
         "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
         "FIRE"      ["JOSE S", "CHARLES S"]])
-    #-> @Parallel [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
+    #-> @VectorTree [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
 
 The empty chain `chain_of()` has an alias `pass()`.
 

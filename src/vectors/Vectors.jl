@@ -1,11 +1,11 @@
 #
-# Vector types for parallel (aka column-oriented or SoA) storage.
+# Vector types for columnar/SoA storage.
 #
 
 module Vectors
 
 export
-    @Parallel,
+    @VectorTree,
     BlockCursor,
     BlockVector,
     CapsuleVector,
@@ -52,6 +52,6 @@ include("index.jl")
 include("capsule.jl")
 include("chunk.jl")
 include("show.jl")
-include("parallel.jl")
+include("vectortree.jl")
 
 end

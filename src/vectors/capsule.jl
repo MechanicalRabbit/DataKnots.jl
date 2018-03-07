@@ -76,7 +76,7 @@ end
 signature_syntax(cv::CapsuleVector) = signature_syntax(cv.vals)
 
 function show(io::IO, cv::CapsuleVector)
-    show_parallel(io, cv)
+    show_columnar(io, cv)
     io = IOContext(io, :limit => true)
     print(io, " where {")
     first = true
@@ -91,7 +91,7 @@ function show(io::IO, cv::CapsuleVector)
 end
 
 function show(io::IO, ::MIME"text/plain", cv::CapsuleVector)
-    display_parallel(io, cv)
+    display_columnar(io, cv)
     io = IOContext(io, :limit => true)
     println(io)
     print(io, "where")

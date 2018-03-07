@@ -1,6 +1,7 @@
-# Parallel Vectors
+# Composite Vectors
 
-For efficient data processing, the data can be stored in parallel arrays.
+For efficient data processing, an array of composite data can be stored in a
+column-oriented form: as a collection of arrays with primitive data.
 
     using DataKnots.Vectors
 
@@ -11,7 +12,7 @@ For efficient data processing, the data can be stored in parallel arrays.
 
     tv = TupleVector(:name => ["GARRY M", "ANTHONY R", "DANA A"],
                      :salary => [260004, 185364, 170112])
-    #-> @Parallel (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
 
     display(tv)
     #=>
@@ -24,7 +25,7 @@ For efficient data processing, the data can be stored in parallel arrays.
 It is possible to construct a `TupleVector` without labels.
 
     TupleVector(length(tv), columns(tv))
-    #-> @Parallel (String, Int) [("GARRY M", 260004) … ]
+    #-> @VectorTree (String, Int) [("GARRY M", 260004) … ]
 
 An error is reported in case of duplicate labels or columns of different height.
 
@@ -76,7 +77,7 @@ column vectors.  Updated column vectors are generated on demand.
 elements partitioned into individual blocks by a vector of offsets.
 
     bv = BlockVector([["HEALTH"], ["FINANCE", "HUMAN RESOURCES"], [], ["POLICE", "FIRE"]])
-    #-> @Parallel [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
+    #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
 
     display(bv)
     #=>
@@ -91,18 +92,18 @@ We can omit brackets for singular blocks and use `missing` in place of empty
 blocks.
 
     BlockVector(["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]])
-    #-> @Parallel [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
+    #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
 
 It is possible to specify the offset and the element vectors separately.
 
     BlockVector([1, 2, 4, 4, 6], ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"])
-    #-> @Parallel [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
+    #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
 
 If each block contains exactly one element, we could use `:` in place of the
 offset vector.
 
     BlockVector(:, ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"])
-    #-> @Parallel [String] ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"]
+    #-> @VectorTree [String] ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"]
 
 The `BlockVector` constructor verifies that the offset vector is well-formed.
 
@@ -175,7 +176,7 @@ When indexed by a vector of indexes, an instance of `BlockVector` is returned.
 `IndexVector` is a vector of indexes in some named vector.
 
     iv = IndexVector(:REF, [1, 1, 1, 2])
-    #-> @Parallel &REF [1, 1, 1, 2]
+    #-> @VectorTree &REF [1, 1, 1, 2]
 
     display(iv)
     #=>
@@ -197,7 +198,7 @@ We can obtain the components of the vector.
 Indexing an `IndexVector` by a vector produces another `IndexVector` instance.
 
     iv[[4,2]]
-    #-> @Parallel &REF [2, 1]
+    #-> @VectorTree &REF [2, 1]
 
 `IndexVector` can be deferenced against a list of named vectors.
 
@@ -210,7 +211,7 @@ Function `dereference()` has no effect on other types of vectors, or when the
 desired reference vector is not in the list.
 
     dereference(iv, [:REF′ => refv])
-    #-> @Parallel &REF [1, 1, 1, 2]
+    #-> @VectorTree &REF [1, 1, 1, 2]
 
     dereference([1, 1, 1, 2], [:REF => refv])
     #-> [1, 1, 1, 2]
@@ -223,7 +224,7 @@ We use `CapsuleVector` to represent self-referential and mutually referential
 data.
 
     cv = CapsuleVector(TupleVector(:ref => iv), :REF => refv)
-    #-> @Parallel (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
+    #-> @VectorTree (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
 
     display(cv)
     #=>
@@ -240,13 +241,13 @@ Function `decapsulate()` decomposes a capsule into the underlying vector and a
 list of references.
 
     decapsulate(cv)
-    #-> (@Parallel (ref = &REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])
+    #-> (@VectorTree (ref = &REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])
 
 Function `recapsulate()` applies the given function to the underlying vector
 and encapsulates the output of the function.
 
     cv′ = recapsulate(v -> v[:, :ref], cv)
-    #-> @Parallel &REF [1, 1, 1, 2] where {REF = [ … ]}
+    #-> @VectorTree &REF [1, 1, 1, 2] where {REF = [ … ]}
 
 We could dereference `CapsuleVector` if it wraps an `IndexVector` instance.
 Function `dereference()` has no effect otherwise.
@@ -255,108 +256,109 @@ Function `dereference()` has no effect otherwise.
     #-> ["COMISSIONER", "COMISSIONER", "COMISSIONER", "DEPUTY COMISSIONER"]
 
     dereference(cv)
-    #-> @Parallel (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
+    #-> @VectorTree (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
 
 Indexing `CapsuleVector` by a vector produces another instance of
 `CapsuleVector`.
 
     cv[[4,2]]
-    #-> @Parallel (ref = &REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}
+    #-> @VectorTree (ref = &REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}
 
 
-## `@Parallel`
+## `@VectorTree`
 
-We can use `@Parallel` macro to convert vector literals to the parallel form
-assembled with `TupleVector`, `BlockVector`, `IndexVector`, and `CapsuleVector`.
+We can use `@VectorTree` macro to convert vector literals to the columnar form
+assembled with `TupleVector`, `BlockVector`, `IndexVector`, and
+`CapsuleVector`.
 
 `TupleVector` is created from a matrix or a vector of (named) tuples.
 
-    @Parallel (name = String, salary = Int) [
+    @VectorTree (name = String, salary = Int) [
         "GARRY M"   260004
         "ANTHONY R" 185364
         "DANA A"    170112
     ]
-    #-> @Parallel (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
 
-    @Parallel (name = String, salary = Int) [
+    @VectorTree (name = String, salary = Int) [
         ("GARRY M", 260004),
         ("ANTHONY R", 185364),
         ("DANA A", 170112),
     ]
-    #-> @Parallel (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
 
-    @Parallel (name = String, salary = Int) [
+    @VectorTree (name = String, salary = Int) [
         (name = "GARRY M", salary = 260004),
         (name = "ANTHONY R", salary = 185364),
         (name = "DANA A", salary = 170112),
     ]
-    #-> @Parallel (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
 
 Column labels are optional.
 
-    @Parallel (String, Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
-    #-> @Parallel (String, Int) [("GARRY M", 260004) … ]
+    @VectorTree (String, Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
+    #-> @VectorTree (String, Int) [("GARRY M", 260004) … ]
 
 `BlockVector` and `IndexVector` can also be constructed.
 
-    @Parallel [String] [
+    @VectorTree [String] [
         "HEALTH",
         ["FINANCE", "HUMAN RESOURCES"],
         missing,
         ["POLICE", "FIRE"],
     ]
-    #-> @Parallel [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
+    #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
 
-    @Parallel &REF [1, 1, 1, 2]
-    #-> @Parallel &REF [1, 1, 1, 2]
+    @VectorTree &REF [1, 1, 1, 2]
+    #-> @VectorTree &REF [1, 1, 1, 2]
 
 A `CapsuleVector` could be constructed using `where` syntax.
 
-    @Parallel &REF [1, 1, 1, 2] where {REF = refv}
-    #-> @Parallel &REF [1, 1, 1, 2] where {REF = ["COMISSIONER", "DEPUTY COMISSIONER"  … ]}
+    @VectorTree &REF [1, 1, 1, 2] where {REF = refv}
+    #-> @VectorTree &REF [1, 1, 1, 2] where {REF = ["COMISSIONER", "DEPUTY COMISSIONER"  … ]}
 
-Ill-formed `@Parallel` contructors are rejected.
+Ill-formed `@VectorTree` contructors are rejected.
 
-    @Parallel (String, Int) ("GARRY M", 260004)
+    @VectorTree (String, Int) ("GARRY M", 260004)
     #=>
     ERROR: LoadError: expected a vector literal; got :(("GARRY M", 260004))
     in expression starting at none:2
     =#
 
-    @Parallel (String, Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
+    @VectorTree (String, Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
     #=>
     ERROR: LoadError: expected no label; got :(position = "SUPERINTENDENT OF POLICE")
     in expression starting at none:2
     =#
 
-    @Parallel (name = String, salary = Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
+    @VectorTree (name = String, salary = Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
     #=>
     ERROR: LoadError: expected label :name; got :(position = "SUPERINTENDENT OF POLICE")
     in expression starting at none:2
     =#
 
-    @Parallel (name = String, salary = Int) [("GARRY M", "SUPERINTENDENT OF POLICE", 260004)]
+    @VectorTree (name = String, salary = Int) [("GARRY M", "SUPERINTENDENT OF POLICE", 260004)]
     #=>
     ERROR: LoadError: expected 2 column(s); got :(("GARRY M", "SUPERINTENDENT OF POLICE", 260004))
     in expression starting at none:2
     =#
 
-    @Parallel (name = String, salary = Int) ["GARRY M"]
+    @VectorTree (name = String, salary = Int) ["GARRY M"]
     #=>
     ERROR: LoadError: expected a tuple or a row literal; got "GARRY M"
     in expression starting at none:2
     =#
 
-    @Parallel &REF [[]] where (:REF => [])
+    @VectorTree &REF [[]] where (:REF => [])
     #=>
     ERROR: LoadError: expected an assignment; got :(:REF => [])
     in expression starting at none:2
     =#
 
-Using `@Parallel`, we can easily construct hierarchical and mutually referential
-data.
+Using `@VectorTree`, we can easily construct hierarchical and mutually
+referential data.
 
-    hier_data = @Parallel (name = [String], employee = [(name = [String], salary = [Int])]) [
+    hier_data = @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
         "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
         "FIRE"      ["JOSE S" 202728; "CHARLES S" 197736]
     ]
@@ -367,15 +369,15 @@ data.
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
     =#
 
-    mref_data = @Parallel (department = [&DEPT], employee = [&EMP]) [
+    mref_data = @VectorTree (department = [&DEPT], employee = [&EMP]) [
         [1, 2]  [1, 2, 3, 4, 5]
     ] where {
-        DEPT = @Parallel (name = [String], employee = [&EMP]) [
+        DEPT = @VectorTree (name = [String], employee = [&EMP]) [
             "POLICE"    [1, 2, 3]
             "FIRE"      [4, 5]
         ]
         ,
-        EMP = @Parallel (name = [String], department = [&DEPT], salary = [Int]) [
+        EMP = @VectorTree (name = [String], department = [&DEPT], salary = [Int]) [
             "GARRY M"   1   260004
             "ANTHONY R" 1   185364
             "DANA A"    1   170112
@@ -388,7 +390,7 @@ data.
     CapsuleVector of 1 × (department = [&DEPT], employee = [&EMP]):
      (department = [1, 2], employee = [1, 2, 3, 4, 5])
     where
-     DEPT = @Parallel (name = [String], employee = [&EMP]) [(name = "POLICE", employee = [1, 2, 3]) … ]
-     EMP = @Parallel (name = [String], department = [&DEPT], salary = [Int]) [(name = "GARRY M", department = 1, salary = 260004) … ]
+     DEPT = @VectorTree (name = [String], employee = [&EMP]) [(name = "POLICE", employee = [1, 2, 3]) … ]
+     EMP = @VectorTree (name = [String], department = [&DEPT], salary = [Int]) [(name = "GARRY M", department = 1, salary = 260004) … ]
     =#
 

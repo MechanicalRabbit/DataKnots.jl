@@ -1,10 +1,10 @@
 #
-# @Parallel constructor.
+# @VectorTree constructor.
 #
 
-macro Parallel(sig, ex)
+macro VectorTree(sig, ex)
     ctor = sig2ctor(sig)
-    ex = parallelize(ctor, ex)
+    ex = vectorize(ctor, ex)
     return esc(ex)
 end
 
@@ -65,9 +65,9 @@ mutable struct VectorConstructor <: AbstractVectorConstructor
     VectorConstructor(ty) = new(ty, [])
 end
 
-function parallelize(ctor::AbstractVectorConstructor, ex)
+function vectorize(ctor::AbstractVectorConstructor, ex)
     if ex isa Expr && ex.head == :where && length(ex.args) >= 1
-        vec = parallelize(ctor, ex.args[1])
+        vec = vectorize(ctor, ex.args[1])
         refs = Any[]
         for arg in ex.args[2:end]
             if arg isa Expr && arg.head == :(=) && length(arg.args) == 2 && arg.args[1] isa Symbol
