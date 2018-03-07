@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Parallel Vectors · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">DataKnots.jl</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="vectors.html">Parallel Vectors</a><ul class="internal"><li><a class="toctext" href="#TupleVector-1"><code>TupleVector</code></a></li><li><a class="toctext" href="#BlockVector-1"><code>BlockVector</code></a></li><li><a class="toctext" href="#IndexVector-1"><code>IndexVector</code></a></li><li><a class="toctext" href="#CapsuleVector-1"><code>CapsuleVector</code></a></li><li><a class="toctext" href="#@Parallel-1"><code>@Parallel</code></a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="vectors.html">Parallel Vectors</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/test/vectors.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Parallel Vectors</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Parallel-Vectors-1" href="#Parallel-Vectors-1">Parallel Vectors</a></h1><p>For efficient data processing, the data can be stored in parallel arrays.</p><pre><code class="language-julia">using DataKnots.Vectors</code></pre><h2><a class="nav-anchor" id="TupleVector-1" href="#TupleVector-1"><code>TupleVector</code></a></h2><p><code>TupleVector</code> is a vector of tuples stored as a collection of parallel vectors.</p><pre><code class="language-julia">tv = TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;],
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Composite Vectors · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">DataKnots.jl</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="vectors.html">Composite Vectors</a><ul class="internal"><li><a class="toctext" href="#TupleVector-1"><code>TupleVector</code></a></li><li><a class="toctext" href="#BlockVector-1"><code>BlockVector</code></a></li><li><a class="toctext" href="#IndexVector-1"><code>IndexVector</code></a></li><li><a class="toctext" href="#CapsuleVector-1"><code>CapsuleVector</code></a></li><li><a class="toctext" href="#@VectorTree-1"><code>@VectorTree</code></a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="vectors.html">Composite Vectors</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/test/vectors.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Composite Vectors</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Composite-Vectors-1" href="#Composite-Vectors-1">Composite Vectors</a></h1><p>For efficient data processing, an array of composite data can be stored in a column-oriented form: as a collection of arrays with primitive data.</p><pre><code class="language-julia">using DataKnots.Vectors</code></pre><h2><a class="nav-anchor" id="TupleVector-1" href="#TupleVector-1"><code>TupleVector</code></a></h2><p><code>TupleVector</code> is a vector of tuples stored as a collection of parallel vectors.</p><pre><code class="language-julia">tv = TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;],
                  :salary =&gt; [260004, 185364, 170112])
-#-&gt; @Parallel (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
+#-&gt; @VectorTree (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
 
 display(tv)
 #=&gt;
@@ -10,7 +10,7 @@ TupleVector of 3 × (name = String, salary = Int):
  (name = &quot;ANTHONY R&quot;, salary = 185364)
  (name = &quot;DANA A&quot;, salary = 170112)
 =#</code></pre><p>It is possible to construct a <code>TupleVector</code> without labels.</p><pre><code class="language-julia">TupleVector(length(tv), columns(tv))
-#-&gt; @Parallel (String, Int) [(&quot;GARRY M&quot;, 260004) … ]</code></pre><p>An error is reported in case of duplicate labels or columns of different height.</p><pre><code class="language-julia">TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;],
+#-&gt; @VectorTree (String, Int) [(&quot;GARRY M&quot;, 260004) … ]</code></pre><p>An error is reported in case of duplicate labels or columns of different height.</p><pre><code class="language-julia">TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;],
             :name =&gt; [&quot;DANA A&quot;, &quot;JUAN R&quot;])
 #-&gt; ERROR: duplicate column label :name
 
@@ -37,7 +37,7 @@ TupleVector of 2 × (name = String, salary = Int):
  (name = &quot;GARRY M&quot;, salary = 260004)
 =#</code></pre><p>Note that the new instance keeps a reference to the index and the original column vectors.  Updated column vectors are generated on demand.</p><pre><code class="language-julia">column(tv′, 2)
 #-&gt; [170112, 260004]</code></pre><h2><a class="nav-anchor" id="BlockVector-1" href="#BlockVector-1"><code>BlockVector</code></a></h2><p><code>BlockVector</code> is a vector of homogeneous vectors (blocks) stored as a vector of elements partitioned into individual blocks by a vector of offsets.</p><pre><code class="language-julia">bv = BlockVector([[&quot;HEALTH&quot;], [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], [], [&quot;POLICE&quot;, &quot;FIRE&quot;]])
-#-&gt; @Parallel [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
+#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
 
 display(bv)
 #=&gt;
@@ -47,9 +47,9 @@ BlockVector of 4 × [String]:
  missing
  [&quot;POLICE&quot;, &quot;FIRE&quot;]
 =#</code></pre><p>We can omit brackets for singular blocks and use <code>missing</code> in place of empty blocks.</p><pre><code class="language-julia">BlockVector([&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]])
-#-&gt; @Parallel [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>It is possible to specify the offset and the element vectors separately.</p><pre><code class="language-julia">BlockVector([1, 2, 4, 4, 6], [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])
-#-&gt; @Parallel [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>If each block contains exactly one element, we could use <code>:</code> in place of the offset vector.</p><pre><code class="language-julia">BlockVector(:, [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])
-#-&gt; @Parallel [String] [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><p>The <code>BlockVector</code> constructor verifies that the offset vector is well-formed.</p><pre><code class="language-julia">BlockVector(Base.OneTo(0), [])
+#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>It is possible to specify the offset and the element vectors separately.</p><pre><code class="language-julia">BlockVector([1, 2, 4, 4, 6], [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])
+#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>If each block contains exactly one element, we could use <code>:</code> in place of the offset vector.</p><pre><code class="language-julia">BlockVector(:, [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])
+#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><p>The <code>BlockVector</code> constructor verifies that the offset vector is well-formed.</p><pre><code class="language-julia">BlockVector(Base.OneTo(0), [])
 #-&gt; ERROR: partition must be non-empty
 
 BlockVector(Int[], [])
@@ -103,7 +103,7 @@ showcompact(plu_bv[Base.OneTo(6)])
 
 showcompact(opt_bv[Base.OneTo(10)])
 #-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]</code></pre><h2><a class="nav-anchor" id="IndexVector-1" href="#IndexVector-1"><code>IndexVector</code></a></h2><p><code>IndexVector</code> is a vector of indexes in some named vector.</p><pre><code class="language-julia">iv = IndexVector(:REF, [1, 1, 1, 2])
-#-&gt; @Parallel &amp;REF [1, 1, 1, 2]
+#-&gt; @VectorTree &amp;REF [1, 1, 1, 2]
 
 display(iv)
 #=&gt;
@@ -117,15 +117,15 @@ IndexVector of 4 × &amp;REF:
 
 indexes(iv)
 #-&gt; [1, 1, 1, 2]</code></pre><p>Indexing an <code>IndexVector</code> by a vector produces another <code>IndexVector</code> instance.</p><pre><code class="language-julia">iv[[4,2]]
-#-&gt; @Parallel &amp;REF [2, 1]</code></pre><p><code>IndexVector</code> can be deferenced against a list of named vectors.</p><pre><code class="language-julia">refv = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;, &quot;ZONING ADMINISTRATOR&quot;, &quot;PROJECT MANAGER&quot;]
+#-&gt; @VectorTree &amp;REF [2, 1]</code></pre><p><code>IndexVector</code> can be deferenced against a list of named vectors.</p><pre><code class="language-julia">refv = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;, &quot;ZONING ADMINISTRATOR&quot;, &quot;PROJECT MANAGER&quot;]
 
 dereference(iv, [:REF =&gt; refv])
 #-&gt; [&quot;COMISSIONER&quot;, &quot;COMISSIONER&quot;, &quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;]</code></pre><p>Function <code>dereference()</code> has no effect on other types of vectors, or when the desired reference vector is not in the list.</p><pre><code class="language-julia">dereference(iv, [:REF′ =&gt; refv])
-#-&gt; @Parallel &amp;REF [1, 1, 1, 2]
+#-&gt; @VectorTree &amp;REF [1, 1, 1, 2]
 
 dereference([1, 1, 1, 2], [:REF =&gt; refv])
 #-&gt; [1, 1, 1, 2]</code></pre><h2><a class="nav-anchor" id="CapsuleVector-1" href="#CapsuleVector-1"><code>CapsuleVector</code></a></h2><p><code>CapsuleVector</code> provides references for a composite vector with nested indexes. We use <code>CapsuleVector</code> to represent self-referential and mutually referential data.</p><pre><code class="language-julia">cv = CapsuleVector(TupleVector(:ref =&gt; iv), :REF =&gt; refv)
-#-&gt; @Parallel (ref = &amp;REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
+#-&gt; @VectorTree (ref = &amp;REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
 
 display(cv)
 #=&gt;
@@ -137,77 +137,77 @@ CapsuleVector of 4 × (ref = &amp;REF,):
 where
  REF = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot; … ]
 =#</code></pre><p>Function <code>decapsulate()</code> decomposes a capsule into the underlying vector and a list of references.</p><pre><code class="language-julia">decapsulate(cv)
-#-&gt; (@Parallel (ref = &amp;REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])</code></pre><p>Function <code>recapsulate()</code> applies the given function to the underlying vector and encapsulates the output of the function.</p><pre><code class="language-julia">cv′ = recapsulate(v -&gt; v[:, :ref], cv)
-#-&gt; @Parallel &amp;REF [1, 1, 1, 2] where {REF = [ … ]}</code></pre><p>We could dereference <code>CapsuleVector</code> if it wraps an <code>IndexVector</code> instance. Function <code>dereference()</code> has no effect otherwise.</p><pre><code class="language-julia">dereference(cv′)
+#-&gt; (@VectorTree (ref = &amp;REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])</code></pre><p>Function <code>recapsulate()</code> applies the given function to the underlying vector and encapsulates the output of the function.</p><pre><code class="language-julia">cv′ = recapsulate(v -&gt; v[:, :ref], cv)
+#-&gt; @VectorTree &amp;REF [1, 1, 1, 2] where {REF = [ … ]}</code></pre><p>We could dereference <code>CapsuleVector</code> if it wraps an <code>IndexVector</code> instance. Function <code>dereference()</code> has no effect otherwise.</p><pre><code class="language-julia">dereference(cv′)
 #-&gt; [&quot;COMISSIONER&quot;, &quot;COMISSIONER&quot;, &quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;]
 
 dereference(cv)
-#-&gt; @Parallel (ref = &amp;REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}</code></pre><p>Indexing <code>CapsuleVector</code> by a vector produces another instance of <code>CapsuleVector</code>.</p><pre><code class="language-julia">cv[[4,2]]
-#-&gt; @Parallel (ref = &amp;REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}</code></pre><h2><a class="nav-anchor" id="@Parallel-1" href="#@Parallel-1"><code>@Parallel</code></a></h2><p>We can use <code>@Parallel</code> macro to convert vector literals to the parallel form assembled with <code>TupleVector</code>, <code>BlockVector</code>, <code>IndexVector</code>, and <code>CapsuleVector</code>.</p><p><code>TupleVector</code> is created from a matrix or a vector of (named) tuples.</p><pre><code class="language-julia">@Parallel (name = String, salary = Int) [
+#-&gt; @VectorTree (ref = &amp;REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}</code></pre><p>Indexing <code>CapsuleVector</code> by a vector produces another instance of <code>CapsuleVector</code>.</p><pre><code class="language-julia">cv[[4,2]]
+#-&gt; @VectorTree (ref = &amp;REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}</code></pre><h2><a class="nav-anchor" id="@VectorTree-1" href="#@VectorTree-1"><code>@VectorTree</code></a></h2><p>We can use <code>@VectorTree</code> macro to convert vector literals to the columnar form assembled with <code>TupleVector</code>, <code>BlockVector</code>, <code>IndexVector</code>, and <code>CapsuleVector</code>.</p><p><code>TupleVector</code> is created from a matrix or a vector of (named) tuples.</p><pre><code class="language-julia">@VectorTree (name = String, salary = Int) [
     &quot;GARRY M&quot;   260004
     &quot;ANTHONY R&quot; 185364
     &quot;DANA A&quot;    170112
 ]
-#-&gt; @Parallel (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
+#-&gt; @VectorTree (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
 
-@Parallel (name = String, salary = Int) [
+@VectorTree (name = String, salary = Int) [
     (&quot;GARRY M&quot;, 260004),
     (&quot;ANTHONY R&quot;, 185364),
     (&quot;DANA A&quot;, 170112),
 ]
-#-&gt; @Parallel (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
+#-&gt; @VectorTree (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
 
-@Parallel (name = String, salary = Int) [
+@VectorTree (name = String, salary = Int) [
     (name = &quot;GARRY M&quot;, salary = 260004),
     (name = &quot;ANTHONY R&quot;, salary = 185364),
     (name = &quot;DANA A&quot;, salary = 170112),
 ]
-#-&gt; @Parallel (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]</code></pre><p>Column labels are optional.</p><pre><code class="language-julia">@Parallel (String, Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
-#-&gt; @Parallel (String, Int) [(&quot;GARRY M&quot;, 260004) … ]</code></pre><p><code>BlockVector</code> and <code>IndexVector</code> can also be constructed.</p><pre><code class="language-julia">@Parallel [String] [
+#-&gt; @VectorTree (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]</code></pre><p>Column labels are optional.</p><pre><code class="language-julia">@VectorTree (String, Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
+#-&gt; @VectorTree (String, Int) [(&quot;GARRY M&quot;, 260004) … ]</code></pre><p><code>BlockVector</code> and <code>IndexVector</code> can also be constructed.</p><pre><code class="language-julia">@VectorTree [String] [
     &quot;HEALTH&quot;,
     [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;],
     missing,
     [&quot;POLICE&quot;, &quot;FIRE&quot;],
 ]
-#-&gt; @Parallel [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
+#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
 
-@Parallel &amp;REF [1, 1, 1, 2]
-#-&gt; @Parallel &amp;REF [1, 1, 1, 2]</code></pre><p>A <code>CapsuleVector</code> could be constructed using <code>where</code> syntax.</p><pre><code class="language-julia">@Parallel &amp;REF [1, 1, 1, 2] where {REF = refv}
-#-&gt; @Parallel &amp;REF [1, 1, 1, 2] where {REF = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;  … ]}</code></pre><p>Ill-formed <code>@Parallel</code> contructors are rejected.</p><pre><code class="language-julia">@Parallel (String, Int) (&quot;GARRY M&quot;, 260004)
+@VectorTree &amp;REF [1, 1, 1, 2]
+#-&gt; @VectorTree &amp;REF [1, 1, 1, 2]</code></pre><p>A <code>CapsuleVector</code> could be constructed using <code>where</code> syntax.</p><pre><code class="language-julia">@VectorTree &amp;REF [1, 1, 1, 2] where {REF = refv}
+#-&gt; @VectorTree &amp;REF [1, 1, 1, 2] where {REF = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;  … ]}</code></pre><p>Ill-formed <code>@VectorTree</code> contructors are rejected.</p><pre><code class="language-julia">@VectorTree (String, Int) (&quot;GARRY M&quot;, 260004)
 #=&gt;
 ERROR: LoadError: expected a vector literal; got :((&quot;GARRY M&quot;, 260004))
 in expression starting at none:2
 =#
 
-@Parallel (String, Int) [(position = &quot;SUPERINTENDENT OF POLICE&quot;, salary = 260004)]
+@VectorTree (String, Int) [(position = &quot;SUPERINTENDENT OF POLICE&quot;, salary = 260004)]
 #=&gt;
 ERROR: LoadError: expected no label; got :(position = &quot;SUPERINTENDENT OF POLICE&quot;)
 in expression starting at none:2
 =#
 
-@Parallel (name = String, salary = Int) [(position = &quot;SUPERINTENDENT OF POLICE&quot;, salary = 260004)]
+@VectorTree (name = String, salary = Int) [(position = &quot;SUPERINTENDENT OF POLICE&quot;, salary = 260004)]
 #=&gt;
 ERROR: LoadError: expected label :name; got :(position = &quot;SUPERINTENDENT OF POLICE&quot;)
 in expression starting at none:2
 =#
 
-@Parallel (name = String, salary = Int) [(&quot;GARRY M&quot;, &quot;SUPERINTENDENT OF POLICE&quot;, 260004)]
+@VectorTree (name = String, salary = Int) [(&quot;GARRY M&quot;, &quot;SUPERINTENDENT OF POLICE&quot;, 260004)]
 #=&gt;
 ERROR: LoadError: expected 2 column(s); got :((&quot;GARRY M&quot;, &quot;SUPERINTENDENT OF POLICE&quot;, 260004))
 in expression starting at none:2
 =#
 
-@Parallel (name = String, salary = Int) [&quot;GARRY M&quot;]
+@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot;]
 #=&gt;
 ERROR: LoadError: expected a tuple or a row literal; got &quot;GARRY M&quot;
 in expression starting at none:2
 =#
 
-@Parallel &amp;REF [[]] where (:REF =&gt; [])
+@VectorTree &amp;REF [[]] where (:REF =&gt; [])
 #=&gt;
 ERROR: LoadError: expected an assignment; got :(:REF =&gt; [])
 in expression starting at none:2
-=#</code></pre><p>Using <code>@Parallel</code>, we can easily construct hierarchical and mutually referential data.</p><pre><code class="language-julia">hier_data = @Parallel (name = [String], employee = [(name = [String], salary = [Int])]) [
+=#</code></pre><p>Using <code>@VectorTree</code>, we can easily construct hierarchical and mutually referential data.</p><pre><code class="language-julia">hier_data = @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
     &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
     &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
 ]
@@ -218,15 +218,15 @@ TupleVector of 2 × (name = [String], employee = [(name = [String], salary = [In
  (name = &quot;FIRE&quot;, employee = [(name = &quot;JOSE S&quot;, salary = 202728) … ])
 =#
 
-mref_data = @Parallel (department = [&amp;DEPT], employee = [&amp;EMP]) [
+mref_data = @VectorTree (department = [&amp;DEPT], employee = [&amp;EMP]) [
     [1, 2]  [1, 2, 3, 4, 5]
 ] where {
-    DEPT = @Parallel (name = [String], employee = [&amp;EMP]) [
+    DEPT = @VectorTree (name = [String], employee = [&amp;EMP]) [
         &quot;POLICE&quot;    [1, 2, 3]
         &quot;FIRE&quot;      [4, 5]
     ]
     ,
-    EMP = @Parallel (name = [String], department = [&amp;DEPT], salary = [Int]) [
+    EMP = @VectorTree (name = [String], department = [&amp;DEPT], salary = [Int]) [
         &quot;GARRY M&quot;   1   260004
         &quot;ANTHONY R&quot; 1   185364
         &quot;DANA A&quot;    1   170112
@@ -239,6 +239,6 @@ display(mref_data)
 CapsuleVector of 1 × (department = [&amp;DEPT], employee = [&amp;EMP]):
  (department = [1, 2], employee = [1, 2, 3, 4, 5])
 where
- DEPT = @Parallel (name = [String], employee = [&amp;EMP]) [(name = &quot;POLICE&quot;, employee = [1, 2, 3]) … ]
- EMP = @Parallel (name = [String], department = [&amp;DEPT], salary = [Int]) [(name = &quot;GARRY M&quot;, department = 1, salary = 260004) … ]
+ DEPT = @VectorTree (name = [String], employee = [&amp;EMP]) [(name = &quot;POLICE&quot;, employee = [1, 2, 3]) … ]
+ EMP = @VectorTree (name = [String], department = [&amp;DEPT], salary = [Int]) [(name = &quot;GARRY M&quot;, department = 1, salary = 260004) … ]
 =#</code></pre><footer><hr/><a class="previous" href="layouts.html"><span class="direction">Previous</span><span class="title">Optimal Layouts</span></a><a class="next" href="shapes.html"><span class="direction">Next</span><span class="title">Type System</span></a></footer></article></body></html>
