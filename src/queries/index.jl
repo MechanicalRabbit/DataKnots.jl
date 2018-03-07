@@ -9,8 +9,8 @@ Dereferences an index vector.
 """
 dereference() = Query(dereference)
 
-function dereference(env::QueryEnvironment, input::AbstractVector)
+function dereference(rt::Runtime, input::AbstractVector)
     input isa SomeIndexVector || error("expected an index vector; got $input")
-    dereference(input, env.refs)
+    dereference(input, rt.refs)
 end
 

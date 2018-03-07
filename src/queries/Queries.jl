@@ -15,7 +15,6 @@ export
     decode_tuple,
     decode_vector,
     dereference,
-    designate,
     flat_block,
     flat_tuple,
     in_block,
@@ -32,6 +31,7 @@ export
     pull_block,
     pull_every_block,
     sieve,
+    sign,
     shape,
     tuple_of
 

@@ -15,9 +15,9 @@ tuple_of(lqs::Pair{Symbol}...) =
 
 tuple_of(lbls::Vector{Symbol}, qs::Vector) = Query(tuple_of, lbls, qs)
 
-function tuple_of(env::QueryEnvironment, input::AbstractVector, lbls, qs)
+function tuple_of(rt::Runtime, input::AbstractVector, lbls, qs)
     len = length(input)
-    cols = AbstractVector[q(env, input) for q in qs]
+    cols = AbstractVector[q(rt, input) for q in qs]
     TupleVector(lbls, len, cols)
 end
 
@@ -29,7 +29,7 @@ Extracts the specified column of a tuple vector.
 """
 column(lbl::Union{Int,Symbol}) = Query(column, lbl)
 
-function column(env::QueryEnvironment, input::AbstractVector, lbl)
+function column(rt::Runtime, input::AbstractVector, lbl)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     j = locate(input, lbl)
     j !== nothing || error("invalid column $lbl of $input")
@@ -44,12 +44,12 @@ Using q, transforms the specified column of a tuple vector.
 """
 in_tuple(lbl::Union{Int,Symbol}, q) = Query(in_tuple, lbl, q)
 
-function in_tuple(env::QueryEnvironment, input::AbstractVector, lbl, q)
+function in_tuple(rt::Runtime, input::AbstractVector, lbl, q)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     j = locate(input, lbl)
     j !== nothing || error("invalid column $lbl of $input")
     cols′ = copy(columns(input))
-    cols′[j] = q(env, cols′[j])
+    cols′[j] = q(rt, cols′[j])
     TupleVector(labels(input), length(input), cols′)
 end
 
@@ -61,7 +61,7 @@ Flattens a nested tuple vector.
 """
 flat_tuple(lbl::Union{Int,Symbol}) = Query(flat_tuple, lbl)
 
-function flat_tuple(env::QueryEnvironment, input::AbstractVector, lbl)
+function flat_tuple(rt::Runtime, input::AbstractVector, lbl)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     j = locate(input, lbl)
     j !== nothing || error("invalid column $lbl of $input")

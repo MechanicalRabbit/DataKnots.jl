@@ -4,7 +4,7 @@
 
 sieve() = Query(sieve)
 
-function sieve(env::QueryEnvironment, input::AbstractVector)
+function sieve(rt::Runtime, input::AbstractVector)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     len = length(input)
     cols = columns(input)

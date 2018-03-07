@@ -11,7 +11,7 @@ elements are converted to empty blocks.
 """
 decode_missing() = Query(decode_missing)
 
-function decode_missing(env::QueryEnvironment, input::AbstractVector)
+function decode_missing(rt::Runtime, input::AbstractVector)
     if !(Missing <: eltype(input))
         return BlockVector(:, input)
     end
@@ -47,7 +47,7 @@ Decodes a vector with vector elements as a block vector.
 """
 decode_vector() = Query(decode_vector)
 
-function decode_vector(env::QueryEnvironment, input::AbstractVector)
+function decode_vector(rt::Runtime, input::AbstractVector)
     eltype(input) <: AbstractVector || error("expected a vector of vectors; got $input")
     sz = 0
     for v in input
@@ -73,7 +73,7 @@ Decodes a vector with tuple elements as a tuple vector.
 """
 decode_tuple() = Query(decode_tuple)
 
-function decode_tuple(env::QueryEnvironment, input::AbstractVector)
+function decode_tuple(rt::Runtime, input::AbstractVector)
     lbls = Symbol[]
     I = eltype(input)
     if typeof(I) == DataType && I <: NamedTuple

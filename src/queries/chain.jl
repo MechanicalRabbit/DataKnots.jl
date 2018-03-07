@@ -9,7 +9,7 @@ Identity map.
 """
 pass() = Query(pass)
 
-pass(env::QueryEnvironment, input::AbstractVector) =
+pass(rt::Runtime, input::AbstractVector) =
     input
 
 
@@ -35,10 +35,10 @@ syntax(::typeof(chain_of), args::Vector{Any}) =
         Expr(:call, chain_of, syntax.(args)...)
     end
 
-function chain_of(env::QueryEnvironment, input::AbstractVector, qs)
+function chain_of(rt::Runtime, input::AbstractVector, qs)
     output = input
     for q in qs
-        output = q(env, output)
+        output = q(rt, output)
     end
     output
 end

@@ -9,7 +9,7 @@ Applies a unary function to each element of an input vector.
 """
 lift(f) = Query(lift, f)
 
-lift(env::QueryEnvironment, input::AbstractVector, f) =
+lift(rt::Runtime, input::AbstractVector, f) =
     f.(input)
 
 
@@ -20,7 +20,7 @@ Applies an n-ary function to each element of an n-tuple vector.
 """
 lift_to_tuple(f) = Query(lift_to_tuple, f)
 
-function lift_to_tuple(env::QueryEnvironment, input::AbstractVector, f)
+function lift_to_tuple(rt::Runtime, input::AbstractVector, f)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     _lift_to_tuple(f, length(input), columns(input)...)
 end
@@ -47,14 +47,14 @@ Applies a vector function to each block of a block vector.
 """
 lift_to_block(f) = Query(lift_to_block, f)
 
-function lift_to_block(env::QueryEnvironment, input::AbstractVector, f)
+function lift_to_block(rt::Runtime, input::AbstractVector, f)
     input isa SomeBlockVector || error("expected a block vector; got $input")
     _lift_to_block(f, input)
 end
 
 lift_to_block(f, default) = Query(lift_to_block, f, default)
 
-function lift_to_block(env::QueryEnvironment, input::AbstractVector, f, default)
+function lift_to_block(rt::Runtime, input::AbstractVector, f, default)
     input isa SomeBlockVector || error("expected a block vector; got $input")
     _lift_to_block(f, default, input)
 end
@@ -92,7 +92,7 @@ function to every combinations of values from adjacent blocks.
 """
 lift_to_block_tuple(f) = Query(lift_to_block_tuple, f)
 
-function lift_to_block_tuple(env::QueryEnvironment, input::AbstractVector, f)
+function lift_to_block_tuple(rt::Runtime, input::AbstractVector, f)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     cols = columns(input)
     for col in cols
@@ -143,7 +143,7 @@ Produces a vector filled with the given value.
 """
 lift_const(val) = Query(lift_const, val)
 
-lift_const(env::QueryEnvironment, input::AbstractVector, val) =
+lift_const(rt::Runtime, input::AbstractVector, val) =
     fill(val, length(input))
 
 
@@ -154,7 +154,7 @@ Produces a block vector of empty blocks.
 """
 lift_null() = Query(lift_null)
 
-lift_null(env::QueryEnvironment, input::AbstractVector) =
+lift_null(rt::Runtime, input::AbstractVector) =
     BlockVector(fill(1, length(input)+1), Union{}[])
 
 
@@ -165,7 +165,7 @@ Produces a block vector filled with the given block.
 """
 lift_block(block) = Query(lift_block, block)
 
-function lift_block(env::QueryEnvironment, input::AbstractVector, block)
+function lift_block(rt::Runtime, input::AbstractVector, block)
     if isempty(input)
         return BlockVector(:, block[[]])
     elseif length(input) == 1

@@ -10,7 +10,7 @@ Wraps input values to one-element blocks.
 """
 as_block() = Query(as_block)
 
-as_block(env::QueryEnvironment, input::AbstractVector) =
+as_block(rt::Runtime, input::AbstractVector) =
     BlockVector(:, input)
 
 
@@ -21,9 +21,9 @@ Using q, transfors the elements of the input blocks.
 """
 in_block(q) = Query(in_block, q)
 
-function in_block(env::QueryEnvironment, input::AbstractVector, q)
+function in_block(rt::Runtime, input::AbstractVector, q)
     input isa SomeBlockVector || error("expected a block vector; got $input")
-    BlockVector(offsets(input), q(env, elements(input)))
+    BlockVector(offsets(input), q(rt, elements(input)))
 end
 
 
@@ -34,7 +34,7 @@ Flattens a nested block vector.
 """
 flat_block() = Query(flat_block)
 
-function flat_block(env::QueryEnvironment, input::AbstractVector)
+function flat_block(rt::Runtime, input::AbstractVector)
     input isa SomeBlockVector || error("expected a block vector; got $input")
     offs = offsets(input)
     nested = elements(input)
@@ -61,7 +61,7 @@ Converts a tuple with a block column to a block of tuples.
 """
 pull_block(lbl) = Query(pull_block, lbl)
 
-function pull_block(env::QueryEnvironment, input::AbstractVector, lbl)
+function pull_block(rt::Runtime, input::AbstractVector, lbl)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     j = locate(input, lbl)
     j !== nothing || error("invalid column $lbl of $input")
@@ -107,7 +107,7 @@ vector.
 """
 pull_every_block() = Query(pull_every_block)
 
-function pull_every_block(env::QueryEnvironment, input::AbstractVector)
+function pull_every_block(rt::Runtime, input::AbstractVector)
     input isa SomeTupleVector || error("expected a tuple vector; got $input")
     cols = columns(input)
     for col in cols
@@ -157,7 +157,7 @@ Maps a block vector to a vector of block lengths.
 """
 count_block() = Query(count_block)
 
-function count_block(env::QueryEnvironment, input::AbstractVector)
+function count_block(rt::Runtime, input::AbstractVector)
     input isa SomeBlockVector || error("expected a block vector; got $input")
     _count_block(offsets(input))
 end
@@ -182,7 +182,7 @@ Checks if there is one `true` value in a block of `Bool` values.
 """
 any_block() = Query(any_block)
 
-function any_block(env::QueryEnvironment, input::AbstractVector)
+function any_block(rt::Runtime, input::AbstractVector)
     input isa SomeBlockVector || error("expected a block vector; got $input")
     len = length(input)
     offs = offsets(input)
