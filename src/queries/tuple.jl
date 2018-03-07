@@ -8,7 +8,7 @@
 Combines the output of q₁, q₂ … qₙ into an n-tuple vector.
 """
 tuple_of(qs...) =
-    tuple_of(Symbol[], qs...)
+    tuple_of(Symbol[], collect(qs))
 
 tuple_of(lqs::Pair{Symbol}...) =
     tuple_of(collect(Symbol, first.(lqs)), collect(last.(lqs)))

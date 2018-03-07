@@ -251,7 +251,7 @@ We can compose a sequence of transformations using the `chain_of()` combinator.
     q = chain_of(
             column(:employee),
             in_block(lift(titlecase)))
-    #-> chain_of([column(:employee), in_block(lift(titlecase))])
+    #-> chain_of(column(:employee), in_block(lift(titlecase)))
 
     q(@Parallel (department = String, employee = [String]) [
         "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]

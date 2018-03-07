@@ -5,6 +5,7 @@
 module Queries
 
 export
+    Query,
     any_block,
     as_block,
     chain_of,
@@ -14,10 +15,12 @@ export
     decode_tuple,
     decode_vector,
     dereference,
+    designate,
     flat_block,
     flat_tuple,
     in_block,
     in_tuple,
+    ishape,
     lift,
     lift_block,
     lift_const,
@@ -29,9 +32,11 @@ export
     pull_block,
     pull_every_block,
     sieve,
+    shape,
     tuple_of
 
 using ..Layouts
+import ..Layouts: syntax
 
 using ..Vectors
 import ..Vectors:

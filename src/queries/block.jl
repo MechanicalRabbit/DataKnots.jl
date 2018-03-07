@@ -191,7 +191,7 @@ function any_block(env::QueryEnvironment, input::AbstractVector)
     if offs isa OneTo
         return elts
     end
-    output = Vector{Bool}(unitialized, len)
+    output = Vector{Bool}(uninitialized, len)
     l = r = 1
     @inbounds for k = 1:len
         val = false

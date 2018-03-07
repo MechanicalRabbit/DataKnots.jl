@@ -28,6 +28,13 @@ chain_of(qs...) =
 chain_of(qs::Vector) =
     Query(chain_of, qs)
 
+syntax(::typeof(chain_of), args::Vector{Any}) =
+    if length(args) == 1 && args[1] isa Vector
+        Expr(:call, chain_of, syntax.(args[1])...)
+    else
+        Expr(:call, chain_of, syntax.(args)...)
+    end
+
 function chain_of(env::QueryEnvironment, input::AbstractVector, qs)
     output = input
     for q in qs

@@ -36,6 +36,10 @@ designate(q::Query, sig::Tuple{AbstractShape,AbstractShape}) =
 designate(ishp::AbstractShape, shp::AbstractShape) =
     q::Query -> designate(q, (ishp, shp))
 
+shape(q::Query) = q.sig[2]
+
+ishape(q::Query) = q.sig[1]
+
 function (q::Query)(input::AbstractVector)
     input, refs = decapsulate(input)
     env = QueryEnvironment(copy(refs))
@@ -46,9 +50,9 @@ end
 (q::Query)(env::QueryEnvironment, input::AbstractVector) =
     q.op(env, input, q.args...)
 
-Layouts.tile(q::Query) =
-    Layouts.tile(Layouts.Layout[Layouts.tile(arg) for arg in q.args], brk=("$(nameof(q.op))(", ")"))
+syntax(q::Query) =
+    syntax(q.op, q.args)
 
 show(io::IO, q::Query) =
-    pretty_print(io, q)
+    print_code(io, syntax(q))
 
