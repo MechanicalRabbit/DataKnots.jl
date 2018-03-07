@@ -53,7 +53,7 @@ q([[260004, 185364, 170112], Int[], [202728, 197736]])
 
 q([260004, 185364, 170112, missing, 202728, 197736])
 #-&gt; @Parallel [Int] [260004, 185364, 170112, missing, 202728, 197736]</code></pre><h2><a class="nav-anchor" id="Tuple-vectors-1" href="#Tuple-vectors-1">Tuple vectors</a></h2><p>To create a tuple vector, we use the combinator <code>tuple_of()</code>. Its arguments are the functions that generate the columns of the tuple.</p><pre><code class="language-julia">q = tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
-#-&gt; tuple_of([:title, :last], lift(titlecase), lift(last))
+#-&gt; tuple_of([:title, :last], [lift(titlecase), lift(last)])
 
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]) |&gt; display
 #=&gt;
