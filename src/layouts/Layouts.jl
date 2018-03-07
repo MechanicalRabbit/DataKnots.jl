@@ -20,9 +20,9 @@ const DEFAULT_LINE_WIDTH = 79
 const DEFAULT_BREAK_COST = 1
 const DEFAULT_SPILL_COST = 2
 
-include("layouts/tile.jl")
-include("layouts/fit.jl")
-include("layouts/code.jl")
+include("tile.jl")
+include("fit.jl")
+include("code.jl")
 
 """
     Layouts.pretty_print([io::IO], data)

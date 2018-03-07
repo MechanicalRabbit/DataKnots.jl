@@ -51,13 +51,13 @@ import Base:
 
 using Base.Cartesian
 
-include("queries/query.jl")
-include("queries/lift.jl")
-include("queries/decode.jl")
-include("queries/chain.jl")
-include("queries/tuple.jl")
-include("queries/block.jl")
-include("queries/index.jl")
-include("queries/sieve.jl")
+include("query.jl")
+include("lift.jl")
+include("decode.jl")
+include("chain.jl")
+include("tuple.jl")
+include("block.jl")
+include("index.jl")
+include("sieve.jl")
 
 end

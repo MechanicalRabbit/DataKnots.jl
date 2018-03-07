@@ -4,9 +4,9 @@
 
 module DataKnots
 
-include("layouts.jl")
-include("vectors.jl")
-include("shapes.jl")
-include("queries.jl")
+include("layouts/Layouts.jl")
+include("vectors/Vectors.jl")
+include("shapes/Shapes.jl")
+include("queries/Queries.jl")
 
 end

@@ -45,13 +45,13 @@ import Base:
     start,
     summary
 
-include("vectors/wrapper.jl")
-include("vectors/tuple.jl")
-include("vectors/block.jl")
-include("vectors/index.jl")
-include("vectors/capsule.jl")
-include("vectors/chunk.jl")
-include("vectors/show.jl")
-include("vectors/parallel.jl")
+include("wrapper.jl")
+include("tuple.jl")
+include("block.jl")
+include("index.jl")
+include("capsule.jl")
+include("chunk.jl")
+include("show.jl")
+include("parallel.jl")
 
 end

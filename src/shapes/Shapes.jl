@@ -51,9 +51,9 @@ import Base:
 using ..Layouts
 import ..Layouts: syntax
 
-include("shapes/sorteddict.jl")
-include("shapes/bound.jl")
-include("shapes/cardinality.jl")
-include("shapes/shape.jl")
+include("sorteddict.jl")
+include("bound.jl")
+include("cardinality.jl")
+include("shape.jl")
 
 end
