@@ -14,13 +14,15 @@ export
     CapsuleShape,
     Cardinality,
     DecoratedShape,
-    FieldShape,
     IndexShape,
+    InputMode,
     InputShape,
     NativeShape,
     NoneShape,
+    OutputMode,
     OutputShape,
     RecordShape,
+    Signature,
     TupleShape,
     bound,
     cardinality,
@@ -28,12 +30,19 @@ export
     decorate,
     decoration,
     denominalize,
+    domain,
     fits,
     ibound,
+    idomain,
+    imode,
     isclosed,
+    ishape,
     isoptional,
     isplural,
     isregular,
+    mode,
+    shape,
+    signature,
     syntax,
     undecorate
 
@@ -55,5 +64,6 @@ include("sorteddict.jl")
 include("bound.jl")
 include("cardinality.jl")
 include("shape.jl")
+include("signature.jl")
 
 end

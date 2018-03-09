@@ -22,23 +22,44 @@ the input vector, produces an output vector of the same length.
 struct Query
     op
     args::Vector{Any}
-    sig::Tuple{AbstractShape,AbstractShape}
+    sig::Signature
     src::Any
 
 end
 
-Query(op, args...) =
-    Query(op, collect(Any, args), (NoneShape(), AnyShape()), nothing)
+let NO_SIG = Signature()
 
-sign(q::Query, sig::Tuple{AbstractShape,AbstractShape}) =
+    global Query
+
+    Query(op, args...) =
+        Query(op, collect(Any, args), NO_SIG, nothing)
+end
+
+sign(q::Query, sig::Signature) =
     Query(q.op, q.args, sig, q.src)
 
-sign(ishp::AbstractShape, shp::AbstractShape) =
-    q::Query -> designate(q, (ishp, shp))
+sign(q::Query, ishp::InputShape, shp::OutputShape) =
+    Query(q.op, q.args, Signature(ishp, shp), q.src)
 
-shape(q::Query) = q.sig[2]
+sign(sig::Signature) =
+    q::Query -> sign(q, sig)
 
-ishape(q::Query) = q.sig[1]
+sign(ishp::InputShape, shp::OutputShape) =
+    q::Query -> sign(q, Signature(ishp, shp))
+
+signature(q::Query) = q.sig
+
+shape(q::Query) = shape(q.sig)
+
+ishape(q::Query) = ishape(q.sig)
+
+domain(q::Query) = domain(q.sig)
+
+idomain(q::Query) = idomain(q.sig)
+
+mode(q::Query) = mode(q.sig)
+
+imode(q::Query) = imode(q.sig)
 
 function (q::Query)(input::AbstractVector)
     input, refs = decapsulate(input)

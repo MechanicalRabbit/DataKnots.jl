@@ -9,6 +9,9 @@ abstract type AbstractShape end
 syntax(shp::AbstractShape) =
     Expr(:call, nameof(typeof(shp)), Symbol(" … "))
 
+sigsyntax(shp::AbstractShape) =
+    nameof(typeof(shp))
+
 show(io::IO, shp::AbstractShape) =
     Layouts.print_code(io, syntax(shp))
 
@@ -21,6 +24,9 @@ end
 
 syntax(shp::DecoratedShape) =
     Expr(:call, :|>, syntax(shp.vals), Expr(:call, decorate, shp.decors...))
+
+sigsyntax(shp::DecoratedShape) =
+    sigsyntax(shp.vals)
 
 decoration(::AbstractShape, ::Symbol, ::Type=Any, default=missing) =
     default
@@ -78,6 +84,9 @@ syntax(shp::AnyShape) =
         Expr(:call, nameof(AnyShape))
     end
 
+sigsyntax(::AnyShape) =
+    :Any
+
 isclosed(shp::AnyShape) = shp.closed
 
 # Indicates contradictory constraints on the data.
@@ -86,6 +95,9 @@ struct NoneShape <: AbstractShape
 end
 
 syntax(::NoneShape) = Expr(:call, nameof(NoneShape))
+
+sigsyntax(::NoneShape) =
+    :None
 
 isclosed(::NoneShape) = true
 
@@ -99,6 +111,9 @@ convert(::Type{AbstractShape}, ty::Type) =
     NativeShape(ty)
 
 syntax(shp::NativeShape) = Expr(:call, nameof(NativeShape), shp.ty)
+
+sigsyntax(shp::NativeShape) =
+    nameof(shp.ty)
 
 eltype(shp::NativeShape) = shp.ty
 
@@ -121,6 +136,9 @@ TupleShape(itr...) =
 
 syntax(shp::TupleShape) =
     Expr(:call, nameof(TupleShape), map(syntax, shp.cols)...)
+
+sigsyntax(shp::TupleShape) =
+    Expr(:tuple, sigsyntax.(shp.cols)...)
 
 getindex(shp::TupleShape, ::Colon) = shp.cols
 
@@ -147,19 +165,17 @@ syntax(shp::UnionShape) =
 isclosed(shp::UnionShape) =
     all(isclosed, shp.vars)
 
-# Block of data with the given cardinality.
+# Collection of elements.
 
 struct BlockShape <: AbstractShape
-    card::Cardinality
     elts::AbstractShape
 end
 
 syntax(shp::BlockShape) =
-    Expr(:call, nameof(BlockShape), shp.card, syntax(shp.elts))
+    Expr(:call, nameof(BlockShape), syntax(shp.elts))
 
-cardinality(shp::BlockShape) = shp.card
-
-cardinality(shp::DecoratedShape{BlockShape}) = cardinality(undecorate(shp))
+sigsyntax(shp::BlockShape) =
+    Expr(:vect, sigsyntax(shp.elts))
 
 getindex(shp::BlockShape) = shp.elts
 
@@ -167,7 +183,7 @@ getindex(shp::DecoratedShape{BlockShape}) = getindex(undecorate(shp))
 
 isclosed(shp::BlockShape) = isclosed(shp.elts)
 
-# Data is a pointer to some other value.  The class name lets us find
+# A pointer to some value.  The class name lets us find
 # the shape of the target value.
 
 struct IndexShape <: AbstractShape
@@ -179,6 +195,9 @@ convert(::Type{AbstractShape}, cls::Symbol) =
 
 syntax(shp::IndexShape) =
     Expr(:call, nameof(IndexShape), QuoteNode(shp.cls))
+
+sigsyntax(shp::IndexShape) =
+    shp.cls
 
 class(shp::IndexShape) = shp.cls
 
@@ -197,134 +216,7 @@ function dereference(shp::IndexShape, refs::Vector{Pair{Symbol,AbstractShape}})
     shp
 end
 
-# Nominal shapes have the underlying structural representation.
-
-abstract type NominalShape <: AbstractShape end
-
-# Shape of a record field.
-
-struct FieldShape <: NominalShape
-    lbl::Union{Missing,Symbol}
-    elts::AbstractShape
-    card::Cardinality
-end
-
-FieldShape(elts, card) =
-    FieldShape(missing, elts, card)
-
-syntax(shp::FieldShape) =
-    if shp.lbl === missing
-        Expr(:call, nameof(FieldShape), syntax(shp.elts), shp.cardinality)
-    elseif shp.lbl === nothing
-        Expr(:call, nameof(FieldShape), QuoteNode(shp.lbl), shp.cardinality)
-    end
-
-label(shp::FieldShape) = shp.lbl
-
-getindex(shp::FieldShape) = shp.elts
-
-cardinality(shp::FieldShape) = shp.card
-
-# A record is a tuple of blocks.
-
-struct RecordShape <: NominalShape
-    flds::Vector{FieldShape}
-end
-
-RecordShape(itr...) =
-    RecordShape(collect(FieldShape, itr))
-
-syntax(shp::RecordShape) =
-    Expr(:call, nameof(RecordShape), syntax.(shp.flds)...)
-
-# Shape of the query output.
-
-struct OutputShape <: NominalShape
-    vals::AbstractShape
-    card::Cardinality
-end
-
-OutputShape(vals) = OutputShape(vals, REG)
-
-syntax(shp::OutputShape) =
-    if shp.card == REG
-        Expr(:call, nameof(OutputShape), syntax(shp.vals))
-    else
-        Expr(:call, nameof(OutputShape), syntax(shp.vals), shp.card)
-    end
-
-decoration(shp::OutputShape, name::Symbol, ty::Type=Any, default=missing) =
-    decoration(shp.vals, name, ty, default)
-
-decorate(shp::OutputShape, decors::Vector{Pair{Symbol,Any}}) =
-    OutputShape(decorate(shp.vals, decors), shp.card)
-
-cardinality(shp::OutputShape) = shp.card
-
-getindex(shp::OutputShape) = shp.vals
-
-isclosed(shp::OutputShape) = isclosed(shp.vals)
-
-denominalize(shp::OutputShape) =
-    BlockShape(shp.card, shp.vals)
-
-# Shape of the query input.
-
-struct InputShape <: NominalShape
-    vals::AbstractShape
-    slots::Vector{Pair{Symbol,OutputShape}}
-    rel::Bool
-end
-
-let NO_SLOTS = Pair{Symbol,OutputShape}[]
-
-    global InputShape
-
-    InputShape(vals, slots::Vector{Pair{Symbol,OutputShape}}) =
-        InputShape(vals, slots, false)
-
-    InputShape(vals, rel::Bool) =
-        InpuShape(vals, NO_SLOTS, rel)
-
-    InputShape(vals) =
-        InputShape(vals, NO_SLOTS, false)
-end
-
-function syntax(shp::InputShape)
-    args = Any[syntax(shp.vals)]
-    if !isempty(shp.slots)
-        push!(args, Expr(:vect, map(slot -> Expr(:call, :(=>), QuoteNode(slot.first), syntax(slot.second)),
-                                    shp.slots)...))
-    end
-    if shp.rel
-        push!(args, shp.rel)
-    end
-    Expr(:call, nameof(InputShape), args...)
-end
-
-decoration(shp::InputShape, name::Symbol, ty::Type=Any, default=missing) =
-    decoration(shp.vals, name, ty, default)
-
-decorate(shp::InputShape, decors::Vector{Pair{Symbol,Any}}) =
-    InputShape(decorate(shp.vals, decors), shp.slots, shp.rel)
-
-getindex(shp::InputShape) = shp.vals
-
-isclosed(shp::InputShape) =
-    isclosed(shp.vals) && all(slot -> isclosed(slot.second), shp.slots)
-
-function denominalize(shp::InputShape)
-    shp′ = shp.vals
-    if !isempty(shp.slots)
-        shp′ = TupleShape(shp′, map(slot -> slot.second, shp.slots)...)
-    end
-    if shp.rel
-        shp′ = BlockShape(PLU, shp′)
-    end
-    shp′
-end
-
-# Encapsulate a shape with specifications for nested indexes.
+# Provides the shapes of any nested indexes.
 
 struct CapsuleShape{S<:AbstractShape} <: AbstractShape
     vals::S
@@ -346,11 +238,14 @@ syntax(shp::CapsuleShape) =
                 syntax(shp.vals),
                 map(ref -> Expr(:call, :(=>), QuoteNode(ref.first), syntax(ref.second)), shp.refs)...)
 
+sigsyntax(shp::CapsuleShape) =
+    Expr(:where, sigsyntax(shp.vals), map(ref -> Expr(:(<:), ref.first, sigsyntax(ref.second)), shp.refs)...)
+
 isclosed(::CapsuleShape) = true
 
-undecorate(shp::CapsuleShape) = shp.vals
+decapsulate(shp::CapsuleShape) = shp.vals
 
-function with(fn, shp::CapsuleShape)
+function recapsulate(fn, shp::CapsuleShape)
     vals′ = fn(shp.vals)::AbstractShape
     if vals′ == shp.vals
         return shp
@@ -364,6 +259,203 @@ function with(fn, shp::CapsuleShape)
         CapsuleShape(vals′, shp.refs)
     end
 end
+
+# Derived shapes have the underlying structural representation.
+
+abstract type DerivedShape <: AbstractShape end
+
+# Shape of the query output.
+
+struct OutputMode
+    card::Cardinality
+end
+
+OutputMode() = OutputMode(REG)
+
+convert(::Type{OutputMode}, card::Cardinality) =
+    OutputMode(card)
+
+syntax(md::OutputMode) =
+    md.card == REG ?
+        Expr(:call, nameof(OutputMode)) :
+        Expr(:call, nameof(OutputMode), md.card)
+
+show(io::IO, md::OutputMode) =
+    Layouts.print_code(io, syntax(md))
+
+cardinality(md::OutputMode) = md.card
+
+struct OutputShape <: DerivedShape
+    dom::AbstractShape
+    md::OutputMode
+end
+
+OutputShape(dom) = OutputShape(dom, REG)
+
+syntax(shp::OutputShape) =
+    if shp.md.card == REG
+        Expr(:call, nameof(OutputShape), syntax(shp.dom))
+    else
+        Expr(:call, nameof(OutputShape), syntax(shp.dom), shp.md.card)
+    end
+
+function sigsyntax(shp::OutputShape)
+    tag = decoration(shp.dom, :tag, Symbol, missing)
+    s = string(tag)
+    if isempty(s) || startswith(s, "#")
+        tag = missing
+    end
+    ex = Expr(:ref,
+              sigsyntax(shp.dom),
+              Expr(:call, :(..), fits(OPT, shp.md.card) ? 0 : 1,
+                                 fits(PLU, shp.md.card) ? :∞ : 1))
+    if tag !== missing
+        ex = Expr(:call, :(=>), tag, ex)
+    end
+    ex
+end
+
+getindex(shp::OutputShape) = shp.dom
+
+isclosed(shp::OutputShape) = isclosed(shp.dom)
+
+domain(shp::OutputShape) = shp.dom
+
+mode(shp::OutputShape) = shp.md
+
+cardinality(shp::OutputShape) = shp.md.card
+
+decoration(shp::OutputShape, name::Symbol, ty::Type=Any, default=missing) =
+    decoration(shp.dom, name, ty, default)
+
+decorate(shp::OutputShape, decors::Vector{Pair{Symbol,Any}}) =
+    OutputShape(decorate(shp.dom, decors), shp.md)
+
+# Shape of the query input.
+
+struct InputMode
+    slots::Vector{Pair{Symbol,OutputShape}}
+    framed::Bool
+end
+
+let NO_SLOTS = Pair{Symbol,OutputShape}[]
+
+    global InputMode
+
+    InputMode(slots::Vector{Pair{Symbol,OutputShape}}) =
+        InputMode(slots, false)
+
+    InputMode(framed::Bool) =
+        InputMode(NO_SLOTS, framed)
+
+    InputMode() =
+        InputMode(NO_SLOTS, false)
+end
+
+syntax(md::InputMode) =
+    if isempty(md.slots) && !md.framed
+        Expr(:call, nameof(InputMode))
+    elseif isempty(md.slots)
+        Expr(:call, nameof(InputMode), md.framed)
+    elseif !md.framed
+        Expr(:call, nameof(InputMode), syntax(md.slots))
+    else
+        Expr(:call, nameof(InputMode), syntax(md.slots), md.framed)
+    end
+
+show(io::IO, md::InputMode) =
+    Layouts.print_code(io, syntax(md))
+
+slots(md::InputMode) = md.slots
+
+isframed(md::InputMode) = md.framed
+
+struct InputShape <: DerivedShape
+    dom::AbstractShape
+    md::InputMode
+end
+
+InputShape(dom) = InputShape(dom, InputMode())
+
+InputShape(dom, slots::Vector{Pair{Symbol,OutputShape}}) =
+    InputShape(dom, InputMode(slots))
+
+InputShape(dom, framed::Bool) =
+    InputShape(dom, InputMode(framed))
+
+InputShape(dom, slots::Vector{Pair{Symbol,OutputShape}}, framed::Bool) =
+    InputShape(dom, InputMode(slots, framed))
+
+function syntax(shp::InputShape)
+    args = Any[syntax(shp.dom)]
+    if !isempty(shp.md.slots)
+        push!(args, Expr(:vect, map(slot -> Expr(:call, :(=>), QuoteNode(slot.first), syntax(slot.second)),
+                                    shp.md.slots)...))
+    end
+    if shp.md.framed
+        push!(args, shp.md.framed)
+    end
+    Expr(:call, nameof(InputShape), args...)
+end
+
+function sigsyntax(shp::InputShape)
+    ex = sigsyntax(shp.dom)
+    if !isempty(shp.md.slots)
+        ex = Expr(:tuple, ex, map(slot -> Expr(:(=), slot.first, sigsyntax(slot.second)), shp.md.slots)...)
+    end
+    if shp.md.framed
+        ex = Expr(:vect, Expr(:(...), ex))
+    end
+    ex
+end
+
+getindex(shp::InputShape) = shp.dom
+
+isclosed(shp::InputShape) =
+    isclosed(shp.dom) && all(slot -> isclosed(slot.second), shp.md.slots)
+
+domain(shp::InputShape) = shp.dom
+
+mode(shp::InputShape) = shp.md
+
+slots(shp::InputShape) = slots(shp.md)
+
+isframed(shp::InputShape) = isframed(shp.md)
+
+decoration(shp::InputShape, name::Symbol, ty::Type=Any, default=missing) =
+    decoration(shp.dom, name, ty, default)
+
+decorate(shp::InputShape, decors::Vector{Pair{Symbol,Any}}) =
+    InputShape(decorate(shp.dom, decors), shp.md)
+
+# Shape of a record.
+
+struct RecordShape <: DerivedShape
+    flds::Vector{OutputShape}
+    closed::Bool
+
+    RecordShape(flds::Vector{OutputShape}) =
+        new(flds, all(isclosed, flds))
+end
+
+RecordShape(itr...) =
+    RecordShape(collect(OutputShape, itr))
+
+syntax(shp::RecordShape) =
+    Expr(:call, nameof(RecordShape), syntax.(shp.flds)...)
+
+sigsyntax(shp::RecordShape) =
+    Expr(:tuple, sigsyntax.(shp.flds)...)
+
+getindex(shp::RecordShape, ::Colon) = shp.flds
+
+getindex(shp::DecoratedShape{RecordShape}, ::Colon) = getindex(undecorate(shp), :)
+
+getindex(shp::RecordShape, i) = shp.flds[i]
+
+getindex(shp::DecoratedShape{RecordShape}, i) = getindex(undecorate(shp), i)
+
+isclosed(shp::RecordShape) = shp.closed
 
 # Subshape relation.
 
@@ -429,27 +521,51 @@ fits(shp1::TupleShape, shp2::TupleShape) =
 
 fits(shp1::BlockShape, shp2::BlockShape) =
     shp1 == shp2 ||
-    fits(shp1.card, shp2.card) &&
     fits(shp1.elts, shp2.elts)
 
 fits(shp1::IndexShape, shp2::IndexShape) =
     shp1.cls == shp2.cls
 
+fits(shp1::CapsuleShape, shp2::AbstractShape) =
+    fits(shp1.vals, shp2)
+
+fits(shp1::CapsuleShape, shp2::AnyShape) =
+    fits(shp1.vals, shp2)
+
+fits(shp1::AbstractShape, shp2::CapsuleShape) =
+    isempty(shp2.refs) && fits(shp1, shp2.vals)
+
+fits(shp1::NoneShape, shp2::CapsuleShape) =
+    isempty(shp2.refs) && fits(shp1, shp2.vals)
+
+fits(shp1::CapsuleShape, shp2::CapsuleShape) =
+    fits(shp1.vals, shp2.vals) && fits(shp1.refs, shp2.refs)
+
+fits(shp1::S, shp2::S) where {S<:CapsuleShape} =
+    shp1 == shp2 ||
+    fits(shp1.vals, shp2.vals) && fits(shp1.refs, shp2.refs)
+
 fits(shp1::OutputShape, shp2::OutputShape) =
     shp1 == shp2 ||
-    fits(shp1.card, shp2.card) &&
-    fits(shp1.vals, shp2.vals)
+    fits(shp1.md, shp2.md) &&
+    fits(shp1.dom, shp2.dom)
+
+fits(md1::OutputMode, md2::OutputMode) =
+    fits(md1.card, md2.card)
 
 fits(shp1::InputShape, shp2::InputShape) =
     shp1 == shp2 ||
-    shp1.rel >= shp2.rel &&
-    fits(shp1.slots, shp2.slots) &&
-    fits(shp1.vals, shp2.vals)
+    fits(shp1.md, shp2.md) &&
+    fits(shp1.dom, shp2.dom)
+
+fits(md1::InputMode, md2::InputMode) =
+    md1.framed >= md2.framed &&
+    fits(md1.slots, md2.slots)
 
 function fits(nshps1::Vector{Pair{Symbol,S}}, nshps2::Vector{Pair{Symbol,S}}) where {S<:AbstractShape}
     j = 1
     for nshp2 in nshps2
-        while j <= length(nshps1) && nshps1[j].first < nshps2.first
+        while j <= length(nshps1) && nshps1[j].first < nshp2.first
             j += 1
         end
         if j > length(nshps1) || nshps1[j].first != nshp2.first
@@ -462,10 +578,10 @@ function fits(nshps1::Vector{Pair{Symbol,S}}, nshps2::Vector{Pair{Symbol,S}}) wh
     return true
 end
 
-fits(shp1::CapsuleShape, shp2::CapsuleShape) =
-    shp1 == shp2 ||
-    fits(shp1.refs, shp2.refs) &&
-    fits(shp1.vals, shp2.vals)
+fits(shp1::RecordShape, shp2::RecordShape) =
+    shp1 == shp2 || shp1.flds == shp2.flds ||
+    length(shp1.flds) == length(shp2.flds) &&
+    all(fits(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds))
 
 # Upper and lower bounds.
 
@@ -586,42 +702,92 @@ ibound(shp1::TupleShape, shp2::TupleShape) =
 
 bound(shp1::BlockShape, shp2::BlockShape) =
     shp1 == shp2 ? shp1 :
-    BlockShape(shp1.card|shp2.card, bound(shp1.elts, shp2.elts))
+    BlockShape(bound(shp1.elts, shp2.elts))
 
 ibound(shp1::BlockShape, shp2::BlockShape) =
     shp1 == shp2 ? shp1 :
-    BlockShape(shp1.card&shp2.card, ibound(shp1.elts, shp2.elts))
+    BlockShape(ibound(shp1.elts, shp2.elts))
 
-bound(shp1::OutputShape, shp2::OutputShape) =
-    shp1 == shp2 ? shp1 :
-    OutputShape(bound(shp1.vals, shp2.vals), shp1.card|shp2.card)
-
-ibound(shp1::OutputShape, shp2::OutputShape) =
-    shp1 == shp2 ? shp1 :
-    OutputShape(ibound(shp1.vals, shp2.vals), shp1.card&shp2.card)
-
-bound(shp1::InputShape, shp2::InputShape) =
-    shp1 == shp2 ? shp1 :
-    InputShape(bound(shp1.vals, shp2.vals),
-               bound(shp1.slots, shp2.slots),
-               shp1.rel && shp2.rel)
-
-ibound(shp1::InputShape, shp2::InputShape) =
-    shp1 == shp2 ? shp1 :
-    InputShape(ibound(shp1.vals, shp2.vals),
-               ibound(shp1.slots, shp2.slots),
-               shp1.rel && shp2.rel)
-
-bound(slots1::Vector{Pair{Symbol,S}}, slots2::Vector{Pair{Symbol,S}}) where {S<:AbstractShape} =
-    merge(ibound, slots1, slots2)
-
-bound(shp1::CapsuleShape{OutputShape}, shp2::CapsuleShape{OutputShape}) =
+bound(shp1::CapsuleShape, shp2::CapsuleShape) =
     shp1 == shp2 ? shp1 :
     CapsuleShape(bound(shp1.vals, shp2.vals), bound(shp1.refs, shp2.refs))
 
-ibound(shp1::CapsuleShape{InputShape}, shp2::CapsuleShape{InputShape}) =
+ibound(shp1::CapsuleShape, shp2::CapsuleShape) =
     shp1 == shp2 ? shp1 :
-    CapsuleShape(ibound(shp1.vals, shp2.vals), #= ? =# bound(shp1.refs, shp2.refs))
+    CapsuleShape(ibound(shp1.vals, shp2.vals), ibound(shp1.refs, shp2.refs))
+
+bound(::Type{OutputMode}) = OutputMode(bound(Cardinality))
+
+bound(md1::OutputMode, md2::OutputMode) =
+    OutputMode(bound(md1.card, md2.card))
+
+ibound(::Type{OutputMode}) = OutputMode(ibound(Cardinality))
+
+ibound(md1::OutputMode, md2::OutputMode) =
+    OutputMode(ibound(md1.card, md2.card))
+
+bound(shp1::OutputShape, shp2::OutputShape) =
+    shp1 == shp2 ? shp1 :
+    OutputShape(bound(shp1.dom, shp2.dom), bound(shp1.md, shp2.md))
+
+ibound(shp1::OutputShape, shp2::OutputShape) =
+    shp1 == shp2 ? shp1 :
+    OutputShape(ibound(shp1.dom, shp2.dom), ibound(shp1.md, shp2.md))
+
+bound(::Type{InputMode}) = error()
+
+bound(md1::InputMode, md2::InputMode) =
+    InputMode(bound(md1.slots, md2.slots), md1.framed && md2.framed)
+
+ibound(::Type{InputMode}) = InputMode()
+
+ibound(md1::InputMode, md2::InputMode) =
+    InputMode(ibound(md1.slots, md2.slots), md1.framed || md2.framed)
+
+bound(shp1::InputShape, shp2::InputShape) =
+    shp1 == shp2 ? shp1 :
+    InputShape(bound(shp1.dom, shp2.dom), bound(shp1.md, shp2.md))
+
+ibound(shp1::InputShape, shp2::InputShape) =
+    shp1 == shp2 ? shp1 :
+    InputShape(ibound(shp1.dom, shp2.dom), ibound(shp1.md, shp2.md))
+
+function bound(slots1::Vector{Pair{Symbol,S}}, slots2::Vector{Pair{Symbol,S}}) where {S<:AbstractShape}
+    slots = Pair{Symbol,S}[]
+    i = 1
+    j = 1
+    while i <= length(slots1) && j <= length(slots2)
+        if slots1[i].first < slots2[j].first
+            i += 1
+        elseif slots1[i].first > slots2[j].first
+            j += 1
+        else
+            if isequal(slots1[i].second, slots2[j].second)
+                push!(slots, slots1[i])
+            else
+                push!(slots, Pair{Symbol,S}(slots1[i].first, bound(slots1[i].second, slots2[j].second)))
+            end
+            i += 1
+            j += 1
+        end
+    end
+    slots
+end
+
+ibound(slots1::Vector{Pair{Symbol,S}}, slots2::Vector{Pair{Symbol,S}}) where {S<:AbstractShape} =
+    merge(ibound, slots1, slots2)
+
+bound(shp1::RecordShape, shp2::RecordShape) =
+    shp1 == shp2 ? shp1 :
+    length(shp1.flds) == length(shp2.flds) ?
+        RecordShape(OutputShape[bound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
+        AnyShape(isclosed(shp1) && isclosed(shp2))
+
+ibound(shp1::RecordShape, shp2::RecordShape) =
+    shp1 == shp2 ? shp1 :
+    length(shp1.flds) == length(shp2.flds) ?
+        RecordShape(OutputShape[ibound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
+        NoneShape()
 
 # Shape-aware vector.
 

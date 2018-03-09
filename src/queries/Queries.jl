@@ -43,7 +43,15 @@ import ..Vectors:
     column,
     dereference
 
-using ..Shapes: AbstractShape, AnyShape, NoneShape
+using ..Shapes: Signature, InputShape, OutputShape
+import ..Shapes:
+    idomain,
+    imode,
+    ishape,
+    domain,
+    mode,
+    signature,
+    shape
 
 using Base: OneTo
 import Base:

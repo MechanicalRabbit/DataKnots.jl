@@ -68,6 +68,9 @@ end
 syntax(v::Vector) =
     Expr(:vect, syntax.(v)...)
 
+syntax(p::Pair) =
+    Expr(:call, :(=>), syntax(p.first), syntax(p.second))
+
 tile_code(obj; precedence=0) =
     tile(obj)
 
@@ -102,8 +105,24 @@ function tile_code(ex::Expr; precedence=0)
             brk = ("$func(", ")")
             tile(arg_lts, brk=brk)
         end
+    elseif ex.head == :tuple
+        tile(Layout[tile_code(arg) for arg in ex.args])
     elseif ex.head == :vect
         tile(Layout[tile_code(arg) for arg in ex.args], brk=("[", "]"))
+    elseif ex.head == :ref && length(ex.args) >= 1
+        tile_code(ex.args[1]) * tile(Layout[tile_code(arg) for arg in ex.args[2:end]], brk=("[", "]"))
+    elseif (ex.head == :(->) || ex.head == :(<:)) && length(ex.args) == 2
+        op = string(ex.head)
+        ilt = tile_code(ex.args[1])
+        olt = tile_code(ex.args[2])
+        (ilt * literal(" $op ") | ilt * literal(" $op") / indent(4)) * olt
+    elseif ex.head == :where && length(ex.args) > 1
+        op = string(ex.head)
+        ilt = tile_code(ex.args[1])
+        olt = tile(Layout[tile_code(arg) for arg in ex.args[2:end]], brk=("where {", "}"))
+        ilt * indent(1) * olt | ilt / olt
+    elseif ex.head == :(...) && length(ex.args) == 1
+        tile_code(ex.args[1]) * literal("...")
     else
         literal(string(ex))
     end

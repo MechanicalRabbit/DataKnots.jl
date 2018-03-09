@@ -92,31 +92,24 @@ A shape which does not contain any indexes is called closed.
     isclosed(str_shp)
     #-> true
 
-For a data block, `BlockShape` specifies its cardinality and the type of the
-elements.
+For a data block, `BlockShape` specifies shape of its elements.
 
-    blk_shp = BlockShape(OPT|PLU, IndexShape(:Emp))
-    #-> BlockShape(OPT|PLU, IndexShape(:Emp))
-
-    cardinality(blk_shp)
-    #-> OPT|PLU
+    blk_shp = BlockShape(IndexShape(:Emp))
+    #-> BlockShape(IndexShape(:Emp))
 
     blk_shp[]
     #-> IndexShape(:Emp)
 
 `TupleShape` lets us specify the field types of a tuple value.
 
-    tpl_shp = TupleShape(BlockShape(REG, NativeShape(String)),
-                         BlockShape(OPT|PLU, IndexShape(:Emp)))
-    #=>
-    TupleShape(BlockShape(REG, NativeShape(String)),
-               BlockShape(OPT|PLU, IndexShape(:Emp)))
-    =#
+    tpl_shp = TupleShape(NativeShape(String),
+                         BlockShape(IndexShape(:Emp)))
+    #-> TupleShape(NativeShape(String), BlockShape(IndexShape(:Emp)))
 
     foreach(println, tpl_shp[:])
     #=>
-    BlockShape(REG, NativeShape(String))
-    BlockShape(OPT|PLU, IndexShape(:Emp))
+    NativeShape(String)
+    BlockShape(IndexShape(:Emp))
     =#
 
 Two special shape types are used to indicate that the value may have any shape,
@@ -156,7 +149,7 @@ We can enforce the type and the default value of the decoration.
     decoration(str_shp, :tag, String, "")
     #-> ""
 
-`InputShape` and `OutputShape` are nominal shapes that describe the structure
+`InputShape` and `OutputShape` are derived shapes that describe the structure
 of the query input and the query output.
 
 To describe the query input, we specify the shape of the input elements, the
@@ -170,6 +163,12 @@ shapes of the parameters, and whether or not the input is framed.
     i_shp[]
     #-> IndexShape(:Emp)
 
+    domain(i_shp)
+    #-> IndexShape(:Emp)
+
+    mode(i_shp)
+    #-> InputMode([:D => OutputShape(NativeShape(String))], true)
+
 To describe the query output, we specify the shape and the cardinality of the
 output elements.
 
@@ -182,44 +181,58 @@ output elements.
     cardinality(o_shp)
     #-> OPT|PLU
 
-Function `denominalize()` converts a nominal shape to the underlying structural
-shape.
+    domain(o_shp)
+    #-> NativeShape(Int)
 
-    denominalize(i_shp)
-    #-> BlockShape(PLU, TupleShape(IndexShape(:Emp), OutputShape(NativeShape(String))))
+    mode(o_shp)
+    #-> OutputMode(OPT|PLU)
 
-    denominalize(o_shp)
-    #-> BlockShape(OPT|PLU, NativeShape(Int))
+RecordShape` specifies the shape of a record value where each field has a
+certain shape and cardinality.
 
-`CapsuleShape` encapsulates the value shape with the shapes of the indexes.
-Using `CapsuleShape` we can fully specify self-referential data.
+    dept_shp = RecordShape(OutputShape(String) |> decorate(:tag => :name),
+                           OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))
+    #=>
+    RecordShape(OutputShape(NativeShape(String) |> decorate(:tag => :name)),
+                OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                            OPT|PLU))
+    =#
 
-    dept_shp = TupleShape(OutputShape(String) |> decorate(:tag => :name),
-                          OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))
+    emp_shp = RecordShape(OutputShape(String) |> decorate(:tag => :name),
+                          OutputShape(:Dept) |> decorate(:tag => :department),
+                          OutputShape(String) |> decorate(:tag => :position),
+                          OutputShape(Int) |> decorate(:tag => :salary),
+                          OutputShape(:Emp, OPT) |> decorate(:tag => :manager),
+                          OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :subordinate))
+    #=>
+    RecordShape(OutputShape(NativeShape(String) |> decorate(:tag => :name)),
+                OutputShape(IndexShape(:Dept) |> decorate(:tag => :department)),
+                OutputShape(NativeShape(String) |> decorate(:tag => :position)),
+                OutputShape(NativeShape(Int) |> decorate(:tag => :salary)),
+                OutputShape(IndexShape(:Emp) |> decorate(:tag => :manager), OPT),
+                OutputShape(IndexShape(:Emp) |> decorate(:tag => :subordinate),
+                            OPT|PLU))
+    =#
 
-    emp_shp = TupleShape(OutputShape(String) |> decorate(:tag => :name),
-                         OutputShape(:Dept) |> decorate(:tag => :department),
-                         OutputShape(String) |> decorate(:tag => :position),
-                         OutputShape(Int) |> decorate(:tag => :salary),
-                         OutputShape(:Emp, OPT) |> decorate(:tag => :manager),
-                         OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :subordinate))
+`CapsuleShape` provides the shapes for any nested indexes.  Using it, we can
+fully specify self-referential and mutually referential data.
 
-    db_shp = TupleShape(OutputShape(:Dept, OPT|PLU) |> decorate(:tag => :department),
-                        OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))
+    db_shp = RecordShape(OutputShape(:Dept, OPT|PLU) |> decorate(:tag => :department),
+                         OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))
 
     CapsuleShape(db_shp, :Dept => dept_shp, :Emp => emp_shp)
     #=>
     CapsuleShape(
-        TupleShape(OutputShape(IndexShape(:Dept) |> decorate(:tag => :department),
-                               OPT|PLU),
-                   OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
-                               OPT|PLU)),
-        :Dept => TupleShape(
+        RecordShape(OutputShape(IndexShape(:Dept) |> decorate(:tag => :department),
+                                OPT|PLU),
+                    OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                                OPT|PLU)),
+        :Dept => RecordShape(
                      OutputShape(NativeShape(String) |> decorate(:tag => :name)),
                      OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
                                  OPT|PLU)),
         :Emp =>
-            TupleShape(
+            RecordShape(
                 OutputShape(NativeShape(String) |> decorate(:tag => :name)),
                 OutputShape(IndexShape(:Dept) |> decorate(:tag => :department)),
                 OutputShape(NativeShape(String) |> decorate(:tag => :position)),
@@ -234,7 +247,7 @@ Using `CapsuleShape` we can fully specify self-referential data.
 
 The same data can satisfy many different shape constraints.  For example, a
 vector `BlockVector([Chicago])` can be said to have, among others, the shape
-`BlockShape(REG, String)`, the shape `BlockShape(OPT|PLU, Any)` or the shape
+`BlockShape(String)`, the shape `OutputShape(String, OPT|PLU)` or the shape
 `AnyShape()`.  We can tell, for any two shapes, if one of them is more specific
 than the other.
 
@@ -244,21 +257,64 @@ than the other.
     fits(IndexShape(:Emp), IndexShape(:Emp))        #-> true
     fits(IndexShape(:Emp), IndexShape(:Dept))       #-> false
 
-    fits(BlockShape(REG, Int), BlockShape(OPT, Number))     #-> true
-    fits(BlockShape(PLU, Int), BlockShape(OPT, Number))     #-> false
-    fits(BlockShape(REG, Int), BlockShape(OPT, String))     #-> false
+    fits(BlockShape(Int), BlockShape(Number))       #-> true
+    fits(BlockShape(Int), BlockShape(String))       #-> false
 
-    fits(TupleShape(BlockShape(REG, Int),
-                    BlockShape(OPT, String)),
-         TupleShape(BlockShape(REG, Number),
-                    BlockShape(OPT|PLU, String)))       #-> true
-    fits(TupleShape(BlockShape(OPT, Int),
-                    BlockShape(REG, String)),
-         TupleShape(BlockShape(REG, Number),
-                    BlockShape(OPT|PLU, String)))       #-> false
-    fits(TupleShape(BlockShape(REG, Int)),
-         TupleShape(BlockShape(REG, Number),
-                    BlockShape(OPT|PLU, String)))       #-> false
+    fits(TupleShape(Int, BlockShape(String)),
+         TupleShape(Number, BlockShape(String)))    #-> true
+    fits(TupleShape(Int, BlockShape(String)),
+         TupleShape(String, BlockShape(String)))    #-> false
+    fits(TupleShape(Int),
+         TupleShape(Number, BlockShape(String)))    #-> false
+
+    fits(CapsuleShape(BlockShape(:Emp),
+                      :Emp => TupleShape(String, Int),
+                      :Dept => TupleShape(String)),
+         CapsuleShape(BlockShape(:Emp),
+                      :Emp => TupleShape(String, Number)))  #-> true
+    fits(CapsuleShape(BlockShape(:Emp),
+                      :Emp => TupleShape(String, Int)),
+         CapsuleShape(BlockShape(:Emp),
+                      :Emp => TupleShape(String, Int),
+                      :Dept => TupleShape(String)))         #-> false
+    fits(CapsuleShape(BlockShape(:Emp),
+                      :Emp => TupleShape(String, Int)),
+         BlockShape(AnyShape()))                            #-> true
+    fits(BlockShape(AnyShape()),
+         CapsuleShape(BlockShape(:Emp),
+                      :Emp => TupleShape(String, Number)))  #-> false
+
+    fits(InputShape(Int,
+                    [:X => OutputShape(Int),
+                     :Y => OutputShape(String)],
+                    true),
+         InputShape(Number,
+                    [:X => OutputShape(Int, OPT)])) #-> true
+    fits(InputShape(Int),
+         InputShape(Number, true))                  #-> false
+    fits(InputShape(Int,
+                    [:X => OutputShape(Int, OPT)]),
+         InputShape(Number,
+                    [:X => OutputShape(Int)]))      #-> false
+
+    fits(OutputShape(Int),
+         OutputShape(Number, OPT))                  #-> true
+    fits(OutputShape(Int, PLU),
+         OutputShape(Number, OPT))                  #-> false
+    fits(OutputShape(Int),
+         OutputShape(String, OPT))                  #-> false
+
+    fits(RecordShape(OutputShape(Int),
+                     OutputShape(String, OPT)),
+         RecordShape(OutputShape(Number),
+                     OutputShape(String, OPT|PLU)))     #-> true
+    fits(RecordShape(OutputShape(Int, OPT),
+                     OutputShape(String)),
+         RecordShape(OutputShape(Number),
+                     OutputShape(String, OPT|PLU)))     #-> false
+    fits(RecordShape(OutputShape(Int)),
+         RecordShape(OutputShape(Number),
+                     OutputShape(String, OPT|PLU)))     #-> false
 
 Shapes of different kinds are typically not compatible with each other.  The
 exceptions are `AnyShape` and `NullShape`.
@@ -295,17 +351,72 @@ is more general than each of them.  We can also find their lower bound.
     ibound(IndexShape(:Emp), IndexShape(:Dept))
     #-> NoneShape()
 
-    bound(BlockShape(OPT, String), BlockShape(PLU, String))
-    #-> BlockShape(OPT|PLU, NativeShape(String))
-    ibound(BlockShape(OPT, String), BlockShape(PLU, String))
-    #-> BlockShape(REG, NativeShape(String))
+    bound(BlockShape(Int), BlockShape(Number))
+    #-> BlockShape(NativeShape(Number))
+    ibound(BlockShape(Int), BlockShape(Number))
+    #-> BlockShape(NativeShape(Int))
 
-    bound(TupleShape(BlockShape(OPT, :Emp), BlockShape(REG, String)),
-          TupleShape(BlockShape(OPT, :Dept), BlockShape(PLU, String)))
-    #-> TupleShape(BlockShape(OPT, AnyShape()), BlockShape(PLU, NativeShape(String)))
-    ibound(TupleShape(BlockShape(OPT, :Emp), BlockShape(REG, String)),
-           TupleShape(BlockShape(OPT, :Dept), BlockShape(PLU, String)))
-    #-> TupleShape(BlockShape(OPT, NoneShape()), BlockShape(REG, NativeShape(String)))
+    bound(TupleShape(:Emp, BlockShape(String)),
+          TupleShape(:Dept, BlockShape(String)))
+    #-> TupleShape(AnyShape(), BlockShape(NativeShape(String)))
+    ibound(TupleShape(:Emp, BlockShape(String)),
+           TupleShape(:Dept, BlockShape(String)))
+    #-> TupleShape(NoneShape(), BlockShape(NativeShape(String)))
+
+    bound(CapsuleShape(BlockShape(:Emp),
+                       :Emp => TupleShape(:Dept, Number),
+                       :Dept => TupleShape(String)),
+          CapsuleShape(BlockShape(:Emp),
+                       :Emp => TupleShape(String, Int)))
+    #=>
+    CapsuleShape(BlockShape(IndexShape(:Emp)),
+                 :Emp => TupleShape(AnyShape(), NativeShape(Number)))
+    =#
+    ibound(CapsuleShape(BlockShape(:Emp),
+                        :Emp => TupleShape(:Dept, Number),
+                        :Dept => TupleShape(String)),
+           CapsuleShape(BlockShape(:Emp),
+                        :Emp => TupleShape(String, Int)))
+    #=>
+    CapsuleShape(BlockShape(IndexShape(:Emp)),
+                 :Dept => TupleShape(NativeShape(String)),
+                 :Emp => TupleShape(NoneShape(), NativeShape(Int)))
+    =#
+
+    bound(InputShape(Int, [:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true),
+          InputShape(Number, [:X => OutputShape(Int)]))
+    #=>
+    InputShape(NativeShape(Number), [:X => OutputShape(NativeShape(Int), OPT)])
+    =#
+    ibound(InputShape(Int, [:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true),
+           InputShape(Number, [:X => OutputShape(Int)]))
+    #=>
+    InputShape(NativeShape(Int),
+               [:X => OutputShape(NativeShape(Int)),
+                :Y => OutputShape(NativeShape(String))],
+               true)
+    =#
+
+    bound(OutputShape(String, OPT), OutputShape(String, PLU))
+    #-> OutputShape(NativeShape(String), OPT|PLU)
+    ibound(OutputShape(String, OPT), OutputShape(String, PLU))
+    #-> OutputShape(NativeShape(String))
+
+    bound(RecordShape(OutputShape(Int, PLU),
+                      OutputShape(String, OPT)),
+          RecordShape(OutputShape(Number),
+                      OutputShape(:Emp, OPT|PLU)))
+    #=>
+    RecordShape(OutputShape(NativeShape(Number), PLU),
+                OutputShape(AnyShape(), OPT|PLU))
+    =#
+    ibound(RecordShape(OutputShape(Int, PLU),
+                       OutputShape(String, OPT)),
+           RecordShape(OutputShape(Number),
+                       OutputShape(:Emp, OPT|PLU)))
+    #=>
+    RecordShape(OutputShape(NativeShape(Int)), OutputShape(NoneShape(), OPT))
+    =#
 
 For decorated shapes, incompatible decoration constraints are replaced with
 `nothing`.
@@ -333,4 +444,44 @@ For decorated shapes, incompatible decoration constraints are replaced with
     ibound(NativeShape(Int),
            NativeShape(Number) |> decorate(:tag => :salary))
     #-> NativeShape(Int) |> decorate(:tag => :salary)
+
+
+## Query signature
+
+The signature of a query is a pair of an `InputShape` object and an
+`OutputShape` object.
+
+    sig = Signature(InputShape(:Dept),
+                    OutputShape(RecordShape(OutputShape(String) |> decorate(:tag => :name),
+                                            OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))))
+    #-> Dept -> (name => String[1 .. 1], employee => Emp[0 .. ∞])[1 .. 1]
+
+Different components of the signature can be easily extracted.
+
+    shape(sig)
+    #=>
+    OutputShape(RecordShape(
+                    OutputShape(NativeShape(String) |> decorate(:tag => :name)),
+                    OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                                OPT|PLU)))
+    =#
+
+    ishape(sig)
+    #-> InputShape(IndexShape(:Dept))
+
+    domain(sig)
+    #=>
+    RecordShape(OutputShape(NativeShape(String) |> decorate(:tag => :name)),
+                OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                            OPT|PLU))
+    =#
+
+    mode(sig)
+    #-> OutputMode()
+
+    idomain(sig)
+    #-> IndexShape(:Dept)
+
+    imode(sig)
+    #-> InputMode()
 
