@@ -75,34 +75,31 @@ partition(bv)
 #-&gt; ([1, 2, 4, 4, 6], [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])</code></pre><p>When indexed by a vector of indexes, an instance of <code>BlockVector</code> is returned.</p><pre><code class="language-julia">elts = [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
 
 reg_bv = BlockVector(:, elts)
-showcompact(reg_bv)
-#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
+#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
 
 opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts)
-showcompact(opt_bv)
-#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]
+#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]
 
 plu_bv = BlockVector([1, 1, 1, 2, 2, 4, 4, 6, 7], elts)
-showcompact(plu_bv)
-#-&gt; [missing, missing, &quot;POLICE&quot;, missing, [&quot;FIRE&quot;, &quot;HEALTH&quot;], missing, [&quot;AVIATION&quot;, &quot;WATER MGMNT&quot;], &quot;FINANCE&quot;]
+#-&gt; @VectorTree [String] [missing, missing, &quot;POLICE&quot;, missing, [&quot;FIRE&quot;, &quot;HEALTH&quot;], missing, [&quot;AVIATION&quot;, &quot;WATER MGMNT&quot;], &quot;FINANCE&quot;]
 
-showcompact(reg_bv[[1,3,5,3]])
-#-&gt; [&quot;POLICE&quot;, &quot;HEALTH&quot;, &quot;WATER MGMNT&quot;, &quot;HEALTH&quot;]
+reg_bv[[1,3,5,3]]
+#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;HEALTH&quot;, &quot;WATER MGMNT&quot;, &quot;HEALTH&quot;]
 
-showcompact(plu_bv[[1,3,5,3]])
-#-&gt; [missing, &quot;POLICE&quot;, [&quot;FIRE&quot;, &quot;HEALTH&quot;], &quot;POLICE&quot;]
+plu_bv[[1,3,5,3]]
+#-&gt; @VectorTree [String] [missing, &quot;POLICE&quot;, [&quot;FIRE&quot;, &quot;HEALTH&quot;], &quot;POLICE&quot;]
 
-showcompact(reg_bv[Base.OneTo(4)])
-#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;]
+reg_bv[Base.OneTo(4)]
+#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;]
 
-showcompact(reg_bv[Base.OneTo(6)])
-#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
+reg_bv[Base.OneTo(6)]
+#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
 
-showcompact(plu_bv[Base.OneTo(6)])
-#-&gt; [missing, missing, &quot;POLICE&quot;, missing, [&quot;FIRE&quot;, &quot;HEALTH&quot;], missing]
+plu_bv[Base.OneTo(6)]
+#-&gt; @VectorTree [String] [missing, missing, &quot;POLICE&quot;, missing, [&quot;FIRE&quot;, &quot;HEALTH&quot;], missing]
 
-showcompact(opt_bv[Base.OneTo(10)])
-#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]</code></pre><h2><a class="nav-anchor" id="IndexVector-1" href="#IndexVector-1"><code>IndexVector</code></a></h2><p><code>IndexVector</code> is a vector of indexes in some named vector.</p><pre><code class="language-julia">iv = IndexVector(:REF, [1, 1, 1, 2])
+opt_bv[Base.OneTo(10)]
+#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]</code></pre><h2><a class="nav-anchor" id="IndexVector-1" href="#IndexVector-1"><code>IndexVector</code></a></h2><p><code>IndexVector</code> is a vector of indexes in some named vector.</p><pre><code class="language-julia">iv = IndexVector(:REF, [1, 1, 1, 2])
 #-&gt; @VectorTree &amp;REF [1, 1, 1, 2]
 
 display(iv)
