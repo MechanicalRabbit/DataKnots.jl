@@ -141,34 +141,31 @@ When indexed by a vector of indexes, an instance of `BlockVector` is returned.
     elts = ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
     reg_bv = BlockVector(:, elts)
-    showcompact(reg_bv)
-    #-> ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
+    #-> @VectorTree [String] ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
     opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts)
-    showcompact(opt_bv)
-    #-> ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
+    #-> @VectorTree [String] ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
     plu_bv = BlockVector([1, 1, 1, 2, 2, 4, 4, 6, 7], elts)
-    showcompact(plu_bv)
-    #-> [missing, missing, "POLICE", missing, ["FIRE", "HEALTH"], missing, ["AVIATION", "WATER MGMNT"], "FINANCE"]
+    #-> @VectorTree [String] [missing, missing, "POLICE", missing, ["FIRE", "HEALTH"], missing, ["AVIATION", "WATER MGMNT"], "FINANCE"]
 
-    showcompact(reg_bv[[1,3,5,3]])
-    #-> ["POLICE", "HEALTH", "WATER MGMNT", "HEALTH"]
+    reg_bv[[1,3,5,3]]
+    #-> @VectorTree [String] ["POLICE", "HEALTH", "WATER MGMNT", "HEALTH"]
 
-    showcompact(plu_bv[[1,3,5,3]])
-    #-> [missing, "POLICE", ["FIRE", "HEALTH"], "POLICE"]
+    plu_bv[[1,3,5,3]]
+    #-> @VectorTree [String] [missing, "POLICE", ["FIRE", "HEALTH"], "POLICE"]
 
-    showcompact(reg_bv[Base.OneTo(4)])
-    #-> ["POLICE", "FIRE", "HEALTH", "AVIATION"]
+    reg_bv[Base.OneTo(4)]
+    #-> @VectorTree [String] ["POLICE", "FIRE", "HEALTH", "AVIATION"]
 
-    showcompact(reg_bv[Base.OneTo(6)])
-    #-> ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
+    reg_bv[Base.OneTo(6)]
+    #-> @VectorTree [String] ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
-    showcompact(plu_bv[Base.OneTo(6)])
-    #-> [missing, missing, "POLICE", missing, ["FIRE", "HEALTH"], missing]
+    plu_bv[Base.OneTo(6)]
+    #-> @VectorTree [String] [missing, missing, "POLICE", missing, ["FIRE", "HEALTH"], missing]
 
-    showcompact(opt_bv[Base.OneTo(10)])
-    #-> ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
+    opt_bv[Base.OneTo(10)]
+    #-> @VectorTree [String] ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
 
 ## `IndexVector`
