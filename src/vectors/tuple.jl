@@ -24,7 +24,7 @@ struct TupleVector{I<:AbstractVector{Int}} <: AbstractTupleVector{Any}
 
     @inline function TupleVector{I}(lbls::Vector{Symbol}, idxs::I, cols::Vector{AbstractVector}) where {I<:AbstractVector{Int}}
         @boundscheck _checktuple(lbls, idxs, cols)
-        icols = Vector{AbstractVector}(uninitialized, length(cols))
+        icols = Vector{AbstractVector}(undef, length(cols))
         new{I}(lbls, idxs, cols, icols)
     end
 

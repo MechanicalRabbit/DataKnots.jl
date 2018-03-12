@@ -78,7 +78,7 @@ function pull_block(rt::Runtime, input::AbstractVector, lbl)
         return BlockVector(offs, TupleVector(lbls, len, cols′))
     end
     len′ = length(col′)
-    perm = Vector{Int}(uninitialized, len′)
+    perm = Vector{Int}(undef, len′)
     l = r = 1
     @inbounds for k = 1:len
         l = r
@@ -134,8 +134,8 @@ end
         if regular
             return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
         end
-        offs′ = Vector{Int}(uninitialized, len+1)
-        @nextract $D perm (d -> Vector{Int}(uninitialized, len′))
+        offs′ = Vector{Int}(undef, len+1)
+        @nextract $D perm (d -> Vector{Int}(undef, len′))
         @inbounds offs′[1] = top = 1
         @inbounds for k = 1:len
             @nloops $D n (d -> offs_{$D-d+1}[k]:offs_{$D-d+1}[k+1]-1) begin
@@ -167,7 +167,7 @@ _count_block(offs::OneTo{Int}) =
 
 function _count_block(offs::AbstractVector{Int})
     len = length(offs) - 1
-    output = Vector{Int}(uninitialized, len)
+    output = Vector{Int}(undef, len)
     @inbounds for k = 1:len
         output[k] = offs[k+1] - offs[k]
     end
@@ -191,7 +191,7 @@ function any_block(rt::Runtime, input::AbstractVector)
     if offs isa OneTo
         return elts
     end
-    output = Vector{Bool}(uninitialized, len)
+    output = Vector{Bool}(undef, len)
     l = r = 1
     @inbounds for k = 1:len
         val = false

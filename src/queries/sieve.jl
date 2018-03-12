@@ -17,8 +17,8 @@ function sieve(rt::Runtime, input::AbstractVector)
     elseif sz == 0
         return BlockVector(fill(1, len+1), val_col[[]])
     end
-    offs = Vector{Int}(uninitialized, len+1)
-    perm = Vector{Int}(uninitialized, sz)
+    offs = Vector{Int}(undef, len+1)
+    perm = Vector{Int}(undef, sz)
     @inbounds offs[1] = top = 1
     for k = 1:len
         if pred_col[k]

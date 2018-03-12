@@ -25,8 +25,8 @@ function decode_missing(rt::Runtime, input::AbstractVector)
     if sz == length(input)
         return BlockVector(:, collect(O, input))
     end
-    offs = Vector{Int}(uninitialized, length(input)+1)
-    elts = Vector{O}(uninitialized, sz)
+    offs = Vector{Int}(undef, length(input)+1)
+    elts = Vector{O}(undef, sz)
     @inbounds offs[1] = top = 1
     @inbounds for k in eachindex(input)
         elt = input[k]
@@ -54,8 +54,8 @@ function decode_vector(rt::Runtime, input::AbstractVector)
         sz += length(v)
     end
     O = eltype(eltype(input))
-    offs = Vector{Int}(uninitialized, length(input)+1)
-    elts = Vector{O}(uninitialized, sz)
+    offs = Vector{Int}(undef, length(input)+1)
+    elts = Vector{O}(undef, sz)
     @inbounds offs[1] = top = 1
     @inbounds for k in eachindex(input)
         v = input[k]
@@ -90,7 +90,7 @@ end
     width = length(Is)
     return quote
         len = length(input)
-        cols = @ncall $width tuple j -> Vector{Is[j]}(uninitialized, len)
+        cols = @ncall $width tuple j -> Vector{Is[j]}(undef, len)
         @inbounds for k in eachindex(input)
             t = input[k]
             @nexprs $width j -> cols[j][k] = t[j]

@@ -114,7 +114,7 @@ end
 end
 
 function _getindex(bv::BlockVector, ks::AbstractVector)
-    offs′ = Vector{Int}(uninitialized, length(ks)+1)
+    offs′ = Vector{Int}(undef, length(ks)+1)
     @inbounds offs′[1] = top = 1
     i = 1
     @inbounds for k in ks
@@ -123,7 +123,7 @@ function _getindex(bv::BlockVector, ks::AbstractVector)
         offs′[i+1] = top = top + r - l
         i += 1
     end
-    perm = Vector{Int}(uninitialized, top-1)
+    perm = Vector{Int}(undef, top-1)
     j = 1
     @inbounds for k in ks
         l = bv.offs[k]

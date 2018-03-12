@@ -30,7 +30,7 @@ end
     return quote
         I = Tuple{eltype.(cols)...}
         O = Core.Compiler.return_type(f, I)
-        output = Vector{O}(uninitialized, len)
+        output = Vector{O}(undef, len)
         @inbounds for k = 1:len
             output[k] = @ncall $D f (d -> cols[d][k])
         end
@@ -63,7 +63,7 @@ function _lift_to_block(f, input)
     cr = cursor(input)
     I = Tuple{typeof(cr)}
     O = Core.Compiler.return_type(f, I)
-    output = Vector{O}(uninitialized, length(input))
+    output = Vector{O}(undef, length(input))
     @inbounds while !done(cr)
         next!(cr)
         output[cr.pos] = f(cr)
@@ -75,7 +75,7 @@ function _lift_to_block(f, default, input)
     cr = cursor(input)
     I = Tuple{typeof(cr)}
     O = Union{Core.Compiler.return_type(f, I), typeof(default)}
-    output = Vector{O}(uninitialized, length(input))
+    output = Vector{O}(undef, length(input))
     @inbounds while !done(cr)
         next!(cr)
         output[cr.pos] = !isempty(cr) ? f(cr) : default
@@ -121,8 +121,8 @@ end
         end
         I = Tuple{eltype.(@ntuple $D elts)...}
         O = Core.Compiler.return_type(f, I)
-        offs′ = Vector{Int}(uninitialized, len+1)
-        elts′ = Vector{O}(uninitialized, len′)
+        offs′ = Vector{Int}(undef, len+1)
+        elts′ = Vector{O}(undef, len′)
         @inbounds offs′[1] = top = 1
         @inbounds for k = 1:len
             @nloops $D n (d -> offs_{$D-d+1}[k]:offs_{$D-d+1}[k+1]-1) (d -> elt_{$D-d+1} = elts_{$D-d+1}[n_d]) begin
@@ -173,7 +173,7 @@ function lift_block(rt::Runtime, input::AbstractVector, block)
     else
         len = length(input)
         sz = length(block)
-        perm = Vector{Int}(uninitialized, len*sz)
+        perm = Vector{Int}(undef, len*sz)
         for k in eachindex(input)
             copyto!(perm, 1 + sz * (k - 1), 1:sz)
         end
