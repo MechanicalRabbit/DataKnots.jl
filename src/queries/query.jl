@@ -35,17 +35,17 @@ let NO_SIG = Signature()
         Query(op, collect(Any, args), NO_SIG, nothing)
 end
 
-sign(q::Query, sig::Signature) =
+designate(q::Query, sig::Signature) =
     Query(q.op, q.args, sig, q.src)
 
-sign(q::Query, ishp::InputShape, shp::OutputShape) =
+designate(q::Query, ishp::InputShape, shp::OutputShape) =
     Query(q.op, q.args, Signature(ishp, shp), q.src)
 
-sign(sig::Signature) =
-    q::Query -> sign(q, sig)
+designate(sig::Signature) =
+    q::Query -> designate(q, sig)
 
-sign(ishp::InputShape, shp::OutputShape) =
-    q::Query -> sign(q, Signature(ishp, shp))
+designate(ishp::InputShape, shp::OutputShape) =
+    q::Query -> designate(q, Signature(ishp, shp))
 
 signature(q::Query) = q.sig
 

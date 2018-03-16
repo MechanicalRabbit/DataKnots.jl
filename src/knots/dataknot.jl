@@ -25,6 +25,9 @@ convert(::Type{DataKnot}, ::Missing) =
 
 elements(knot::DataKnot) = knot.elts
 
+syntax(knot::DataKnot) =
+    Symbol("DataKnot( … )")
+
 get(knot::DataKnot) =
     let card = cardinality(knot.shp)
         card == REG || card == OPT && !isempty(knot.elts) ? knot.elts[1] :

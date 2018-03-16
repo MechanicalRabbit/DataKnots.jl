@@ -6,8 +6,13 @@ using .Vectors
 using .Shapes
 using .Knots
 using .Queries
+using .Combinators
 
 export
+    @VectorTree,
     DataKnot,
-    signature
+    field,
+    it,
+    signature,
+    query
 
