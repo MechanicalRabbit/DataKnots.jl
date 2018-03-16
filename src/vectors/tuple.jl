@@ -129,10 +129,10 @@ end
     1 <= j <= length(tv.cols) ? j : nothing
 
 @inline locate(tv::TupleVector, lbl::Symbol) =
-    findfirst(equalto(lbl), tv.lbls)
+    findfirst(isequal(lbl), tv.lbls)
 
 @inline column(tv::TupleVector, lbl::Symbol) =
-    column(tv, findfirst(equalto(lbl), tv.lbls))
+    column(tv, findfirst(isequal(lbl), tv.lbls))
 
 function _indexcolumns(tv::TupleVector)
     for j = 1:length(tv.cols)
