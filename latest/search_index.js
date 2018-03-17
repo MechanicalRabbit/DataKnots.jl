@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Test Suite",
     "title": "Test Suite",
     "category": "section",
-    "text": "Pages = [\n    \"layouts.md\",\n    \"vectors.md\",\n    \"shapes.md\",\n    \"queries.md\",\n]"
+    "text": "Pages = [\n    \"layouts.md\",\n    \"vectors.md\",\n    \"shapes.md\",\n    \"queries.md\",\n    \"combinators.md\",\n]"
 },
 
 {
@@ -246,6 +246,22 @@ var documenterSearchIndex = {"docs": [
     "title": "Composition",
     "category": "section",
     "text": "We can compose a sequence of transformations using the chain_of() combinator.q = chain_of(\n        column(:employee),\n        in_block(lift(titlecase)))\n#-> chain_of(column(:employee), in_block(lift(titlecase)))\n\nq(@VectorTree (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The empty chain chain_of() has an alias pass().q = pass()\n#-> pass()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]"
+},
+
+{
+    "location": "test/combinators.html#",
+    "page": "Query Algebra",
+    "title": "Query Algebra",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "test/combinators.html#Query-Algebra-1",
+    "page": "Query Algebra",
+    "title": "Query Algebra",
+    "category": "section",
+    "text": "using DataKnots\n\nF = (it .+ 4) >> (it .* 6)\n#-> (it .+ 4) >> it .* 6\n\nquery(3, F)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#\n\nusedb!(\n    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [\n        \"POLICE\"    [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]\n        \"FIRE\"      [\"JOSE S\" 202728; \"CHARLES S\" 197736]\n    ])\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │\n=#\n\nquery(field(:name))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nquery(it.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nquery(field(:employee) >> field(:salary))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nquery(it.employee.salary)\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nquery(count(it.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        3 │\n2 │        2 │\n=#\n\nquery(count)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#\n\nquery(count(it.employee) >> maximum)\n#=>\n│ DataKnot │\n├──────────┤\n│ 3        │\n=#\n\nquery(it.employee >> filter(it.salary .> 200000))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nquery(count(it.employee) .> 2)\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │     true │\n2 │    false │\n=#\n\nquery(filter(count(it.employee) .> 2))\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n=#\n\nquery(filter(count(it.employee) .> 2) >> count)\n#=>\n│ DataKnot │\n├──────────┤\n│        1 │\n=#"
 },
 
 ]}
