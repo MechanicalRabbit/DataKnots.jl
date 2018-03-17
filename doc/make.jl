@@ -23,6 +23,7 @@ makedocs(
         hide("test/vectors.md"),
         hide("test/shapes.md"),
         hide("test/queries.md"),
+        hide("test/combinators.md"),
     ],
     modules = [DataKnots])
 

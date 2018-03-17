@@ -14,5 +14,9 @@ export
     field,
     it,
     signature,
-    query
+    thedb,
+    query,
+    unusedb!,
+    usedb,
+    usedb!
 

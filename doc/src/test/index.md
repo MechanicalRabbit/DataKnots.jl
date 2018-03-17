@@ -6,5 +6,6 @@ Pages = [
     "vectors.md",
     "shapes.md",
     "queries.md",
+    "combinators.md",
 ]
 ```
