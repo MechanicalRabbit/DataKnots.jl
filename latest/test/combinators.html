@@ -202,4 +202,22 @@ end
 │ DataKnot │
 ├──────────┤
 │        1 │
+=#
+
+query(record(it.name, :size =&gt; count(it.employee)))
+#=&gt;
+  │ DataKnot     │
+  │ name    size │
+──┼──────────────┤
+1 │ POLICE     3 │
+2 │ FIRE       2 │
+=#
+
+@query record(name, size =&gt; count(employee))
+#=&gt;
+  │ DataKnot     │
+  │ name    size │
+──┼──────────────┤
+1 │ POLICE     3 │
+2 │ FIRE       2 │
 =#</code></pre><footer><hr/><a class="previous" href="queries.html"><span class="direction">Previous</span><span class="title">Query Backend</span></a></footer></article></body></html>
