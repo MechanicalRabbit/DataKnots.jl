@@ -40,6 +40,14 @@ query(it.name)
 2 │ FIRE   │
 =#
 
+@query name
+#=&gt;
+  │ name   │
+──┼────────┤
+1 │ POLICE │
+2 │ FIRE   │
+=#
+
 query(field(:employee) &gt;&gt; field(:salary))
 #=&gt;
   │ salary │
@@ -62,7 +70,26 @@ query(it.employee.salary)
 5 │ 197736 │
 =#
 
+@query employee.salary
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 260004 │
+2 │ 185364 │
+3 │ 170112 │
+4 │ 202728 │
+5 │ 197736 │
+=#
+
 query(count(it.employee))
+#=&gt;
+  │ DataKnot │
+──┼──────────┤
+1 │        3 │
+2 │        2 │
+=#
+
+@query count(employee)
 #=&gt;
   │ DataKnot │
 ──┼──────────┤
@@ -77,14 +104,49 @@ query(count)
 │        2 │
 =#
 
+@query count()
+#=&gt;
+│ DataKnot │
+├──────────┤
+│        2 │
+=#
+
 query(count(it.employee) &gt;&gt; maximum)
 #=&gt;
 │ DataKnot │
 ├──────────┤
-│ 3        │
+│        3 │
+=#
+
+@query count(employee).max()
+#=&gt;
+│ DataKnot │
+├──────────┤
+│        3 │
 =#
 
 query(it.employee &gt;&gt; filter(it.salary .&gt; 200000))
+#=&gt;
+  │ employee        │
+  │ name     salary │
+──┼─────────────────┤
+1 │ GARRY M  260004 │
+2 │ JOSE S   202728 │
+=#
+
+@query employee.filter(salary&gt;200000)
+#=&gt;
+  │ employee        │
+  │ name     salary │
+──┼─────────────────┤
+1 │ GARRY M  260004 │
+2 │ JOSE S   202728 │
+=#
+
+@query begin
+    employee
+    filter(salary&gt;200000)
+end
 #=&gt;
   │ employee        │
   │ name     salary │
@@ -101,6 +163,14 @@ query(count(it.employee) .&gt; 2)
 2 │    false │
 =#
 
+@query count(employee)&gt;2
+#=&gt;
+  │ DataKnot │
+──┼──────────┤
+1 │     true │
+2 │    false │
+=#
+
 query(filter(count(it.employee) .&gt; 2))
 #=&gt;
   │ DataKnot                                                   │
@@ -109,7 +179,25 @@ query(filter(count(it.employee) .&gt; 2))
 1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
 =#
 
+@query filter(count(employee)&gt;2)
+#=&gt;
+  │ DataKnot                                                   │
+  │ name    employee                                           │
+──┼────────────────────────────────────────────────────────────┤
+1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
+=#
+
 query(filter(count(it.employee) .&gt; 2) &gt;&gt; count)
+#=&gt;
+│ DataKnot │
+├──────────┤
+│        1 │
+=#
+
+@query begin
+    filter(count(employee)&gt;2)
+    count()
+end
 #=&gt;
 │ DataKnot │
 ├──────────┤
