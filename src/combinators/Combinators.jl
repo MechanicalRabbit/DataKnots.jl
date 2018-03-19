@@ -10,7 +10,9 @@ export
     Combinator,
     field,
     it,
-    query
+    query,
+    record,
+    tag
 
 using ..Layouts
 import ..Layouts: syntax
@@ -34,8 +36,10 @@ include("translate.jl")
 include("compose.jl")
 include("then.jl")
 include("define.jl")
+include("tag.jl")
 include("broadcast.jl")
 include("field.jl")
+include("record.jl")
 include("count.jl")
 include("aggregate.jl")
 include("filter.jl")

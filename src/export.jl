@@ -14,9 +14,10 @@ export
     DataKnot,
     field,
     it,
+    query,
+    record,
     signature,
     thedb,
-    query,
     unusedb!,
     usedb,
     usedb!

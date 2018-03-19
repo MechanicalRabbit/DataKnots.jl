@@ -20,7 +20,9 @@ function translate(ex::Expr)
     end
     if ex.head == :call && length(ex.args) >= 1
         call = ex.args[1]
-        if call isa Symbol
+        if call == :(=>) && length(ex.args) == 3 && ex.args[2] isa Symbol
+            return compose(translate(ex.args[3]), tag(ex.args[2]))
+        elseif call isa Symbol
             return translate(Val{call}, (ex.args[2:end]...,))
         elseif call isa QuoteNode
             return translate(Expr(:call, call.value, ex.args[2:end]...))

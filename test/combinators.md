@@ -205,3 +205,21 @@
     │        1 │
     =#
 
+    query(record(it.name, :size => count(it.employee)))
+    #=>
+      │ DataKnot     │
+      │ name    size │
+    ──┼──────────────┤
+    1 │ POLICE     3 │
+    2 │ FIRE       2 │
+    =#
+
+    @query record(name, size => count(employee))
+    #=>
+      │ DataKnot     │
+      │ name    size │
+    ──┼──────────────┤
+    1 │ POLICE     3 │
+    2 │ FIRE       2 │
+    =#
+
