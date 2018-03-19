@@ -10,6 +10,7 @@ using .Combinators
 
 export
     @VectorTree,
+    @query,
     DataKnot,
     field,
     it,

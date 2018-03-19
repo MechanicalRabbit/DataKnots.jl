@@ -8,6 +8,12 @@ Base.count(X::SomeCombinator) =
 convert(::Type{SomeCombinator}, ::typeof(count)) =
     then(count)
 
+translate(::Type{Val{:count}}, ::Tuple{}) =
+    then(count)
+
+translate(::Type{Val{:count}}, args::Tuple{Any}) =
+    count(translate(args[1]))
+
 function Base.count(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     r = chain_of(

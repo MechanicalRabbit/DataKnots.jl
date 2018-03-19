@@ -5,6 +5,8 @@
 module Combinators
 
 export
+    @query,
+    @translate,
     Combinator,
     field,
     it,
@@ -28,6 +30,7 @@ include("combinator.jl")
 include("navigation.jl")
 include("combine.jl")
 include("query.jl")
+include("translate.jl")
 include("compose.jl")
 include("then.jl")
 include("define.jl")

@@ -4,6 +4,9 @@
 
 const SomeCombinator = Union{DataKnot, Combinator, Navigation}
 
+convert(::Type{SomeCombinator}, val::Union{Int,String}) =
+    convert(DataKnot, val)
+
 mutable struct Environment
     slots::Vector{Pair{Symbol,OutputShape}}
 end
