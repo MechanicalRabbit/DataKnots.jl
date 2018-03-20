@@ -21,7 +21,7 @@ Applies an n-ary function to each element of an n-tuple vector.
 lift_to_tuple(f) = Query(lift_to_tuple, f)
 
 function lift_to_tuple(rt::Runtime, input::AbstractVector, f)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(lift_to_tuple(f))")
     _lift_to_tuple(f, length(input), columns(input)...)
 end
 
@@ -48,14 +48,14 @@ Applies a vector function to each block of a block vector.
 lift_to_block(f) = Query(lift_to_block, f)
 
 function lift_to_block(rt::Runtime, input::AbstractVector, f)
-    input isa SomeBlockVector || error("expected a block vector; got $input")
+    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(lift_to_block(f))")
     _lift_to_block(f, input)
 end
 
 lift_to_block(f, default) = Query(lift_to_block, f, default)
 
 function lift_to_block(rt::Runtime, input::AbstractVector, f, default)
-    input isa SomeBlockVector || error("expected a block vector; got $input")
+    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(lift_to_block(f, default))")
     _lift_to_block(f, default, input)
 end
 
@@ -93,10 +93,10 @@ function to every combinations of values from adjacent blocks.
 lift_to_block_tuple(f) = Query(lift_to_block_tuple, f)
 
 function lift_to_block_tuple(rt::Runtime, input::AbstractVector, f)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(lift_to_block_tuple(f))")
     cols = columns(input)
     for col in cols
-        col isa SomeBlockVector || error("expected a block vector; got $col")
+        col isa SomeBlockVector || error("expected a block vector; got $col at\n$(lift_to_block_tuple(f))")
     end
     _lift_to_block_tuple(f, length(input), cols...)
 end

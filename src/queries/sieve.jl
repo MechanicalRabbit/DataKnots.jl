@@ -5,12 +5,12 @@
 sieve() = Query(sieve)
 
 function sieve(rt::Runtime, input::AbstractVector)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(sieve())")
     len = length(input)
     cols = columns(input)
-    length(cols) == 2 || error("expected two columns; got $cols")
+    length(cols) == 2 || error("expected two columns; got $cols at\n$(sieve())")
     val_col, pred_col = cols
-    pred_col isa AbstractVector{Bool} || error("expected a Boolean vector; got $pred_col")
+    pred_col isa AbstractVector{Bool} || error("expected a Boolean vector; got $pred_col at\n$(sieve())")
     sz = count(pred_col)
     if sz == len
         return BlockVector(:, val_col)

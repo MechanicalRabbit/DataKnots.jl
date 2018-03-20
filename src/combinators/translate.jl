@@ -44,6 +44,14 @@ macro translate(ex)
 end
 
 macro query(ex)
+    if ex isa Expr && ex.head == :where && length(ex.args) >= 1
+        params = [param isa Expr && param.head == :(=) ? Expr(:kw, param.args...) : param
+                  for param in ex.args[2:end]]
+        ex = ex.args[1]
+        return quote
+            query(translate($(QuoteNode(ex))); $(params...))
+        end
+    end
     return quote
         query(translate($(QuoteNode(ex))))
     end

@@ -22,7 +22,7 @@ Using q, transfors the elements of the input blocks.
 in_block(q) = Query(in_block, q)
 
 function in_block(rt::Runtime, input::AbstractVector, q)
-    input isa SomeBlockVector || error("expected a block vector; got $input")
+    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(in_block(q))")
     BlockVector(offsets(input), q(rt, elements(input)))
 end
 
@@ -35,10 +35,10 @@ Flattens a nested block vector.
 flat_block() = Query(flat_block)
 
 function flat_block(rt::Runtime, input::AbstractVector)
-    input isa SomeBlockVector || error("expected a block vector; got $input")
+    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(flat_block())")
     offs = offsets(input)
     nested = elements(input)
-    nested isa SomeBlockVector || error("expected a block vector; got $nested")
+    nested isa SomeBlockVector || error("expected a block vector; got $nested at\n$(flat_block())")
     nested_offs = offsets(nested)
     elts = elements(nested)
     BlockVector(_flat_block(offs, nested_offs), elts)
@@ -62,14 +62,14 @@ Converts a tuple with a block column to a block of tuples.
 pull_block(lbl) = Query(pull_block, lbl)
 
 function pull_block(rt::Runtime, input::AbstractVector, lbl)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(pull_block(lbl))")
     j = locate(input, lbl)
     j !== nothing || error("invalid column $lbl of $input")
     len = length(input)
     lbls = labels(input)
     cols = columns(input)
     col = cols[j]
-    col isa SomeBlockVector || error("expected a block vector; got $col")
+    col isa SomeBlockVector || error("expected a block vector; got $col at\n$(pull_block(lbl))")
     offs = offsets(col)
     col′ = elements(col)
     cols′ = copy(cols)
@@ -108,10 +108,10 @@ vector.
 pull_every_block() = Query(pull_every_block)
 
 function pull_every_block(rt::Runtime, input::AbstractVector)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input")
+    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(pull_every_block())")
     cols = columns(input)
     for col in cols
-        col isa SomeBlockVector || error("expected a block vector; got $col")
+        col isa SomeBlockVector || error("expected a block vector; got $col at\n$(pull_every_block())")
     end
     _pull_every_block(labels(input), length(input), cols...)
 end
@@ -158,7 +158,7 @@ Maps a block vector to a vector of block lengths.
 count_block() = Query(count_block)
 
 function count_block(rt::Runtime, input::AbstractVector)
-    input isa SomeBlockVector || error("expected a block vector; got $input")
+    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(count_block())")
     _count_block(offsets(input))
 end
 
@@ -183,11 +183,11 @@ Checks if there is one `true` value in a block of `Bool` values.
 any_block() = Query(any_block)
 
 function any_block(rt::Runtime, input::AbstractVector)
-    input isa SomeBlockVector || error("expected a block vector; got $input")
+    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(any_block())")
     len = length(input)
     offs = offsets(input)
     elts = elements(input)
-    elts isa AbstractVector{Bool} || error("expected a Bool vector; got $elts")
+    elts isa AbstractVector{Bool} || error("expected a Bool vector; got $elts at\n$(any_block())")
     if offs isa OneTo
         return elts
     end

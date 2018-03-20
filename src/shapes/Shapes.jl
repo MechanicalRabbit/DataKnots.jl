@@ -36,6 +36,8 @@ export
     idomain,
     imode,
     isclosed,
+    isframed,
+    isfree,
     ishape,
     isoptional,
     isplural,
@@ -43,6 +45,7 @@ export
     mode,
     shape,
     signature,
+    slots,
     syntax,
     undecorate
 

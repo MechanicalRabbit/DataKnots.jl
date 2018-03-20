@@ -1,6 +1,7 @@
 # Query Algebra
 
     using DataKnots
+    using DataKnots.Combinators
 
     F = (it .+ 4) >> (it .* 6)
     #-> (it .+ 4) >> it .* 6
@@ -10,6 +11,15 @@
     │ DataKnot │
     ├──────────┤
     │       42 │
+    =#
+
+    prepare(DataKnot(3) >> F)
+    #=>
+    chain_of(lift_block([3]),
+             in_block(chain_of(as_block(), in_block(lift(_1 -> _1 + 4)))),
+             flat_block(),
+             in_block(chain_of(as_block(), in_block(lift(_1 -> _1 * 6)))),
+             flat_block())
     =#
 
     usedb!(
@@ -221,5 +231,49 @@
     ──┼──────────────┤
     1 │ POLICE     3 │
     2 │ FIRE       2 │
+    =#
+
+    query(it.employee >> filter(it.salary .> it.S),
+          S=200000)
+    #=>
+      │ employee        │
+      │ name     salary │
+    ──┼─────────────────┤
+    1 │ GARRY M  260004 │
+    2 │ JOSE S   202728 │
+    =#
+
+    query(
+        given(:S => maximum(it.employee.salary),
+            it.employee >> filter(it.salary .== it.S)))
+    #=>
+      │ employee        │
+      │ name     salary │
+    ──┼─────────────────┤
+    1 │ GARRY M  260004 │
+    2 │ JOSE S   202728 │
+    =#
+
+    @query begin
+        employee
+        filter(salary>S)
+    end where { S = 200000 }
+    #=>
+      │ employee        │
+      │ name     salary │
+    ──┼─────────────────┤
+    1 │ GARRY M  260004 │
+    2 │ JOSE S   202728 │
+    =#
+
+    @query given(
+            S => max(employee.salary),
+            employee.filter(salary==S))
+    #=>
+      │ employee        │
+      │ name     salary │
+    ──┼─────────────────┤
+    1 │ GARRY M  260004 │
+    2 │ JOSE S   202728 │
     =#
 

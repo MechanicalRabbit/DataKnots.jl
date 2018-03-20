@@ -40,7 +40,7 @@ function apply(env::Environment, q::Query, f, Xs)
         ishp = ibound(ishape.(xs))
         shp = OutputShape(NativeShape(oty), bound(mode.(xs)))
         r = chain_of(
-                tuple_of(Symbol[], xs),
+                tuple_of(Symbol[], [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs]),
                 lift_to_block_tuple(f)
         ) |> designate(ishp, shp)
         compose(q, r)

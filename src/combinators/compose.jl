@@ -25,10 +25,48 @@ function compose(q1::Query, q2::Query)
     dom = domain(q2)
     md = bound(mode(q1), mode(q2))
     chain_of(
-        q1,
-        in_block(q2),
-        flat_block(),
+        duplicate_input(imd),
+        in_input(imd, chain_of(project_input(imd, imode(q1)), q1)),
+        distribute(imd, mode(q1)),
+        in_output(mode(q1), chain_of(project_input(imd, imode(q2)), q2)),
+        flatten_output(mode(q1), mode(q2)),
     ) |> designate(InputShape(idom, imd), OutputShape(dom, md))
 end
 
+duplicate_input(md::InputMode) =
+    if isfree(md)
+        pass()
+    else
+        tuple_of(pass(), column(2))
+    end
+
+in_input(md::InputMode, q::Query) =
+    if isfree(md)
+        q
+    else
+        in_tuple(1, q)
+    end
+
+distribute(imd::InputMode, md::OutputMode) =
+    if isfree(imd)
+        pass()
+    else
+        pull_block(1)
+    end
+
+in_output(md::OutputMode, q::Query) =
+    in_block(q)
+
+function project_input(md1::InputMode, md2::InputMode)
+    if isfree(md1) && isfree(md2) || slots(md1) == slots(md2) && isframed(md1) == isframed(md2)
+        pass()
+    elseif isfree(md2)
+        column(1)
+    else
+        error("not implemented")
+    end
+end
+
+flatten_output(md1::OutputMode, md2::OutputMode) =
+    flat_block()
 

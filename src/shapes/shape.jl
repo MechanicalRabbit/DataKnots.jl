@@ -285,6 +285,12 @@ show(io::IO, md::OutputMode) =
 
 cardinality(md::OutputMode) = md.card
 
+isregular(md::OutputMode) = isregular(md.card)
+
+isoptional(md::OutputMode) = isoptional(md.card)
+
+isplural(md::OutputMode) = isplural(md.card)
+
 struct OutputShape <: DerivedShape
     dom::AbstractShape
     md::OutputMode
@@ -324,6 +330,12 @@ domain(shp::OutputShape) = shp.dom
 mode(shp::OutputShape) = shp.md
 
 cardinality(shp::OutputShape) = shp.md.card
+
+isregular(shp::OutputShape) = isregular(shp.md)
+
+isoptional(shp::OutputShape) = isoptional(shp.md)
+
+isplural(shp::OutputShape) = isplural(shp.md)
 
 decoration(shp::OutputShape, name::Symbol, ty::Type=Any, default=missing) =
     decoration(shp.dom, name, ty, default)
@@ -369,6 +381,8 @@ show(io::IO, md::InputMode) =
 slots(md::InputMode) = md.slots
 
 isframed(md::InputMode) = md.framed
+
+isfree(md::InputMode) = isempty(md.slots) && !md.framed
 
 struct InputShape <: DerivedShape
     dom::AbstractShape
@@ -421,6 +435,8 @@ mode(shp::InputShape) = shp.md
 slots(shp::InputShape) = slots(shp.md)
 
 isframed(shp::InputShape) = isframed(shp.md)
+
+isfree(shp::InputShape) = isfree(shp.md)
 
 decoration(shp::InputShape, name::Symbol, ty::Type=Any, default=missing) =
     decoration(shp.dom, name, ty, default)

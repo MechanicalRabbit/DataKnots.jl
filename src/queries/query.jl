@@ -61,6 +61,20 @@ mode(q::Query) = mode(q.sig)
 
 imode(q::Query) = imode(q.sig)
 
+cardinality(q::Query) = cardinality(q.sig)
+
+isregular(q::Query) = isregular(q.sig)
+
+isoptional(q::Query) = isoptional(q.sig)
+
+isplural(q::Query) = isplural(q.sig)
+
+isfree(q::Query) = isfree(q.sig)
+
+isframed(q::Query) = isframed(q.sig)
+
+slots(q::Query) = slots(q.sig)
+
 function (q::Query)(input::AbstractVector)
     input, refs = decapsulate(input)
     rt = Runtime(copy(refs))
@@ -76,4 +90,7 @@ syntax(q::Query) =
 
 show(io::IO, q::Query) =
     print_code(io, syntax(q))
+
+optimize(q::Query) =
+    simplify(q) |> designate(q.sig)
 

@@ -8,14 +8,20 @@ export
     @query,
     @translate,
     Combinator,
+    execute,
     field,
+    given,
     it,
+    prepare,
     query,
+    recall,
     record,
     tag
 
 using ..Layouts
 import ..Layouts: syntax
+
+using ..Vectors
 
 using ..Shapes
 
@@ -34,6 +40,8 @@ include("combine.jl")
 include("query.jl")
 include("translate.jl")
 include("compose.jl")
+include("recall.jl")
+include("given.jl")
 include("then.jl")
 include("define.jl")
 include("tag.jl")

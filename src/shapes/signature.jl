@@ -44,3 +44,17 @@ domain(sig::Signature) = domain(sig.shp)
 
 mode(sig::Signature) = mode(sig.shp)
 
+isfree(sig::Signature) = isfree(sig.ishp)
+
+isframed(sig::Signature) = isframed(sig.ishp)
+
+slots(sig::Signature) = slots(sig.ishp)
+
+cardinality(sig::Signature) = cardinality(sig.shp)
+
+isregular(sig::Signature) = isregular(sig.shp)
+
+isoptional(sig::Signature) = isoptional(sig.shp)
+
+isplural(sig::Signature) = isplural(sig.shp)
+

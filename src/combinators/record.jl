@@ -14,7 +14,7 @@ function record(env::Environment, q::Query, Xs)
     shp = OutputShape(RecordShape(shape.(xs)))
     lbls = Symbol[decoration(domain(x), :tag, Symbol, Symbol("#$i")) for (i, x) in enumerate(xs)]
     r = chain_of(
-            tuple_of(lbls, xs),
+            tuple_of(lbls, [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs]),
             as_block()
     ) |> designate(ishp, shp)
     compose(q, r)

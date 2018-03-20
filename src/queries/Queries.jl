@@ -28,6 +28,7 @@ export
     lift_to_block,
     lift_to_block_tuple,
     lift_to_tuple,
+    optimize,
     pass,
     pull_block,
     pull_every_block,
@@ -45,13 +46,20 @@ import ..Vectors:
 
 using ..Shapes: Signature, InputShape, OutputShape
 import ..Shapes:
+    cardinality,
     idomain,
     imode,
+    isframed,
+    isfree,
     ishape,
+    isoptional,
+    isplural,
+    isregular,
     domain,
     mode,
     signature,
-    shape
+    shape,
+    slots
 
 using Base: OneTo
 import Base:
@@ -67,5 +75,6 @@ include("tuple.jl")
 include("block.jl")
 include("index.jl")
 include("sieve.jl")
+include("simplify.jl")
 
 end
