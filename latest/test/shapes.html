@@ -31,50 +31,47 @@ fits(REG, OPT|PLU)      #-&gt; true</code></pre><h2><a class="nav-anchor" id="Da
 #-&gt; NativeShape(String)
 
 eltype(str_shp)
-#-&gt; String</code></pre><p><code>IndexShape</code> indicates that the value is an index in a vector.  Its <em>class name</em> is used to find the shape of the target vector.</p><pre><code class="language-julia">idx_shp = IndexShape(:Emp)
-#-&gt; IndexShape(:Emp)
+#-&gt; String</code></pre><p><code>ClassShape</code> refers to a shape with a name.</p><pre><code class="language-julia">cls_shp = ClassShape(:Emp)
+#-&gt; ClassShape(:Emp)
 
-class(idx_shp)
-#-&gt; :Emp</code></pre><p>A shape which does not contain any indexes is called closed.</p><pre><code class="language-julia">isclosed(idx_shp)
+class(cls_shp)
+#-&gt; :Emp</code></pre><p>We can provide a definition for a class name using <code>rebind()</code> method.</p><pre><code class="language-julia">clos_shp = cls_shp |&gt; rebind(:Emp =&gt; str_shp)
+#-&gt; ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(String))</code></pre><p>Now we can obtain the actual shape of the class.</p><pre><code class="language-julia">clos_shp[]
+#-&gt; NativeShape(String)</code></pre><p>A shape which does not contain any nested undefined classes is called closed.</p><pre><code class="language-julia">isclosed(str_shp)
+#-&gt; true
+
+isclosed(cls_shp)
 #-&gt; false
 
-isclosed(str_shp)
-#-&gt; true</code></pre><p>For a data block, <code>BlockShape</code> specifies shape of its elements.</p><pre><code class="language-julia">blk_shp = BlockShape(IndexShape(:Emp))
-#-&gt; BlockShape(IndexShape(:Emp))
-
-blk_shp[]
-#-&gt; IndexShape(:Emp)</code></pre><p><code>TupleShape</code> lets us specify the field types of a tuple value.</p><pre><code class="language-julia">tpl_shp = TupleShape(NativeShape(String),
-                     BlockShape(IndexShape(:Emp)))
-#-&gt; TupleShape(NativeShape(String), BlockShape(IndexShape(:Emp)))
+isclosed(clos_shp)
+#-&gt; true</code></pre><p><code>TupleShape</code> lets us specify the field types of a tuple value.</p><pre><code class="language-julia">tpl_shp = TupleShape(NativeShape(String),
+                     BlockShape(ClassShape(:Emp)))
+#-&gt; TupleShape(NativeShape(String), BlockShape(ClassShape(:Emp)))
 
 foreach(println, tpl_shp[:])
 #=&gt;
 NativeShape(String)
-BlockShape(IndexShape(:Emp))
+BlockShape(ClassShape(:Emp))
 =#</code></pre><p>Two special shape types are used to indicate that the value may have any shape, or cannot exist.</p><pre><code class="language-julia">any_shp = AnyShape()
 #-&gt; AnyShape()
 
 none_shp = NoneShape()
-#-&gt; NoneShape()</code></pre><p>By default, <code>AnyShape</code> is assumed open-ended, but we can also indicate that it is closed.</p><pre><code class="language-julia">isclosed(AnyShape())
-#-&gt; false
-
-isclosed(AnyShape(true))
-#-&gt; true</code></pre><p>To any shape, we can attach an arbitrary set of attributes, which are called <em>decorations</em>.  In particular, we can label the values.</p><pre><code class="language-julia">decor_shp = str_shp |&gt; decorate(:tag =&gt; :position)
+#-&gt; NoneShape()</code></pre><p>To any shape, we can attach an arbitrary set of attributes, which are called <em>decorations</em>.  In particular, we can label the values.</p><pre><code class="language-julia">decor_shp = str_shp |&gt; decorate(:tag =&gt; :position)
 #-&gt; NativeShape(String) |&gt; decorate(:tag =&gt; :position)</code></pre><p>The value of a decoration could be extracted.</p><pre><code class="language-julia">decoration(decor_shp, :tag)</code></pre><p>We can enforce the type and the default value of the decoration.</p><pre><code class="language-julia">decoration(decor_shp, :tag, Symbol, Symbol(&quot;&quot;))
 #-&gt; :position
 decoration(decor_shp, :tag, String, &quot;&quot;)
 #-&gt; &quot;&quot;
 decoration(str_shp, :tag, String, &quot;&quot;)
-#-&gt; &quot;&quot;</code></pre><p><code>InputShape</code> and <code>OutputShape</code> are derived shapes that describe the structure of the query input and the query output.</p><p>To describe the query input, we specify the shape of the input elements, the shapes of the parameters, and whether or not the input is framed.</p><pre><code class="language-julia">i_shp = InputShape(IndexShape(:Emp),
+#-&gt; &quot;&quot;</code></pre><p><code>InputShape</code> and <code>OutputShape</code> are derived shapes that describe the structure of the query input and the query output.</p><p>To describe the query input, we specify the shape of the input elements, the shapes of the parameters, and whether or not the input is framed.</p><pre><code class="language-julia">i_shp = InputShape(ClassShape(:Emp),
                    [:D =&gt; OutputShape(NativeShape(String))],
                    true)
-#-&gt; InputShape(IndexShape(:Emp), [:D =&gt; OutputShape(NativeShape(String))], true)
+#-&gt; InputShape(ClassShape(:Emp), [:D =&gt; OutputShape(NativeShape(String))], true)
 
 i_shp[]
-#-&gt; IndexShape(:Emp)
+#-&gt; ClassShape(:Emp)
 
 domain(i_shp)
-#-&gt; IndexShape(:Emp)
+#-&gt; ClassShape(:Emp)
 
 mode(i_shp)
 #-&gt; InputMode([:D =&gt; OutputShape(NativeShape(String))], true)</code></pre><p>To describe the query output, we specify the shape and the cardinality of the output elements.</p><pre><code class="language-julia">o_shp = OutputShape(NativeShape(Int), OPT|PLU)
@@ -94,7 +91,7 @@ mode(o_shp)
                        OutputShape(:Emp, OPT|PLU) |&gt; decorate(:tag =&gt; :employee))
 #=&gt;
 RecordShape(OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
-            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
+            OutputShape(ClassShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
                         OPT|PLU))
 =#
 
@@ -106,40 +103,84 @@ emp_shp = RecordShape(OutputShape(String) |&gt; decorate(:tag =&gt; :name),
                       OutputShape(:Emp, OPT|PLU) |&gt; decorate(:tag =&gt; :subordinate))
 #=&gt;
 RecordShape(OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
-            OutputShape(IndexShape(:Dept) |&gt; decorate(:tag =&gt; :department)),
+            OutputShape(ClassShape(:Dept) |&gt; decorate(:tag =&gt; :department)),
             OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :position)),
             OutputShape(NativeShape(Int) |&gt; decorate(:tag =&gt; :salary)),
-            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :manager), OPT),
-            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :subordinate),
+            OutputShape(ClassShape(:Emp) |&gt; decorate(:tag =&gt; :manager), OPT),
+            OutputShape(ClassShape(:Emp) |&gt; decorate(:tag =&gt; :subordinate),
                         OPT|PLU))
-=#</code></pre><p><code>CapsuleShape</code> provides the shapes for any nested indexes.  Using it, we can fully specify self-referential and mutually referential data.</p><pre><code class="language-julia">db_shp = RecordShape(OutputShape(:Dept, OPT|PLU) |&gt; decorate(:tag =&gt; :department),
+=#</code></pre><p>Using the combination of different shapes we can describe the structure of any data source.</p><pre><code class="language-julia">db_shp = RecordShape(OutputShape(:Dept, OPT|PLU) |&gt; decorate(:tag =&gt; :department),
                      OutputShape(:Emp, OPT|PLU) |&gt; decorate(:tag =&gt; :employee))
 
-CapsuleShape(db_shp, :Dept =&gt; dept_shp, :Emp =&gt; emp_shp)
+db_shp |&gt; rebind(:Dept =&gt; dept_shp, :Emp =&gt; emp_shp)
 #=&gt;
-CapsuleShape(
-    RecordShape(OutputShape(IndexShape(:Dept) |&gt; decorate(:tag =&gt; :department),
-                            OPT|PLU),
-                OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
-                            OPT|PLU)),
-    :Dept =&gt; RecordShape(
-                 OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
-                 OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
-                             OPT|PLU)),
-    :Emp =&gt;
-        RecordShape(
-            OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
-            OutputShape(IndexShape(:Dept) |&gt; decorate(:tag =&gt; :department)),
-            OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :position)),
-            OutputShape(NativeShape(Int) |&gt; decorate(:tag =&gt; :salary)),
-            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :manager), OPT),
-            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :subordinate),
-                        OPT|PLU)))
+RecordShape(
+    OutputShape(
+        ClassShape(:Dept)
+        |&gt; rebind(:Dept =&gt; RecordShape(
+                               OutputShape(NativeShape(String)
+                                           |&gt; decorate(:tag =&gt; :name)),
+                               OutputShape(ClassShape(:Emp)
+                                           |&gt; decorate(:tag =&gt; :employee),
+                                           OPT|PLU))
+                           |&gt; decorate(:tag =&gt; :department),
+                  :Emp =&gt; RecordShape(
+                              OutputShape(NativeShape(String)
+                                          |&gt; decorate(:tag =&gt; :name)),
+                              ⋮
+                              OutputShape(ClassShape(:Emp)
+                                          |&gt; decorate(:tag =&gt; :subordinate),
+                                          OPT|PLU))),
+        OPT|PLU),
+    OutputShape(
+        ClassShape(:Emp)
+        |&gt; rebind(:Dept =&gt; RecordShape(
+                               OutputShape(NativeShape(String)
+                                           |&gt; decorate(:tag =&gt; :name)),
+                               OutputShape(ClassShape(:Emp)
+                                           |&gt; decorate(:tag =&gt; :employee),
+                                           OPT|PLU)),
+                  :Emp =&gt; RecordShape(
+                              OutputShape(NativeShape(String)
+                                          |&gt; decorate(:tag =&gt; :name)),
+                              ⋮
+                              OutputShape(ClassShape(:Emp)
+                                          |&gt; decorate(:tag =&gt; :subordinate),
+                                          OPT|PLU))
+                          |&gt; decorate(:tag =&gt; :employee)),
+        OPT|PLU))
 =#</code></pre><h2><a class="nav-anchor" id="Shape-ordering-1" href="#Shape-ordering-1">Shape ordering</a></h2><p>The same data can satisfy many different shape constraints.  For example, a vector <code>BlockVector([Chicago])</code> can be said to have, among others, the shape <code>BlockShape(String)</code>, the shape <code>OutputShape(String, OPT|PLU)</code> or the shape <code>AnyShape()</code>.  We can tell, for any two shapes, if one of them is more specific than the other.</p><pre><code class="language-julia">fits(NativeShape(Int), NativeShape(Number))     #-&gt; true
 fits(NativeShape(Int), NativeShape(String))     #-&gt; false
 
-fits(IndexShape(:Emp), IndexShape(:Emp))        #-&gt; true
-fits(IndexShape(:Emp), IndexShape(:Dept))       #-&gt; false
+fits(ClassShape(:Emp), ClassShape(:Emp))        #-&gt; true
+fits(ClassShape(:Emp), ClassShape(:Dept))       #-&gt; false
+
+fits(ClassShape(:Emp),
+     ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)))    #-&gt; false
+
+fits(ClassShape(:Emp),
+     ClassShape(:Dept)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)))    #-&gt; false
+
+fits(ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)),
+     ClassShape(:Emp))                          #-&gt; true
+
+fits(ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)),
+     ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)))    #-&gt; true
+
+fits(ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)),
+     ClassShape(:Dept)
+     |&gt; rebind(:Dept =&gt; NativeShape(String)))   #-&gt; false
+
+fits(ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(String)),
+     ClassShape(:Emp)
+     |&gt; rebind(:Emp =&gt; NativeShape(Number)))    #-&gt; false
 
 fits(BlockShape(Int), BlockShape(Number))       #-&gt; true
 fits(BlockShape(Int), BlockShape(String))       #-&gt; false
@@ -150,23 +191,6 @@ fits(TupleShape(Int, BlockShape(String)),
      TupleShape(String, BlockShape(String)))    #-&gt; false
 fits(TupleShape(Int),
      TupleShape(Number, BlockShape(String)))    #-&gt; false
-
-fits(CapsuleShape(BlockShape(:Emp),
-                  :Emp =&gt; TupleShape(String, Int),
-                  :Dept =&gt; TupleShape(String)),
-     CapsuleShape(BlockShape(:Emp),
-                  :Emp =&gt; TupleShape(String, Number)))  #-&gt; true
-fits(CapsuleShape(BlockShape(:Emp),
-                  :Emp =&gt; TupleShape(String, Int)),
-     CapsuleShape(BlockShape(:Emp),
-                  :Emp =&gt; TupleShape(String, Int),
-                  :Dept =&gt; TupleShape(String)))         #-&gt; false
-fits(CapsuleShape(BlockShape(:Emp),
-                  :Emp =&gt; TupleShape(String, Int)),
-     BlockShape(AnyShape()))                            #-&gt; true
-fits(BlockShape(AnyShape()),
-     CapsuleShape(BlockShape(:Emp),
-                  :Emp =&gt; TupleShape(String, Number)))  #-&gt; false
 
 fits(InputShape(Int,
                 [:X =&gt; OutputShape(Int),
@@ -198,9 +222,9 @@ fits(RecordShape(OutputShape(Int, OPT),
                  OutputShape(String, OPT|PLU)))     #-&gt; false
 fits(RecordShape(OutputShape(Int)),
      RecordShape(OutputShape(Number),
-                 OutputShape(String, OPT|PLU)))     #-&gt; false</code></pre><p>Shapes of different kinds are typically not compatible with each other.  The exceptions are <code>AnyShape</code> and <code>NullShape</code>.</p><pre><code class="language-julia">fits(NativeShape(Int), IndexShape(:Emp))    #-&gt; false
+                 OutputShape(String, OPT|PLU)))     #-&gt; false</code></pre><p>Shapes of different kinds are typically not compatible with each other.  The exceptions are <code>AnyShape</code> and <code>NullShape</code>.</p><pre><code class="language-julia">fits(NativeShape(Int), ClassShape(:Emp))    #-&gt; false
 fits(NativeShape(Int), AnyShape())          #-&gt; true
-fits(NoneShape(), IndexShape(:Emp))         #-&gt; true</code></pre><p>Shape decorations are treated as additional shape constraints.</p><pre><code class="language-julia">fits(NativeShape(String) |&gt; decorate(:tag =&gt; :name),
+fits(NoneShape(), ClassShape(:Emp))         #-&gt; true</code></pre><p>Shape decorations are treated as additional shape constraints.</p><pre><code class="language-julia">fits(NativeShape(String) |&gt; decorate(:tag =&gt; :name),
      NativeShape(String) |&gt; decorate(:tag =&gt; :name))        #-&gt; true
 fits(NativeShape(String),
      NativeShape(String) |&gt; decorate(:tag =&gt; :name))        #-&gt; false
@@ -212,14 +236,26 @@ fits(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
 ibound(NativeShape(Int), NativeShape(Number))
 #-&gt; NativeShape(Int)
 
-bound(IndexShape(:Emp), IndexShape(:Emp))
-#-&gt; IndexShape(:Emp)
-ibound(IndexShape(:Emp), IndexShape(:Emp))
-#-&gt; IndexShape(:Emp)
-bound(IndexShape(:Emp), IndexShape(:Dept))
+bound(ClassShape(:Emp), ClassShape(:Emp))
+#-&gt; ClassShape(:Emp)
+ibound(ClassShape(:Emp), ClassShape(:Emp))
+#-&gt; ClassShape(:Emp)
+bound(ClassShape(:Emp), ClassShape(:Dept))
 #-&gt; AnyShape()
-ibound(IndexShape(:Emp), IndexShape(:Dept))
+ibound(ClassShape(:Emp), ClassShape(:Dept))
 #-&gt; NoneShape()
+bound(ClassShape(:Emp),
+      ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(String)))
+#-&gt; ClassShape(:Emp)
+ibound(ClassShape(:Emp),
+       ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(String)))
+#-&gt; ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(String))
+bound(ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(Number)),
+      ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(String)))
+#-&gt; ClassShape(:Emp) |&gt; rebind(:Emp =&gt; AnyShape())
+ibound(ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(Number)),
+       ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NativeShape(String)))
+#-&gt; ClassShape(:Emp) |&gt; rebind(:Emp =&gt; NoneShape())
 
 bound(BlockShape(Int), BlockShape(Number))
 #-&gt; BlockShape(NativeShape(Number))
@@ -232,26 +268,6 @@ bound(TupleShape(:Emp, BlockShape(String)),
 ibound(TupleShape(:Emp, BlockShape(String)),
        TupleShape(:Dept, BlockShape(String)))
 #-&gt; TupleShape(NoneShape(), BlockShape(NativeShape(String)))
-
-bound(CapsuleShape(BlockShape(:Emp),
-                   :Emp =&gt; TupleShape(:Dept, Number),
-                   :Dept =&gt; TupleShape(String)),
-      CapsuleShape(BlockShape(:Emp),
-                   :Emp =&gt; TupleShape(String, Int)))
-#=&gt;
-CapsuleShape(BlockShape(IndexShape(:Emp)),
-             :Emp =&gt; TupleShape(AnyShape(), NativeShape(Number)))
-=#
-ibound(CapsuleShape(BlockShape(:Emp),
-                    :Emp =&gt; TupleShape(:Dept, Number),
-                    :Dept =&gt; TupleShape(String)),
-       CapsuleShape(BlockShape(:Emp),
-                    :Emp =&gt; TupleShape(String, Int)))
-#=&gt;
-CapsuleShape(BlockShape(IndexShape(:Emp)),
-             :Dept =&gt; TupleShape(NativeShape(String)),
-             :Emp =&gt; TupleShape(NoneShape(), NativeShape(Int)))
-=#
 
 bound(InputShape(Int, [:X =&gt; OutputShape(Int, OPT), :Y =&gt; OutputShape(String)], true),
       InputShape(Number, [:X =&gt; OutputShape(Int)]))
@@ -296,7 +312,7 @@ ibound(NativeShape(String) |&gt; decorate(:show =&gt; false, :tag =&gt; :name),
 
 bound(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
       NativeShape(Number) |&gt; decorate(:tag =&gt; :salary))
-#-&gt; AnyShape(true)
+#-&gt; AnyShape()
 
 ibound(NativeShape(String) |&gt; decorate(:tag =&gt; :position),
        NativeShape(Number) |&gt; decorate(:tag =&gt; :salary))
@@ -315,17 +331,17 @@ ibound(NativeShape(Int),
 #=&gt;
 OutputShape(RecordShape(
                 OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
-                OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
+                OutputShape(ClassShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
                             OPT|PLU)))
 =#
 
 ishape(sig)
-#-&gt; InputShape(IndexShape(:Dept))
+#-&gt; InputShape(ClassShape(:Dept))
 
 domain(sig)
 #=&gt;
 RecordShape(OutputShape(NativeShape(String) |&gt; decorate(:tag =&gt; :name)),
-            OutputShape(IndexShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
+            OutputShape(ClassShape(:Emp) |&gt; decorate(:tag =&gt; :employee),
                         OPT|PLU))
 =#
 
@@ -333,7 +349,7 @@ mode(sig)
 #-&gt; OutputMode()
 
 idomain(sig)
-#-&gt; IndexShape(:Dept)
+#-&gt; ClassShape(:Dept)
 
 imode(sig)
 #-&gt; InputMode()</code></pre><footer><hr/><a class="previous" href="vectors.html"><span class="direction">Previous</span><span class="title">Composite Vectors</span></a><a class="next" href="queries.html"><span class="direction">Next</span><span class="title">Query Backend</span></a></footer></article></body></html>
