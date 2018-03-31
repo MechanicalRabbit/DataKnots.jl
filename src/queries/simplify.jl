@@ -38,7 +38,13 @@ function simplify_block(qs)
         k = 1
         while k <= length(qs)
             if k <= length(qs)-2 && qs[k].op == as_block && qs[k+1].op == in_block && qs[k+2].op == flat_block
-                push!(qs′, qs[k+1].args[1])
+                q = qs[k+1].args[1]
+                if q.op == pass
+                elseif q.op == chain_of
+                    append!(qs′, q.args[1])
+                else
+                    push!(qs′, q)
+                end
                 k += 3
             else
                 push!(qs′, qs[k])

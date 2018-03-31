@@ -15,18 +15,107 @@ sigsyntax(shp::AbstractShape) =
 show(io::IO, shp::AbstractShape) =
     Layouts.print_code(io, syntax(shp))
 
-# Arbitrary properties attached to any shape.
+isclosed(::AbstractShape) =
+    true
 
-struct DecoratedShape{S<:AbstractShape} <: AbstractShape
-    vals::S
+rebind(shp::AbstractShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    shp
+
+rebind(bindings::Pair{Symbol}...) =
+    let bindings = sort(collect(Pair{Symbol,AbstractShape}, bindings), by=first)
+        obj -> rebind(obj, bindings)
+    end
+
+# Data shape known by its name.
+
+struct ClassShape <: AbstractShape
+    cls::Symbol
+end
+
+convert(::Type{AbstractShape}, cls::Symbol) =
+    ClassShape(cls)
+
+syntax(shp::ClassShape) =
+    Expr(:call, nameof(ClassShape), QuoteNode(shp.cls))
+
+sigsyntax(shp::ClassShape) =
+    shp.cls
+
+class(shp::ClassShape) =
+    shp.cls
+
+isclosed(::ClassShape) =
+    false
+
+rebind(shp::ClassShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if any(shp.cls == binding.first for binding in bindings)
+        ClosedShape(shp.cls, bindings)
+    else
+        shp
+    end
+
+# Named shape together with its definition.
+
+struct ClosedShape <: AbstractShape
+    cls::Symbol
+    bindings::Vector{Pair{Symbol,AbstractShape}}
+end
+
+ClosedShape(cls, bindings::Pair{Symbol,<:AbstractShape}...) =
+    ClosedShape(cls, sort(collect(Pair{Symbol,AbstractShape}, bindings), by=first))
+
+syntax(shp::ClosedShape) =
+    Expr(:call, :|>, syntax(ClassShape(shp.cls)), Expr(:call, rebind, syntax.(shp.bindings)...))
+
+syntax(pair::Pair{Symbol,AbstractShape}) =
+    Expr(:call, :(=>), QuoteNode(pair.first), syntax(pair.second))
+
+sigsyntax(shp::ClosedShape) =
+    shp.cls
+
+class(shp::ClosedShape) =
+    shp.cls
+
+bindings(shp::ClosedShape) =
+    shp.bindings
+
+function getindex(shp::ClosedShape)
+    for binding in shp.bindings
+        if binding.first == shp.cls
+            return rebind(binding.second, shp.bindings)
+        end
+    end
+    ClassShape(shp.cls)
+end
+
+function decoration(shp::ClosedShape, name::Symbol, ty::Type=Any, default=missing)
+    for binding in shp.bindings
+        if binding.first == shp.cls
+            return decoration(binding.second, name, ty, default)
+        end
+    end
+    default
+end
+
+decorate(shp::ClosedShape, decors::Vector{Pair{Symbol,Any}}) =
+    ClosedShape(shp.cls,
+                Pair{Symbol,AbstractShape}[
+                    binding.first == shp.cls ?
+                        binding.first => decorate(binding.second, decors) : binding
+                    for binding in shp.bindings])
+
+# Arbitrary properties as constraints attached to a shape.
+
+struct DecoratedShape <: AbstractShape
+    base::AbstractShape
     decors::Vector{Pair{Symbol,Any}}
 end
 
 syntax(shp::DecoratedShape) =
-    Expr(:call, :|>, syntax(shp.vals), Expr(:call, decorate, shp.decors...))
+    Expr(:call, :|>, syntax(shp.base), Expr(:call, decorate, shp.decors...))
 
 sigsyntax(shp::DecoratedShape) =
-    sigsyntax(shp.vals)
+    sigsyntax(shp.base)
 
 decoration(::AbstractShape, ::Symbol, ::Type=Any, default=missing) =
     default
@@ -36,7 +125,7 @@ function decoration(shp::DecoratedShape, name::Symbol, ty::Type=Any, default=mis
         if decor.first == name
             val = decor.second
             if val isa ty
-                return val
+                return val::ty
             end
             break
         end
@@ -44,11 +133,15 @@ function decoration(shp::DecoratedShape, name::Symbol, ty::Type=Any, default=mis
     return default
 end
 
-isclosed(shp::DecoratedShape) = isclosed(shp.vals)
+isclosed(shp::DecoratedShape) = isclosed(shp.base)
 
-undecorate(shp::AbstractShape) = shp
+rebind(shp::DecoratedShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    let base′ = rebind(shp.base, bindings)
+        base === base′ ? shp : decorate(base′, shp.decors)
+    end
 
-undecorate(shp::DecoratedShape) = shp.vals
+getindex(shp::DecoratedShape) =
+    shp.base
 
 function decorate(shp::AbstractShape, decors::Vector{Pair{Symbol,Any}})
     if isempty(decors)
@@ -61,33 +154,24 @@ function decorate(shp::DecoratedShape, decors::Vector{Pair{Symbol,Any}})
     if isempty(decors)
         return shp
     end
-    return DecoratedShape(shp.vals, merge(shp.decors, decors))
+    return DecoratedShape(shp.base, merge(shp.decors, decors))
 end
 
 decorate(decors::Pair{Symbol}...) =
-    let decors = sort(collect(Pair{Symbol,Any}, decors), by=(decor -> decor.first))
+    let decors = sort(collect(Pair{Symbol,Any}, decors), by=first)
         obj -> decorate(obj, decors)
     end
 
-# Indicates arbitrary data (with/without nested indexes).
+# Indicates data of arbitrary shape.
 
 struct AnyShape <: AbstractShape
-    closed::Bool
 end
 
-AnyShape() = AnyShape(false)
-
-syntax(shp::AnyShape) =
-    if shp.closed
-        Expr(:call, nameof(AnyShape), true)
-    else
-        Expr(:call, nameof(AnyShape))
-    end
+syntax(::AnyShape) =
+    Expr(:call, nameof(AnyShape))
 
 sigsyntax(::AnyShape) =
     :Any
-
-isclosed(shp::AnyShape) = shp.closed
 
 # Indicates contradictory constraints on the data.
 
@@ -99,8 +183,6 @@ syntax(::NoneShape) = Expr(:call, nameof(NoneShape))
 sigsyntax(::NoneShape) =
     :None
 
-isclosed(::NoneShape) = true
-
 # A regular Julia value of the given type.
 
 struct NativeShape <: AbstractShape
@@ -110,16 +192,13 @@ end
 convert(::Type{AbstractShape}, ty::Type) =
     NativeShape(ty)
 
-syntax(shp::NativeShape) = Expr(:call, nameof(NativeShape), shp.ty)
+syntax(shp::NativeShape) =
+    Expr(:call, nameof(NativeShape), shp.ty)
 
 sigsyntax(shp::NativeShape) =
     nameof(shp.ty)
 
 eltype(shp::NativeShape) = shp.ty
-
-eltype(shp::DecoratedShape{NativeShape}) = eltype(undecorate(shp))
-
-isclosed(::NativeShape) = true
 
 # Tuple with the given fields.
 
@@ -142,30 +221,18 @@ sigsyntax(shp::TupleShape) =
 
 getindex(shp::TupleShape, ::Colon) = shp.cols
 
-getindex(shp::DecoratedShape{TupleShape}, ::Colon) = getindex(undecorate(shp), :)
-
 getindex(shp::TupleShape, i) = shp.cols[i]
-
-getindex(shp::DecoratedShape{TupleShape}, i) = getindex(undecorate(shp), i)
 
 isclosed(shp::TupleShape) = shp.closed
 
-# Data has one of the given shapes.
+rebind(shp::TupleShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if !isclosed(shp)
+        TupleShape(AbstractShape[rebind(col, bindings) for col in shp.cols])
+    else
+        shp
+    end
 
-struct UnionShape <: AbstractShape
-    vars::Vector{AbstractShape}
-end
-
-UnionShape(itr...) =
-    UnionShape(collect(AbstractShape, itr))
-
-syntax(shp::UnionShape) =
-    Expr(:call, nameof(UnionShape), map(syntax, shp.vars)...)
-
-isclosed(shp::UnionShape) =
-    all(isclosed, shp.vars)
-
-# Collection of elements.
+# Collection of homogeneous elements.
 
 struct BlockShape <: AbstractShape
     elts::AbstractShape
@@ -179,88 +246,16 @@ sigsyntax(shp::BlockShape) =
 
 getindex(shp::BlockShape) = shp.elts
 
-getindex(shp::DecoratedShape{BlockShape}) = getindex(undecorate(shp))
-
 isclosed(shp::BlockShape) = isclosed(shp.elts)
 
-# A pointer to some value.  The class name lets us find
-# the shape of the target value.
-
-struct IndexShape <: AbstractShape
-    cls::Symbol
-end
-
-convert(::Type{AbstractShape}, cls::Symbol) =
-    IndexShape(cls)
-
-syntax(shp::IndexShape) =
-    Expr(:call, nameof(IndexShape), QuoteNode(shp.cls))
-
-sigsyntax(shp::IndexShape) =
-    shp.cls
-
-class(shp::IndexShape) = shp.cls
-
-class(shp::DecoratedShape{IndexShape}) = class(undecorate(shp))
-
-isclosed(::IndexShape) = false
-
-deferefence(shp::AbstractShape, refs::Vector{Pair{Symbol,AbstractShape}}) = shp
-
-function dereference(shp::IndexShape, refs::Vector{Pair{Symbol,AbstractShape}})
-    for ref in refs
-        if ref.first == shp.cls
-            return ref.second
-        end
-    end
-    shp
-end
-
-# Provides the shapes of any nested indexes.
-
-struct CapsuleShape{S<:AbstractShape} <: AbstractShape
-    vals::S
-    refs::Vector{Pair{Symbol,AbstractShape}}
-end
-
-let NO_REFS = Pair{Symbol,AbstractShape}[]
-
-    global CapsuleShape
-
-    CapsuleShape(vals) = CapsuleShape(vals, NO_REFS)
-end
-
-CapsuleShape(vals, refs::Pair{Symbol,<:AbstractShape}...) =
-    CapsuleShape(vals, sort(collect(Pair{Symbol,AbstractShape}, refs), by=(ref -> ref.first)))
-
-syntax(shp::CapsuleShape) =
-    Expr(:call, nameof(CapsuleShape),
-                syntax(shp.vals),
-                map(ref -> Expr(:call, :(=>), QuoteNode(ref.first), syntax(ref.second)), shp.refs)...)
-
-sigsyntax(shp::CapsuleShape) =
-    Expr(:where, sigsyntax(shp.vals), map(ref -> Expr(:(<:), ref.first, sigsyntax(ref.second)), shp.refs)...)
-
-isclosed(::CapsuleShape) = true
-
-decapsulate(shp::CapsuleShape) = shp.vals
-
-function recapsulate(fn, shp::CapsuleShape)
-    vals′ = fn(shp.vals)::AbstractShape
-    if vals′ == shp.vals
-        return shp
-    end
-    if !isempty(shp.refs)
-        vals′ = dereference(vals′, shp.refs)
-    end
-    if isclosed(vals′)
-        CapsuleShape(vals′)
+rebind(shp::BlockShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if !isclosed(shp)
+        BlockShape(rebind(shp.elts, bindings))
     else
-        CapsuleShape(vals′, shp.refs)
+        shp
     end
-end
 
-# Derived shapes have the underlying structural representation.
+# Derived shapes have some underlying structural representation.
 
 abstract type DerivedShape <: AbstractShape end
 
@@ -324,6 +319,13 @@ end
 getindex(shp::OutputShape) = shp.dom
 
 isclosed(shp::OutputShape) = isclosed(shp.dom)
+
+rebind(shp::OutputShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if !isclosed(shp)
+        OutputShape(rebind(shp.dom, bindings), shp.md)
+    else
+        shp
+    end
 
 domain(shp::OutputShape) = shp.dom
 
@@ -425,9 +427,6 @@ end
 
 getindex(shp::InputShape) = shp.dom
 
-isclosed(shp::InputShape) =
-    isclosed(shp.dom) && all(slot -> isclosed(slot.second), shp.md.slots)
-
 domain(shp::InputShape) = shp.dom
 
 mode(shp::InputShape) = shp.md
@@ -465,13 +464,16 @@ sigsyntax(shp::RecordShape) =
 
 getindex(shp::RecordShape, ::Colon) = shp.flds
 
-getindex(shp::DecoratedShape{RecordShape}, ::Colon) = getindex(undecorate(shp), :)
-
 getindex(shp::RecordShape, i) = shp.flds[i]
 
-getindex(shp::DecoratedShape{RecordShape}, i) = getindex(undecorate(shp), i)
-
 isclosed(shp::RecordShape) = shp.closed
+
+rebind(shp::RecordShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if !isclosed(shp)
+        RecordShape(OutputShape[rebind(fld, bindings) for fld in shp.flds])
+    else
+        shp
+    end
 
 # Subshape relation.
 
@@ -493,23 +495,20 @@ fits(::NoneShape, ::AnyShape) = true
 fits(::NoneShape, ::NoneShape) = true
 
 fits(shp1::DecoratedShape, shp2::AbstractShape) =
-    fits(shp1.vals, shp2)
+    fits(shp1.base, shp2)
 
 fits(shp1::DecoratedShape, shp2::AnyShape) =
-    fits(shp1.vals, shp2)
+    fits(shp1.base, shp2)
 
 fits(shp1::AbstractShape, shp2::DecoratedShape) =
-    isempty(shp2.decors) && fits(shp1, shp2.vals)
+    isempty(shp2.decors) && fits(shp1, shp2.base)
 
 fits(shp1::NoneShape, shp2::DecoratedShape) =
-    isempty(shp2.decors) && fits(shp1, shp2.vals)
+    isempty(shp2.decors) && fits(shp1, shp2.base)
 
 fits(shp1::DecoratedShape, shp2::DecoratedShape) =
-    fits(shp1.vals, shp2.vals) && fits(shp1.decors, shp2.decors)
-
-fits(shp1::S, shp2::S) where {S<:DecoratedShape} =
     shp1 == shp2 ||
-    fits(shp1.vals, shp2.vals) && fits(shp1.decors, shp2.decors)
+    fits(shp1.base, shp2.base) && fits(shp1.decors, shp2.decors)
 
 function fits(decors1::Vector{Pair{Symbol,Any}}, decors2::Vector{Pair{Symbol,Any}})
     j = 1
@@ -539,27 +538,18 @@ fits(shp1::BlockShape, shp2::BlockShape) =
     shp1 == shp2 ||
     fits(shp1.elts, shp2.elts)
 
-fits(shp1::IndexShape, shp2::IndexShape) =
+fits(shp1::ClassShape, shp2::ClassShape) =
     shp1.cls == shp2.cls
 
-fits(shp1::CapsuleShape, shp2::AbstractShape) =
-    fits(shp1.vals, shp2)
-
-fits(shp1::CapsuleShape, shp2::AnyShape) =
-    fits(shp1.vals, shp2)
-
-fits(shp1::AbstractShape, shp2::CapsuleShape) =
-    isempty(shp2.refs) && fits(shp1, shp2.vals)
-
-fits(shp1::NoneShape, shp2::CapsuleShape) =
-    isempty(shp2.refs) && fits(shp1, shp2.vals)
-
-fits(shp1::CapsuleShape, shp2::CapsuleShape) =
-    fits(shp1.vals, shp2.vals) && fits(shp1.refs, shp2.refs)
-
-fits(shp1::S, shp2::S) where {S<:CapsuleShape} =
+fits(shp1::ClosedShape, shp2::ClosedShape) =
     shp1 == shp2 ||
-    fits(shp1.vals, shp2.vals) && fits(shp1.refs, shp2.refs)
+    shp1.cls == shp2.cls && fits(shp1.bindings, shp2.bindings)
+
+fits(shp1::ClosedShape, shp2::ClassShape) =
+    shp1.cls == shp2.cls
+
+fits(shp1::ClassShape, shp2::ClosedShape) =
+    isempty(shp2.bindings) && shp1.cls == shp2.cls
 
 fits(shp1::OutputShape, shp2::OutputShape) =
     shp1 == shp2 ||
@@ -606,34 +596,34 @@ bound(::Type{<:AbstractShape}) = NoneShape()
 ibound(::Type{<:AbstractShape}) = AnyShape()
 
 bound(shp1::AbstractShape, shp2::AbstractShape) =
-    AnyShape(isclosed(shp1) && isclosed(shp2))
+    AnyShape()
 
 ibound(::AbstractShape, ::AbstractShape) = NoneShape()
 
 bound(shp1::DecoratedShape, shp2::AbstractShape) =
-    bound(shp1.vals, shp2)
+    bound(shp1.base, shp2)
 
 ibound(shp1::DecoratedShape, shp2::AbstractShape) =
-    DecoratedShape(ibound(shp1.vals, shp2), shp1.decors)
+    DecoratedShape(ibound(shp1.base, shp2), shp1.decors)
 
 bound(shp1::AbstractShape, shp2::DecoratedShape) =
-    bound(shp1, shp2.vals)
+    bound(shp1, shp2.base)
 
 ibound(shp1::AbstractShape, shp2::DecoratedShape) =
-    DecoratedShape(ibound(shp1, shp2.vals), shp2.decors)
+    DecoratedShape(ibound(shp1, shp2.base), shp2.decors)
 
 bound(shp1::DecoratedShape, shp2::DecoratedShape) =
     shp1 == shp2 ? shp1 :
-    let vals = bound(shp1.vals, shp2.vals),
+    let base = bound(shp1.base, shp2.base),
         decors = bound(shp1.decors, shp2.decors)
-        isempty(decors) ? vals : DecoratedShape(vals, decors)
+        isempty(decors) ? base : DecoratedShape(base, decors)
     end
 
 ibound(shp1::DecoratedShape, shp2::DecoratedShape) =
     shp1 == shp2 ? shp1 :
-    let vals = ibound(shp1.vals, shp2.vals),
+    let base = ibound(shp1.base, shp2.base),
         decors = ibound(shp1.decors, shp2.decors)
-        isempty(decors) ? vals : DecoratedShape(vals, decors)
+        isempty(decors) ? base : DecoratedShape(base, decors)
     end
 
 function bound(decors1::Vector{Pair{Symbol,Any}}, decors2::Vector{Pair{Symbol,Any}})
@@ -671,25 +661,22 @@ bound(shp1::DecoratedShape, shp2::NoneShape) = shp1
 
 bound(shp1::NoneShape, ::NoneShape) = shp1
 
-ibound(shp1::AnyShape, shp2::AbstractShape) =
-    !isclosed(shp1) || isclosed(shp2) ? shp2 : NoneShape()
+ibound(shp1::AnyShape, shp2::AbstractShape) = shp2
 
 ibound(shp1::AnyShape, shp2::DecoratedShape) =
-    DecoratedShape(ibound(shp1, shp2.vals), shp2.decors)
+    DecoratedShape(ibound(shp1, shp2.base), shp2.decors)
 
-ibound(shp1::AbstractShape, shp2::AnyShape) =
-    !isclosed(shp2) || isclosed(shp1) ? shp1 : NoneShape()
+ibound(shp1::AbstractShape, shp2::AnyShape) = shp1
 
 ibound(shp1::DecoratedShape, shp2::AnyShape) =
-    DecoratedShape(ibound(shp1.vals, shp2), shp1.decors)
+    DecoratedShape(ibound(shp1.base, shp2), shp1.decors)
 
-ibound(shp1::AnyShape, shp2::AnyShape) =
-    isclosed(shp1) ? shp1 : shp2
+ibound(shp1::AnyShape, shp2::AnyShape) = shp1
 
 bound(shp1::NativeShape, shp2::NativeShape) =
     shp1 == shp2 ? shp1 :
     let ty = typejoin(shp1.ty, shp2.ty)
-        ty == Any ? AnyShape(true) : NativeShape(ty)
+        ty == Any ? AnyShape() : NativeShape(ty)
     end
 
 ibound(shp1::NativeShape, shp2::NativeShape) =
@@ -698,10 +685,30 @@ ibound(shp1::NativeShape, shp2::NativeShape) =
         ty == Union{} ? NoneShape() : NativeShape(ty)
     end
 
-bound(shp1::IndexShape, shp2::IndexShape) =
+bound(shp1::ClassShape, shp2::ClassShape) =
     shp1.cls == shp2.cls ? shp1 : AnyShape()
 
-ibound(shp1::IndexShape, shp2::IndexShape) =
+ibound(shp1::ClassShape, shp2::ClassShape) =
+    shp1.cls == shp2.cls ? shp1 : NoneShape()
+
+bound(shp1::ClosedShape, shp2::ClosedShape) =
+    shp1 == shp2 || shp1.cls == shp2.cls && shp1.bindings == shp2.bindings ? shp1 :
+    shp1.cls == shp2.cls ? ClosedShape(shp1.cls, bound(shp1.bindings, shp2.bindings)) : AnyShape()
+
+ibound(shp1::ClosedShape, shp2::ClosedShape) =
+    shp1 == shp2 || shp1.cls == shp2.cls && shp1.bindings == shp2.bindings ? shp1 :
+    shp1.cls == shp2.cls ? ClosedShape(shp1.cls, ibound(shp1.bindings, shp2.bindings)) : NoneShape()
+
+bound(shp1::ClassShape, shp2::ClosedShape) =
+    shp1.cls == shp2.cls ? shp1 : AnyShape()
+
+bound(shp1::ClosedShape, shp2::ClassShape) =
+    shp1.cls == shp2.cls ? shp2 : AnyShape()
+
+ibound(shp1::ClassShape, shp2::ClosedShape) =
+    shp1.cls == shp2.cls ? shp2 : NoneShape()
+
+ibound(shp1::ClosedShape, shp2::ClassShape) =
     shp1.cls == shp2.cls ? shp1 : NoneShape()
 
 bound(shp1::TupleShape, shp2::TupleShape) =
@@ -723,14 +730,6 @@ bound(shp1::BlockShape, shp2::BlockShape) =
 ibound(shp1::BlockShape, shp2::BlockShape) =
     shp1 == shp2 ? shp1 :
     BlockShape(ibound(shp1.elts, shp2.elts))
-
-bound(shp1::CapsuleShape, shp2::CapsuleShape) =
-    shp1 == shp2 ? shp1 :
-    CapsuleShape(bound(shp1.vals, shp2.vals), bound(shp1.refs, shp2.refs))
-
-ibound(shp1::CapsuleShape, shp2::CapsuleShape) =
-    shp1 == shp2 ? shp1 :
-    CapsuleShape(ibound(shp1.vals, shp2.vals), ibound(shp1.refs, shp2.refs))
 
 bound(::Type{OutputMode}) = OutputMode(bound(Cardinality))
 
@@ -797,7 +796,7 @@ bound(shp1::RecordShape, shp2::RecordShape) =
     shp1 == shp2 ? shp1 :
     length(shp1.flds) == length(shp2.flds) ?
         RecordShape(OutputShape[bound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
-        AnyShape(isclosed(shp1) && isclosed(shp2))
+        AnyShape()
 
 ibound(shp1::RecordShape, shp2::RecordShape) =
     shp1 == shp2 ? shp1 :

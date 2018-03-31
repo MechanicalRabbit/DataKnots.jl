@@ -34,7 +34,7 @@ end
 lookup(::AbstractShape, ::Any) = missing
 
 lookup(shp::DecoratedShape, name) =
-    lookup(undecorate(shp), name)
+    lookup(shp[], name)
 
 function lookup(shp::RecordShape, name::Symbol)
     for fld in shp.flds

@@ -4,100 +4,94 @@
 
 function show(io::IO, knot::DataKnot)
     maxy, maxx = displaysize(io)
-    lines = render_dataknot(maxx, maxy, knot.shp, knot.elts)
+    lines = render_dataknot(maxx, maxy, knot)
     for line in lines
         println(io, line)
     end
 end
 
-struct TableCanvas
-    maxx::Int
-    maxy::Int
-    bufs::Vector{IOBuffer}
-    tws::Vector{Int}
-
-    TableCanvas(maxx, maxy) =
-        new(maxx, maxy, [IOBuffer() for k = 1:maxy], fill(0, maxy))
+function render_dataknot(maxx::Int, maxy::Int, knot::DataKnot)
+    d = table_data(knot, maxy)
+    l = table_layout(d, maxx)
+    c = table_draw(l, maxx)
+    return lines!(c)
 end
 
-function write!(c::TableCanvas, x::Int, y::Int, text::String)
-    tw = textwidth(text)
-    xend = x + tw - 1
-    if isempty(text)
-        return xend
-    end
-    @assert 1 <= y <= c.maxy
-    @assert c.tws[y] < x
-    if x >= c.maxx && c.tws[y] + 1 < c.maxx
-        x = c.maxx - 1
-        xend = c.maxx
-        text = " "
-        tw = 1
-    end
-    if x < c.maxx
-        if xend >= c.maxx
-            tw = 0
-            i = 0
-            for i′ in eachindex(text)
-                ch = text[i′]
-                ctw = textwidth(ch)
-                if x + tw + ctw - 1 < c.maxx
-                    tw += ctw
-                else
-                    text = text[1:i]
-                    break
-                end
-                i = i′
-            end
-            if y >= 1
-                text = text * "…"
-                tw += 1
-            end
-            xend = x + tw - 1
+struct TableData
+    head::Array{Tuple{String,Int},2}
+    body::TupleVector
+    doms::Vector{AbstractShape}
+    idxs::AbstractVector{Int}
+    tear::Int
+end
+
+TableData(head, body, doms) =
+    TableData(head, body, doms, 1:0, 0)
+
+function table_data(knot::DataKnot, maxy::Int)
+    elts = elements(knot)
+    dom = domain(knot)
+    card = cardinality(knot)
+    title = String(decoration(dom, :tag, Symbol, :DataKnot))
+    parts = data_parts(dom, elts)
+    if isempty(parts)
+        head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
+        body = TupleVector(length(elts), AbstractVector[elts])
+        doms = AbstractShape[NoneShape()]
+    else
+        hh = (!isempty(title) ? 1 : 0) + maximum(p -> size(p.head, 1), parts)
+        hw = sum(p -> size(p.head, 2), parts)
+        head = fill(("", 0), (hh, hw))
+        if !isempty(title)
+            head[1,1] = (title, hw)
         end
-        if x > c.tws[y] + 1
-            print(c.bufs[y], " " ^ (x - c.tws[y] - 1))
+        cols = AbstractVector[]
+        doms = AbstractShape[]
+        l = 1
+        for part in parts
+            append!(cols, columns(part.body))
+            append!(doms, part.doms)
+            ph = size(part.head, 1)
+            pw = size(part.head, 2)
+            t = hh - ph + 1
+            copyto!(head, CartesianIndices((t:t+ph-1, l:l+pw-1)), part.head, CartesianIndices(part.head))
+            l += pw
         end
-        print(c.bufs[y], text)
-        c.tws[y] = xend
+        body = TupleVector(length(elts), cols)
     end
-    xend
+    L = length(elts)
+    idxs = 1:L
+    tear = 0
+    if !isplural(card)
+        idxs = 1:0
+    else
+        avail = max(3, maxy - size(head, 1) - 4)
+        if avail < L
+            tear = 1 + avail ÷ 2
+            idxs = [1:tear; L-avail+tear+2:L]
+            body = body[idxs]
+        end
+    end
+    return TableData(head, body, doms, idxs, tear)
 end
 
-lines!(c::TableCanvas) =
-    String.(take!.(c.bufs))
+data_parts(shp::AbstractShape, vals::AbstractVector) =
+    [TableData(fill(("", 0), (0, 1)), TupleVector(length(vals), AbstractVector[vals]), AbstractShape[shp])]
 
-overflow(c::TableCanvas, x::Int) =
-    x > c.maxx
+data_parts(shp::DecoratedShape, vals::AbstractVector) =
+    data_parts(shp[], vals)
 
-struct TableHeader
-    text::String
-    nodes::Vector{TableHeader}
-    width::Int
-    depth::Int
-
-    TableHeader(text::String) =
-        new(text, TableHeader[], 1, isempty(text) ? 0 : 1)
-
-    TableHeader(text::String, nodes::Vector{TableHeader}) =
-        new(text,
-            nodes,
-            isempty(nodes) ? 1 : sum(n -> n.width, nodes),
-            (isempty(text) ? 0 : 1) + (isempty(nodes) ? 0 : maximum(n -> n.depth, nodes)))
+function data_parts(shp::Union{TupleShape,RecordShape}, vals::SomeTupleVector)
+    parts = TableData[]
+    for i in eachindex(shp[:])
+        title = String(decoration(shp[i], :tag, Symbol, Symbol("#i")))
+        head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
+        body = TupleVector(length(vals), AbstractVector[column(vals, i)])
+        doms = AbstractShape[shp[i]]
+        push!(parts, TableData(head, body, doms))
+    end
+    parts
 end
-
-header(shp::OutputShape) =
-    TableHeader(String(decoration(shp, :tag, Symbol, :DataKnot)),
-                header_nodes(domain(shp)))
-
-header_nodes(::AbstractShape) = TableHeader[]
-
-header_nodes(shp::DecoratedShape) =
-    header_nodes(undecorate(shp))
-
-header_nodes(shp::Union{TupleShape,RecordShape}) =
-    [TableHeader(String(decoration(col, :tag, Symbol, Symbol("#i"))))
-     for (i, col) in enumerate(shp[:])]
 
 struct TableCell
     text::String
@@ -108,127 +102,118 @@ TableCell() = TableCell("", 0)
 
 TableCell(text) = TableCell(text, 0)
 
-struct TableData
-    width::Int
-    height::Int
-    head::TableHeader
-    idxs::AbstractVector{Int}
-    tear::Int
+struct TableLayout
     cells::Array{TableCell,2}
     sizes::Vector{Tuple{Int,Int}}
+    idxs_cols::Int
+    head_rows::Int
+    tear_row::Int
 
-    TableData(header, idxs, tears) =
-        let w = header.width, h = header.depth + length(idxs)
-            new(w, h, header, idxs, tears, fill(TableCell(), (w, h)), fill((0, 0), w))
-        end
+    TableLayout(w, h, idxs_cols, head_rows, tear_row) =
+        new(fill(TableCell(), (h, w)), fill((0, 0), w), idxs_cols, head_rows, tear_row)
 end
 
-function render_dataknot(maxx::Int, maxy::Int, shp::OutputShape, elts::AbstractVector)
-    head = header(shp)
-    width = head.width
-    hheight = head.depth
-    L = length(elts)
-    bheight = min(L, max(3, maxy - hheight - 4))
-    tear = bheight + 1
-    idxs = 1:L
-    if bheight < L
-        tear = 1 + bheight ÷ 2
-        idxs = [1:tear; L-bheight+tear+2:L]
+function table_layout(d::TableData, maxx::Int)
+    w = (!isempty(d.idxs)) + width(d.body)
+    h = size(d.head, 1) + length(d.body)
+    idxs_cols = 0 + (!isempty(d.idxs))
+    head_rows = size(d.head, 1)
+    tear_row = d.tear > 0 ? head_rows + d.tear : 0
+    l = TableLayout(w, h, idxs_cols, head_rows, tear_row)
+    populate_body!(d, l, maxx)
+    populate_head!(d, l)
+    l
+end
+
+function populate_body!(d::TableData, l::TableLayout, maxx::Int)
+    col = 1
+    avail = maxx
+    if !isempty(d.idxs)
+        avail = populate_column!(l, col, NativeShape(Int), d.idxs, avail)
+        col += 1
     end
-    data = TableData(head, idxs, tear)
-    populate_body!(data, shp, elts, maxx)
-    populate_head!(data, shp, maxx)
-    render(data, shp, maxx, maxy)
-end
-
-function populate_body!(data::TableData, shp::OutputShape, elts::AbstractVector, maxx::Int)
-    extent = 2
-    for col = 1:data.width
-        row = data.head.depth + 1
-        sz = 0
-        rsz = 0
-        for idx in data.idxs
-            cell = render_cell(domain(shp), col, elts, idx, maxx-extent)
-            tw = textwidth(cell.text)
-            if cell.align > 0
-                rtw = textwidth(cell.text[end-cell.align+2:end])
-                ltw = tw - rtw
-                lsz = max(sz - rsz, ltw)
-                rsz = max(rsz, rtw)
-                sz = lsz + rsz
-            else
-                sz = max(sz, tw)
-            end
-            data.cells[col,row] = cell
-            row += 1
-        end
-        data.sizes[col] = (sz, rsz)
-        extent += sz + 2
-        if extent >= maxx
+    for (dom, vals) in zip(d.doms, columns(d.body))
+        if avail < 0
             break
         end
+        avail = populate_column!(l, col, dom, vals, avail)
+        col += 1
     end
 end
 
-populate_head!(data::TableData, shp::OutputShape, maxx::Int) =
-    populate_head!(data.head, data, 1)
-
-function populate_head!(head::TableHeader, data::TableData, col::Int)
-    node_col = col
-    for node in head.nodes
-        populate_head!(node, data, node_col)
-        node_col += node.width
-    end
-    if isempty(head.text)
-        return
-    end
-    text = escape_string(head.text)
-    tw = textwidth(text)
-    avail = sum(data.sizes[k][1] + 2 for k = col:col+head.width-1) - 2
-    if avail < tw
-        extra = 1 + (tw - avail - 1) ÷ head.width
-        k = col
-        while avail < tw
-            data.sizes[k] = (data.sizes[k][1] + extra, data.sizes[k][2])
-            avail += extra
-            k += 1
+function populate_column!(l::TableLayout, col::Int, dom::AbstractShape, vals::AbstractVector, avail::Int)
+    row = l.head_rows + 1
+    sz = 0
+    rsz = 0
+    for i in eachindex(vals)
+        l.cells[row,col] = cell = render_cell(dom, vals, i, avail)
+        tw = textwidth(cell.text)
+        if cell.align > 0
+            rtw = textwidth(cell.text[end-cell.align+2:end])
+            ltw = tw - rtw
+            lsz = max(sz - rsz, ltw)
+            rsz = max(rsz, rtw)
+            sz = lsz + rsz
+        else
+            sz = max(sz, tw)
         end
+        row += 1
     end
-    row = data.head.depth - head.depth + 1
-    data.cells[col,row] = TableCell(text)
+    l.sizes[col] = (sz, rsz)
+    return avail - sz - 2
 end
 
-render_cell(shp::DecoratedShape, col::Int, vals::AbstractVector, idx::Int, avail::Int) =
-    render_cell(undecorate(shp), col, vals, idx, avail)
-
-render_cell(shp::Union{TupleShape,RecordShape}, col::Int, vals::AbstractVector, idx::Int, avail::Int) =
-    if col == 0
-        buf = IOBuffer()
-        comma = false
-        for i in eachindex(shp[:])
-            if comma
-                print(buf, ", ")
-                avail -= 2
-                comma = false
+function populate_head!(d::TableData, l::TableLayout)
+    for row = size(d.head, 1):-1:1
+        for col = 1:size(d.head, 2)
+            (text, span) = d.head[row,col]
+            if isempty(text)
+                continue
             end
-            cell = render_cell(shp, i, vals, idx, avail)
-            print(buf, cell.text)
-            avail -= textwidth(cell.text)
-            if avail < 0
-                break
-            end
-            if !isempty(cell.text)
-                comma = true
+            col += l.idxs_cols
+            text = escape_string(text)
+            l.cells[row,col] = TableCell(text)
+            tw = textwidth(text)
+            avail = sum(l.sizes[k][1] + 2 for k = col:col+span-1) - 2
+            if avail < tw
+                extra = 1 + (tw - avail - 1) ÷ span
+                k = col
+                while avail < tw
+                    l.sizes[k] = (l.sizes[k][1] + extra, l.sizes[k][2])
+                    avail += extra
+                    k += 1
+                end
             end
         end
-        return TableCell(String(take!(buf)))
-    elseif col <= length(shp[:])
-        render_cell(shp[col], 0, column(vals, col), idx, avail)
-    else
-        TableCell()
     end
+end
 
-function render_cell(shp::OutputShape, col::Int, vals::AbstractVector, idx::Int, avail::Int)
+render_cell(shp::DecoratedShape, vals::AbstractVector, idx::Int, avail::Int) =
+    render_cell(shp[], vals, idx, avail)
+
+function render_cell(shp::Union{TupleShape,RecordShape}, vals::AbstractVector, idx::Int, avail::Int)
+    buf = IOBuffer()
+    comma = false
+    for i in eachindex(shp[:])
+        if comma
+            print(buf, ", ")
+            avail -= 2
+            comma = false
+        end
+        cell = render_cell(shp[i], column(vals, i), idx, avail)
+        print(buf, cell.text)
+        avail -= textwidth(cell.text)
+        if avail < 0
+            break
+        end
+        if !isempty(cell.text)
+            comma = true
+        end
+    end
+    return TableCell(String(take!(buf)))
+end
+
+function render_cell(shp::OutputShape, vals::AbstractVector, idx::Int, avail::Int)
     offs = offsets(vals)
     elts = elements(vals)
     l = offs[idx]
@@ -244,7 +229,7 @@ function render_cell(shp::OutputShape, col::Int, vals::AbstractVector, idx::Int,
                 avail -= 2
                 comma = false
             end
-            cell = render_cell(domain(shp), col, elts, k, avail)
+            cell = render_cell(domain(shp), elts, k, avail)
             print(buf, cell.text)
             avail -= textwidth(cell.text)
             if avail < 0
@@ -256,11 +241,14 @@ function render_cell(shp::OutputShape, col::Int, vals::AbstractVector, idx::Int,
         end
         return TableCell(String(take!(buf)))
     else
-        return render_cell(domain(shp), col, elts, l, avail)
+        return render_cell(domain(shp), elts, l, avail)
     end
 end
 
-render_cell(shp::NativeShape, col::Int, vals::AbstractVector, idx::Int, avail::Int) =
+render_cell(shp::Union{ClassShape,ClosedShape}, vals::SomeIndexVector, idx::Int, avail::Int) =
+    TableCell("[$(vals[idx])]")
+
+render_cell(shp::NativeShape, vals::AbstractVector, idx::Int, avail::Int) =
     render_cell(shp.ty, vals[idx], avail)
 
 const render_context = :compact => true
@@ -291,59 +279,90 @@ function render_cell(::Type{<:Real}, val, avail::Int)
     return TableCell(text, alignment)
 end
 
-function render(data::TableData, shp::OutputShape, maxx::Int, maxy::Int)
-    c = TableCanvas(maxx, data.height + (data.tear <= length(data.idxs)) + 1)
-    extent = 0
-    if fits(PLU, cardinality(shp))
-        extent = draw_indexes!(c, extent, data)
-        extent = draw_bar!(c, extent, data, 0)
-    else
-        extent = draw_bar!(c, extent, data, -1)
+struct TableCanvas
+    maxx::Int
+    maxy::Int
+    bufs::Vector{IOBuffer}
+    tws::Vector{Int}
+
+    TableCanvas(maxx, maxy) =
+        new(maxx, maxy, [IOBuffer() for k = 1:maxy], fill(0, maxy))
+end
+
+function write!(c::TableCanvas, x::Int, y::Int, text::String)
+    tw = textwidth(text)
+    xend = x + tw - 1
+    if isempty(text)
+        return xend
     end
-    for col = 1:data.width
-        extent = draw_column!(c, extent, data, col)
+    @assert 1 <= y <= c.maxy "1 <= $y <= $(c.maxy)"
+    @assert c.tws[y] < x "$(c.tws[y]) < $x"
+    if x >= c.maxx && c.tws[y] + 1 < c.maxx
+        x = c.maxx - 1
+        xend = c.maxx
+        text = " "
+        tw = 1
+    end
+    if x < c.maxx
+        if xend >= c.maxx
+            tw = 0
+            i = 0
+            for i′ in eachindex(text)
+                ch = text[i′]
+                ctw = textwidth(ch)
+                if x + tw + ctw - 1 < c.maxx
+                    tw += ctw
+                else
+                    text = text[1:i]
+                    break
+                end
+                i = i′
+            end
+            text = text * "…"
+            tw += 1
+            xend = x + tw - 1
+        end
+        if x > c.tws[y] + 1
+            print(c.bufs[y], " " ^ (x - c.tws[y] - 1))
+        end
+        print(c.bufs[y], text)
+        c.tws[y] = xend
+    end
+    xend
+end
+
+lines!(c::TableCanvas) =
+    String.(take!.(c.bufs))
+
+overflow(c::TableCanvas, x::Int) =
+    x >= c.maxx
+
+function table_draw(l::TableLayout, maxx::Int)
+    maxy = size(l.cells, 1) + (l.tear_row > 0) + 1
+    c = TableCanvas(maxx, maxy)
+    extent = 0
+    for col = 1:size(l.cells, 2)
+        if col == l.idxs_cols + 1
+            extent = draw_bar!(c, extent, l, l.idxs_cols == 0 ? -1 : 0)
+        end
+        extent = draw_column!(c, extent, l, col)
         if overflow(c, extent)
             break
         end
     end
-    draw_bar!(c, extent, data, 1)
-    lines!(c)
+    draw_bar!(c, extent, l, 1)
+    c
 end
 
-function draw_indexes!(c::TableCanvas, extent::Int, data::TableData)
-    y = data.head.depth + 1
-    if isempty(data.idxs)
-        write!(c, 1, y, "─")
-    else
-        sz = length(string(data.idxs[end]))
-        x = extent + 1
-        write!(c, x, y, "─"^(sz+1))
-        y += 1
-        for k = eachindex(data.idxs)
-            if k == data.tear
-                write!(c, x + sz - 1, y, "⋮")
-                y += 1
-            end
-            idx = data.idxs[k]
-            s = string(idx)
-            write!(c, x + sz - length(s), y, s)
-            y += 1
-        end
-    end
-    extent + sz + 1
-end
-
-function draw_bar!(c::TableCanvas, extent::Int, data::TableData, pos::Int)
+function draw_bar!(c::TableCanvas, extent::Int, l::TableLayout, pos::Int)
     x = extent + 1
     y = 1
-    for k = 1:data.head.depth
-        write!(c, x, y, "│")
-        y += 1
-    end
-    write!(c, x, y, pos < 0 ? "├" : pos > 0 ? "┤" : "┼")
-    y += 1
-    for k = eachindex(data.idxs)
-        if k == data.tear
+    for row = 1:size(l.cells, 1)
+        if row == l.head_rows + 1
+            write!(c, x, y, pos < 0 ? "├" : pos > 0 ? "┤" : "┼")
+            y += 1
+        end
+        if row == l.tear_row + 1 && l.tear_row > 0
             y += 1
         end
         write!(c, x, y, "│")
@@ -352,26 +371,31 @@ function draw_bar!(c::TableCanvas, extent::Int, data::TableData, pos::Int)
     extent + 1
 end
 
-function draw_column!(c::TableCanvas, extent::Int, data::TableData, col::Int)
-    sz, rsz = data.sizes[col]
-    y = 1
-    for k = 1:data.head.depth
-        x = extent + 2
-        write!(c, x, y, data.cells[col, k].text)
-        y += 1
+function draw_column!(c::TableCanvas, extent::Int, l::TableLayout, col::Int)
+    sz, rsz = l.sizes[col]
+    if col == 1 && l.idxs_cols > 0
+        sz -= 1
     end
-    write!(c, extent + 1, y, "─" ^ (sz + 2))
-    y += 1
-    for k = eachindex(data.idxs)
-        if k == data.tear
+    y = 1
+    for row = 1:size(l.cells, 1)
+        x = extent + 2
+        if row == l.head_rows + 1
+            write!(c, extent + 1, y, "─" ^ (sz + 2))
             y += 1
         end
-        x = extent + 2
-        cell = data.cells[col, data.head.depth+k]
-        if cell.align > 0
-            x = extent + sz - rsz - textwidth(cell.text) + cell.align + 1
+        if row == l.tear_row + 1 && l.tear_row > 0
+            if col == 1
+                write!(c, x + sz - 1, y, "⋮")
+            end
+            y += 1
         end
-        write!(c, x, y, data.cells[col, data.head.depth+k].text)
+        cell = l.cells[row, col]
+        if !isempty(cell.text)
+            if cell.align > 0
+                x = extent + sz - rsz - textwidth(cell.text) + cell.align + 1
+            end
+            write!(c, x, y, cell.text)
+        end
         y += 1
     end
     extent + sz + 2

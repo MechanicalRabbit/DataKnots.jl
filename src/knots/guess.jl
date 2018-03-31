@@ -48,8 +48,8 @@ guessshape(bv::BlockVector) =
     BlockShape(guessshape(bv.elts))
 
 guessshape(iv::IndexVector) =
-    IndexShape(iv.ident)
+    ClassShape(iv.ident)
 
 guessshape(cv::CapsuleVector) =
-    CapsuleShape(guessshape(cv.vals), [ref.first => guessshape(ref.second) for ref in cv.refs])
+    guessshape(cv.vals) |> rebind((ref.first => guessshape(ref.second) for ref in cv.refs)...)
 

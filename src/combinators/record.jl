@@ -9,7 +9,7 @@ translate(::Type{Val{:record}}, args::Tuple) =
     record(translate.(args)...)
 
 function record(env::Environment, q::Query, Xs)
-    xs = combine.(Xs, env, stub(q))
+    xs = combine.(Xs, Ref(env), Ref(stub(q)))
     ishp = ibound(ishape.(xs))
     shp = OutputShape(RecordShape(shape.(xs)))
     lbls = Symbol[decoration(domain(x), :tag, Symbol, Symbol("#$i")) for (i, x) in enumerate(xs)]

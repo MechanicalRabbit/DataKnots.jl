@@ -75,41 +75,45 @@ The structure of composite data is specified with *shape* objects.
     eltype(str_shp)
     #-> String
 
-`IndexShape` indicates that the value is an index in a vector.  Its *class
-name* is used to find the shape of the target vector.
+`ClassShape` refers to a shape with a name.
 
-    idx_shp = IndexShape(:Emp)
-    #-> IndexShape(:Emp)
+    cls_shp = ClassShape(:Emp)
+    #-> ClassShape(:Emp)
 
-    class(idx_shp)
+    class(cls_shp)
     #-> :Emp
 
-A shape which does not contain any indexes is called closed.
+We can provide a definition for a class name using `rebind()` method.
 
-    isclosed(idx_shp)
-    #-> false
+    clos_shp = cls_shp |> rebind(:Emp => str_shp)
+    #-> ClassShape(:Emp) |> rebind(:Emp => NativeShape(String))
+
+Now we can obtain the actual shape of the class.
+
+    clos_shp[]
+    #-> NativeShape(String)
+
+A shape which does not contain any nested undefined classes is called closed.
 
     isclosed(str_shp)
     #-> true
 
-For a data block, `BlockShape` specifies shape of its elements.
+    isclosed(cls_shp)
+    #-> false
 
-    blk_shp = BlockShape(IndexShape(:Emp))
-    #-> BlockShape(IndexShape(:Emp))
-
-    blk_shp[]
-    #-> IndexShape(:Emp)
+    isclosed(clos_shp)
+    #-> true
 
 `TupleShape` lets us specify the field types of a tuple value.
 
     tpl_shp = TupleShape(NativeShape(String),
-                         BlockShape(IndexShape(:Emp)))
-    #-> TupleShape(NativeShape(String), BlockShape(IndexShape(:Emp)))
+                         BlockShape(ClassShape(:Emp)))
+    #-> TupleShape(NativeShape(String), BlockShape(ClassShape(:Emp)))
 
     foreach(println, tpl_shp[:])
     #=>
     NativeShape(String)
-    BlockShape(IndexShape(:Emp))
+    BlockShape(ClassShape(:Emp))
     =#
 
 Two special shape types are used to indicate that the value may have any shape,
@@ -120,15 +124,6 @@ or cannot exist.
 
     none_shp = NoneShape()
     #-> NoneShape()
-
-By default, `AnyShape` is assumed open-ended, but we can also indicate that
-it is closed.
-
-    isclosed(AnyShape())
-    #-> false
-
-    isclosed(AnyShape(true))
-    #-> true
 
 To any shape, we can attach an arbitrary set of attributes, which are called
 *decorations*.  In particular, we can label the values.
@@ -155,16 +150,16 @@ of the query input and the query output.
 To describe the query input, we specify the shape of the input elements, the
 shapes of the parameters, and whether or not the input is framed.
 
-    i_shp = InputShape(IndexShape(:Emp),
+    i_shp = InputShape(ClassShape(:Emp),
                        [:D => OutputShape(NativeShape(String))],
                        true)
-    #-> InputShape(IndexShape(:Emp), [:D => OutputShape(NativeShape(String))], true)
+    #-> InputShape(ClassShape(:Emp), [:D => OutputShape(NativeShape(String))], true)
 
     i_shp[]
-    #-> IndexShape(:Emp)
+    #-> ClassShape(:Emp)
 
     domain(i_shp)
-    #-> IndexShape(:Emp)
+    #-> ClassShape(:Emp)
 
     mode(i_shp)
     #-> InputMode([:D => OutputShape(NativeShape(String))], true)
@@ -194,7 +189,7 @@ certain shape and cardinality.
                            OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))
     #=>
     RecordShape(OutputShape(NativeShape(String) |> decorate(:tag => :name)),
-                OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                OutputShape(ClassShape(:Emp) |> decorate(:tag => :employee),
                             OPT|PLU))
     =#
 
@@ -206,40 +201,57 @@ certain shape and cardinality.
                           OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :subordinate))
     #=>
     RecordShape(OutputShape(NativeShape(String) |> decorate(:tag => :name)),
-                OutputShape(IndexShape(:Dept) |> decorate(:tag => :department)),
+                OutputShape(ClassShape(:Dept) |> decorate(:tag => :department)),
                 OutputShape(NativeShape(String) |> decorate(:tag => :position)),
                 OutputShape(NativeShape(Int) |> decorate(:tag => :salary)),
-                OutputShape(IndexShape(:Emp) |> decorate(:tag => :manager), OPT),
-                OutputShape(IndexShape(:Emp) |> decorate(:tag => :subordinate),
+                OutputShape(ClassShape(:Emp) |> decorate(:tag => :manager), OPT),
+                OutputShape(ClassShape(:Emp) |> decorate(:tag => :subordinate),
                             OPT|PLU))
     =#
 
-`CapsuleShape` provides the shapes for any nested indexes.  Using it, we can
-fully specify self-referential and mutually referential data.
+Using the combination of different shapes we can describe the structure of any
+data source.
 
     db_shp = RecordShape(OutputShape(:Dept, OPT|PLU) |> decorate(:tag => :department),
                          OutputShape(:Emp, OPT|PLU) |> decorate(:tag => :employee))
 
-    CapsuleShape(db_shp, :Dept => dept_shp, :Emp => emp_shp)
+    db_shp |> rebind(:Dept => dept_shp, :Emp => emp_shp)
     #=>
-    CapsuleShape(
-        RecordShape(OutputShape(IndexShape(:Dept) |> decorate(:tag => :department),
-                                OPT|PLU),
-                    OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
-                                OPT|PLU)),
-        :Dept => RecordShape(
-                     OutputShape(NativeShape(String) |> decorate(:tag => :name)),
-                     OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
-                                 OPT|PLU)),
-        :Emp =>
-            RecordShape(
-                OutputShape(NativeShape(String) |> decorate(:tag => :name)),
-                OutputShape(IndexShape(:Dept) |> decorate(:tag => :department)),
-                OutputShape(NativeShape(String) |> decorate(:tag => :position)),
-                OutputShape(NativeShape(Int) |> decorate(:tag => :salary)),
-                OutputShape(IndexShape(:Emp) |> decorate(:tag => :manager), OPT),
-                OutputShape(IndexShape(:Emp) |> decorate(:tag => :subordinate),
-                            OPT|PLU)))
+    RecordShape(
+        OutputShape(
+            ClassShape(:Dept)
+            |> rebind(:Dept => RecordShape(
+                                   OutputShape(NativeShape(String)
+                                               |> decorate(:tag => :name)),
+                                   OutputShape(ClassShape(:Emp)
+                                               |> decorate(:tag => :employee),
+                                               OPT|PLU))
+                               |> decorate(:tag => :department),
+                      :Emp => RecordShape(
+                                  OutputShape(NativeShape(String)
+                                              |> decorate(:tag => :name)),
+                                  ⋮
+                                  OutputShape(ClassShape(:Emp)
+                                              |> decorate(:tag => :subordinate),
+                                              OPT|PLU))),
+            OPT|PLU),
+        OutputShape(
+            ClassShape(:Emp)
+            |> rebind(:Dept => RecordShape(
+                                   OutputShape(NativeShape(String)
+                                               |> decorate(:tag => :name)),
+                                   OutputShape(ClassShape(:Emp)
+                                               |> decorate(:tag => :employee),
+                                               OPT|PLU)),
+                      :Emp => RecordShape(
+                                  OutputShape(NativeShape(String)
+                                              |> decorate(:tag => :name)),
+                                  ⋮
+                                  OutputShape(ClassShape(:Emp)
+                                              |> decorate(:tag => :subordinate),
+                                              OPT|PLU))
+                              |> decorate(:tag => :employee)),
+            OPT|PLU))
     =#
 
 
@@ -254,8 +266,35 @@ than the other.
     fits(NativeShape(Int), NativeShape(Number))     #-> true
     fits(NativeShape(Int), NativeShape(String))     #-> false
 
-    fits(IndexShape(:Emp), IndexShape(:Emp))        #-> true
-    fits(IndexShape(:Emp), IndexShape(:Dept))       #-> false
+    fits(ClassShape(:Emp), ClassShape(:Emp))        #-> true
+    fits(ClassShape(:Emp), ClassShape(:Dept))       #-> false
+
+    fits(ClassShape(:Emp),
+         ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(String)))    #-> false
+
+    fits(ClassShape(:Emp),
+         ClassShape(:Dept)
+         |> rebind(:Emp => NativeShape(String)))    #-> false
+
+    fits(ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(String)),
+         ClassShape(:Emp))                          #-> true
+
+    fits(ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(String)),
+         ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(String)))    #-> true
+
+    fits(ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(String)),
+         ClassShape(:Dept)
+         |> rebind(:Dept => NativeShape(String)))   #-> false
+
+    fits(ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(String)),
+         ClassShape(:Emp)
+         |> rebind(:Emp => NativeShape(Number)))    #-> false
 
     fits(BlockShape(Int), BlockShape(Number))       #-> true
     fits(BlockShape(Int), BlockShape(String))       #-> false
@@ -266,23 +305,6 @@ than the other.
          TupleShape(String, BlockShape(String)))    #-> false
     fits(TupleShape(Int),
          TupleShape(Number, BlockShape(String)))    #-> false
-
-    fits(CapsuleShape(BlockShape(:Emp),
-                      :Emp => TupleShape(String, Int),
-                      :Dept => TupleShape(String)),
-         CapsuleShape(BlockShape(:Emp),
-                      :Emp => TupleShape(String, Number)))  #-> true
-    fits(CapsuleShape(BlockShape(:Emp),
-                      :Emp => TupleShape(String, Int)),
-         CapsuleShape(BlockShape(:Emp),
-                      :Emp => TupleShape(String, Int),
-                      :Dept => TupleShape(String)))         #-> false
-    fits(CapsuleShape(BlockShape(:Emp),
-                      :Emp => TupleShape(String, Int)),
-         BlockShape(AnyShape()))                            #-> true
-    fits(BlockShape(AnyShape()),
-         CapsuleShape(BlockShape(:Emp),
-                      :Emp => TupleShape(String, Number)))  #-> false
 
     fits(InputShape(Int,
                     [:X => OutputShape(Int),
@@ -319,9 +341,9 @@ than the other.
 Shapes of different kinds are typically not compatible with each other.  The
 exceptions are `AnyShape` and `NullShape`.
 
-    fits(NativeShape(Int), IndexShape(:Emp))    #-> false
+    fits(NativeShape(Int), ClassShape(:Emp))    #-> false
     fits(NativeShape(Int), AnyShape())          #-> true
-    fits(NoneShape(), IndexShape(:Emp))         #-> true
+    fits(NoneShape(), ClassShape(:Emp))         #-> true
 
 Shape decorations are treated as additional shape constraints.
 
@@ -342,14 +364,26 @@ is more general than each of them.  We can also find their lower bound.
     ibound(NativeShape(Int), NativeShape(Number))
     #-> NativeShape(Int)
 
-    bound(IndexShape(:Emp), IndexShape(:Emp))
-    #-> IndexShape(:Emp)
-    ibound(IndexShape(:Emp), IndexShape(:Emp))
-    #-> IndexShape(:Emp)
-    bound(IndexShape(:Emp), IndexShape(:Dept))
+    bound(ClassShape(:Emp), ClassShape(:Emp))
+    #-> ClassShape(:Emp)
+    ibound(ClassShape(:Emp), ClassShape(:Emp))
+    #-> ClassShape(:Emp)
+    bound(ClassShape(:Emp), ClassShape(:Dept))
     #-> AnyShape()
-    ibound(IndexShape(:Emp), IndexShape(:Dept))
+    ibound(ClassShape(:Emp), ClassShape(:Dept))
     #-> NoneShape()
+    bound(ClassShape(:Emp),
+          ClassShape(:Emp) |> rebind(:Emp => NativeShape(String)))
+    #-> ClassShape(:Emp)
+    ibound(ClassShape(:Emp),
+           ClassShape(:Emp) |> rebind(:Emp => NativeShape(String)))
+    #-> ClassShape(:Emp) |> rebind(:Emp => NativeShape(String))
+    bound(ClassShape(:Emp) |> rebind(:Emp => NativeShape(Number)),
+          ClassShape(:Emp) |> rebind(:Emp => NativeShape(String)))
+    #-> ClassShape(:Emp) |> rebind(:Emp => AnyShape())
+    ibound(ClassShape(:Emp) |> rebind(:Emp => NativeShape(Number)),
+           ClassShape(:Emp) |> rebind(:Emp => NativeShape(String)))
+    #-> ClassShape(:Emp) |> rebind(:Emp => NoneShape())
 
     bound(BlockShape(Int), BlockShape(Number))
     #-> BlockShape(NativeShape(Number))
@@ -362,26 +396,6 @@ is more general than each of them.  We can also find their lower bound.
     ibound(TupleShape(:Emp, BlockShape(String)),
            TupleShape(:Dept, BlockShape(String)))
     #-> TupleShape(NoneShape(), BlockShape(NativeShape(String)))
-
-    bound(CapsuleShape(BlockShape(:Emp),
-                       :Emp => TupleShape(:Dept, Number),
-                       :Dept => TupleShape(String)),
-          CapsuleShape(BlockShape(:Emp),
-                       :Emp => TupleShape(String, Int)))
-    #=>
-    CapsuleShape(BlockShape(IndexShape(:Emp)),
-                 :Emp => TupleShape(AnyShape(), NativeShape(Number)))
-    =#
-    ibound(CapsuleShape(BlockShape(:Emp),
-                        :Emp => TupleShape(:Dept, Number),
-                        :Dept => TupleShape(String)),
-           CapsuleShape(BlockShape(:Emp),
-                        :Emp => TupleShape(String, Int)))
-    #=>
-    CapsuleShape(BlockShape(IndexShape(:Emp)),
-                 :Dept => TupleShape(NativeShape(String)),
-                 :Emp => TupleShape(NoneShape(), NativeShape(Int)))
-    =#
 
     bound(InputShape(Int, [:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true),
           InputShape(Number, [:X => OutputShape(Int)]))
@@ -431,7 +445,7 @@ For decorated shapes, incompatible decoration constraints are replaced with
 
     bound(NativeShape(String) |> decorate(:tag => :position),
           NativeShape(Number) |> decorate(:tag => :salary))
-    #-> AnyShape(true)
+    #-> AnyShape()
 
     ibound(NativeShape(String) |> decorate(:tag => :position),
            NativeShape(Number) |> decorate(:tag => :salary))
@@ -462,17 +476,17 @@ Different components of the signature can be easily extracted.
     #=>
     OutputShape(RecordShape(
                     OutputShape(NativeShape(String) |> decorate(:tag => :name)),
-                    OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                    OutputShape(ClassShape(:Emp) |> decorate(:tag => :employee),
                                 OPT|PLU)))
     =#
 
     ishape(sig)
-    #-> InputShape(IndexShape(:Dept))
+    #-> InputShape(ClassShape(:Dept))
 
     domain(sig)
     #=>
     RecordShape(OutputShape(NativeShape(String) |> decorate(:tag => :name)),
-                OutputShape(IndexShape(:Emp) |> decorate(:tag => :employee),
+                OutputShape(ClassShape(:Emp) |> decorate(:tag => :employee),
                             OPT|PLU))
     =#
 
@@ -480,7 +494,7 @@ Different components of the signature can be easily extracted.
     #-> OutputMode()
 
     idomain(sig)
-    #-> IndexShape(:Dept)
+    #-> ClassShape(:Dept)
 
     imode(sig)
     #-> InputMode()

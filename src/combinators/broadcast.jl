@@ -24,7 +24,7 @@ syntax(::typeof(apply), args::Vector{Any}) =
     syntax(broadcast, Any[args[1], args[2]...])
 
 function apply(env::Environment, q::Query, f, Xs)
-    xs = combine.(Xs, env, stub(q))
+    xs = combine.(Xs, Ref(env), Ref(stub(q)))
     if length(xs) == 1
         x = xs[1]
         ity = eltype(domain(x))

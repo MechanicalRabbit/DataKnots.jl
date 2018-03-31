@@ -7,16 +7,16 @@
 
 To any composite vector, attaches the reference vectors for any nested indexes.
 """
-struct CapsuleVector{T,V<:AbstractVector{T}} <: AbstractVector{T}
+struct CapsuleVector{W<:AbstractVector,T,V<:AbstractVector} <: WrapperVector{W,T}
     vals::V
     refs::Vector{Pair{Symbol,AbstractVector}}
 end
 
 CapsuleVector(vals::V, refs::Vector{Pair{Symbol,AbstractVector}}) where {T,V<:AbstractVector{T}} =
-    CapsuleVector{T,V}(vals, refs)
+    CapsuleVector{wrappertype(V),T,V}(vals, refs)
 
 CapsuleVector(vals, refs::Pair{Symbol,<:AbstractVector}...) =
-    CapsuleVector(vals, sort(collect(Pair{Symbol,AbstractVector}, refs), by=(ref -> ref.first)))
+    CapsuleVector(vals, sort(collect(Pair{Symbol,AbstractVector}, refs), by=first))
 
 # Properties and methods.
 
@@ -105,10 +105,52 @@ end
 
 @inline size(cv::CapsuleVector) = size(cv.vals)
 
-IndexStyle(::Type{<:CapsuleVector{T,V}}) where {T,V} = IndexStyle(V)
+IndexStyle(::Type{<:CapsuleVector{W,T,V}}) where {W,T,V} = IndexStyle(V)
 
 @inline getindex(cv::CapsuleVector, k::Int) = cv.vals[k]
 
 @inline getindex(cv::CapsuleVector, ks::AbstractVector) =
     CapsuleVector(cv.vals[ks], cv.refs)
+
+# Tuple vector interface.
+
+labels(cv::CapsuleVector{<:AbstractTupleVector}) =
+    labels(cv.vals)
+
+width(cv::CapsuleVector{<:AbstractTupleVector}) =
+    width(cv.vals)
+
+locate(cv::CapsuleVector{<:AbstractTupleVector}, j::Union{Int,Symbol}) =
+    locate(cv.vals, j)
+
+columns(cv::CapsuleVector{<:AbstractTupleVector}) =
+    AbstractVector[encapsulate(col, cv.refs) for col in columns(cv.refs)]
+
+column(cv::CapsuleVector{<:AbstractTupleVector}, j::Union{Int,Symbol}) =
+    encapsulate(column(cv.vals, j), cv.refs)
+
+getindex(cv::CapsuleVector{<:AbstractTupleVector}, ::Colon, j::Union{Int,Symbol}) =
+    column(cv, j)
+
+getindex(cv::CapsuleVector{<:AbstractTupleVector}, ::Colon, js::AbstractVector) =
+    encapsulate(cv.vals[:, js], cv.refs)
+
+# Block vector interface.
+
+offsets(cv::CapsuleVector{<:AbstractBlockVector}) =
+    offsets(cv.vals)
+
+elements(cv::CapsuleVector{<:AbstractBlockVector}) =
+    encapsulate(elements(cv.vals), cv.refs)
+
+# Index vector interface.
+
+identifier(cv::CapsuleVector{<:AbstractIndexVector}) =
+    identifier(cv.vals)
+
+indexes(cv::CapsuleVector{<:AbstractIndexVector}) =
+    indexes(cv.vals)
+
+dereference(cv::CapsuleVector{<:AbstractIndexVector}) =
+    dereference(cv.vals, cv.refs)
 
