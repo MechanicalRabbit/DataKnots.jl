@@ -277,3 +277,122 @@
     2 │ JOSE S   202728 │
     =#
 
+    usedb!(
+        @VectorTree (department = [&DEPT], employee = [&EMP]) [
+            [1, 2]  [1, 2, 3, 4]
+        ] where {
+            DEPT = @VectorTree (name = [String], employee = [&EMP]) [
+                "POLICE"    [1, 2]
+                "FIRE"      [3, 4]
+            ]
+            ,
+            EMP = @VectorTree (name = [String], department = [&DEPT], position = [String], salary = [Int]) [
+                "JAMES A"   1   "SERGEANT"      110370
+                "MICHAEL W" 1   "INVESTIGATOR"  63276
+                "STEVEN S"  2   "CAPTAIN"       123948
+                "APRIL W"   2   "PARAMEDIC"     54114
+            ]
+        }
+    )
+    #=>
+    │ DataKnot                       │
+    │ department  employee           │
+    ├────────────────────────────────┤
+    │ [1]; [2]    [1]; [2]; [3]; [4] │
+    =#
+
+    @query department.name
+    #=>
+      │ name   │
+    ──┼────────┤
+    1 │ POLICE │
+    2 │ FIRE   │
+    =#
+
+    @query department.employee.name
+    #=>
+      │ name      │
+    ──┼───────────┤
+    1 │ JAMES A   │
+    2 │ MICHAEL W │
+    3 │ STEVEN S  │
+    4 │ APRIL W   │
+    =#
+
+    @query employee.department.name
+    #=>
+      │ name   │
+    ──┼────────┤
+    1 │ POLICE │
+    2 │ POLICE │
+    3 │ FIRE   │
+    4 │ FIRE   │
+    =#
+
+    @query employee.position
+    #=>
+      │ position     │
+    ──┼──────────────┤
+    1 │ SERGEANT     │
+    2 │ INVESTIGATOR │
+    3 │ CAPTAIN      │
+    4 │ PARAMEDIC    │
+    =#
+
+    @query count(department)
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        2 │
+    =#
+
+    @query max(employee.salary)
+    #=>
+    │ salary │
+    ├────────┤
+    │ 123948 │
+    =#
+
+    @query department.count(employee)
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        2 │
+    =#
+
+    @query max(department.count(employee))
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        2 │
+    =#
+
+    @query employee.filter(salary>100000).name
+    #=>
+      │ name     │
+    ──┼──────────┤
+    1 │ JAMES A  │
+    2 │ STEVEN S │
+    =#
+
+    @query begin
+        department
+        filter(count(employee)>=2)
+        count()
+    end
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        2 │
+    =#
+
+    @query department.record(name, size => count(employee))
+    #=>
+      │ DataKnot     │
+      │ name    size │
+    ──┼──────────────┤
+    1 │ POLICE     2 │
+    2 │ FIRE       2 │
+    =#
+

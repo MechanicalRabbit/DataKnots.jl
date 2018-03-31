@@ -36,6 +36,16 @@ lookup(::AbstractShape, ::Any) = missing
 lookup(shp::DecoratedShape, name) =
     lookup(shp[], name)
 
+function lookup(shp::ClosedShape, name)
+    q = lookup(shp[], name)
+    if q === missing
+        return q
+    end
+    return chain_of(
+            dereference(),
+            q) |> designate(InputShape(shp, imode(q)), shape(q))
+end
+
 function lookup(shp::RecordShape, name::Symbol)
     for fld in shp.flds
         lbl = decoration(fld, :tag, Symbol)

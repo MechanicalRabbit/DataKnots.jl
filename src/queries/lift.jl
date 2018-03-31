@@ -165,6 +165,12 @@ Produces a block vector filled with the given block.
 """
 lift_block(block) = Query(lift_block, block)
 
+function lift_block(rt::Runtime, input::AbstractVector, block::CapsuleVector)
+    block, refs = decapsulate(block)
+    merge!(rt.refs, refs)
+    lift_block(rt, input, block)
+end
+
 function lift_block(rt::Runtime, input::AbstractVector, block)
     if isempty(input)
         return BlockVector(:, block[[]])
