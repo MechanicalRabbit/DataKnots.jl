@@ -56,3 +56,9 @@ function lookup(shp::RecordShape, name::Symbol)
     return missing
 end
 
+lookup(shp::NativeShape, name) =
+    lookup(shp.ty, name)
+
+lookup(::Type, name) =
+    missing
+

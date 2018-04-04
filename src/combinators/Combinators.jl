@@ -10,6 +10,7 @@ export
     Combinator,
     execute,
     field,
+    filesystem,
     given,
     it,
     prepare,
@@ -51,5 +52,7 @@ include("record.jl")
 include("count.jl")
 include("aggregate.jl")
 include("filter.jl")
+
+include("fs.jl")
 
 end

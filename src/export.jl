@@ -13,6 +13,7 @@ export
     @query,
     DataKnot,
     field,
+    filesystem,
     given,
     it,
     query,

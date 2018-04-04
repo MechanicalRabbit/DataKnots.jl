@@ -84,7 +84,7 @@ data_parts(shp::DecoratedShape, vals::AbstractVector) =
 function data_parts(shp::Union{TupleShape,RecordShape}, vals::SomeTupleVector)
     parts = TableData[]
     for i in eachindex(shp[:])
-        title = String(decoration(shp[i], :tag, Symbol, Symbol("#i")))
+        title = String(decoration(shp[i], :tag, Symbol, Symbol("#$i")))
         head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
         body = TupleVector(length(vals), AbstractVector[column(vals, i)])
         doms = AbstractShape[shp[i]]
