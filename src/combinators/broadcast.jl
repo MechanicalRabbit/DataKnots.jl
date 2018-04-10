@@ -7,6 +7,8 @@ end
 
 Base.BroadcastStyle(::Type{<:SomeCombinator}) = BroadcastCombinator()
 
+Base.broadcastable(X::SomeCombinator) = X
+
 Base.broadcast(f, ::BroadcastCombinator, ::Nothing, ::Nothing, Xs...) =
     apply(f, Xs...)
 
