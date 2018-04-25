@@ -29,6 +29,7 @@ export
     lift_to_block_tuple,
     lift_to_tuple,
     optimize,
+    parse_json,
     pass,
     pull_block,
     pull_every_block,
@@ -75,6 +76,7 @@ include("tuple.jl")
 include("block.jl")
 include("index.jl")
 include("sieve.jl")
+include("json.jl")
 include("simplify.jl")
 
 end
