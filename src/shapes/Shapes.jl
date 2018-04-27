@@ -17,6 +17,7 @@ export
     DecoratedShape,
     InputMode,
     InputShape,
+    JSONShape,
     NativeShape,
     NoneShape,
     OutputMode,
@@ -69,5 +70,6 @@ include("bound.jl")
 include("cardinality.jl")
 include("shape.jl")
 include("signature.jl")
+include("json.jl")
 
 end

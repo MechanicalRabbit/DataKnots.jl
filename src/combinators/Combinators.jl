@@ -13,6 +13,10 @@ export
     filesystem,
     given,
     it,
+    json_field,
+    json_value,
+    load_json,
+    parse_json,
     prepare,
     query,
     recall,
@@ -54,5 +58,6 @@ include("aggregate.jl")
 include("filter.jl")
 
 include("fs.jl")
+include("json.jl")
 
 end

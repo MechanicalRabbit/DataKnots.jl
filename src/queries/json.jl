@@ -301,9 +301,9 @@ end
 
 @enum JSONType JSON_NULL JSON_BOOL JSON_INT JSON_FLOAT JSON_STRING JSON_ARRAY JSON_OBJECT
 
-parse_json() = Query(parse_json)
+json_parse() = Query(json_parse)
 
-function parse_json(rt::Runtime, input::AbstractVector)
+function json_parse(rt::Runtime, input::AbstractVector)
     eltype(input) <: AbstractString || error("expected a String vector; got $input at\n$(parse_json())")
 
     len = 0
@@ -492,8 +492,9 @@ function parse_json(rt::Runtime, input::AbstractVector)
                        :str => BlockVector(str_offs, str_elts),
                        :array => BlockVector(arritem_offs, IndexVector(ident, arritem_elts)),
                        :object => BlockVector(objentry_offs,
-                                              TupleVector(:key => BlockVector(:, objkey_elts),
-                                                          :val => BlockVector(:, IndexVector(ident, objval_elts)))))
-    return CapsuleVector(IndexVector(ident, doc_elts), ident => json)
+                                              TupleVector(:key => objkey_elts,
+                                                          :val => IndexVector(ident, objval_elts))))
+    merge!(rt.refs, Pair{Symbol,AbstractVector}[ident => json])
+    return IndexVector(ident, doc_elts)
 end
 
