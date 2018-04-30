@@ -2,10 +2,16 @@
 # Applying a combinator to a query.
 #
 
-const SomeCombinator = Union{DataKnot, Combinator, Navigation}
+struct DataValue{T}
+    val::T
+end
+
+show(io::IO, data::DataValue) = show(io, data.val)
+
+const SomeCombinator = Union{DataKnot, DataValue, Combinator, Navigation}
 
 convert(::Type{SomeCombinator}, val::Union{Int,String}) =
-    convert(DataKnot, val)
+    DataValue(val)
 
 mutable struct Environment
     slots::Vector{Pair{Symbol,OutputShape}}
@@ -16,6 +22,8 @@ combine(knot::DataKnot, env::Environment, q::Query) =
         q,
         lift_block(elements(knot)) |> designate(InputShape(AnyShape()), shape(knot)))
 
+combine(data::DataValue, env::Environment, q::Query) =
+    combine(convert(DataKnot, data.val), env, q)
 
 combine(F::Combinator, env::Environment, q::Query) =
     F.op(env, q, F.args...)

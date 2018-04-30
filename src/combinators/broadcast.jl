@@ -7,10 +7,14 @@ end
 
 Base.BroadcastStyle(::Type{<:SomeCombinator}) = BroadcastCombinator()
 
+Base.BroadcastStyle(s::BroadcastCombinator, ::Broadcast.DefaultArrayStyle) = s
+
 Base.broadcastable(X::SomeCombinator) = X
 
-Base.broadcast(f, ::BroadcastCombinator, ::Nothing, ::Nothing, Xs...) =
-    apply(f, Xs...)
+Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{BroadcastCombinator}) = bc
+
+Base.copy(bc::Broadcast.Broadcasted{BroadcastCombinator}) =
+    apply(bc.f, bc.args...)
 
 apply(f, Xs...) =
     Combinator(apply, f, collect(SomeCombinator, Xs))

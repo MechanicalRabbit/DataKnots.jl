@@ -41,7 +41,11 @@ function syntax(::typeof(broadcast), f::Function, args::Vector{Any})
         repl = Dict(zip(names, args))
         return _broadcast(ex.args[2], repl)
     end
-    return Expr(:(.), ex, Expr(:tuple, args...))
+    if ex isa Symbol && Base.operator_precedence(ex) > 0
+        return Expr(:call, Symbol(".$ex"), args...)
+    else
+        return Expr(:(.), ex, Expr(:tuple, args...))
+    end
 end
 
 function _broadcast(ex, repl)

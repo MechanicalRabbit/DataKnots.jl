@@ -16,9 +16,11 @@
     prepare(DataKnot(3) >> F)
     #=>
     chain_of(lift_block([3]),
-             in_block(chain_of(as_block(), in_block(lift(_1 -> _1 + 4)))),
+             in_block(chain_of(tuple_of([], [as_block(), lift_block([4])]),
+                               lift_to_block_tuple(+))),
              flat_block(),
-             in_block(chain_of(as_block(), in_block(lift(_1 -> _1 * 6)))),
+             in_block(chain_of(tuple_of([], [as_block(), lift_block([6])]),
+                               lift_to_block_tuple(*))),
              flat_block())
     =#
 
