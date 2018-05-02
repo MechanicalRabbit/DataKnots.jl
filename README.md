@@ -1,7 +1,9 @@
 # DataKnots.jl
 
-*DataKnots is a Julia library that implements a combinator-based embedded
-query language.*
+*DataKnots is a Julia library for representing and querying structured data,
+including hierarchical and circular structures.  DataKnots provides integration
+and analytics across CSV, JSON, XML and SQL data sources with an extensible,
+practical and coherent algebra of query combinators.*
 
 [![Linux/OSX Build Status][travis-img]][travis-url]
 [![Windows Build Status][appveyor-img]][appveyor-url]
