@@ -19,7 +19,9 @@ export
     json_field,
     json_value,
     load_json,
+    load_xml,
     parse_json,
+    parse_xml,
     query,
     recall,
     record,
@@ -27,5 +29,8 @@ export
     thedb,
     unusedb!,
     usedb,
-    usedb!
+    usedb!,
+    xml_attr,
+    xml_child,
+    xml_tag
 

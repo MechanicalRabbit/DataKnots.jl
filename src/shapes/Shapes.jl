@@ -25,6 +25,7 @@ export
     RecordShape,
     Signature,
     TupleShape,
+    XMLShape,
     bound,
     cardinality,
     class,
@@ -71,5 +72,6 @@ include("cardinality.jl")
 include("shape.jl")
 include("signature.jl")
 include("json.jl")
+include("xml.jl")
 
 end

@@ -16,12 +16,17 @@ export
     json_field,
     json_value,
     load_json,
+    load_xml,
     parse_json,
+    parse_xml,
     prepare,
     query,
     recall,
     record,
-    tag
+    tag,
+    xml_attr,
+    xml_child,
+    xml_tag
 
 using ..Layouts
 import ..Layouts: syntax
@@ -56,8 +61,8 @@ include("record.jl")
 include("count.jl")
 include("aggregate.jl")
 include("filter.jl")
-
 include("fs.jl")
 include("json.jl")
+include("xml.jl")
 
 end

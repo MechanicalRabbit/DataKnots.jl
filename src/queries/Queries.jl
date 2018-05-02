@@ -35,7 +35,8 @@ export
     pull_every_block,
     sieve,
     shape,
-    tuple_of
+    tuple_of,
+    xml_parse
 
 using ..Layouts
 import ..Layouts: syntax
@@ -77,6 +78,7 @@ include("block.jl")
 include("index.jl")
 include("sieve.jl")
 include("json.jl")
+include("xml.jl")
 include("simplify.jl")
 
 end

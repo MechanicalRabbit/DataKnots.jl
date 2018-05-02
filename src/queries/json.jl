@@ -304,7 +304,7 @@ end
 json_parse() = Query(json_parse)
 
 function json_parse(rt::Runtime, input::AbstractVector)
-    eltype(input) <: AbstractString || error("expected a String vector; got $input at\n$(parse_json())")
+    eltype(input) <: AbstractString || error("expected a String vector; got $input at\n$(json_parse())")
 
     len = 0
     doc_elts = Int[]
