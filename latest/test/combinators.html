@@ -278,6 +278,52 @@ end where { S = 200000 }
 2 │ JOSE S   202728 │
 =#
 
+query(it.employee.salary &gt;&gt; sort)
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 170112 │
+2 │ 185364 │
+3 │ 197736 │
+4 │ 202728 │
+5 │ 260004 │
+=#
+
+@query employee.salary.sort()
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 170112 │
+2 │ 185364 │
+3 │ 197736 │
+4 │ 202728 │
+5 │ 260004 │
+=#
+
+query(it.employee &gt;&gt; sort(it.salary))
+#=&gt;
+  │ employee          │
+  │ name       salary │
+──┼───────────────────┤
+1 │ DANA A     170112 │
+2 │ ANTHONY R  185364 │
+3 │ CHARLES S  197736 │
+4 │ JOSE S     202728 │
+5 │ GARRY M    260004 │
+=#
+
+@query employee.sort(salary)
+#=&gt;
+  │ employee          │
+  │ name       salary │
+──┼───────────────────┤
+1 │ DANA A     170112 │
+2 │ ANTHONY R  185364 │
+3 │ CHARLES S  197736 │
+4 │ JOSE S     202728 │
+5 │ GARRY M    260004 │
+=#
+
 usedb!(
     @VectorTree (department = [&amp;DEPT], employee = [&amp;EMP]) [
         [1, 2]  [1, 2, 3, 4]
