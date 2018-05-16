@@ -29,6 +29,7 @@ export
     move!,
     next!,
     offsets,
+    ordering,
     partition,
     recapsulate,
     width
@@ -45,7 +46,10 @@ import Base:
     start,
     summary
 
+using Base.Cartesian
+
 include("wrapper.jl")
+include("ordering.jl")
 include("tuple.jl")
 include("block.jl")
 include("index.jl")

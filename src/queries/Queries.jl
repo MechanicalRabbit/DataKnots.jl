@@ -35,6 +35,8 @@ export
     pull_every_block,
     sieve,
     shape,
+    sort_by,
+    sort_it,
     tuple_of,
     xml_parse
 
@@ -77,6 +79,7 @@ include("tuple.jl")
 include("block.jl")
 include("index.jl")
 include("sieve.jl")
+include("sort.jl")
 include("json.jl")
 include("xml.jl")
 include("simplify.jl")

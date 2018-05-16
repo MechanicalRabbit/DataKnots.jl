@@ -166,6 +166,48 @@ function _getindex(bv::BlockVector{OneTo{Int}}, ks::OneTo)
     bv′
 end
 
+# Ordering.
+
+struct BlockOrdering{O<:AbstractVector{Int},EOrd<:Base.Ordering} <: Base.Ordering
+    offs::O
+    nullrev::Bool
+    ord::EOrd
+end
+
+BlockOrdering(::OneTo{Int}, ::Bool, ord::Base.Ordering) = ord
+
+Base.@propagate_inbounds function Base.lt(o::BlockOrdering, a::Int, b::Int)
+    la = o.offs[a]
+    ra = o.offs[a+1]
+    lb = o.offs[b]
+    rb = o.offs[b+1]
+    while la < ra && lb < rb
+        if Base.lt(o.ord, la, lb)
+            return true
+        end
+        if Base.lt(o.ord, lb, la)
+            return false
+        end
+        la += 1
+        lb += 1
+    end
+    if la < ra
+        return o.nullrev
+    end
+    if lb < rb
+        return !o.nullrev
+    end
+    return false
+end
+
+ordering(bv::BlockVector, ::Nothing=nothing) =
+    ordering(bv, (false, nothing))
+
+ordering(bv::BlockVector, spec) =
+    let (nullrev, espec) = spec
+        BlockOrdering(bv.offs, nullrev, ordering(bv.elts, espec))
+    end
+
 # Mutable view over a block vector.
 
 mutable struct BlockCursor{T,O<:AbstractVector{Int},E<:AbstractVector{T}} <: AbstractVector{T}

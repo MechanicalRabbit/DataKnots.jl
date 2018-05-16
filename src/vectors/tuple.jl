@@ -183,3 +183,34 @@ end
     tv′
 end
 
+# Ordering.
+
+struct TupleOrdering{COrds<:Tuple{Vararg{Base.Ordering}}} <: Base.Ordering
+    ords::COrds
+end
+
+TupleOrdering(ords::Base.Ordering...) =
+    TupleOrdering(ords)
+
+@generated function Base.lt(o::TupleOrdering{COrds}, a::Int, b::Int) where COrds
+    D = length(COrds.parameters)
+    return quote
+        Expr(:meta, :inline, :propagate_inbounds)
+        @nexprs $D d -> begin
+            if Base.lt(o.ords[d], a, b)
+                return true
+            end
+            if Base.lt(o.ords[d], b, a)
+                return false
+            end
+        end
+        return false
+    end
+end
+
+ordering(tv::TupleVector, ::Nothing=nothing) =
+    TupleOrdering((ordering(col) for col in columns(tv))...,)
+
+ordering(tv::TupleVector, specs::Tuple) =
+    TupleOrdering((ordering(col, spec) for (col, spec) in zip(columns(tv), specs))...,)
+
