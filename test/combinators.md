@@ -279,6 +279,52 @@
     2 │ JOSE S   202728 │
     =#
 
+    query(it.employee.salary >> sort)
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 170112 │
+    2 │ 185364 │
+    3 │ 197736 │
+    4 │ 202728 │
+    5 │ 260004 │
+    =#
+
+    @query employee.salary.sort()
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 170112 │
+    2 │ 185364 │
+    3 │ 197736 │
+    4 │ 202728 │
+    5 │ 260004 │
+    =#
+
+    query(it.employee >> sort(it.salary))
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┤
+    1 │ DANA A     170112 │
+    2 │ ANTHONY R  185364 │
+    3 │ CHARLES S  197736 │
+    4 │ JOSE S     202728 │
+    5 │ GARRY M    260004 │
+    =#
+
+    @query employee.sort(salary)
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┤
+    1 │ DANA A     170112 │
+    2 │ ANTHONY R  185364 │
+    3 │ CHARLES S  197736 │
+    4 │ JOSE S     202728 │
+    5 │ GARRY M    260004 │
+    =#
+
     usedb!(
         @VectorTree (department = [&DEPT], employee = [&EMP]) [
             [1, 2]  [1, 2, 3, 4]

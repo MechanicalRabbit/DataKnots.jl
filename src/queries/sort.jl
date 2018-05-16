@@ -11,12 +11,7 @@ function sort_it(rt::Runtime, input::AbstractVector, spec)
     perm = collect(1:length(elts))
     cr = cursor(BlockVector(offs, perm))
     o = ordering(elts, spec)
-    println(o)
-    println(offs)
-    println(elts)
-    println(perm)
     _sort!(cr, o)
-    println(perm)
     return BlockVector(offs, elts[perm])
 end
 
