@@ -301,6 +301,28 @@
     5 │ 260004 │
     =#
 
+    query(it.employee.salary >> desc >> sort)
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 260004 │
+    2 │ 202728 │
+    3 │ 197736 │
+    4 │ 185364 │
+    5 │ 170112 │
+    =#
+
+    @query employee.salary.desc().sort()
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 260004 │
+    2 │ 202728 │
+    3 │ 197736 │
+    4 │ 185364 │
+    5 │ 170112 │
+    =#
+
     query(it.employee >> sort(it.salary))
     #=>
       │ employee          │
@@ -323,6 +345,30 @@
     3 │ CHARLES S  197736 │
     4 │ JOSE S     202728 │
     5 │ GARRY M    260004 │
+    =#
+
+    query(it.employee >> sort(it.salary >> desc))
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┤
+    1 │ GARRY M    260004 │
+    2 │ JOSE S     202728 │
+    3 │ CHARLES S  197736 │
+    4 │ ANTHONY R  185364 │
+    5 │ DANA A     170112 │
+    =#
+
+    @query employee.sort(salary.desc())
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┤
+    1 │ GARRY M    260004 │
+    2 │ JOSE S     202728 │
+    3 │ CHARLES S  197736 │
+    4 │ ANTHONY R  185364 │
+    5 │ DANA A     170112 │
     =#
 
     usedb!(

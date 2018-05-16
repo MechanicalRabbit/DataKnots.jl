@@ -12,6 +12,8 @@ export
     @VectorTree,
     @query,
     DataKnot,
+    asc,
+    desc,
     field,
     filesystem,
     given,
