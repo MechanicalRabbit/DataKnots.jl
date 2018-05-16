@@ -11,6 +11,7 @@ export
     asc,
     execute,
     desc,
+    drop,
     field,
     filesystem,
     given,
@@ -26,6 +27,7 @@ export
     recall,
     record,
     tag,
+    take,
     xml_attr,
     xml_child,
     xml_tag
@@ -64,6 +66,7 @@ include("count.jl")
 include("aggregate.jl")
 include("filter.jl")
 include("sort.jl")
+include("take.jl")
 include("fs.jl")
 include("json.jl")
 include("xml.jl")

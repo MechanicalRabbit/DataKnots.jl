@@ -371,6 +371,40 @@
     5 │ DANA A     170112 │
     =#
 
+    query(it.employee.salary >> take(3))
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 260004 │
+    2 │ 185364 │
+    3 │ 170112 │
+    =#
+
+    query(it.employee.salary >> drop(3))
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 202728 │
+    2 │ 197736 │
+    =#
+
+    query(it.employee.salary >> take(-3))
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 260004 │
+    2 │ 185364 │
+    =#
+
+    query(it.employee.salary >> drop(-3))
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 170112 │
+    2 │ 202728 │
+    3 │ 197736 │
+    =#
+
     usedb!(
         @VectorTree (department = [&DEPT], employee = [&EMP]) [
             [1, 2]  [1, 2, 3, 4]
