@@ -203,7 +203,7 @@ end
 ordering(bv::BlockVector, ::Nothing=nothing) =
     ordering(bv, (false, nothing))
 
-ordering(bv::BlockVector, spec) =
+ordering(bv::BlockVector, spec::Tuple{Bool,Any}) =
     let (nullrev, espec) = spec
         BlockOrdering(bv.offs, nullrev, ordering(bv.elts, espec))
     end

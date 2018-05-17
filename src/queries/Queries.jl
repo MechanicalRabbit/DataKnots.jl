@@ -18,6 +18,7 @@ export
     designate,
     flat_block,
     flat_tuple,
+    group_by,
     in_block,
     in_tuple,
     ishape,
@@ -82,6 +83,7 @@ include("index.jl")
 include("sieve.jl")
 include("sort.jl")
 include("take.jl")
+include("group.jl")
 include("json.jl")
 include("xml.jl")
 include("simplify.jl")

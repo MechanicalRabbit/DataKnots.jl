@@ -15,6 +15,7 @@ export
     field,
     filesystem,
     given,
+    group,
     it,
     json_field,
     json_value,
@@ -67,6 +68,7 @@ include("aggregate.jl")
 include("filter.jl")
 include("sort.jl")
 include("take.jl")
+include("group.jl")
 include("fs.jl")
 include("json.jl")
 include("xml.jl")

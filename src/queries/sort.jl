@@ -9,9 +9,8 @@ function sort_it(rt::Runtime, input::AbstractVector, spec)
     offs = offsets(input)
     elts = elements(input)
     perm = collect(1:length(elts))
-    cr = cursor(BlockVector(offs, perm))
     o = ordering(elts, spec)
-    _sort!(cr, o)
+    _sort!(offs, perm, o)
     return BlockVector(offs, elts[perm])
 end
 
@@ -26,13 +25,13 @@ function sort_by(rt::Runtime, input::AbstractVector, spec)
     length(cols) == 2 || error("expected a block vector of pairs; got $input at\n$(sort_by(spec))")
     vals, keys = cols
     perm = collect(1:length(elts))
-    cr = cursor(BlockVector(offs, perm))
     o = ordering(keys, spec)
-    _sort!(cr, o)
+    _sort!(offs, perm, o)
     return BlockVector(offs, vals[perm])
 end
 
-function _sort!(cr, o)
+function _sort!(offs, perm, o)
+    cr = cursor(BlockVector(offs, perm))
     while !done(cr)
         next!(cr)
         if length(cr) > 1
