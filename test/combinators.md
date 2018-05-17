@@ -405,6 +405,14 @@
     3 │ 197736 │
     =#
 
+    query(it.employee.salary >> take(count(thedb() >> it.employee) .÷ 2))
+    #=>
+      │ salary │
+    ──┼────────┤
+    1 │ 260004 │
+    2 │ 185364 │
+    =#
+
     usedb!(
         @VectorTree (department = [&DEPT], employee = [&EMP]) [
             [1, 2]  [1, 2, 3, 4]
