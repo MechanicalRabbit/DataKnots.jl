@@ -143,6 +143,9 @@ rebind(shp::DecoratedShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
 getindex(shp::DecoratedShape) =
     shp.base
 
+eltype(shp::DecoratedShape) =
+    eltype(shp.base)
+
 function decorate(shp::AbstractShape, decors::Vector{Pair{Symbol,Any}})
     if isempty(decors)
         return shp

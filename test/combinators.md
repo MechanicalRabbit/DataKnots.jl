@@ -418,8 +418,8 @@
       │ DataKnot                                                    │
       │ grade  employee                                             │
     ──┼─────────────────────────────────────────────────────────────┤
-    1 │ 1      ANTHONY R, 185364; DANA A, 170112; CHARLES S, 197736 │
-    2 │ 2      GARRY M, 260004; JOSE S, 202728                      │
+    1 │     1  ANTHONY R, 185364; DANA A, 170112; CHARLES S, 197736 │
+    2 │     2  GARRY M, 260004; JOSE S, 202728                      │
     =#
 
     @query employee.group(grade => salary ÷ 100000)
@@ -427,8 +427,27 @@
       │ DataKnot                                                    │
       │ grade  employee                                             │
     ──┼─────────────────────────────────────────────────────────────┤
-    1 │ 1      ANTHONY R, 185364; DANA A, 170112; CHARLES S, 197736 │
-    2 │ 2      GARRY M, 260004; JOSE S, 202728                      │
+    1 │     1  ANTHONY R, 185364; DANA A, 170112; CHARLES S, 197736 │
+    2 │     2  GARRY M, 260004; JOSE S, 202728                      │
+    =#
+
+    @query begin
+        employee
+        group(grade => salary ÷ 100000)
+        record(
+            grade,
+            size => count(employee),
+            low => min(employee.salary),
+            high => max(employee.salary),
+            avg => mean(employee.salary),
+            employee.salary.sort())
+    end
+    #=>
+      │ DataKnot                                                      │
+      │ grade  size  low     high    avg       salary                 │
+    ──┼───────────────────────────────────────────────────────────────┤
+    1 │     1     3  170112  197736  184404.0  170112; 185364; 197736 │
+    2 │     2     2  202728  260004  231366.0  202728; 260004         │
     =#
 
     usedb!(
