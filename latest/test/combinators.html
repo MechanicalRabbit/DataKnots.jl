@@ -412,6 +412,24 @@ query(it.employee.salary &gt;&gt; take(count(thedb() &gt;&gt; it.employee) .÷ 2
 2 │ 185364 │
 =#
 
+query(it.employee &gt;&gt; group(:grade =&gt; it.salary .÷ 100000))
+#=&gt;
+  │ DataKnot                                                    │
+  │ grade  employee                                             │
+──┼─────────────────────────────────────────────────────────────┤
+1 │ 1      ANTHONY R, 185364; DANA A, 170112; CHARLES S, 197736 │
+2 │ 2      GARRY M, 260004; JOSE S, 202728                      │
+=#
+
+@query employee.group(grade =&gt; salary ÷ 100000)
+#=&gt;
+  │ DataKnot                                                    │
+  │ grade  employee                                             │
+──┼─────────────────────────────────────────────────────────────┤
+1 │ 1      ANTHONY R, 185364; DANA A, 170112; CHARLES S, 197736 │
+2 │ 2      GARRY M, 260004; JOSE S, 202728                      │
+=#
+
 usedb!(
     @VectorTree (department = [&amp;DEPT], employee = [&amp;EMP]) [
         [1, 2]  [1, 2, 3, 4]
