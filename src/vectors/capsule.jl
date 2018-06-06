@@ -33,7 +33,7 @@ isclosed(::CapsuleVector) = true
     encapsulate(fn(cv.vals), cv.refs)
 
 @inline recapsulate(fn, vs::Vector{AbstractVector}) =
-    let vs, refs = decapsulate(vs), vals = fn(vs)
+    let (vs, refs) = decapsulate(vs), vals = fn(vs)
         isempty(refs) ? vals : encapsulate(vals, refs)
     end
 
