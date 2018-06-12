@@ -11,7 +11,7 @@ function group_by(rt::Runtime, input::AbstractVector, spec)
     elts isa SomeTupleVector || error("expected a block vector of pairs; got $input at\n$(sort_by(spec))")
     cols = columns(elts)
     length(cols) == 2 || error("expected a block vector of pairs; got $input at\n$(sort_by(spec))")
-    vals, keys = cols
+    keys, vals = cols
     perm = collect(1:length(elts))
     o = ordering(keys, spec)
     _sort!(offs, perm, o)
@@ -19,8 +19,8 @@ function group_by(rt::Runtime, input::AbstractVector, spec)
     keyperm = perm[view(offs2, 1:length(offs2)-1)]
     return BlockVector(offs1,
                        TupleVector(length(offs2)-1,
-                                   AbstractVector[BlockVector(offs2, vals[perm]),
-                                                  keys[keyperm]]))
+                                   AbstractVector[keys[keyperm],
+                                                  BlockVector(offs2, vals[perm])]))
 end
 
 function _group(offs, perm, o)

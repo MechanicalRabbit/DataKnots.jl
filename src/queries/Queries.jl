@@ -10,6 +10,7 @@ export
     as_block,
     chain_of,
     column,
+    correlate,
     count_block,
     decode_missing,
     decode_tuple,
@@ -84,6 +85,7 @@ include("sieve.jl")
 include("sort.jl")
 include("take.jl")
 include("group.jl")
+include("correlate.jl")
 include("json.jl")
 include("xml.jl")
 include("simplify.jl")

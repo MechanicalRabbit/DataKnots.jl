@@ -30,6 +30,7 @@ export
     next!,
     offsets,
     ordering,
+    ordering_pair,
     partition,
     recapsulate,
     width

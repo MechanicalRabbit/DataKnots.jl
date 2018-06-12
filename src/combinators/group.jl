@@ -29,12 +29,12 @@ function group(env::Environment, q::Query, Xs...)
         in_input(imd, chain_of(project_input(imd, imode(q)), q)),
         distribute(imd, mode(q)),
         in_output(mode(q),
-                  tuple_of(project_input(imd, InputMode()),
-                           chain_of(project_input(imd, mode(xishp)), x))),
+                  tuple_of(chain_of(project_input(imd, mode(xishp)), x),
+                           project_input(imd, InputMode()))),
         group_by(spec),
         in_block(
             tuple_of(lbls,
-                     [(chain_of(column(2), column(k)) for k = 1:length(xs))..., column(1)])),
+                     [(chain_of(column(1), column(k)) for k = 1:length(xs))..., column(2)])),
     ) |> designate(InputShape(idom, imd), OutputShape(dom, md))
 end
 

@@ -208,6 +208,39 @@ ordering(bv::BlockVector, spec::Tuple{Bool,Any}) =
         BlockOrdering(bv.offs, nullrev, ordering(bv.elts, espec))
     end
 
+struct BlockPairOrdering{O1<:AbstractVector{Int},O2<:AbstractVector{Int},EOrd<:Base.Ordering} <: Base.Ordering
+    offs1::O1
+    offs2::O2
+    ord::EOrd
+end
+
+BlockPairOrdering(::OneTo{Int}, ::OneTo{Int}, ord::Base.Ordering) = ord
+
+Base.@propagate_inbounds function Base.lt(o::BlockPairOrdering, a::Int, b::Int)
+    (la, ra, da) = a > 0 ? (o.offs1[a], o.offs1[a+1], 1) : (-o.offs2[-a], -o.offs2[-a+1], -1)
+    (lb, rb, db) = b > 0 ? (o.offs1[b], o.offs1[b+1], 1) : (-o.offs2[-b], -o.offs2[-b+1], -1)
+    while la != ra && lb != rb
+        if Base.lt(o.ord, la, lb)
+            return true
+        end
+        if Base.lt(o.ord, lb, la)
+            return false
+        end
+        la += da
+        lb += db
+    end
+    if la != ra
+        return false
+    end
+    if lb != rb
+        return true
+    end
+    return false
+end
+
+ordering_pair(bv1::BlockVector, bv2::BlockVector) =
+    BlockPairOrdering(bv1.offs, bv2.offs, ordering_pair(bv1.elts, bv2.elts))
+
 # Mutable view over a block vector.
 
 mutable struct BlockCursor{T,O<:AbstractVector{Int},E<:AbstractVector{T}} <: AbstractVector{T}

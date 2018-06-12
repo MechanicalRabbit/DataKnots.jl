@@ -214,3 +214,6 @@ ordering(tv::TupleVector, ::Nothing=nothing) =
 ordering(tv::TupleVector, specs::Tuple) =
     TupleOrdering((ordering(col, spec) for (col, spec) in zip(columns(tv), specs))...,)
 
+ordering_pair(tv1::TupleVector, tv2::TupleVector) =
+    TupleOrdering((ordering_pair(col1, col2) for (col1, col2) in zip(columns(tv1), columns(tv2)))...,)
+

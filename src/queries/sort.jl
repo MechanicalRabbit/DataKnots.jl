@@ -23,7 +23,7 @@ function sort_by(rt::Runtime, input::AbstractVector, spec)
     elts isa SomeTupleVector || error("expected a block vector of pairs; got $input at\n$(sort_by(spec))")
     cols = columns(elts)
     length(cols) == 2 || error("expected a block vector of pairs; got $input at\n$(sort_by(spec))")
-    vals, keys = cols
+    keys, vals = cols
     perm = collect(1:length(elts))
     o = ordering(keys, spec)
     _sort!(offs, perm, o)

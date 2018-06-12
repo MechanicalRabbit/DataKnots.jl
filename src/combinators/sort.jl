@@ -66,8 +66,8 @@ function Base.sort(env::Environment, q::Query, X::SomeCombinator)
         in_input(imd, chain_of(project_input(imd, imode(q)), q)),
         distribute(imd, mode(q)),
         in_output(mode(q),
-                  tuple_of(project_input(imd, InputMode()),
-                           chain_of(project_input(imd, imode(x)), x))),
+                  tuple_of(chain_of(project_input(imd, imode(x)), x),
+                           project_input(imd, InputMode()))),
         sort_by(spec),
     ) |> designate(InputShape(idom, imd), shape(q))
 end
