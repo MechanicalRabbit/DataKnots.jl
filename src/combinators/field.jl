@@ -56,6 +56,20 @@ function lookup(shp::RecordShape, name::Symbol)
     return missing
 end
 
+function lookup(shp::ShadowShape, name::Symbol)
+    for fld in shp.flds
+        lbl = decoration(fld, :tag, Symbol)
+        if lbl == name
+            return column(lbl) |> designate(InputShape(shp), fld)
+        end
+    end
+    q = lookup(shp.base, name)
+    if q !== missing
+        q = chain_of(column(1), q) |> designate(InputShape(shp), shape(q))
+    end
+    q
+end
+
 lookup(shp::NativeShape, name) =
     lookup(shp.ty, name)
 

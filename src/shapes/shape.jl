@@ -478,6 +478,74 @@ rebind(shp::RecordShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
         shp
     end
 
+# Adding extra fields to the base shape.
+
+struct ShadowShape <: DerivedShape
+    base::AbstractShape
+    flds::Vector{OutputShape}
+    closed::Bool
+
+    ShadowShape(base::AbstractShape, flds::Vector{OutputShape}) =
+        new(base, flds, isclosed(base) && all(isclosed, flds))
+end
+
+ShadowShape(base, itr...) =
+    ShadowShape(base, collect(OutputShape, itr))
+
+syntax(shp::ShadowShape) =
+    Expr(:call, nameof(ShadowShape), syntax(shp.base), syntax.(shp.flds)...)
+
+sigsyntax(shp::ShadowShape) =
+    Expr(:tuple, sigsyntax(shp.base), sigsyntax.(shp.flds)...)
+
+getindex(shp::ShadowShape) = shp.base
+
+getindex(shp::ShadowShape, ::Colon) = shp.flds
+
+getindex(shp::ShadowShape, i) = shp.flds[i]
+
+isclosed(shp::ShadowShape) = shp.closed
+
+rebind(shp::ShadowShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if !isclosed(shp)
+        ShadowShape(rebind(shp.base, bindings), OutputShape[rebind(fld, bindings) for fld in shp.flds])
+    else
+        shp
+    end
+
+# Shape of a sorted index.
+
+struct IndexShape <: DerivedShape
+    key::OutputShape
+    val::OutputShape
+end
+
+syntax(shp::IndexShape) =
+    Expr(:call, nameof(IndexShape), shp.key, shp.val)
+
+sigsyntax(shp::IndexShape) =
+    Expr(:call, :(=>), syntax(shp.key), syntax(sh.val))
+
+getindex(shp::IndexShape, ::Colon) =
+    (shp.key, shp.val)
+
+getindex(shp::IndexShape, i) =
+    (shp.key, shp.val)[i]
+
+isclosed(shp::IndexShape) =
+    isclosed(shp.key) && isclosed(shp.val)
+
+rebind(shp::IndexShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
+    if !isclosed(shp.key) && !isclosed(shp.val)
+        IndexShape(rebind(shp.key, bindings), rebind(shp.val), bindings)
+    elseif !isclosed(shp.key)
+        IndexShape(rebind(shp.key, bindings), shp.val)
+    elseif !isclosed(shp.val)
+        IndexShape(shp.key, rebind(shp.val, bindings))
+    else
+        shp
+    end
+
 # Subshape relation.
 
 fits(shp1::AbstractShape, shp2::AbstractShape) = false
@@ -591,6 +659,16 @@ fits(shp1::RecordShape, shp2::RecordShape) =
     shp1 == shp2 || shp1.flds == shp2.flds ||
     length(shp1.flds) == length(shp2.flds) &&
     all(fits(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds))
+
+fits(shp1::ShadowShape, shp2::ShadowShape) =
+    shp1 == shp2 || shp1.base == shp2.base && shp1.flds == shp2.flds ||
+    fits(shp1.base, shp2.base) &&
+    length(shp1.flds) == length(shp2.flds) &&
+    all(fits(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds))
+
+fits(shp1::IndexShape, shp2::IndexShape) =
+    shp1 == shp2 || shp1.key == shp2.key && shp1.val == shp2.val ||
+    fits(shp1.key, shp2.key) && fits(shp1.val, shp2.val)
 
 # Upper and lower bounds.
 
@@ -806,6 +884,26 @@ ibound(shp1::RecordShape, shp2::RecordShape) =
     length(shp1.flds) == length(shp2.flds) ?
         RecordShape(OutputShape[ibound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
         NoneShape()
+
+bound(shp1::ShadowShape, shp2::ShadowShape) =
+    shp1 == shp2 ? shp1 :
+    length(shp1.flds) == length(shp2.flds) ?
+        ShadowShape(bound(shp1.base, shp2.base),
+                    OutputShape[bound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
+        AnyShape()
+
+ibound(shp1::ShadowShape, shp2::ShadowShape) =
+    shp1 == shp2 ? shp1 :
+    length(shp1.flds) == length(shp2.flds) ?
+        ShadowShape(ibound(shp1.base, shp2.base),
+                    OutputShape[ibound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
+        NoneShape()
+
+bound(shp1::IndexShape, shp2::IndexShape) =
+    shp1 == shp2 ? shp1 : IndexShape(bound(shp1.key, shp2.key), bound(shp1.val, shp2.val))
+
+ibound(shp1::IndexShape, shp2::IndexShape) =
+    shp1 == shp2 ? shp1 : IndexShape(ibound(shp1.key, shp2.key), ibound(shp1.val, shp2.val))
 
 # Shape-aware vector.
 

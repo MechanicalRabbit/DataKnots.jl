@@ -81,7 +81,7 @@ data_parts(shp::AbstractShape, vals::AbstractVector) =
 data_parts(shp::DecoratedShape, vals::AbstractVector) =
     data_parts(shp[], vals)
 
-function data_parts(shp::Union{TupleShape,RecordShape}, vals::SomeTupleVector)
+function data_parts(shp::Union{TupleShape,RecordShape,IndexShape}, vals::SomeTupleVector)
     parts = TableData[]
     for i in eachindex(shp[:])
         title = String(decoration(shp[i], :tag, Symbol, Symbol("#$i")))
@@ -210,6 +210,39 @@ function render_cell(shp::Union{TupleShape,RecordShape}, vals::AbstractVector, i
             comma = true
         end
     end
+    return TableCell(String(take!(buf)))
+end
+
+function render_cell(shp::ShadowShape, vals::AbstractVector, idx::Int, avail::Int)
+    buf = IOBuffer()
+    cell = render_cell(shp[], column(vals, 1), idx, avail)
+    print(buf, cell.text)
+    avail -= textwidth(cell.text)
+    for i in eachindex(shp[:])
+        print(buf, ", ")
+        avail -= 2
+        cell = render_cell(shp[i], column(vals, i+1), idx, avail)
+        print(buf, cell.text)
+        avail -= textwidth(cell.text)
+        if avail < 0
+            break
+        end
+        if !isempty(cell.text)
+            comma = true
+        end
+    end
+    return TableCell(String(take!(buf)))
+end
+
+function render_cell(shp::IndexShape, vals::AbstractVector, idx::Int, avail::Int)
+    buf = IOBuffer()
+    cell = render_cell(shp.key, column(vals, 1), idx, avail)
+    print(buf, cell.text)
+    avail -= textwidth(cell.text)
+    print(buf, " => ")
+    avail -= 4
+    cell = render_cell(shp.val, column(vals, 2), idx, avail)
+    print(buf, cell.text)
     return TableCell(String(take!(buf)))
 end
 

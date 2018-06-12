@@ -15,7 +15,9 @@ export
     field,
     filesystem,
     given,
+    graft,
     group,
+    index,
     it,
     json_field,
     json_value,
@@ -29,6 +31,7 @@ export
     record,
     tag,
     take,
+    unique_index,
     xml_attr,
     xml_child,
     xml_tag
@@ -69,6 +72,8 @@ include("filter.jl")
 include("sort.jl")
 include("take.jl")
 include("group.jl")
+include("index.jl")
+include("graft.jl")
 include("fs.jl")
 include("json.jl")
 include("xml.jl")
