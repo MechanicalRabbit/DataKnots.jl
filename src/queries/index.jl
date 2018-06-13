@@ -14,3 +14,10 @@ function dereference(rt::Runtime, input::AbstractVector)
     dereference(input, rt.refs)
 end
 
+store(name::Symbol) = Query(store, name)
+
+function store(rt::Runtime, input::AbstractVector, name::Symbol)
+    merge!(rt.refs, [Pair{Symbol,AbstractVector}(name, input)])
+    IndexVector(name, OneTo{Int}(length(input)))
+end
+

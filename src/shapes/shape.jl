@@ -26,6 +26,9 @@ rebind(bindings::Pair{Symbol}...) =
         obj -> rebind(obj, bindings)
     end
 
+unbind(shp::AbstractShape, names) =
+    shp
+
 # Data shape known by its name.
 
 struct ClassShape <: AbstractShape
@@ -88,6 +91,9 @@ function getindex(shp::ClosedShape)
     ClassShape(shp.cls)
 end
 
+unbind(shp::ClosedShape, names) =
+    shp.cls in names ? ClassShape(shp.cls) : shp
+
 function decoration(shp::ClosedShape, name::Symbol, ty::Type=Any, default=missing)
     for binding in shp.bindings
         if binding.first == shp.cls
@@ -137,6 +143,11 @@ isclosed(shp::DecoratedShape) = isclosed(shp.base)
 
 rebind(shp::DecoratedShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     let base′ = rebind(shp.base, bindings)
+        base === base′ ? shp : decorate(base′, shp.decors)
+    end
+
+unbind(shp::DecoratedShape, names) =
+    let base′ = unbind(shp.base, names)
         base === base′ ? shp : decorate(base′, shp.decors)
     end
 
@@ -235,6 +246,9 @@ rebind(shp::TupleShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
         shp
     end
 
+unbind(shp::TupleShape, names) =
+    TupleShape(AbstractShape[unbind(col, names) for col in shp.cols])
+
 # Collection of homogeneous elements.
 
 struct BlockShape <: AbstractShape
@@ -257,6 +271,9 @@ rebind(shp::BlockShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     else
         shp
     end
+
+unbind(shp::BlockShape, names) =
+    BlockShape(unbind(shp.elts, names))
 
 # Derived shapes have some underlying structural representation.
 
@@ -329,6 +346,9 @@ rebind(shp::OutputShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     else
         shp
     end
+
+unbind(shp::OutputShape, names) =
+    OutputShape(unbind(shp.dom, names), shp.md)
 
 domain(shp::OutputShape) = shp.dom
 
@@ -478,6 +498,9 @@ rebind(shp::RecordShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
         shp
     end
 
+unbind(shp::RecordShape, names) =
+    RecordShape(OutputShape[unbind(fld, names) for fld in shp.flds])
+
 # Adding extra fields to the base shape.
 
 struct ShadowShape <: DerivedShape
@@ -513,6 +536,9 @@ rebind(shp::ShadowShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
         shp
     end
 
+unbind(shp::ShadowShape, names) =
+    ShadowShape(unbind(shp.base, names), OutputShape[unbind(fld, names) for fld in shp.flds])
+
 # Shape of a sorted index.
 
 struct IndexShape <: DerivedShape
@@ -537,7 +563,7 @@ isclosed(shp::IndexShape) =
 
 rebind(shp::IndexShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     if !isclosed(shp.key) && !isclosed(shp.val)
-        IndexShape(rebind(shp.key, bindings), rebind(shp.val), bindings)
+        IndexShape(rebind(shp.key, bindings), rebind(shp.val, bindings))
     elseif !isclosed(shp.key)
         IndexShape(rebind(shp.key, bindings), shp.val)
     elseif !isclosed(shp.val)
@@ -545,6 +571,9 @@ rebind(shp::IndexShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     else
         shp
     end
+
+unbind(shp::IndexShape, names) =
+    IndexShape(unbind(shp.key, names), unbind(shp.val, names))
 
 # Subshape relation.
 

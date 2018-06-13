@@ -32,6 +32,7 @@ export
     tag,
     take,
     unique_index,
+    weave,
     xml_attr,
     xml_child,
     xml_tag
@@ -74,6 +75,7 @@ include("take.jl")
 include("group.jl")
 include("index.jl")
 include("graft.jl")
+include("weave.jl")
 include("fs.jl")
 include("json.jl")
 include("xml.jl")

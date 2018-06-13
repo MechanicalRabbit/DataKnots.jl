@@ -39,6 +39,7 @@ export
     shape,
     sort_by,
     sort_it,
+    store,
     take_by,
     tuple_of,
     xml_parse

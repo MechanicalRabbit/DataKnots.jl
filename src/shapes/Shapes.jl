@@ -52,6 +52,7 @@ export
     signature,
     slots,
     syntax,
+    unbind,
     undecorate
 
 import Base:

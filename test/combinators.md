@@ -514,6 +514,71 @@
     2 │ FIRE       2      123948 │
     =#
 
+    @query begin
+        weave(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+    end
+    #=>
+    │ DataKnot                       │
+    │ department  employee           │
+    ├────────────────────────────────┤
+    │ [1]; [2]    [1]; [2]; [3]; [4] │
+    =#
+
+    @query begin
+        weave(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+        employee.record(name, department_name => department.name)
+    end
+    #=>
+      │ DataKnot                   │
+      │ name       department_name │
+    ──┼────────────────────────────┤
+    1 │ JAMES A    POLICE          │
+    2 │ MICHAEL W  POLICE          │
+    3 │ STEVEN S   FIRE            │
+    4 │ APRIL W    FIRE            │
+    =#
+
+    @query begin
+        weave(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+        department.record(name, size => count(employee), max_salary => max(employee.salary))
+    end
+    #=>
+      │ DataKnot                 │
+      │ name    size  max_salary │
+    ──┼──────────────────────────┤
+    1 │ POLICE     2      110370 │
+    2 │ FIRE       2      123948 │
+    =#
+
+    @query begin
+        weave(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+        department
+        employee
+        department
+        employee
+        name
+    end
+    #=>
+      │ name      │
+    ──┼───────────┤
+    1 │ JAMES A   │
+    2 │ MICHAEL W │
+    3 │ JAMES A   │
+    4 │ MICHAEL W │
+    5 │ STEVEN S  │
+    6 │ APRIL W   │
+    7 │ STEVEN S  │
+    8 │ APRIL W   │
+    =#
+
     usedb!(
         @VectorTree (department = [&DEPT], employee = [&EMP]) [
             [1, 2]  [1, 2, 3, 4]
