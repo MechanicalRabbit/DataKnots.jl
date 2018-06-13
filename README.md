@@ -1,6 +1,6 @@
 # DataKnots.jl
 
-*DataKnots is a Julia library for representing and 
+*DataKnots is a Julia library for representing and
 querying data, including nested and circular structures.
 DataKnots provides integration and analytics across CSV,
 JSON, XML and SQL data sources with an extensible,
@@ -15,31 +15,36 @@ practical and coherent algebra of query combinators.*
 
 DataKnots is designed to let data analysts and other
 accidental programmers query and analyze complex
-structured data. It implements an algebraic query
-interface of [Query Combinators].
+structured data.
+
+DataKnots implements an algebraic query interface of
+[Query Combinators]. This algebra’s elements, or queries,
+represent relationships among class entities and data
+types. This algebra’s operations, or combinators, are
+applied to construct query expressions.
 
 There are significant advantages of DataKnots over
 the state of the art.
 
 * DataKnots is a practical alternative to SQL with
-  a declarative syntax; this makes it suitable for 
+  a declarative syntax; this makes it suitable for
   use by domain experts.
 
-* DataKnots' data model handles nested and recursive 
-  structures (unlike DataFrames or SQL); this makes 
-  it suitable for working with CSV, JSON, XML, and 
+* DataKnots' data model handles nested and recursive
+  structures (unlike DataFrames or SQL); this makes
+  it suitable for working with CSV, JSON, XML, and
   SQL databases.
 
 * DataKnots has a formal semantic model based upon
-  monadic composition; this makes it easy to reason 
+  monadic composition; this makes it easy to reason
   about the structure and interpretation of queries.
 
-* DataKots is a combinator algebra (like XPath but
+* DataKnots is a combinator algebra (like XPath but
   unlike LINQ or SQL); this makes it easier to assemble
   queries dynamically.
 
-* DataKnots is fully extensible with Julia; this makes 
-  it possible to specialize it into various domain 
+* DataKnots is fully extensible with Julia; this makes
+  it possible to specialize it into various domain
   specific query languages.
 
 
