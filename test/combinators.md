@@ -451,6 +451,70 @@
     =#
 
     usedb!(
+        @VectorTree (department = [(name = [String],)],
+                     employee = [(name = [String], department = [String], position = [String], salary = [Int])]) [
+            (department = [
+                "POLICE"
+                "FIRE"
+             ],
+             employee = [
+                "JAMES A"   "POLICE"    "SERGEANT"      110370
+                "MICHAEL W" "POLICE"    "INVESTIGATOR"  63276
+                "STEVEN S"  "FIRE"      "CAPTAIN"       123948
+                "APRIL W"   "FIRE"      "PARAMEDIC"     54114
+            ])
+        ]
+    )
+    #=>
+    │ DataKnot                                                                     …
+    │ department    employee                                                       …
+    ├──────────────────────────────────────────────────────────────────────────────…
+    │ POLICE; FIRE  JAMES A, POLICE, SERGEANT, 110370; MICHAEL W, POLICE, INVESTIGA…
+    =#
+
+    @query begin
+        record(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+    end
+    #=>
+    │ DataKnot                                                                     …
+    │ department                                                                   …
+    ├──────────────────────────────────────────────────────────────────────────────…
+    │ POLICE, JAMES A, POLICE, SERGEANT, 110370; MICHAEL W, POLICE, INVESTIGATOR, 6…
+    =#
+
+    @query begin
+        record(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+        employee.record(name, department_name => department.name)
+    end
+    #=>
+      │ DataKnot                   │
+      │ name       department_name │
+    ──┼────────────────────────────┤
+    1 │ JAMES A    POLICE          │
+    2 │ MICHAEL W  POLICE          │
+    3 │ STEVEN S   FIRE            │
+    4 │ APRIL W    FIRE            │
+    =#
+
+    @query begin
+        record(
+            department.graft(name, employee.index(department)),
+            employee.graft(department, department.unique_index(name)))
+        department.record(name, size => count(employee), max_salary => max(employee.salary))
+    end
+    #=>
+      │ DataKnot                 │
+      │ name    size  max_salary │
+    ──┼──────────────────────────┤
+    1 │ POLICE     2      110370 │
+    2 │ FIRE       2      123948 │
+    =#
+
+    usedb!(
         @VectorTree (department = [&DEPT], employee = [&EMP]) [
             [1, 2]  [1, 2, 3, 4]
         ] where {

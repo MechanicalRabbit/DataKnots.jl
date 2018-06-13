@@ -106,6 +106,9 @@ function rearrange!(ctor::TupleVectorConstructor, ex)
             error("expected $(length(ctor.col_ctors)) column(s); got $(repr(ex))")
         end
         ctor.len += 1
+    elseif length(ctor.col_ctors) == 1
+        rearrange!(ctor.col_ctors[1], ex)
+        ctor.len += 1
     else
         error("expected a tuple or a row literal; got $(repr(ex))")
     end

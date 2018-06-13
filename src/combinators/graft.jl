@@ -26,6 +26,10 @@ function graft(env::Environment, q::Query, K, I)
     idom = ibound(idomain(q), idomain(i))
     md = mode(q)
     dom = ShadowShape(domain(q), OutputShape[vdom.val])
+    lbl = decoration(domain(q), :tag, Symbol)
+    if lbl !== missing
+        dom = dom |> decorate(:tag => lbl)
+    end
     lbls = Symbol[Symbol("#1"),
                   decoration(domain(i), :tag, Symbol, decoration(vdom.val, :tag, Symbol, Symbol("#2")))]
     chain_of(
