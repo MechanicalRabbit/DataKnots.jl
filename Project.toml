@@ -1,0 +1,7 @@
+name = "DataKnots"
+uuid = "d135c000-65a7-11e8-1c84-5b268381127b"
+authors = ["Kirill Simonov <xi@resolvent.net>"]
+version = "0.1.0"
+
+[deps]
+NarrativeTest = "cbff20e0-65a7-11e8-3e6b-953888476f54"
