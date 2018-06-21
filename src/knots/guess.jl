@@ -2,8 +2,35 @@
 # Guessing the shape of a vector.
 #
 
+guessshape(shp::AbstractShape, v) =
+    shp
+
+guessshape(::AnyShape, v) =
+    guessshape(v)
+
+guessshape(shp::DecoratedShape, v) =
+    let base′ = guessshape(shp.base, v)
+        base′ == shp.base ? shp : DecoratedShape(base′, shp.decors)
+    end
+
+function guessshape(shp::RecordShape, v::AbstractVector)
+    flds′ = OutputShape[]
+    for (k, fld) in enumerate(shp[:])
+        fld′ = guessshape(fld, column(v, k))
+        push!(flds′, fld′)
+    end
+    flds′ == shp.flds ? shp : RecordShape(flds′)
+end
+
+guessshape(shp::OutputShape, v) =
+    let dom′ = guessshape(shp.dom, elements(v))
+        dom′ == shp.dom ? shp : OutputShape(dom′, shp.md)
+    end
+
 guessshape(v::AbstractVector) =
-    NativeShape(eltype(v))
+    let T = eltype(v)
+        T == Any ? AnyShape() : NativeShape(T)
+    end
 
 function guessshape(tv::TupleVector)
     cols = columns(tv)

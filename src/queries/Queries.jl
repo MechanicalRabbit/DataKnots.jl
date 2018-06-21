@@ -12,6 +12,7 @@ export
     column,
     correlate,
     count_block,
+    csv_parse,
     decode_missing,
     decode_tuple,
     decode_vector,
@@ -89,6 +90,7 @@ include("group.jl")
 include("correlate.jl")
 include("json.jl")
 include("xml.jl")
+include("csv.jl")
 include("simplify.jl")
 
 end

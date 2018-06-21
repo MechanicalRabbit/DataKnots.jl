@@ -57,5 +57,9 @@ function pack(q, params)
     end
 end
 
-unpack(q, output) = DataKnot(shape(q), elements(output))
+unpack(q, output) =
+    let vals = elements(output),
+        shp = guessshape(shape(q), output)
+        DataKnot(shp, vals)
+    end
 

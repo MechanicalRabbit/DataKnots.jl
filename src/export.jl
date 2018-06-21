@@ -24,8 +24,10 @@ export
     it,
     json_field,
     json_value,
+    load_csv,
     load_json,
     load_xml,
+    parse_csv,
     parse_json,
     parse_xml,
     query,
@@ -38,6 +40,7 @@ export
     unusedb!,
     usedb,
     usedb!,
+    weave,
     xml_attr,
     xml_child,
     xml_tag

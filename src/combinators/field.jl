@@ -5,6 +5,9 @@
 field(name) =
     Combinator(field, name)
 
+translate(::Type{Val{:it}}) =
+    it
+
 translate(::Type{Val{name}}) where {name} =
     field(name)
 

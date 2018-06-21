@@ -9,6 +9,7 @@ export
     cardinality,
     domain,
     elements,
+    guessshape,
     mode,
     signature,
     shape,
