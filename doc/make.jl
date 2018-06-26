@@ -1,7 +1,9 @@
 #!/usr/bin/env julia
 
-using Pkg
-if Pkg.installed("Documenter") == nothing
+try
+    using Documenter
+catch
+    using Pkg
     Pkg.add("Documenter")
 end
 
@@ -17,6 +19,7 @@ makedocs(
     sitename = "DataKnots.jl",
     pages = [
         "index.md",
+        "guide.md",
         "reference.md",
         "test/index.md",
         hide("test/layouts.md"),
