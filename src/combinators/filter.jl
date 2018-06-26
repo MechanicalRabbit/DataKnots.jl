@@ -2,13 +2,13 @@
 # The filter combinator.
 #
 
-Base.filter(X::SomeCombinator) =
-    Combinator(filter, X)
+Filter(X::SomeCombinator) =
+    Combinator(Filter, X)
 
 translate(::Type{Val{:filter}}, args::Tuple{Any}) =
-    filter(translate(args[1]))
+    Filter(translate(args[1]))
 
-function Base.filter(env::Environment, q::Query, X)
+function Filter(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     r = chain_of(
             tuple_of(

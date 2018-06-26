@@ -2,18 +2,18 @@
 # Attribute access.
 #
 
-field(name) =
-    Combinator(field, name)
+Field(name) =
+    Combinator(Field, name)
 
 translate(::Type{Val{:it}}) =
-    it
+    It
 
 translate(::Type{Val{name}}) where {name} =
-    field(name)
+    Field(name)
 
-function field(env::Environment, q::Query, name)
+function Field(env::Environment, q::Query, name)
     if any(slot.first == name for slot in env.slots)
-        return recall(env, q, name)
+        return Recall(env, q, name)
     end
     r = lookup(domain(q), name)
     r !== missing || error("unknown attribute $name at\n$(domain(q))")

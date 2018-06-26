@@ -2,13 +2,13 @@
 # Record constructor.
 #
 
-record(Xs...) =
-    Combinator(record, collect(SomeCombinator, Xs))
+Record(Xs...) =
+    Combinator(Record, collect(SomeCombinator, Xs))
 
 translate(::Type{Val{:record}}, args::Tuple) =
-    record(translate.(args)...)
+    Record(translate.(args)...)
 
-function record(env::Environment, q::Query, Xs)
+function Record(env::Environment, q::Query, Xs)
     xs = combine.(Xs, Ref(env), Ref(stub(q)))
     ishp = ibound(ishape.(xs))
     shp = OutputShape(RecordShape(shape.(xs)))

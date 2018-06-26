@@ -2,9 +2,9 @@
 # XML-related combinators.
 #
 
-parse_xml() = Combinator(parse_xml)
+ParseXML() = Combinator(ParseXML)
 
-function parse_xml(env::Environment, q::Query)
+function ParseXML(env::Environment, q::Query)
     r = chain_of(
             xml_parse(),
             dereference(),
@@ -13,9 +13,9 @@ function parse_xml(env::Environment, q::Query)
     compose(q, r)
 end
 
-load_xml(filename::String) = Combinator(load_xml, filename)
+LoadXML(filename::String) = Combinator(LoadXML, filename)
 
-function load_xml(env::Environment, q::Query, filename)
+function LoadXML(env::Environment, q::Query, filename)
     r = chain_of(
             lift(_ -> read(filename, String)),
             xml_parse(),
@@ -25,18 +25,18 @@ function load_xml(env::Environment, q::Query, filename)
     compose(q, r)
 end
 
-xml_tag() = Combinator(xml_tag)
+XMLTag() = Combinator(XMLTag)
 
-xml_tag(env::Environment, q::Query) =
+XMLTag(env::Environment, q::Query) =
     compose(
         q,
         column(:tag) |> designate(InputShape(XMLShape()), OutputShape(String)))
 
-xml_child() = Combinator(xml_child)
+XMLChild() = Combinator(XMLChild)
 
-xml_child(tag::String) = Combinator(xml_child, tag)
+XMLChild(tag::String) = Combinator(XMLChild, tag)
 
-xml_child(env::Environment, q::Query) =
+XMLChild(env::Environment, q::Query) =
     compose(
         q,
         chain_of(
@@ -44,7 +44,7 @@ xml_child(env::Environment, q::Query) =
             in_block(dereference()),
         ) |> designate(InputShape(XMLShape()), OutputShape(XMLShape(), OPT|PLU)))
 
-xml_child(env::Environment, q::Query, tag::String) =
+XMLChild(env::Environment, q::Query, tag::String) =
     compose(
         q,
         chain_of(
@@ -62,10 +62,10 @@ xml_child(env::Environment, q::Query, tag::String) =
             flat_block(),
         ) |> designate(InputShape(XMLShape()), OutputShape(XMLShape(), OPT|PLU)))
 
-xml_attr(key::String) =
-    Combinator(xml_attr, key)
+XMLAttr(key::String) =
+    Combinator(XMLAttr, key)
 
-function xml_attr(env::Environment, q::Query, key)
+function XMLAttr(env::Environment, q::Query, key)
     r = chain_of(
             column(:attr),
             in_block(

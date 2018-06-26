@@ -3,8 +3,8 @@
     using DataKnots
     using DataKnots.Combinators
 
-    F = (it .+ 4) >> (it .* 6)
-    #-> (it .+ 4) >> it .* 6
+    F = (It .+ 4) >> (It .* 6)
+    #-> (It .+ 4) >> It .* 6
 
     query(3, F)
     #=>
@@ -37,7 +37,7 @@
     2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
     =#
 
-    query(field(:name))
+    query(Field(:name))
     #=>
       │ name   │
     ──┼────────┤
@@ -45,7 +45,7 @@
     2 │ FIRE   │
     =#
 
-    query(it.name)
+    query(It.name)
     #=>
       │ name   │
     ──┼────────┤
@@ -61,7 +61,7 @@
     2 │ FIRE   │
     =#
 
-    query(field(:employee) >> field(:salary))
+    query(Field(:employee) >> Field(:salary))
     #=>
       │ salary │
     ──┼────────┤
@@ -72,7 +72,7 @@
     5 │ 197736 │
     =#
 
-    query(it.employee.salary)
+    query(It.employee.salary)
     #=>
       │ salary │
     ──┼────────┤
@@ -94,7 +94,7 @@
     5 │ 197736 │
     =#
 
-    query(count(it.employee))
+    query(Count(It.employee))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -110,7 +110,7 @@
     2 │        2 │
     =#
 
-    query(count)
+    query(Count)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -124,7 +124,7 @@
     │        2 │
     =#
 
-    query(count(it.employee) >> maximum)
+    query(Count(It.employee) >> Max)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -138,7 +138,7 @@
     │        3 │
     =#
 
-    query(it.employee >> filter(it.salary .> 200000))
+    query(It.employee >> Filter(It.salary .> 200000))
     #=>
       │ employee        │
       │ name     salary │
@@ -168,7 +168,7 @@
     2 │ JOSE S   202728 │
     =#
 
-    query(count(it.employee) .> 2)
+    query(Count(It.employee) .> 2)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -184,7 +184,7 @@
     2 │    false │
     =#
 
-    query(filter(count(it.employee) .> 2))
+    query(Filter(Count(It.employee) .> 2))
     #=>
       │ DataKnot                                                   │
       │ name    employee                                           │
@@ -200,7 +200,7 @@
     1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
     =#
 
-    query(filter(count(it.employee) .> 2) >> count)
+    query(Filter(Count(It.employee) .> 2) >> Count)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -217,7 +217,7 @@
     │        1 │
     =#
 
-    query(record(it.name, :size => count(it.employee)))
+    query(Record(It.name, :size => Count(It.employee)))
     #=>
       │ DataKnot     │
       │ name    size │
@@ -235,7 +235,7 @@
     2 │ FIRE       2 │
     =#
 
-    query(it.employee >> filter(it.salary .> it.S),
+    query(It.employee >> Filter(It.salary .> It.S),
           S=200000)
     #=>
       │ employee        │
@@ -246,8 +246,8 @@
     =#
 
     query(
-        given(:S => maximum(it.employee.salary),
-            it.employee >> filter(it.salary .== it.S)))
+        Given(:S => Max(It.employee.salary),
+            It.employee >> Filter(It.salary .== It.S)))
     #=>
       │ employee        │
       │ name     salary │
@@ -279,7 +279,7 @@
     2 │ JOSE S   202728 │
     =#
 
-    query(it.employee.salary >> sort)
+    query(It.employee.salary >> Sort)
     #=>
       │ salary │
     ──┼────────┤
@@ -301,7 +301,7 @@
     5 │ 260004 │
     =#
 
-    query(it.employee.salary >> desc >> sort)
+    query(It.employee.salary >> Desc >> Sort)
     #=>
       │ salary │
     ──┼────────┤
@@ -323,7 +323,7 @@
     5 │ 170112 │
     =#
 
-    query(it.employee >> sort(it.salary))
+    query(It.employee >> Sort(It.salary))
     #=>
       │ employee          │
       │ name       salary │
@@ -347,7 +347,7 @@
     5 │ GARRY M    260004 │
     =#
 
-    query(it.employee >> sort(it.salary >> desc))
+    query(It.employee >> Sort(It.salary >> Desc))
     #=>
       │ employee          │
       │ name       salary │
@@ -371,7 +371,7 @@
     5 │ DANA A     170112 │
     =#
 
-    query(it.employee.salary >> take(3))
+    query(It.employee.salary >> Take(3))
     #=>
       │ salary │
     ──┼────────┤
@@ -380,7 +380,7 @@
     3 │ 170112 │
     =#
 
-    query(it.employee.salary >> drop(3))
+    query(It.employee.salary >> Drop(3))
     #=>
       │ salary │
     ──┼────────┤
@@ -388,7 +388,7 @@
     2 │ 197736 │
     =#
 
-    query(it.employee.salary >> take(-3))
+    query(It.employee.salary >> Take(-3))
     #=>
       │ salary │
     ──┼────────┤
@@ -396,7 +396,7 @@
     2 │ 185364 │
     =#
 
-    query(it.employee.salary >> drop(-3))
+    query(It.employee.salary >> Drop(-3))
     #=>
       │ salary │
     ──┼────────┤
@@ -405,7 +405,7 @@
     3 │ 197736 │
     =#
 
-    query(it.employee.salary >> take(count(thedb() >> it.employee) .÷ 2))
+    query(It.employee.salary >> Take(Count(thedb() >> It.employee) .÷ 2))
     #=>
       │ salary │
     ──┼────────┤
@@ -413,7 +413,7 @@
     2 │ 185364 │
     =#
 
-    query(it.employee >> group(:grade => it.salary .÷ 100000))
+    query(It.employee >> Group(:grade => It.salary .÷ 100000))
     #=>
       │ DataKnot                                                    │
       │ grade  employee                                             │

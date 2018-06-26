@@ -30,7 +30,7 @@ combine(F::Combinator, env::Environment, q::Query) =
 
 function combine(nav::Navigation, env::Environment, q::Query)
     for fld in getfield(nav, :_path)
-        q = combine(field(fld), env, q)
+        q = combine(Field(fld), env, q)
     end
     q
 end

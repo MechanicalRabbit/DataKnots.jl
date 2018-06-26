@@ -2,19 +2,19 @@
 # Count combinator.
 #
 
-Base.count(X::SomeCombinator) =
-    Combinator(count, X)
+Count(X::SomeCombinator) =
+    Combinator(Count, X)
 
-convert(::Type{SomeCombinator}, ::typeof(count)) =
-    then(count)
+convert(::Type{SomeCombinator}, ::typeof(Count)) =
+    Then(Count)
 
 translate(::Type{Val{:count}}, ::Tuple{}) =
-    then(count)
+    Then(Count)
 
 translate(::Type{Val{:count}}, args::Tuple{Any}) =
-    count(translate(args[1]))
+    Count(translate(args[1]))
 
-function Base.count(env::Environment, q::Query, X)
+function Count(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     r = chain_of(
             x,

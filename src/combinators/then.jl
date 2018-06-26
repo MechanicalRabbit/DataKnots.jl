@@ -2,15 +2,15 @@
 # Then combinator.
 #
 
-then(q::Query) =
-    Combinator(then, q)
+Then(q::Query) =
+    Combinator(Then, q)
 
-then(env::Environment, q::Query, q′::Query) =
+Then(env::Environment, q::Query, q′::Query) =
     compose(q, q′)
 
-then(ctor, args...) =
-    Combinator(then, ctor, args...)
+Then(ctor, args...) =
+    Combinator(Then, ctor, args...)
 
-then(env::Environment, q::Query, ctor, args...) =
-    ctor(env, istub(q), then(q), args...)
+Then(env::Environment, q::Query, ctor, args...) =
+    ctor(env, istub(q), Then(q), args...)
 

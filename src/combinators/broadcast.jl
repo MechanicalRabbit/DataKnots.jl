@@ -14,22 +14,22 @@ Base.broadcastable(X::SomeCombinator) = X
 Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{BroadcastCombinator}) = bc
 
 Base.copy(bc::Broadcast.Broadcasted{BroadcastCombinator}) =
-    apply(bc.f, bc.args...)
+    Lift(bc.f, bc.args...)
 
-apply(f, Xs...) =
-    Combinator(apply, f, collect(SomeCombinator, Xs))
+Lift(f, Xs...) =
+    Combinator(Lift, f, collect(SomeCombinator, Xs))
 
 translate(::Type{Val{name}}, args::Tuple) where {name} =
     if isdefined(Base, name)
-        apply(getfield(Base, name), translate.(args)...)
+        Lift(getfield(Base, name), translate.(args)...)
     else
         error("undefined combinator: $name")
     end
 
-syntax(::typeof(apply), args::Vector{Any}) =
+syntax(::typeof(Lift), args::Vector{Any}) =
     syntax(broadcast, Any[args[1], args[2]...])
 
-function apply(env::Environment, q::Query, f, Xs)
+function Lift(env::Environment, q::Query, f, Xs)
     xs = combine.(Xs, Ref(env), Ref(stub(q)))
     if length(xs) == 1
         x = xs[1]

@@ -2,22 +2,22 @@
 # Pagination.
 #
 
-take(N) =
-    Combinator(take, N)
+Take(N) =
+    Combinator(Take, N)
 
-drop(N) =
-    Combinator(drop, N)
+Drop(N) =
+    Combinator(Drop, N)
 
-take(env::Environment, q::Query, ::Missing, rev::Bool=false) =
+Take(env::Environment, q::Query, ::Missing, rev::Bool=false) =
     q
 
-take(env::Environment, q::Query, N::Int, rev::Bool=false) =
+Take(env::Environment, q::Query, N::Int, rev::Bool=false) =
     chain_of(
         q,
         take_by(N, rev),
     ) |> designate(ishape(q), OutputShape(domain(q), bound(mode(q), OutputMode(OPT))))
 
-function take(env::Environment, q::Query, N::SomeCombinator, rev::Bool=false)
+function Take(env::Environment, q::Query, N::SomeCombinator, rev::Bool=false)
     n = combine(N, env, istub(q))
     ishp = ibound(ishape(q), ishape(n))
     chain_of(
@@ -33,6 +33,6 @@ function take(env::Environment, q::Query, N::SomeCombinator, rev::Bool=false)
     ) |> designate(ishp, OutputShape(domain(q), bound(mode(q), OutputMode(OPT))))
 end
 
-drop(env::Environment, q::Query, N) =
-    take(env, q, N, true)
+Drop(env::Environment, q::Query, N) =
+    Take(env, q, N, true)
 

@@ -2,12 +2,12 @@
 # Assign a label.
 #
 
-tag(lbl::Symbol) =
-    Combinator(tag, lbl)
+Tag(lbl::Symbol) =
+    Combinator(Tag, lbl)
 
-tag(env::Environment, q::Query, lbl::Symbol) =
+Tag(env::Environment, q::Query, lbl::Symbol) =
     q |> designate(ishape(q), shape(q) |> decorate(:tag => lbl))
 
 convert(::Type{SomeCombinator}, p::Pair{Symbol}) =
-    compose(convert(SomeCombinator, p.second), tag(p.first))
+    Compose(convert(SomeCombinator, p.second), Tag(p.first))
 

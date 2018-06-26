@@ -2,9 +2,9 @@
 # JSON-related combinators.
 #
 
-parse_json() = Combinator(parse_json)
+ParseJSON() = Combinator(ParseJSON)
 
-function parse_json(env::Environment, q::Query)
+function ParseJSON(env::Environment, q::Query)
     r = chain_of(
             json_parse(),
             dereference(),
@@ -13,9 +13,9 @@ function parse_json(env::Environment, q::Query)
     compose(q, r)
 end
 
-load_json(filename::String) = Combinator(load_json, filename)
+LoadJSON(filename::String) = Combinator(LoadJSON, filename)
 
-function load_json(env::Environment, q::Query, filename)
+function LoadJSON(env::Environment, q::Query, filename)
     r = chain_of(
             lift(_ -> read(filename, String)),
             json_parse(),
@@ -25,48 +25,48 @@ function load_json(env::Environment, q::Query, filename)
     compose(q, r)
 end
 
-json_value(T::Type) = Combinator(json_value, T)
+JSONValue(T::Type) = Combinator(JSONValue, T)
 
-json_value(env::Environment, q::Query, ::Type{Any}) =
+JSONValue(env::Environment, q::Query, ::Type{Any}) =
     q
 
-json_value(env::Environment, q::Query, ::Type{Bool}) =
+JSONValue(env::Environment, q::Query, ::Type{Bool}) =
     compose(
         q,
         column(:bool) |> designate(InputShape(JSONShape()), OutputShape(Bool, OPT)))
 
-json_value(env::Environment, q::Query, ::Type{Int}) =
+JSONValue(env::Environment, q::Query, ::Type{Int}) =
     compose(
         q,
         column(:int) |> designate(InputShape(JSONShape()), OutputShape(Int, OPT)))
 
-json_value(env::Environment, q::Query, ::Type{Float64}) =
+JSONValue(env::Environment, q::Query, ::Type{Float64}) =
     compose(
         q,
         column(:float) |> designate(InputShape(JSONShape()), OutputShape(Float64, OPT)))
 
-json_value(env::Environment, q::Query, ::Type{String}) =
+JSONValue(env::Environment, q::Query, ::Type{String}) =
     compose(
         q,
         column(:str) |> designate(InputShape(JSONShape()), OutputShape(String, OPT)))
 
-function json_value(env::Environment, q::Query, T::Type{<:Vector})
+function JSONValue(env::Environment, q::Query, T::Type{<:Vector})
     r = compose(
         q,
         chain_of(
             column(:array),
             in_block(dereference()),
         ) |> designate(InputShape(JSONShape()), OutputShape(JSONShape(), OPT|PLU)))
-    json_value(env, r, eltype(T))
+    JSONValue(env, r, eltype(T))
 end
 
-json_field(key::String) =
-    Combinator(json_field, key)
+JSONField(key::String) =
+    Combinator(JSONField, key)
 
-json_field(key::String, T::Type) =
-    Combinator(json_field, key, T)
+JSONField(key::String, T::Type) =
+    Combinator(JSONField, key, T)
 
-function json_field(env::Environment, q::Query, key)
+function JSONField(env::Environment, q::Query, key)
     r = chain_of(
             column(:object),
             in_block(
@@ -83,6 +83,6 @@ function json_field(env::Environment, q::Query, key)
     compose(q, r)
 end
 
-json_field(env::Environment, q::Query, key, T) =
-    json_value(env, json_field(env, q, key), T)
+JSONField(env::Environment, q::Query, key, T) =
+    JSONValue(env, JSONField(env, q, key), T)
 

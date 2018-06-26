@@ -2,19 +2,19 @@
 # Grafting a link.
 #
 
-graft(Xs::SomeCombinator...) =
-    Combinator(graft, Xs...)
+Graft(Xs::SomeCombinator...) =
+    Combinator(Graft, Xs...)
 
-graft(Xs...) =
+Graft(Xs...) =
     graft(convert.(SomeCombinator, Xs)...)
 
 translate(::Type{Val{:graft}}, args::Tuple) =
-    graft(translate.(args)...)
+    Graft(translate.(args)...)
 
-graft(env::Environment, q::Query, Xs...) =
-    graft(env, q, record(Xs[1:end-1]...), Xs[end])
+Graft(env::Environment, q::Query, Xs...) =
+    Graft(env, q, record(Xs[1:end-1]...), Xs[end])
 
-function graft(env::Environment, q::Query, K, I)
+function Graft(env::Environment, q::Query, K, I)
     k = combine(K, env, stub(q))
     i = combine(I, env, istub(q))
     vdom = domain(i)

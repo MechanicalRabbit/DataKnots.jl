@@ -3,15 +3,15 @@
 #
 
 >>(X::SomeCombinator, Xs...) =
-    compose(X, convert.(SomeCombinator, Xs)...)
+    Compose(X, convert.(SomeCombinator, Xs)...)
 
-compose(X, Xs...) =
-    Combinator(compose, X, Xs...)
+Compose(X, Xs...) =
+    Combinator(Compose, X, Xs...)
 
-syntax(::typeof(compose), args::Vector{Any}) =
+syntax(::typeof(Compose), args::Vector{Any}) =
     syntax(>>, args)
 
-function compose(env::Environment, q::Query, Xs::SomeCombinator...)
+function Compose(env::Environment, q::Query, Xs::SomeCombinator...)
     for X in Xs
         q = combine(X, env, q)
     end

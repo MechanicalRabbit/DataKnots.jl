@@ -2,43 +2,43 @@
 # Aggregate combinators.
 #
 
-Base.maximum(X::SomeCombinator) =
-    Combinator(maximum, X)
+Max(X::SomeCombinator) =
+    Combinator(Max, X)
 
-convert(::Type{SomeCombinator}, ::typeof(maximum)) =
-    then(maximum)
+convert(::Type{SomeCombinator}, ::typeof(Max)) =
+    Then(Max)
 
-Base.minimum(X::SomeCombinator) =
-    Combinator(minimum, X)
+Min(X::SomeCombinator) =
+    Combinator(Min, X)
 
-convert(::Type{SomeCombinator}, ::typeof(minimum)) =
-    then(minimum)
+convert(::Type{SomeCombinator}, ::typeof(Min)) =
+    Then(Min)
 
-Base.mean(X::SomeCombinator) =
-    Combinator(mean, X)
+Mean(X::SomeCombinator) =
+    Combinator(Mean, X)
 
-convert(::Type{SomeCombinator}, ::typeof(mean)) =
-    then(mean)
+convert(::Type{SomeCombinator}, ::typeof(Mean)) =
+    Then(Mean)
 
 translate(::Type{Val{:max}}, ::Tuple{}) =
-    then(maximum)
+    Then(Max)
 
 translate(::Type{Val{:max}}, args::Tuple{Any}) =
-    maximum(translate(args[1]))
+    Max(translate(args[1]))
 
 translate(::Type{Val{:min}}, ::Tuple{}) =
-    then(minimum)
+    Then(Min)
 
 translate(::Type{Val{:min}}, args::Tuple{Any}) =
-    minimum(translate(args[1]))
+    Min(translate(args[1]))
 
 translate(::Type{Val{:mean}}, ::Tuple{}) =
-    then(mean)
+    Then(Mean)
 
 translate(::Type{Val{:mean}}, args::Tuple{Any}) =
-    mean(translate(args[1]))
+    Mean(translate(args[1]))
 
-function Base.maximum(env::Environment, q::Query, X)
+function Max(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     if fits(OPT, cardinality(x))
         r = chain_of(
@@ -56,7 +56,7 @@ function Base.maximum(env::Environment, q::Query, X)
     compose(q, r)
 end
 
-function Base.minimum(env::Environment, q::Query, X)
+function Min(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     if fits(OPT, cardinality(x))
         r = chain_of(
@@ -74,7 +74,7 @@ function Base.minimum(env::Environment, q::Query, X)
     compose(q, r)
 end
 
-function Base.mean(env::Environment, q::Query, X)
+function Mean(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     T = Core.Compiler.return_type(mean, Tuple{eltype(domain(x))})
     if fits(OPT, cardinality(x))

@@ -2,16 +2,16 @@
 # Specifying parameters.
 #
 
-given(P, X) =
-    Combinator(given, convert(SomeCombinator, P), convert(SomeCombinator, X))
+Given(P, X) =
+    Combinator(Given, convert(SomeCombinator, P), convert(SomeCombinator, X))
 
-given(P, Q, X...) =
-    given(P, given(Q, X...))
+Given(P, Q, X...) =
+    Given(P, Given(Q, X...))
 
 translate(::Type{Val{:given}}, args::Tuple{Any,Any,Vararg{Any}}) =
-    given(translate.(args)...)
+    Given(translate.(args)...)
 
-function given(env::Environment, q::Query, param, X)
+function Given(env::Environment, q::Query, param, X)
     q0 = stub(q)
     p = combine(param, env, q0)
     name = decoration(domain(p), :tag, Symbol)

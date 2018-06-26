@@ -2,16 +2,16 @@
 # Grouping combinator.
 #
 
-group(Xs::SomeCombinator...) =
-    Combinator(group, Xs...)
+Group(Xs::SomeCombinator...) =
+    Combinator(Group, Xs...)
 
-group(Xs...) =
-    group(convert.(SomeCombinator, Xs)...)
+Group(Xs...) =
+    Group(convert.(SomeCombinator, Xs)...)
 
 translate(::Type{Val{:group}}, args::Tuple) =
-    group(translate.(args)...)
+    Group(translate.(args)...)
 
-function group(env::Environment, q::Query, Xs...)
+function Group(env::Environment, q::Query, Xs...)
     xs = combine.(Xs, Ref(env), Ref(stub(q)))
     xishp = ibound(ishape.(xs)...)
     x = tuple_of((chain_of(project_input(mode(xishp), imode(f)), f) for f in xs)...)

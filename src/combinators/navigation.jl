@@ -14,8 +14,8 @@ Base.getproperty(nav::Navigation, s::Symbol) =
 
 show(io::IO, nav::Navigation) =
     let path = getfield(nav, :_path)
-        print(io, join((:it, path...), "."))
+        print(io, join((:It, path...), "."))
     end
 
-const it = Navigation(())
+const It = Navigation(())
 

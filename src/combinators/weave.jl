@@ -2,13 +2,13 @@
 # Cyclic record.
 #
 
-weave(Xs...) =
-    Combinator(weave, collect(SomeCombinator, Xs))
+Weave(Xs...) =
+    Combinator(Weave, collect(SomeCombinator, Xs))
 
 translate(::Type{Val{:weave}}, args::Tuple) =
-    weave(translate.(args)...)
+    Weave(translate.(args)...)
 
-function weave(env::Environment, q::Query, Xs)
+function Weave(env::Environment, q::Query, Xs)
     q0 = stub(q)
     lbls = Symbol[]
     for (i, X) in enumerate(Xs)
@@ -17,7 +17,7 @@ function weave(env::Environment, q::Query, Xs)
         push!(lbls, lbl)
     end
     names = gensym.(lbls)
-    seeds = Query[combine(field(lbl), env, q0) for lbl in lbls]
+    seeds = Query[combine(Field(lbl), env, q0) for lbl in lbls]
     ishp = ibound(ishape.(seeds))
     shp = OutputShape(RecordShape((OutputShape(ClosedShape(name, name => domain(seed)), mode(seed))
                                    for (name, seed) in zip(names, seeds))...))

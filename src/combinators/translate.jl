@@ -18,18 +18,18 @@ function translate(ex::Expr)
     head = ex.head
     args = Any[arg for arg in ex.args if !(arg isa LineNumberNode)]
     if head == :. || head == :block
-        return compose(translate.(args)...)
+        return Compose(translate.(args)...)
     end
     if head == :call && length(args) >= 1
         call = args[1]
         if call == :(=>) && length(args) == 3 && args[2] isa Symbol
-            return compose(translate(args[3]), tag(args[2]))
+            return Compose(translate(args[3]), Tag(args[2]))
         elseif call isa Symbol
             return translate(Val{call}, (args[2:end]...,))
         elseif call isa QuoteNode
             return translate(Expr(:call, call.value, args[2:end]...))
         elseif call isa Expr && call.head == :. && !isempty(call.args)
-            return compose(translate.(call.args[1:end-1])..., translate(Expr(:call, call.args[end], args[2:end]...)))
+            return Compose(translate.(call.args[1:end-1])..., translate(Expr(:call, call.args[end], args[2:end]...)))
         end
     end
     if head == :macrocall && length(args) >= 1
@@ -39,7 +39,7 @@ function translate(ex::Expr)
         elseif call isa QuoteNode
             return translate(Expr(:macrocall, call.value, args[2:end]...))
         elseif call isa Expr && call.head == :. && !isempty(call.args)
-            return compose(translate.(call.args[1:end-1])..., translate(Expr(:macrocall, call.args[end], args[2:end]...)))
+            return Compose(translate.(call.args[1:end-1])..., translate(Expr(:macrocall, call.args[end], args[2:end]...)))
         end
     end
     error("invalid query expression: $(repr(ex))")

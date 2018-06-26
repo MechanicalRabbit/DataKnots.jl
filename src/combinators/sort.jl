@@ -15,40 +15,40 @@ ordering_spec(shp::DecoratedShape, rev::Bool) =
 ordering_spec(shp::RecordShape, rev::Bool) =
     ((ordering_spec(col, rev) for col in shp[:])...,)
 
-asc() =
-    Combinator(asc)
+Asc() =
+    Combinator(Asc)
 
-desc() =
-    Combinator(desc)
+Desc() =
+    Combinator(Desc)
 
-convert(::Type{SomeCombinator}, ::typeof(asc)) =
-    asc()
+convert(::Type{SomeCombinator}, ::typeof(Asc)) =
+    Asc()
 
-convert(::Type{SomeCombinator}, ::typeof(desc)) =
-    desc()
+convert(::Type{SomeCombinator}, ::typeof(Desc)) =
+    Desc()
 
 translate(::Type{Val{:asc}}, ::Tuple{}) =
-    asc()
+    Asc()
 
 translate(::Type{Val{:desc}}, ::Tuple{}) =
-    desc()
+    Desc()
 
-asc(env::Environment, q::Query) =
+Asc(env::Environment, q::Query) =
     q |> designate(ishape(q), shape(q) |> decorate(:rev => false))
 
-desc(env::Environment, q::Query) =
+Desc(env::Environment, q::Query) =
     q |> designate(ishape(q), shape(q) |> decorate(:rev => true))
 
-Base.sort(Xs::SomeCombinator...) =
-    Combinator(sort, Xs...)
+Sort(Xs::SomeCombinator...) =
+    Combinator(Sort, Xs...)
 
-convert(::Type{SomeCombinator}, ::typeof(sort)) =
-    sort()
+convert(::Type{SomeCombinator}, ::typeof(Sort)) =
+    Sort()
 
 translate(::Type{Val{:sort}}, args::Tuple) =
-    sort(translate.(args)...)
+    Sort(translate.(args)...)
 
-Base.sort(env::Environment, q::Query) =
+Sort(env::Environment, q::Query) =
     let spec = ordering_spec(domain(q), false)
         chain_of(
             q,
@@ -56,7 +56,7 @@ Base.sort(env::Environment, q::Query) =
         ) |> designate(ishape(q), shape(q))
     end
 
-function Base.sort(env::Environment, q::Query, X::SomeCombinator)
+function Sort(env::Environment, q::Query, X::SomeCombinator)
     x = combine(X, env, stub(q))
     idom = idomain(q)
     imd = ibound(imode(q), imode(x))
@@ -72,6 +72,6 @@ function Base.sort(env::Environment, q::Query, X::SomeCombinator)
     ) |> designate(InputShape(idom, imd), shape(q))
 end
 
-Base.sort(env::Environment, q::Query, Xs...) =
+Sort(env::Environment, q::Query, Xs...) =
         sort(env, q, record(Xs...))
 

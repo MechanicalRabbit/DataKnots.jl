@@ -16,13 +16,13 @@ FilesystemEntry() =
 show(io::IO, f::FilesystemEntry) =
     print(io, f.path)
 
-filesystem() =
-    Combinator(filesystem)
+Filesystem() =
+    Combinator(Filesystem)
 
 translate(::Type{Val{:filesystem}}, ::Tuple{}) =
-    filesystem()
+    Filesystem()
 
-function filesystem(env::Environment, q::Query)
+function Filesystem(env::Environment, q::Query)
     r = chain_of(
             tuple_of(Symbol[], []),
             lift_to_tuple(FilesystemEntry),

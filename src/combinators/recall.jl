@@ -2,10 +2,10 @@
 # Extracting parameters.
 #
 
-recall(name::Symbol) =
-    Combinator(recall, name)
+Recall(name::Symbol) =
+    Combinator(Recall, name)
 
-function recall(env::Environment, q::Query, name)
+function Recall(env::Environment, q::Query, name)
     for slot in env.slots
         if slot.first == name
             shp = slot.second

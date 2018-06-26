@@ -2,34 +2,34 @@
 # Grouping combinator.
 #
 
-index(Xs::SomeCombinator...) =
-    Combinator(index, Xs...)
+Index(Xs::SomeCombinator...) =
+    Combinator(Index, Xs...)
 
-index(Xs...) =
-    index(convert.(SomeCombinator, Xs)...)
+Index(Xs...) =
+    Index(convert.(SomeCombinator, Xs)...)
 
-unique_index(Xs::SomeCombinator...) =
-    Combinator(unique_index, Xs...)
+UniqueIndex(Xs::SomeCombinator...) =
+    Combinator(UniqueIndex, Xs...)
 
-unique_index(Xs...) =
-    unique_index(convert.(SomeCombinator, Xs)...)
+UniqueIndex(Xs...) =
+    UniqueIndex(convert.(SomeCombinator, Xs)...)
 
 translate(::Type{Val{:index}}, args::Tuple) =
-    index(translate.(args)...)
+    Index(translate.(args)...)
 
 translate(::Type{Val{:unique_index}}, args::Tuple) =
-    unique_index(translate.(args)...)
+    UniqueIndex(translate.(args)...)
 
-index(env::Environment, q::Query, Xs...) =
-    index(env, q, false, Xs...)
+Index(env::Environment, q::Query, Xs...) =
+    Index(env, q, false, Xs...)
 
-unique_index(env::Environment, q::Query, Xs...) =
-    index(env, q, true, Xs...)
+UniqueIndex(env::Environment, q::Query, Xs...) =
+    Index(env, q, true, Xs...)
 
-index(env::Environment, q::Query, unique::Bool, Xs...) =
-    index(env, q, unique, record(Xs...))
+Index(env::Environment, q::Query, unique::Bool, Xs...) =
+    Index(env, q, unique, Record(Xs...))
 
-function index(env::Environment, q::Query, unique::Bool, X)
+function Index(env::Environment, q::Query, unique::Bool, X)
     x = combine(X, env, stub(q))
     imd = ibound(imode(q), imode(x))
     idom = idomain(q)
