@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">DataKnots.jl</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="combinators.html">Query Algebra</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="combinators.html">Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/test/combinators.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><pre><code class="language-julia">using DataKnots
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">DataKnots.jl</a></li><li><a class="toctext" href="../guide.html">Programming Guide</a></li><li><a class="toctext" href="../reference.html">API Reference</a></li><li><a class="toctext" href="index.html">Test Suite</a></li><li class="current"><a class="toctext" href="combinators.html">Query Algebra</a><ul class="internal"></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="combinators.html">Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/test/combinators.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><pre><code class="language-julia">using DataKnots
 using DataKnots.Combinators
 
-F = (it .+ 4) &gt;&gt; (it .* 6)
-#-&gt; (it .+ 4) &gt;&gt; it .* 6
+F = (It .+ 4) &gt;&gt; (It .* 6)
+#-&gt; (It .+ 4) &gt;&gt; It .* 6
 
 query(3, F)
 #=&gt;
@@ -36,7 +36,7 @@ usedb!(
 2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
 =#
 
-query(field(:name))
+query(Field(:name))
 #=&gt;
   │ name   │
 ──┼────────┤
@@ -44,7 +44,7 @@ query(field(:name))
 2 │ FIRE   │
 =#
 
-query(it.name)
+query(It.name)
 #=&gt;
   │ name   │
 ──┼────────┤
@@ -60,7 +60,7 @@ query(it.name)
 2 │ FIRE   │
 =#
 
-query(field(:employee) &gt;&gt; field(:salary))
+query(Field(:employee) &gt;&gt; Field(:salary))
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -71,7 +71,7 @@ query(field(:employee) &gt;&gt; field(:salary))
 5 │ 197736 │
 =#
 
-query(it.employee.salary)
+query(It.employee.salary)
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -93,7 +93,7 @@ query(it.employee.salary)
 5 │ 197736 │
 =#
 
-query(count(it.employee))
+query(Count(It.employee))
 #=&gt;
   │ DataKnot │
 ──┼──────────┤
@@ -109,7 +109,7 @@ query(count(it.employee))
 2 │        2 │
 =#
 
-query(count)
+query(Count)
 #=&gt;
 │ DataKnot │
 ├──────────┤
@@ -123,7 +123,7 @@ query(count)
 │        2 │
 =#
 
-query(count(it.employee) &gt;&gt; maximum)
+query(Count(It.employee) &gt;&gt; Max)
 #=&gt;
 │ DataKnot │
 ├──────────┤
@@ -137,7 +137,7 @@ query(count(it.employee) &gt;&gt; maximum)
 │        3 │
 =#
 
-query(it.employee &gt;&gt; filter(it.salary .&gt; 200000))
+query(It.employee &gt;&gt; Filter(It.salary .&gt; 200000))
 #=&gt;
   │ employee        │
   │ name     salary │
@@ -167,7 +167,7 @@ end
 2 │ JOSE S   202728 │
 =#
 
-query(count(it.employee) .&gt; 2)
+query(Count(It.employee) .&gt; 2)
 #=&gt;
   │ DataKnot │
 ──┼──────────┤
@@ -183,7 +183,7 @@ query(count(it.employee) .&gt; 2)
 2 │    false │
 =#
 
-query(filter(count(it.employee) .&gt; 2))
+query(Filter(Count(It.employee) .&gt; 2))
 #=&gt;
   │ DataKnot                                                   │
   │ name    employee                                           │
@@ -199,7 +199,7 @@ query(filter(count(it.employee) .&gt; 2))
 1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
 =#
 
-query(filter(count(it.employee) .&gt; 2) &gt;&gt; count)
+query(Filter(Count(It.employee) .&gt; 2) &gt;&gt; Count)
 #=&gt;
 │ DataKnot │
 ├──────────┤
@@ -216,7 +216,7 @@ end
 │        1 │
 =#
 
-query(record(it.name, :size =&gt; count(it.employee)))
+query(Record(It.name, :size =&gt; Count(It.employee)))
 #=&gt;
   │ DataKnot     │
   │ name    size │
@@ -234,7 +234,7 @@ query(record(it.name, :size =&gt; count(it.employee)))
 2 │ FIRE       2 │
 =#
 
-query(it.employee &gt;&gt; filter(it.salary .&gt; it.S),
+query(It.employee &gt;&gt; Filter(It.salary .&gt; It.S),
       S=200000)
 #=&gt;
   │ employee        │
@@ -245,8 +245,8 @@ query(it.employee &gt;&gt; filter(it.salary .&gt; it.S),
 =#
 
 query(
-    given(:S =&gt; maximum(it.employee.salary),
-        it.employee &gt;&gt; filter(it.salary .== it.S)))
+    Given(:S =&gt; Max(It.employee.salary),
+        It.employee &gt;&gt; Filter(It.salary .== It.S)))
 #=&gt;
   │ employee        │
   │ name     salary │
@@ -278,7 +278,7 @@ end where { S = 200000 }
 2 │ JOSE S   202728 │
 =#
 
-query(it.employee.salary &gt;&gt; sort)
+query(It.employee.salary &gt;&gt; Sort)
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -300,7 +300,7 @@ query(it.employee.salary &gt;&gt; sort)
 5 │ 260004 │
 =#
 
-query(it.employee.salary &gt;&gt; desc &gt;&gt; sort)
+query(It.employee.salary &gt;&gt; Desc &gt;&gt; Sort)
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -322,7 +322,7 @@ query(it.employee.salary &gt;&gt; desc &gt;&gt; sort)
 5 │ 170112 │
 =#
 
-query(it.employee &gt;&gt; sort(it.salary))
+query(It.employee &gt;&gt; Sort(It.salary))
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -346,7 +346,7 @@ query(it.employee &gt;&gt; sort(it.salary))
 5 │ GARRY M    260004 │
 =#
 
-query(it.employee &gt;&gt; sort(it.salary &gt;&gt; desc))
+query(It.employee &gt;&gt; Sort(It.salary &gt;&gt; Desc))
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -370,7 +370,7 @@ query(it.employee &gt;&gt; sort(it.salary &gt;&gt; desc))
 5 │ DANA A     170112 │
 =#
 
-query(it.employee.salary &gt;&gt; take(3))
+query(It.employee.salary &gt;&gt; Take(3))
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -379,7 +379,7 @@ query(it.employee.salary &gt;&gt; take(3))
 3 │ 170112 │
 =#
 
-query(it.employee.salary &gt;&gt; drop(3))
+query(It.employee.salary &gt;&gt; Drop(3))
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -387,7 +387,7 @@ query(it.employee.salary &gt;&gt; drop(3))
 2 │ 197736 │
 =#
 
-query(it.employee.salary &gt;&gt; take(-3))
+query(It.employee.salary &gt;&gt; Take(-3))
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -395,7 +395,7 @@ query(it.employee.salary &gt;&gt; take(-3))
 2 │ 185364 │
 =#
 
-query(it.employee.salary &gt;&gt; drop(-3))
+query(It.employee.salary &gt;&gt; Drop(-3))
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -404,7 +404,7 @@ query(it.employee.salary &gt;&gt; drop(-3))
 3 │ 197736 │
 =#
 
-query(it.employee.salary &gt;&gt; take(count(thedb() &gt;&gt; it.employee) .÷ 2))
+query(It.employee.salary &gt;&gt; Take(Count(thedb() &gt;&gt; It.employee) .÷ 2))
 #=&gt;
   │ salary │
 ──┼────────┤
@@ -412,7 +412,7 @@ query(it.employee.salary &gt;&gt; take(count(thedb() &gt;&gt; it.employee) .÷ 2
 2 │ 185364 │
 =#
 
-query(it.employee &gt;&gt; group(:grade =&gt; it.salary .÷ 100000))
+query(It.employee &gt;&gt; Group(:grade =&gt; It.salary .÷ 100000))
 #=&gt;
   │ DataKnot                                                    │
   │ grade  employee                                             │
@@ -447,6 +447,135 @@ end
 ──┼───────────────────────────────────────────────────────────────┤
 1 │     1     3  170112  197736  184404.0  170112; 185364; 197736 │
 2 │     2     2  202728  260004  231366.0  202728; 260004         │
+=#
+
+usedb!(
+    @VectorTree (department = [(name = [String],)],
+                 employee = [(name = [String], department = [String], position = [String], salary = [Int])]) [
+        (department = [
+            &quot;POLICE&quot;
+            &quot;FIRE&quot;
+         ],
+         employee = [
+            &quot;JAMES A&quot;   &quot;POLICE&quot;    &quot;SERGEANT&quot;      110370
+            &quot;MICHAEL W&quot; &quot;POLICE&quot;    &quot;INVESTIGATOR&quot;  63276
+            &quot;STEVEN S&quot;  &quot;FIRE&quot;      &quot;CAPTAIN&quot;       123948
+            &quot;APRIL W&quot;   &quot;FIRE&quot;      &quot;PARAMEDIC&quot;     54114
+        ])
+    ]
+)
+#=&gt;
+│ DataKnot                                                                     …
+│ department    employee                                                       …
+├──────────────────────────────────────────────────────────────────────────────…
+│ POLICE; FIRE  JAMES A, POLICE, SERGEANT, 110370; MICHAEL W, POLICE, INVESTIGA…
+=#
+
+@query begin
+    record(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+end
+#=&gt;
+│ DataKnot                                                                     …
+│ department                                                                   …
+├──────────────────────────────────────────────────────────────────────────────…
+│ POLICE, JAMES A, POLICE, SERGEANT, 110370; MICHAEL W, POLICE, INVESTIGATOR, 6…
+=#
+
+@query begin
+    record(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+    employee.record(name, department_name =&gt; department.name)
+end
+#=&gt;
+  │ DataKnot                   │
+  │ name       department_name │
+──┼────────────────────────────┤
+1 │ JAMES A    POLICE          │
+2 │ MICHAEL W  POLICE          │
+3 │ STEVEN S   FIRE            │
+4 │ APRIL W    FIRE            │
+=#
+
+@query begin
+    record(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+    department.record(name, size =&gt; count(employee), max_salary =&gt; max(employee.salary))
+end
+#=&gt;
+  │ DataKnot                 │
+  │ name    size  max_salary │
+──┼──────────────────────────┤
+1 │ POLICE     2      110370 │
+2 │ FIRE       2      123948 │
+=#
+
+@query begin
+    weave(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+end
+#=&gt;
+│ DataKnot                       │
+│ department  employee           │
+├────────────────────────────────┤
+│ [1]; [2]    [1]; [2]; [3]; [4] │
+=#
+
+@query begin
+    weave(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+    employee.record(name, department_name =&gt; department.name)
+end
+#=&gt;
+  │ DataKnot                   │
+  │ name       department_name │
+──┼────────────────────────────┤
+1 │ JAMES A    POLICE          │
+2 │ MICHAEL W  POLICE          │
+3 │ STEVEN S   FIRE            │
+4 │ APRIL W    FIRE            │
+=#
+
+@query begin
+    weave(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+    department.record(name, size =&gt; count(employee), max_salary =&gt; max(employee.salary))
+end
+#=&gt;
+  │ DataKnot                 │
+  │ name    size  max_salary │
+──┼──────────────────────────┤
+1 │ POLICE     2      110370 │
+2 │ FIRE       2      123948 │
+=#
+
+@query begin
+    weave(
+        department.graft(name, employee.index(department)),
+        employee.graft(department, department.unique_index(name)))
+    department
+    employee
+    department
+    employee
+    name
+end
+#=&gt;
+  │ name      │
+──┼───────────┤
+1 │ JAMES A   │
+2 │ MICHAEL W │
+3 │ JAMES A   │
+4 │ MICHAEL W │
+5 │ STEVEN S  │
+6 │ APRIL W   │
+7 │ STEVEN S  │
+8 │ APRIL W   │
 =#
 
 usedb!(
