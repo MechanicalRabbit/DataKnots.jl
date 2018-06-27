@@ -35,12 +35,28 @@ function Lift(env::Environment, q::Query, f, Xs)
         x = xs[1]
         ity = eltype(domain(x))
         oty = Core.Compiler.return_type(f, Tuple{ity})
-        r = chain_of(
-            x,
-            in_block(lift(f))
-        ) |> designate(ishape(x), OutputShape(NativeShape(oty), mode(q)))
+        if oty <: Vector
+            ety = oty.parameters[1]
+            r = chain_of(
+                x,
+                in_block(
+                  chain_of(
+                    lift(f),
+                    decode_vector())),
+                flat_block()
+            ) |> designate(ishape(x),
+                     OutputShape(NativeShape(ety), PLU))
+        else
+            r = chain_of(
+                x,
+                in_block(lift(f))
+            ) |> designate(ishape(x),
+                      OutputShape(NativeShape(oty),
+                      mode(q)))
+        end
         compose(q, r)
     else
+        #TODO: handle record case for plural functions
         ity = eltype.(domain.(xs))
         oty = Core.Compiler.return_type(f, Tuple{ity...})
         ishp = ibound(ishape.(xs))
