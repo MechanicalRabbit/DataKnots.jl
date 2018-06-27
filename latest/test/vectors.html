@@ -173,37 +173,37 @@ dereference(cv)
 #-&gt; @VectorTree &amp;REF [1, 1, 1, 2] where {REF = [&quot;COMISSIONER&quot;, &quot;DEPUTY COMISSIONER&quot;  … ]}</code></pre><p>Ill-formed <code>@VectorTree</code> contructors are rejected.</p><pre><code class="language-julia">@VectorTree (String, Int) (&quot;GARRY M&quot;, 260004)
 #=&gt;
 ERROR: LoadError: expected a vector literal; got :((&quot;GARRY M&quot;, 260004))
-in expression starting at none:2
+in expression starting at vectors.md:319
 =#
 
 @VectorTree (String, Int) [(position = &quot;SUPERINTENDENT OF POLICE&quot;, salary = 260004)]
 #=&gt;
 ERROR: LoadError: expected no label; got :(position = &quot;SUPERINTENDENT OF POLICE&quot;)
-in expression starting at none:2
+in expression starting at vectors.md:325
 =#
 
 @VectorTree (name = String, salary = Int) [(position = &quot;SUPERINTENDENT OF POLICE&quot;, salary = 260004)]
 #=&gt;
 ERROR: LoadError: expected label :name; got :(position = &quot;SUPERINTENDENT OF POLICE&quot;)
-in expression starting at none:2
+in expression starting at vectors.md:331
 =#
 
 @VectorTree (name = String, salary = Int) [(&quot;GARRY M&quot;, &quot;SUPERINTENDENT OF POLICE&quot;, 260004)]
 #=&gt;
 ERROR: LoadError: expected 2 column(s); got :((&quot;GARRY M&quot;, &quot;SUPERINTENDENT OF POLICE&quot;, 260004))
-in expression starting at none:2
+in expression starting at vectors.md:337
 =#
 
 @VectorTree (name = String, salary = Int) [&quot;GARRY M&quot;]
 #=&gt;
 ERROR: LoadError: expected a tuple or a row literal; got &quot;GARRY M&quot;
-in expression starting at none:2
+in expression starting at vectors.md:343
 =#
 
 @VectorTree &amp;REF [[]] where (:REF =&gt; [])
 #=&gt;
 ERROR: LoadError: expected an assignment; got :(:REF =&gt; [])
-in expression starting at none:2
+in expression starting at vectors.md:349
 =#</code></pre><p>Using <code>@VectorTree</code>, we can easily construct hierarchical and mutually referential data.</p><pre><code class="language-julia">hier_data = @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
     &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
     &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
