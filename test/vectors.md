@@ -319,37 +319,37 @@ Ill-formed `@VectorTree` contructors are rejected.
     @VectorTree (String, Int) ("GARRY M", 260004)
     #=>
     ERROR: LoadError: expected a vector literal; got :(("GARRY M", 260004))
-    in expression starting at none:2
+    in expression starting at vectors.md:319
     =#
 
     @VectorTree (String, Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
     #=>
     ERROR: LoadError: expected no label; got :(position = "SUPERINTENDENT OF POLICE")
-    in expression starting at none:2
+    in expression starting at vectors.md:325
     =#
 
     @VectorTree (name = String, salary = Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
     #=>
     ERROR: LoadError: expected label :name; got :(position = "SUPERINTENDENT OF POLICE")
-    in expression starting at none:2
+    in expression starting at vectors.md:331
     =#
 
     @VectorTree (name = String, salary = Int) [("GARRY M", "SUPERINTENDENT OF POLICE", 260004)]
     #=>
     ERROR: LoadError: expected 2 column(s); got :(("GARRY M", "SUPERINTENDENT OF POLICE", 260004))
-    in expression starting at none:2
+    in expression starting at vectors.md:337
     =#
 
     @VectorTree (name = String, salary = Int) ["GARRY M"]
     #=>
     ERROR: LoadError: expected a tuple or a row literal; got "GARRY M"
-    in expression starting at none:2
+    in expression starting at vectors.md:343
     =#
 
     @VectorTree &REF [[]] where (:REF => [])
     #=>
     ERROR: LoadError: expected an assignment; got :(:REF => [])
-    in expression starting at none:2
+    in expression starting at vectors.md:349
     =#
 
 Using `@VectorTree`, we can easily construct hierarchical and mutually

@@ -3,8 +3,6 @@
     using DataKnots
     using DataKnots.Combinators
 
-# remove this comment and the test breaks...
-
     usedb!(
         @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
             "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
