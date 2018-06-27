@@ -26,6 +26,7 @@ export
     It,
     JSONField,
     JSONValue,
+    Lift,
     LoadCSV,
     LoadJSON,
     LoadXML,
