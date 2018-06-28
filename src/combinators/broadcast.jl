@@ -35,7 +35,7 @@ function Lift(env::Environment, q::Query, f, Xs)
         x = xs[1]
         ity = eltype(domain(x))
         oty = Core.Compiler.return_type(f, Tuple{ity})
-        if oty <: Vector
+        if oty <: AbstractVector
             ety = oty.parameters[1]
             r = chain_of(
                 x,
@@ -45,26 +45,40 @@ function Lift(env::Environment, q::Query, f, Xs)
                     decode_vector())),
                 flat_block()
             ) |> designate(ishape(x),
-                     OutputShape(NativeShape(ety), PLU))
+                     OutputShape(NativeShape(ety),
+                                 OPT|PLU))
         else
             r = chain_of(
                 x,
                 in_block(lift(f))
             ) |> designate(ishape(x),
-                      OutputShape(NativeShape(oty),
-                      mode(q)))
+                     OutputShape(NativeShape(oty),
+                                 mode(q)))
         end
         compose(q, r)
     else
-        #TODO: handle record case for plural functions
         ity = eltype.(domain.(xs))
         oty = Core.Compiler.return_type(f, Tuple{ity...})
         ishp = ibound(ishape.(xs))
-        shp = OutputShape(NativeShape(oty), bound(mode.(xs)))
-        r = chain_of(
-                tuple_of(Symbol[], [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs]),
-                lift_to_block_tuple(f)
-        ) |> designate(ishp, shp)
+        dsx = tuple_of(Symbol[], [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs])
+        if oty <: AbstractVector
+            ety = oty.parameters[1]
+            r = chain_of(
+                    dsx,
+                    lift_to_block_tuple(f),
+                    in_block(decode_vector()),
+                    flat_block()
+            ) |> designate(ishp,
+                     OutputShape(NativeShape(ety),
+                                 OPT|PLU))
+        else
+            r = chain_of(
+                    dsx,
+                    lift_to_block_tuple(f)
+            ) |> designate(ishp,
+                     OutputShape(NativeShape(oty),
+                                 bound(mode.(xs))))
+        end
         compose(q, r)
     end
 end

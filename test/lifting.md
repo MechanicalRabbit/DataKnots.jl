@@ -1,7 +1,6 @@
 # Lifting Scalar Functions to Combinators
 
     using DataKnots
-    using DataKnots.Combinators
 
     usedb!(
         @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
@@ -83,3 +82,14 @@
     4 │ JOSE; S    │
     5 │ CHARLES; S │
     =#
+
+    Repeat(V,N) = Lift((v,n) -> [v for i in 1:n], V, N)
+    query(Record(It.name, Repeat("Go!", 3)))
+    #=>
+      │ DataKnot              │
+      │ name    #2            │
+    ──┼───────────────────────┤
+    1 │ POLICE  Go!; Go!; Go! │
+    2 │ FIRE    Go!; Go!; Go! │
+    =#
+
