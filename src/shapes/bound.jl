@@ -22,10 +22,10 @@ The tight upper bound of the given sequence.
 bound(x) = x
 
 bound(x1, x2, x3, xs...) =
-    foldl(bound, bound(bound(x1, x2), x3), xs)
+    foldl(bound, xs; init=bound(bound(x1, x2), x3))
 
 bound(xs::Vector{T}) where {T} =
-    foldl(bound, bound(T), xs)
+    foldl(bound, xs, init=bound(T))
 
 # Dually, generic lower bound.  Concrete types must define
 # `ibound(::Type{T})` and `ibound(x::T, y::T)`.
@@ -47,8 +47,8 @@ The tight lower bound of the given sequence.
 ibound(x) = x
 
 ibound(x1, x2, x3, xs...) =
-    foldl(ibound, ibound(ibound(x1, x2), x3), xs)
+    foldl(ibound, xs, init=ibound(ibound(x1, x2), x3))
 
 ibound(xs::Vector{T}) where {T} =
-    foldl(ibound, ibound(T), xs)
+    foldl(ibound, xs, init=ibound(T))
 

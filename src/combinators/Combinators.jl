@@ -62,6 +62,8 @@ import Base:
     show,
     >>
 
+using Statistics
+
 include("combinator.jl")
 include("navigation.jl")
 include("combine.jl")
