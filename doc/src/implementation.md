@@ -1,4 +1,4 @@
-# Test Suite
+# Implementation Guide
 
 ```@contents
 Pages = [
@@ -7,5 +7,6 @@ Pages = [
     "shapes.md",
     "queries.md",
     "combinators.md",
+    "lifting.md",
 ]
 ```

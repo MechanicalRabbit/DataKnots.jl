@@ -10,9 +10,9 @@ coherent algebra of query combinators.*
 
 ```@contents
 Pages = [
-    "guide.md",
-    "reference.md",
-    "test/index.md",
+    "install.md",
+    "usage.md",
+    "implementation.md",
 ]
 ```
 

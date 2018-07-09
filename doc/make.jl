@@ -18,15 +18,11 @@ makedocs(
     format = :html,
     sitename = "DataKnots.jl",
     pages = [
-        "index.md",
-        "guide.md",
-        "reference.md",
-        "test/index.md",
-        hide("test/layouts.md"),
-        hide("test/vectors.md"),
-        hide("test/shapes.md"),
-        hide("test/queries.md"),
-        hide("test/combinators.md"),
+        "Home" => "index.md",
+        "install.md",
+        "usage.md",
+        hide("implementation.md",
+             ["layouts.md", "vectors.md", "shapes.md", "queries.md", "combinators.md", "lifting.md"]),
     ],
     modules = [DataKnots])
 

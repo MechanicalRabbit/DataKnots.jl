@@ -1,11 +1,67 @@
 # Optimal Layouts
 
-To represent complex structures on a fixed width screen, we can use a source
-code layout engine.
+
+## Overview
+
+In DataKnots.jl, we often need to visualize composite data structures or
+complex Julia expressions.  For this purpose, module `DataKnots.Layouts`
+implements a pretty-printing engine.
 
     using DataKnots.Layouts
 
-For example, let us represent a simple tree structure.
+To encode possible layouts of a given structure, we assemble the corresponding
+*layout expression*.  A fixed single-line layout is created with
+`Layouts.literal()`.
+
+    Layouts.literal("department")
+    #-> literal("department")
+
+Several layouts could be composed using horizontal and vertical composition
+operators.
+
+    lhz = Layouts.literal("department") * Layouts.literal(".") * Layouts.literal("name")
+    #-> literal("department.name")
+
+    lvt = Layouts.literal("department") / Layouts.literal("name")
+    #-> literal("department") / literal("name")
+
+Function `Layouts.pretty_print()` serializes the layout.
+
+    pretty_print(lhz)
+    #-> department.name
+
+    pretty_print(lvt)
+    #=>
+    department
+    name
+    =#
+
+To indicate that we can choose between several different layouts, use the
+choice operator.
+
+    l = lhz | lvt
+    #-> literal("department.name") | literal("department") / literal("name")
+
+We can then select the best among possible layouts.
+
+    Layouts.best(Layouts.fit(l))
+    #-> literal("department.name")
+
+The module implements the optimal layout algorithm described in
+<https://research.google.com/pubs/pub44667.html>.
+
+
+## API Reference
+
+```@docs
+DataKnots.Layouts.pretty_print
+DataKnots.Layouts.print_code
+```
+
+
+## Test Suite
+
+We start with creating a simple tree structure.
 
     struct Node
         name::Symbol
@@ -22,9 +78,10 @@ For example, let us represent a simple tree structure.
                    Node(:awl)])
     #-> Node(:a, Main.layouts.md.Node[ … ])
 
-We override the function `Layouts.tile()` and use `Layouts.literal()` with
-combinators `*` (horizontal composition), `/` (vertical composition), and `|`
-(choice) to generate the layout expression.
+To specify a layout expression for `Node` objects, we need to override
+`Layout.tile()`.  Layout expressions are assembled from `Layouts.literal()`
+primitives using operators `*` (horizontal composition), `/` (vertical
+composition), and `|` (choice).
 
     function Layouts.tile(tree::Node)
         if isempty(tree.arms)
@@ -71,7 +128,8 @@ We can control the width of the output.
               Node(:awl)])
     =#
 
-We can easily display the original and the optimized layouts.
+We can display the layout expression itself, both the original and the
+optimized variants.
 
     Layouts.tile(tree)
     #=>
@@ -106,7 +164,7 @@ For some built-in data structures, automatic layout is already provided.
       salary = 60780)]
     =#
 
-Finally, we can format and print Julia expressions.
+This includes Julia syntax trees.
 
     Q = :(
         Employee

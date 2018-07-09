@@ -1,12 +1,128 @@
-# Composite Vectors
+# Column Store
+
+
+## Overview
+
+Given an assorted collection of atomic types, there are two ways to make composite
+types out of them.  We can make a variable-size collection of homogeneous values, called
+a *vector*.  We can also make a fixed-size collection of heterogeneous values, called
+a *tuple*.  Examples of a vector and a tuple are below.
+
+A list of employee names could be represented with a vector.
+
+    ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]
+
+To specify the name, position and salary of an employee, we could use a (named) tuple.
+
+    (name = "JEFFERY A", position = "SERGEANT", salary = 101442)
+
+When it comes to representing tabular data, we have two choices.  We can use tuples
+to represent table rows, then the whole table is encoded as a vector of tuples.  Alternatively,
+we can put each table of the column in a separate vector, and represent the whole table
+as a tuple of vectors of the same size.  These two approaches are illustrated in the following example.
+
+| name      | position          | salary    |
+| --------- | ----------------- | --------- |
+| JEFFERY A | SERGEANT          | 101442    |
+| JAMES A   | FIRE ENGINEER-EMT | 103350    |
+| TERRY A   | POLICE OFFICER    | 93354     |
+
+In the row-oriented format, we encode this table as a vector of tuples.
+
+    [(name = "JEFFERY A", position = "SERGEANT", salary = 101442),
+     (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350),
+     (name = "TERRY A", position = "POLICE OFFICER", salary = 93354)]
+
+In the column-oriented format, we use a tuple of vectors.
+
+    (name = ["JEFFERY A", "JAMES A", "TERRY A"],
+     position = ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
+     salary = [101442, 103350, 93354])
+
+Row-oriented data layout is common in traditional programming practice and databases.
+
+Column-oriented data layout is often used by analytical databases. It's advantage is in
+the fact that the data could be processed more efficiently.
+
+The module `DataKnots.Vectors` implements necessary data structures to support
+collumn-oriented data layout for complex tabular, nested and circular data.
+
+In particular, tabular data could be represented using `TupleVector` objects.
+
+```julia
+TupleVector(:name => ["JEFFERY A", "JAMES A", "TERRY A"],
+            :position => ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
+            :salary => [101442, 103350, 93354])
+```
+
+However, this structure is not sufficient to represent real tabular data.  The reason is
+that tabular data that is encountered in practice may contain empty cells.  Continuing
+with the previous example, we may have some employees with annual salary, and others on
+hourly rate.  In the tabular representation, we could represent this by adding a second
+column `rate`.
+
+| name      | position          | salary    | rate  |
+| --------- | ----------------- | --------- | ----- |
+| JEFFERY A | SERGEANT          | 101442    |       |
+| JAMES A   | FIRE ENGINEER-EMT | 103350    |       |
+| TERRY A   | POLICE OFFICER    | 93354     |       |
+| LAKENYA A | CROSSING GUARD    |           | 17.68 |
+
+How could this data be represented in column-oriented form?  In order to retain the
+advantages of the format, we'd like to keep the data in tightly packed vectors.
+
+    ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]
+    ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]
+    [101442, 103350, 93354]
+    [17.68]
+
+What we lost is the correspondence between columns and rows.  To restore this correspondence,
+we will partition the data vectors into 4 (the number of rows) blocks.  A partition
+could be specified with an *offset* vector, which is a vector of indices of the data
+vector, where each pair of adjacent indices specifies the boundaries of the corresponding
+block.
+
+    [1, 2, 3, 4, 5]
+    [1, 2, 3, 4, 5]
+    [1, 2, 3, 4, 4]
+    [1, 1, 1, 1, 2]
+
+Thus, to specify the column, we need to provide a data vector of consequent values and an offset
+vector to partition this data.  `DataKnots.Vectors` provides a `BlockVector` objects which
+encapsulates the elements vector and the offset vector in a single object.
+
+```julia
+BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"])
+BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"])
+BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354])
+BlockVector([1, 1, 1, 1, 2], [17.68])
+```
+
+Now that the correspondence between rows and columns is restored, we could wrap the columns
+in a `TupleVector`.
+
+```julia
+TupleVector(
+    :name => BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]),
+    :position => BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]),
+    :salary => BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354]),
+    :rate => BlockVector([1, 1, 1, 1, 2], [17.68]))
+```
+
+Here, `:` is a shortcut for the arithmetic progression `[1, 2, 3, 4, 5]`.
+
+
+## API Reference
+
+
+## Test Suite
 
 For efficient data processing, an array of composite data can be stored in a
 column-oriented form: as a collection of arrays with primitive data.
 
     using DataKnots.Vectors
 
-
-## `TupleVector`
+### `TupleVector`
 
 `TupleVector` is a vector of tuples stored as a collection of parallel vectors.
 
@@ -71,7 +187,7 @@ column vectors.  Updated column vectors are generated on demand.
     #-> [170112, 260004]
 
 
-## `BlockVector`
+### `BlockVector`
 
 `BlockVector` is a vector of homogeneous vectors (blocks) stored as a vector of
 elements partitioned into individual blocks by a vector of offsets.
@@ -168,7 +284,7 @@ When indexed by a vector of indexes, an instance of `BlockVector` is returned.
     #-> @VectorTree [String] ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
 
-## `IndexVector`
+### `IndexVector`
 
 `IndexVector` is a vector of indexes in some named vector.
 
@@ -214,7 +330,7 @@ desired reference vector is not in the list.
     #-> [1, 1, 1, 2]
 
 
-## `CapsuleVector`
+### `CapsuleVector`
 
 `CapsuleVector` provides references for a composite vector with nested indexes.
 We use `CapsuleVector` to represent self-referential and mutually referential
@@ -262,7 +378,7 @@ Indexing `CapsuleVector` by a vector produces another instance of
     #-> @VectorTree (ref = &REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}
 
 
-## `@VectorTree`
+### `@VectorTree`
 
 We can use `@VectorTree` macro to convert vector literals to the columnar form
 assembled with `TupleVector`, `BlockVector`, `IndexVector`, and
