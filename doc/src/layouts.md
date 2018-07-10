@@ -9,15 +9,15 @@ implements a pretty-printing engine.
 
     using DataKnots.Layouts
 
-To encode possible layouts of a given structure, we assemble the corresponding
-*layout expression*.  A fixed single-line layout is created with
-`Layouts.literal()`.
+To format a data structure, we need to encode its possible layouts in the form
+of a *layout expression*.
+
+A fixed single-line layout is created with `Layouts.literal()`.
 
     Layouts.literal("department")
     #-> literal("department")
 
-Several layouts could be composed using horizontal and vertical composition
-operators.
+Layouts could be combined using horizontal and vertical composition operators.
 
     lhz = Layouts.literal("department") * Layouts.literal(".") * Layouts.literal("name")
     #-> literal("department.name")
@@ -42,7 +42,8 @@ choice operator.
     l = lhz | lvt
     #-> literal("department.name") | literal("department") / literal("name")
 
-We can then select the best among possible layouts.
+The pretty-printing engine can search through possible layouts to find the best
+fit, which is expressed as a layout expression without a choice operator.
 
     Layouts.best(Layouts.fit(l))
     #-> literal("department.name")

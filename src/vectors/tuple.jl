@@ -11,7 +11,7 @@ const SomeTupleVector{T} = Union{AbstractTupleVector{T},WrapperVector{<:Abstract
 # Constructors.
 
 """
-    TupleVector([lbls::Vector{Symbol}, len::Int, cols::Vector{AbstractVector})
+    TupleVector([lbls::Vector{Symbol}], len::Int, cols::Vector{AbstractVector})
     TupleVector(cols::Pair{Symbol,<:AbstractVector}...)
 
 Vector of tuples stored as a collection of column vectors.

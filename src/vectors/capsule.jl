@@ -5,7 +5,7 @@
 """
     CapsuleVector(vals::AbstractVector, refs::Pair{Symbol,<:AbstractVector}...)
 
-To any composite vector, attaches the reference vectors for any nested indexes.
+Encapsulates reference vectors to dereference any nested indexes.
 """
 struct CapsuleVector{W<:AbstractVector,T,V<:AbstractVector} <: WrapperVector{W,T}
     vals::V

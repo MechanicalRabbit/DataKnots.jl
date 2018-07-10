@@ -3,23 +3,14 @@
 
 ## Overview
 
-Given an assorted collection of atomic types, there are two ways to make composite
-types out of them.  We can make a variable-size collection of homogeneous values, called
-a *vector*.  We can also make a fixed-size collection of heterogeneous values, called
-a *tuple*.  Examples of a vector and a tuple are below.
+Module `DataKnots.Vectors` implements an in-memory column store.
 
-A list of employee names could be represented with a vector.
+    using DataKnots.Vectors
 
-    ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]
 
-To specify the name, position and salary of an employee, we could use a (named) tuple.
+### Tabular data
 
-    (name = "JEFFERY A", position = "SERGEANT", salary = 101442)
-
-When it comes to representing tabular data, we have two choices.  We can use tuples
-to represent table rows, then the whole table is encoded as a vector of tuples.  Alternatively,
-we can put each table of the column in a separate vector, and represent the whole table
-as a tuple of vectors of the same size.  These two approaches are illustrated in the following example.
+Consider a tabular structure, like in the following example.
 
 | name      | position          | salary    |
 | --------- | ----------------- | --------- |
@@ -27,39 +18,52 @@ as a tuple of vectors of the same size.  These two approaches are illustrated in
 | JAMES A   | FIRE ENGINEER-EMT | 103350    |
 | TERRY A   | POLICE OFFICER    | 93354     |
 
-In the row-oriented format, we encode this table as a vector of tuples.
+How can a database engine store the data in this table?
+
+In general, there are two ways to assemble composite data structures.  We can
+make a fixed-size collection of heterogeneous values called a *tuple*.  We can
+also make a variable-size collection of homogeneous values called a *vector*.
+
+A tuple can represent a row in the table above.
+
+    (name = "JEFFERY A", position = "SERGEANT", salary = 101442)
+
+A vector can be used to store a table column.
+
+    ["JEFFERY A", "JAMES A", "TERRY A"]
+
+When it comes to the table as a whole, we have a choice: either store it as a
+vector of tuples, or, alternatively, as a tuple of vectors.  The former leads
+to a *row-oriented* format, commonly used in programming and traditional
+database engines.
 
     [(name = "JEFFERY A", position = "SERGEANT", salary = 101442),
      (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350),
      (name = "TERRY A", position = "POLICE OFFICER", salary = 93354)]
 
-In the column-oriented format, we use a tuple of vectors.
-
-    (name = ["JEFFERY A", "JAMES A", "TERRY A"],
-     position = ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
-     salary = [101442, 103350, 93354])
-
-Row-oriented data layout is common in traditional programming practice and databases.
-
-Column-oriented data layout is often used by analytical databases. It's advantage is in
-the fact that the data could be processed more efficiently.
+Data layout in which values are stored in a set of homogeneous vectors is
+called a *column-oriented* format.  It is often used by analytical databases as
+it is more suitable for processing complex analytical queries.
 
 The module `DataKnots.Vectors` implements necessary data structures to support
-collumn-oriented data layout for complex tabular, nested and circular data.
+column-oriented data layout.  In particular, tabular data is represented using
+`TupleVector` objects.
 
-In particular, tabular data could be represented using `TupleVector` objects.
+    TupleVector(:name => ["JEFFERY A", "JAMES A", "TERRY A"],
+                :position => ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
+                :salary => [101442, 103350, 93354])
 
-```julia
-TupleVector(:name => ["JEFFERY A", "JAMES A", "TERRY A"],
-            :position => ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
-            :salary => [101442, 103350, 93354])
-```
 
-However, this structure is not sufficient to represent real tabular data.  The reason is
-that tabular data that is encountered in practice may contain empty cells.  Continuing
-with the previous example, we may have some employees with annual salary, and others on
-hourly rate.  In the tabular representation, we could represent this by adding a second
-column `rate`.
+### Missing cells
+
+When we discussed tabular format, we assumed that each table cell contains exactly
+one value.  But in some cases, to present data in tabular format, we need to
+leave some cells blank.
+
+Continuing with the previous example, consider that an employee could be
+compensated either with salary or with hourly pay.  To display the compensation
+data, we use separate columns for annual salary and for hourly rate, but only
+one the columns per each row is filled.
 
 | name      | position          | salary    | rate  |
 | --------- | ----------------- | --------- | ----- |
@@ -68,59 +72,61 @@ column `rate`.
 | TERRY A   | POLICE OFFICER    | 93354     |       |
 | LAKENYA A | CROSSING GUARD    |           | 17.68 |
 
-How could this data be represented in column-oriented form?  In order to retain the
-advantages of the format, we'd like to keep the data in tightly packed vectors.
+How could this data be represented in column-oriented form?  To retain the
+advantages of the format, we'd like to keep the data in tightly packed
+*element* vectors.
 
     ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]
     ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]
     [101442, 103350, 93354]
     [17.68]
 
-What we lost is the correspondence between columns and rows.  To restore this correspondence,
-we will partition the data vectors into 4 (the number of rows) blocks.  A partition
-could be specified with an *offset* vector, which is a vector of indices of the data
-vector, where each pair of adjacent indices specifies the boundaries of the corresponding
-block.
+But since the vector indexes no longer correspond to row numbers, we don't know
+how to map vector elements to the table cells.  This mapping could be restored
+with an *offset* vector, a vector of indexes in the element vector specifying
+the boundaries of the respective cells.
 
     [1, 2, 3, 4, 5]
     [1, 2, 3, 4, 5]
     [1, 2, 3, 4, 4]
     [1, 1, 1, 1, 2]
 
-Thus, to specify the column, we need to provide a data vector of consequent values and an offset
-vector to partition this data.  `DataKnots.Vectors` provides a `BlockVector` objects which
-encapsulates the elements vector and the offset vector in a single object.
+A `BlockVector` object encapsulates a pair of the offset and the element
+vectors.  Here, the symbol `:` is used as a shortcut for a unit range vector.
 
-```julia
-BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"])
-BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"])
-BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354])
-BlockVector([1, 1, 1, 1, 2], [17.68])
-```
+    BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"])
+    BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"])
+    BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354])
+    BlockVector([1, 1, 1, 1, 2], [17.68])
 
-Now that the correspondence between rows and columns is restored, we could wrap the columns
-in a `TupleVector`.
+Now that the correspondence between rows and columns is restored, we could wrap
+the columns with a `TupleVector`.
 
-```julia
-TupleVector(
-    :name => BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]),
-    :position => BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]),
-    :salary => BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354]),
-    :rate => BlockVector([1, 1, 1, 1, 2], [17.68]))
-```
+    TupleVector(
+        :name => BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]),
+        :position => BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]),
+        :salary => BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354]),
+        :rate => BlockVector([1, 1, 1, 1, 2], [17.68]))
 
-Here, `:` is a shortcut for the arithmetic progression `[1, 2, 3, 4, 5]`.
+
+### Nested data
+
+
+### Circular data
 
 
 ## API Reference
 
+```@docs
+DataKnots.Vectors.TupleVector
+DataKnots.Vectors.BlockVector
+DataKnots.Vectors.IndexVector
+DataKnots.Vectors.CapsuleVector
+```
+
 
 ## Test Suite
 
-For efficient data processing, an array of composite data can be stored in a
-column-oriented form: as a collection of arrays with primitive data.
-
-    using DataKnots.Vectors
 
 ### `TupleVector`
 
@@ -435,37 +441,37 @@ Ill-formed `@VectorTree` contructors are rejected.
     @VectorTree (String, Int) ("GARRY M", 260004)
     #=>
     ERROR: LoadError: expected a vector literal; got :(("GARRY M", 260004))
-    in expression starting at vectors.md:319
+    ⋮
     =#
 
     @VectorTree (String, Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
     #=>
     ERROR: LoadError: expected no label; got :(position = "SUPERINTENDENT OF POLICE")
-    in expression starting at vectors.md:325
+    ⋮
     =#
 
     @VectorTree (name = String, salary = Int) [(position = "SUPERINTENDENT OF POLICE", salary = 260004)]
     #=>
     ERROR: LoadError: expected label :name; got :(position = "SUPERINTENDENT OF POLICE")
-    in expression starting at vectors.md:331
+    ⋮
     =#
 
     @VectorTree (name = String, salary = Int) [("GARRY M", "SUPERINTENDENT OF POLICE", 260004)]
     #=>
     ERROR: LoadError: expected 2 column(s); got :(("GARRY M", "SUPERINTENDENT OF POLICE", 260004))
-    in expression starting at vectors.md:337
+    ⋮
     =#
 
     @VectorTree (name = String, salary = Int) ["GARRY M"]
     #=>
     ERROR: LoadError: expected a tuple or a row literal; got "GARRY M"
-    in expression starting at vectors.md:343
+    ⋮
     =#
 
     @VectorTree &REF [[]] where (:REF => [])
     #=>
     ERROR: LoadError: expected an assignment; got :(:REF => [])
-    in expression starting at vectors.md:349
+    ⋮
     =#
 
 Using `@VectorTree`, we can easily construct hierarchical and mutually
