@@ -16,6 +16,9 @@ Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{BroadcastCombinator}) = bc
 Base.copy(bc::Broadcast.Broadcasted{BroadcastCombinator}) =
     Lift(bc.f, bc.args...)
 
+convert(::Type{SomeCombinator}, bc::Broadcast.Broadcasted{BroadcastCombinator}) =
+    Lift(bc.f, bc.args...)
+
 Lift(f, Xs...) =
     Combinator(Lift, f, collect(SomeCombinator, Xs))
 

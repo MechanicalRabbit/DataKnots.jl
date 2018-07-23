@@ -10,8 +10,11 @@ show(io::IO, data::DataValue) = show(io, data.val)
 
 const SomeCombinator = Union{DataKnot, DataValue, Combinator, Navigation}
 
-convert(::Type{SomeCombinator}, val::Union{Int,String}) =
+convert(::Type{SomeCombinator}, val::Union{Integer,String}) =
     DataValue(val)
+
+convert(::Type{SomeCombinator}, val::Base.RefValue) =
+    DataValue(val.x)
 
 mutable struct Environment
     slots::Vector{Pair{Symbol,OutputShape}}
