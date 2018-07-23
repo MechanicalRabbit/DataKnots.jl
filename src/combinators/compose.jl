@@ -63,7 +63,21 @@ function project_input(md1::InputMode, md2::InputMode)
     elseif isfree(md2)
         column(1)
     else
-        error("not implemented")
+        idxs = Int[]
+        if isframed(md2)
+            @assert isframed(md1)
+            push!(idxs, 1)
+        end
+        for slot2 in slots(md2)
+            idx = findfirst(slot1 -> slot1.first == slot2.first, slots(md1))
+            @assert idx != nothing
+            push!(idxs, idx + isframed(md1))
+        end
+        tuple_of(
+            column(1),
+            chain_of(
+                column(2),
+                tuple_of([column(i) for i in idxs]...)))
     end
 end
 

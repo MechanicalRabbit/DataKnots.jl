@@ -34,7 +34,26 @@ function Given(env::Environment, q::Query, param, X)
         ) |> designate(InputShape(ibound(idomain(x), idomain(p)), imd), shape(x))
         return compose(q, g)
     else
-        error("not implemented")
+        imd = ibound(InputMode(filter(s -> s.first != name, slots(x)), isframed(x)), imode(p))
+        cs = Query[]
+        if isframed(x)
+            push!(cs, chain_of(column(2), column(1)))
+        end
+        for slot in slots(x)
+            if slot.first == name
+                push!(cs, chain_of(project_input(imd, imode(p)), p))
+            else
+                idx = findfirst(islot -> islot.first == slot.first, slots(imd))
+                @assert idx != nothing
+                push!(cs, chain_of(column(2), column(idx + isframed(imd))))
+            end
+        end
+        g = chain_of(
+                tuple_of(
+                    project_input(imd, InputMode()),
+                    tuple_of(cs...)),
+                x,
+        ) |> designate(InputShape(ibound(idomain(x), idomain(p)), imd), shape(x))
     end
 end
 
