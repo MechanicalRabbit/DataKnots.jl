@@ -54,6 +54,7 @@ function Given(env::Environment, q::Query, param, X)
                     tuple_of(cs...)),
                 x,
         ) |> designate(InputShape(ibound(idomain(x), idomain(p)), imd), shape(x))
+        return compose(q, g)
     end
 end
 
