@@ -10,7 +10,7 @@ show(io::IO, data::DataValue) = show(io, data.val)
 
 const SomeCombinator = Union{DataKnot, DataValue, Combinator, Navigation}
 
-convert(::Type{SomeCombinator}, val::Union{Integer,String}) =
+convert(::Type{SomeCombinator}, val::Union{Number,String}) =
     DataValue(val)
 
 convert(::Type{SomeCombinator}, val::Base.RefValue) =
