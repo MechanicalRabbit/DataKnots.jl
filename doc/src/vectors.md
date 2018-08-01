@@ -10,7 +10,8 @@ Module `DataKnots.Vectors` implements an in-memory column store.
 
 ### Tabular data
 
-Consider a tabular structure, like in the following example.
+Structured data can often be represented in a tabular form.  For example,
+information about city employees can be arranged in the following table.
 
 | name      | position          | salary    |
 | --------- | ----------------- | --------- |
@@ -18,35 +19,33 @@ Consider a tabular structure, like in the following example.
 | JAMES A   | FIRE ENGINEER-EMT | 103350    |
 | TERRY A   | POLICE OFFICER    | 93354     |
 
-How can a database engine store the data in this table?
+Internally, a database engine can store tabular data using composite data
+structures such as *tuples* and *vectors*.
 
-In general, there are two ways to assemble composite data structures.  We can
-make a fixed-size collection of heterogeneous values called a *tuple*.  We can
-also make a variable-size collection of homogeneous values called a *vector*.
-
-A tuple can represent a row in the table above.
+A tuple is a fixed-size collection of heterogeneous values and can represent a
+table row.
 
     (name = "JEFFERY A", position = "SERGEANT", salary = 101442)
 
-A vector can be used to store a table column.
+A vector is a variable-size collection of homogeneous values and can store a
+table column.
 
     ["JEFFERY A", "JAMES A", "TERRY A"]
 
-When it comes to the table as a whole, we have a choice: either store it as a
-vector of tuples, or, alternatively, as a tuple of vectors.  The former leads
-to a *row-oriented* format, commonly used in programming and traditional
-database engines.
+For a table as a whole, we have two options: either store it as a vector of
+tuples or store it as a tuple of vectors.  The former is called a *row-oriented
+format*, commonly used in programming and traditional database engines.
 
     [(name = "JEFFERY A", position = "SERGEANT", salary = 101442),
      (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350),
      (name = "TERRY A", position = "POLICE OFFICER", salary = 93354)]
 
-Data layout in which values are stored in a set of homogeneous vectors is
-called a *column-oriented* format.  It is often used by analytical databases as
-it is more suitable for processing complex analytical queries.
+The "tuple of vectors" layout is called a *column-oriented format*.  It is
+often used by analytical databases as it is more suited for processing complex
+analytical queries.
 
 The module `DataKnots.Vectors` implements necessary data structures to support
-column-oriented data layout.  In particular, tabular data is represented using
+column-oriented data format.  In particular, tabular data is represented using
 `TupleVector` objects.
 
     TupleVector(:name => ["JEFFERY A", "JAMES A", "TERRY A"],
@@ -54,16 +53,14 @@ column-oriented data layout.  In particular, tabular data is represented using
                 :salary => [101442, 103350, 93354])
 
 
-### Missing cells
+### Blank cells
 
-When we discussed tabular format, we assumed that each table cell contains exactly
-one value.  But in some cases, to present data in tabular format, we need to
-leave some cells blank.
+As we arrange data in a tabular form, we may need to leave some cells blank.
 
-Continuing with the previous example, consider that an employee could be
-compensated either with salary or with hourly pay.  To display the compensation
-data, we use separate columns for annual salary and for hourly rate, but only
-one the columns per each row is filled.
+For example, consider that a city employee could be compensated either with
+salary or with hourly pay.  To display the compensation data in a table, we add
+two columns: the annual salary and the hourly rate.  However, only one of the
+columns per each row is filled.
 
 | name      | position          | salary    | rate  |
 | --------- | ----------------- | --------- | ----- |
@@ -72,35 +69,46 @@ one the columns per each row is filled.
 | TERRY A   | POLICE OFFICER    | 93354     |       |
 | LAKENYA A | CROSSING GUARD    |           | 17.68 |
 
-How could this data be represented in column-oriented form?  To retain the
-advantages of the format, we'd like to keep the data in tightly packed
-*element* vectors.
+How can this data be serialized in a column-oriented format?  To retain the
+advantages of the format, we'd like to keep the column data in tightly packed
+vectors of *elements*.
 
     ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]
     ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]
     [101442, 103350, 93354]
     [17.68]
 
-But since the vector indexes no longer correspond to row numbers, we don't know
-how to map vector elements to the table cells.  This mapping could be restored
-with an *offset* vector, a vector of indexes in the element vector specifying
-the boundaries of the respective cells.
+Vectors of elements are partitioned into individual cells by the vectors of
+*offsets*.
 
     [1, 2, 3, 4, 5]
     [1, 2, 3, 4, 5]
     [1, 2, 3, 4, 4]
     [1, 1, 1, 1, 2]
 
-A `BlockVector` object encapsulates a pair of the offset and the element
-vectors.  Here, the symbol `:` is used as a shortcut for a unit range vector.
+Together, elements and offsets faithfully reproduce the layout of the table
+columns.  A pair of the offset and the element vectors is encapsulated with a
+`BlockVector` instance.
 
     BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"])
     BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"])
     BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354])
     BlockVector([1, 1, 1, 1, 2], [17.68])
 
-Now that the correspondence between rows and columns is restored, we could wrap
-the columns with a `TupleVector`.
+Here, the symbol `:` is used as a shortcut for a unit range vector.
+
+A `BlockVector` instance is a column-oriented encoding of a vector of
+variable-size blocks.  In this specific case, each block corresponds to a table
+cell: an empty block for a blank cell and a one-element block for a filled
+cell.
+
+    [["JEFFERY A"], ["JAMES A"], ["TERRY A"], ["LAKENYA A"]]
+    [["SERGEANT"], ["FIRE ENGINEER-EMT"], ["POLICE OFFICER"], ["CROSSING GUARD"]]
+    [[101442], [103350], [93354], []]
+    [[], [], [], [17.68]]
+
+To represent the whole table, the columns should be wrapped with a
+`TupleVector`.
 
     TupleVector(
         :name => BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]),
@@ -111,8 +119,162 @@ the columns with a `TupleVector`.
 
 ### Nested data
 
+When data does not fit a single table, it can often be presented in a top-down
+fashion.  For example, HR data can be seen as a collection of departments, each
+of which containing the associated employees.
+
+Such data is serialized using *nested* data structures.
+
+    [(name = "POLICE",
+      employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
+                  (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]),
+     (name = "FIRE",
+      employee = [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing),
+                  (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]),
+     (name = "OEMC",
+      employee = [(name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68),
+                  (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)])]
+
+To store this data in a column-oriented format, we should use nested
+`TupleVector` and `BlockVector` instances.  We start with representing employee
+data.
+
+    TupleVector(
+        :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
+        :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
+        :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
+        :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))
+
+The aggregated employee data could be partitioned to individual departments
+using a vector of offsets.
+
+    BlockVector(
+        [1, 3, 5, 7],
+        TupleVector(
+            :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
+            :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
+            :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
+            :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38])))
+
+Adding a column of department names, we obtain HR data in a column-oriented
+format.
+
+    TupleVector(
+        :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
+        :employee =>
+            BlockVector(
+                [1, 3, 5, 7],
+                TupleVector(
+                    :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
+                    :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
+                    :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
+                    :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))))
+
+Since writing offset vectors manually is tedious, `DataKnots` provides a
+convenient macro `@VectorTree`, which lets you specify column-oriented data
+using regular tuple and vector literals.
+
+    @VectorTree (name = [String],
+                 employee = [(name = [String], position = [String], salary = [Int], rate = [Float64])]) [
+        (name = "POLICE",
+         employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
+                     (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]),
+        (name = "FIRE",
+         employee = [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing),
+                     (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]),
+        (name = "OEMC",
+         employee = [(name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68),
+                     (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)])
+    ]
+
 
 ### Circular data
+
+Some relationships cannot be represented using tabular or nested data
+structures.  Consider, for example, the relationship between an employee and
+their manager.  To serialize this relationship, we need to use references.
+
+    emp_1 = (name = "RHAM E", position = "MAYOR", manager = missing)
+    emp_2 = (name = "EDDIE J", position = "SUPERINTENDENT OF POLICE", manager = emp_1)
+    emp_3 = (name = "KEVIN N", position = "FIRST DEPUTY SUPERINTENDENT", manager = emp_2)
+    emp_4 = (name = "FRED W", position = "CHIEF", manager = emp_2)
+
+In the column-oriented format, we replace references with array indexes.
+
+    [1, 2, 2]
+
+To specify the name of the target array, we wrap the indexes with an
+`IndexVector` instance.
+
+    IndexVector(:EMP, [1, 2, 2])
+
+After adding the regular columns, we obtain the following structure.
+
+    TupleVector(
+        :name => BlockVector(:, ["RHAM E", "EDDIE J", "KEVIN N", "FRED W"]),
+        :position => BlockVector(:, ["MAYOR", "SUPERINTENDENT OF POLICE", "FIRST DEPUTY SUPERINTENDENT", "CHIEF"]),
+        :manager => BlockVector([1, 1, 2, 3, 4], IndexVector(:EMP, [1, 2, 2])))
+
+We still need to associate the array name `EMP` with the actual array.  This
+array is provided by a `CapsuleVector` instance.
+
+    CapsuleVector(
+        IndexVector(:EMP, 1:4),
+        :EMP =>
+            TupleVector(
+                :name => BlockVector(:, ["RHAM E", "EDDIE J", "KEVIN N", "FRED W"]),
+                :position => BlockVector(:, ["MAYOR", "SUPERINTENDENT OF POLICE", "FIRST DEPUTY SUPERINTENDENT", "CHIEF"]),
+                :manager => BlockVector([1, 1, 2, 3, 4], IndexVector(:EMP, [1, 2, 2]))))
+
+
+### Databases
+
+Using a combination of `TupleVector`, `BlockVector`, and `IndexVector` wrapped
+in a `CapsuleVector` instance, we can serialize an entire database in a
+column-oriented format.
+
+For example, consider a database with two types of entities: *departments* and
+*employees*, where each employee belongs to a department.  Two collections
+of entities can be represented as follows.
+
+    TupleVector(
+        :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
+        :employee => BlockVector([1, 3, 5, 7], IndexVector(:EMP, [1, 2, 3, 4, 5, 6])))
+
+    TupleVector(
+        :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
+        :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3]))
+        :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
+        :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
+        :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))
+
+The collections are linked to each other with a pair of `IndexVector` instances.
+
+In addition, we create the database *root*, which contains indexes to each entity
+array.
+
+    TupleVector(
+        :department => BlockVector(:, IndexVector(:DEPT, 1:3)),
+        :employee => BlockVector(:, IndexVector(:EMP, 1:6)))
+
+The database root is wrapped in a `CapsuleVector` to provide the arrays `DEPT`
+and `EMP`.
+
+    CapsuleVector(
+        TupleVector(
+            :department => BlockVector(:, IndexVector(:DEPT, 1:3)),
+            :employee => BlockVector(:, IndexVector(:EMP, 1:6))),
+        :DEPT =>
+            TupleVector(
+                :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
+                :employee => BlockVector([1, 3, 5, 7], IndexVector(:EMP, [1, 2, 3, 4, 5, 6]))),
+        :EMP =>
+            TupleVector(
+                :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
+                :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3]))
+                :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
+                :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
+                :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38])))
 
 
 ## API Reference
