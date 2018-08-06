@@ -243,7 +243,7 @@ of entities can be represented as follows.
 
     TupleVector(
         :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
-        :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3]))
+        :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3])),
         :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
         :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
         :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))
@@ -254,16 +254,16 @@ In addition, we create the database *root*, which contains indexes to each entit
 array.
 
     TupleVector(
-        :department => BlockVector(:, IndexVector(:DEPT, 1:3)),
-        :employee => BlockVector(:, IndexVector(:EMP, 1:6)))
+        :department => BlockVector([1, 4], IndexVector(:DEPT, 1:3)),
+        :employee => BlockVector([1, 7], IndexVector(:EMP, 1:6)))
 
 The database root is wrapped in a `CapsuleVector` to provide the arrays `DEPT`
 and `EMP`.
 
     CapsuleVector(
         TupleVector(
-            :department => BlockVector(:, IndexVector(:DEPT, 1:3)),
-            :employee => BlockVector(:, IndexVector(:EMP, 1:6))),
+            :department => BlockVector([1, 4], IndexVector(:DEPT, 1:3)),
+            :employee => BlockVector([1, 7], IndexVector(:EMP, 1:6))),
         :DEPT =>
             TupleVector(
                 :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
@@ -271,7 +271,7 @@ and `EMP`.
         :EMP =>
             TupleVector(
                 :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
-                :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3]))
+                :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3])),
                 :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
                 :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
                 :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38])))
