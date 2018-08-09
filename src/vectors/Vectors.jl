@@ -38,14 +38,17 @@ export
 import Base:
     IndexStyle,
     OneTo,
-    done,
     getindex,
-    next,
     setindex!,
     show,
     size,
-    start,
     summary
+
+if VERSION < v"1.0-"
+    import Base: done
+else
+    export done
+end
 
 using Base.Cartesian
 
