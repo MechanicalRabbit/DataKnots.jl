@@ -143,12 +143,12 @@ isclosed(shp::DecoratedShape) = isclosed(shp.base)
 
 rebind(shp::DecoratedShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     let base′ = rebind(shp.base, bindings)
-        base === base′ ? shp : decorate(base′, shp.decors)
+        shp.base === base′ ? shp : decorate(base′, shp.decors)
     end
 
 unbind(shp::DecoratedShape, names) =
     let base′ = unbind(shp.base, names)
-        base === base′ ? shp : decorate(base′, shp.decors)
+        shp.base === base′ ? shp : decorate(base′, shp.decors)
     end
 
 getindex(shp::DecoratedShape) =
