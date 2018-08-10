@@ -2,6 +2,12 @@
 # Sort a block vector.
 #
 
+
+"""
+    sort_it()
+
+Sorts the input vector.
+"""
 sort_it(spec=nothing) = Query(sort_it, spec)
 
 function sort_it(rt::Runtime, input::AbstractVector, spec)
@@ -14,6 +20,11 @@ function sort_it(rt::Runtime, input::AbstractVector, spec)
     return BlockVector(offs, elts[perm])
 end
 
+"""
+    sort_by()
+
+Sorts the vector of key-value pairs.
+"""
 sort_by(spec=nothing) = Query(sort_by, spec)
 
 function sort_by(rt::Runtime, input::AbstractVector, spec)

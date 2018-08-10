@@ -6,6 +6,7 @@ module Queries
 
 export
     Query,
+    QueryError,
     any_block,
     as_block,
     chain_of,
@@ -53,7 +54,7 @@ import ..Vectors:
     column,
     dereference
 
-using ..Shapes: Signature, InputShape, OutputShape
+using ..Shapes
 import ..Shapes:
     cardinality,
     idomain,
@@ -72,7 +73,8 @@ import ..Shapes:
 
 using Base: OneTo
 import Base:
-    show
+    show,
+    showerror
 
 using Base.Cartesian
 

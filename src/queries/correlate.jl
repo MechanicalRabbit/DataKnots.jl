@@ -2,6 +2,11 @@
 # Correlate two vectors.
 #
 
+"""
+    correlate()
+
+Correlates two vectors of key-value pairs.
+"""
 correlate() = Query(correlate)
 
 function correlate(rt::Runtime, input::AbstractVector)

@@ -49,7 +49,9 @@ export
     mode,
     rebind,
     shape,
+    shapeof,
     signature,
+    sigsyntax,
     slots,
     syntax,
     unbind,
@@ -68,6 +70,8 @@ import Base:
 
 using ..Layouts
 import ..Layouts: syntax
+
+using ..Vectors
 
 include("sorteddict.jl")
 include("bound.jl")

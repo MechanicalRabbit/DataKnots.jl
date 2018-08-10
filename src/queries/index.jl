@@ -10,10 +10,16 @@ Dereferences an index vector.
 dereference() = Query(dereference)
 
 function dereference(rt::Runtime, input::AbstractVector)
-    input isa SomeIndexVector || error("expected an index vector; got $input at\n$(dereference())")
+    @ensure_fits input ClassShape(:*)
     dereference(input, rt.refs)
 end
 
+
+"""
+    store(name)
+
+Converts the input vector to an index.
+"""
 store(name::Symbol) = Query(store, name)
 
 function store(rt::Runtime, input::AbstractVector, name::Symbol)

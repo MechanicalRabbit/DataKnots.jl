@@ -9,8 +9,14 @@ abstract type AbstractShape end
 syntax(shp::AbstractShape) =
     Expr(:call, nameof(typeof(shp)), Symbol(" … "))
 
+syntax(p::Pair{<:Any,AbstractShape}) =
+    Expr(:call, :(=>), p.first, syntax(p.second))
+
 sigsyntax(shp::AbstractShape) =
     nameof(typeof(shp))
+
+sigsyntax(p::Pair{<:Any,AbstractShape}) =
+    Expr(:call, :(=>), p.first, sigsyntax(p.second))
 
 show(io::IO, shp::AbstractShape) =
     Layouts.print_code(io, syntax(shp))
@@ -210,44 +216,89 @@ syntax(shp::NativeShape) =
     Expr(:call, nameof(NativeShape), shp.ty)
 
 sigsyntax(shp::NativeShape) =
-    nameof(shp.ty)
+    shp.ty isa DataType ? nameof(shp.ty) : shp.ty
 
 eltype(shp::NativeShape) = shp.ty
 
 # Tuple with the given fields.
 
 struct TupleShape <: AbstractShape
+    lbls::Vector{Symbol}
     cols::Vector{AbstractShape}
-    closed::Bool
+    vararg::Bool
+    extra::Bool
 
-    TupleShape(cols::Vector{AbstractShape}) =
-        new(cols, all(isclosed, cols))
+    TupleShape(lbls::Vector{Symbol}, cols::Vector{AbstractShape}; vararg::Bool=false, extra::Bool=false) =
+        new(lbls, cols, vararg, extra)
 end
 
-TupleShape(itr...) =
-    TupleShape(collect(AbstractShape, itr))
+TupleShape(itr::Pair{Symbol}...; vararg::Bool=false, extra::Bool=false) =
+    TupleShape(collect(Symbol, first.(itr)), collect(AbstractShape, last.(itr)), vararg=vararg, extra=extra)
 
-syntax(shp::TupleShape) =
-    Expr(:call, nameof(TupleShape), map(syntax, shp.cols)...)
+function TupleShape(itr::Pair{Int}...; vararg::Bool=false, extra::Bool=false)
+    cols = AbstractShape[]
+    for (idx, col) in itr
+        while length(cols) < idx
+            push!(cols, AnyShape())
+        end
+        cols[idx] = col
+    end
+    TupleShape(Symbol[], cols, vararg=vararg, extra=extra)
+end
 
-sigsyntax(shp::TupleShape) =
-    Expr(:tuple, sigsyntax.(shp.cols)...)
+TupleShape(itr...; vararg::Bool=false, extra::Bool=false) =
+    TupleShape(Symbol[], collect(AbstractShape, itr), vararg=vararg, extra=extra)
+
+TupleShape(; vararg::Bool=false, extra::Bool=false) =
+    TupleShape(Symbol[], AbstractShape[], vararg=vararg, extra=extra)
+
+function syntax(shp::TupleShape)
+    args = Any[nameof(TupleShape)]
+    if !isempty(shp.lbls)
+        append!(args, [lbl => syntax(col) for (lbl, col) in zip(shp.lbls, shp.cols)])
+    else
+        append!(args, syntax.(shp.cols))
+    end
+    if shp.vararg
+        push!(args, Expr(:kw, :vararg, true))
+    end
+    if shp.extra
+        push!(args, Expr(:kw, :extra, true))
+    end
+    Expr(:call, args...)
+end
+
+function sigsyntax(shp::TupleShape)
+    args = Any[]
+    if !isempty(shp.lbls)
+        append!(args, [lbl => sigsyntax(col) for (lbl, col) in zip(shp.lbls, shp.cols)])
+    else
+        append!(args, sigsyntax.(shp.cols))
+    end
+    if shp.vararg
+        args[end] = Expr(:..., args[end])
+    end
+    if shp.extra
+        push!(args, :...)
+    end
+    Expr(:tuple, args...)
+end
 
 getindex(shp::TupleShape, ::Colon) = shp.cols
 
 getindex(shp::TupleShape, i) = shp.cols[i]
 
-isclosed(shp::TupleShape) = shp.closed
+isclosed(shp::TupleShape) = all(isclosed, shp.cols) && !shp.extra
 
 rebind(shp::TupleShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
     if !isclosed(shp)
-        TupleShape(AbstractShape[rebind(col, bindings) for col in shp.cols])
+        TupleShape(shp.lbls, AbstractShape[rebind(col, bindings) for col in shp.cols], vararg=shp.vararg, extra=shp.extra)
     else
         shp
     end
 
 unbind(shp::TupleShape, names) =
-    TupleShape(AbstractShape[unbind(col, names) for col in shp.cols])
+    TupleShape(shp.lbls, AbstractShape[unbind(col, names) for col in shp.cols], vararg=shp.vararg, extra=shp.extra)
 
 # Collection of homogeneous elements.
 
@@ -575,6 +626,106 @@ rebind(shp::IndexShape, bindings::Vector{Pair{Symbol,AbstractShape}}) =
 unbind(shp::IndexShape, names) =
     IndexShape(unbind(shp.key, names), unbind(shp.val, names))
 
+# Guessing the shape of a vector.
+
+shapeof(v::AbstractVector) =
+    let T = eltype(v)
+        T == Any ? AnyShape() : NativeShape(T)
+    end
+
+function shapeof(tv::TupleVector)
+    cols = columns(tv)
+    lbls = labels(tv)
+    if !isempty(cols) && all(col -> col isa BlockVector, cols)
+        colshapes = OutputShape[]
+        for col in cols
+            offs = offsets(col)
+            card = REG
+            if !(offs isa Base.OneTo)
+                l = 0
+                for r in offs
+                    d = r - l
+                    l = r
+                    if d < 1
+                        card |= OPT
+                    end
+                    if d > 1
+                        card |= PLU
+                    end
+                    if card == OPT|PLU
+                        break
+                    end
+                end
+            end
+            push!(colshapes, OutputShape(shapeof(elements(col)), card))
+        end
+        if !isempty(lbls)
+            colshapes = [shp |> decorate(:tag => lbl) for (shp, lbl) in zip(colshapes, lbls)]
+        end
+        return RecordShape(colshapes)
+    else
+        TupleShape(lbls, collect(AbstractShape, shapeof.(cols)))
+    end
+end
+
+shapeof(bv::BlockVector) =
+    BlockShape(shapeof(bv.elts))
+
+shapeof(iv::IndexVector) =
+    ClassShape(iv.ident)
+
+shapeof(cv::CapsuleVector) =
+    shapeof(cv.vals) |> rebind((ref.first => guessshape(ref.second) for ref in cv.refs)...)
+
+shapeof(v, shp::AbstractShape) =
+    shp
+
+shapeof(v, ::AnyShape) =
+    shapeof(v)
+
+shapeof(v, shp::DecoratedShape) =
+    let base′ = shapeof(v, shp.base)
+        base′ == shp.base ? shp : DecoratedShape(base′, shp.decors)
+    end
+
+function shapeof(v, shp::RecordShape)
+    v isa SomeTupleVector || return NoneShape()
+    flds′ = OutputShape[]
+    for (k, fld) in enumerate(shp[:])
+        fld′ = shapeof(fld, column(v, k))
+        push!(flds′, fld′)
+    end
+    flds′ == shp.flds ? shp : RecordShape(flds′)
+end
+
+function shapeof(v, shp::OutputShape)
+    v isa SomeBlockVector || return NoneShape()
+    dom′ = shapeof(shp.dom, elements(v))
+    dom′ == shp.dom ? shp : OutputShape(dom′, shp.md)
+end
+
+# Validating vector shapes.
+
+fits(input::AbstractVector, ::AbstractShape) = false
+
+fits(input::AbstractVector, ::AnyShape) = true
+
+fits(input::AbstractVector, ::NoneShape) =
+    eltype(input) === Union{}
+
+fits(input::AbstractVector, shp::NativeShape) =
+    eltype(input) <: shp.ty
+
+fits(input::SomeTupleVector, ::TupleShape) =
+    true
+
+fits(input::SomeBlockVector, shp::BlockShape) =
+    fits(elements(input), shp[])
+
+fits(input::SomeIndexVector, ::ClassShape) =
+    true
+
+
 # Subshape relation.
 
 fits(shp1::AbstractShape, shp2::AbstractShape) = false
@@ -824,13 +975,13 @@ ibound(shp1::ClosedShape, shp2::ClassShape) =
 bound(shp1::TupleShape, shp2::TupleShape) =
     shp1 == shp2 ? shp1 :
     length(shp1.cols) == length(shp2.cols) ?
-        TupleShape(AbstractShape[bound(col1, col2) for (col1, col2) in zip(shp1.cols, shp2.cols)]) :
+        TupleShape(Symbol[], AbstractShape[bound(col1, col2) for (col1, col2) in zip(shp1.cols, shp2.cols)]) :
         AnyShape(isclosed(shp1) && isclosed(shp2))
 
 ibound(shp1::TupleShape, shp2::TupleShape) =
     shp1 == shp2 ? shp1 :
     length(shp1.cols) == length(shp2.cols) ?
-        TupleShape(AbstractShape[ibound(col1, col2) for (col1, col2) in zip(shp1.cols, shp2.cols)]) :
+        TupleShape(Symbol[], AbstractShape[ibound(col1, col2) for (col1, col2) in zip(shp1.cols, shp2.cols)]) :
         NoneShape()
 
 bound(shp1::BlockShape, shp2::BlockShape) =

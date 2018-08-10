@@ -2,6 +2,11 @@
 # Grouping.
 #
 
+"""
+    group_by()
+
+Discriminates a sequence of key-value pairs.
+"""
 group_by(spec=nothing) = Query(group_by, spec)
 
 function group_by(rt::Runtime, input::AbstractVector, spec)

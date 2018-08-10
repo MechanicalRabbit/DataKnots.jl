@@ -1,11 +1,13 @@
 #
-# Lifting scalar functions to vector operations.
+# Vectorizing scalar functions.
 #
 
 """
-    lift(f)
+    lift(f) -> Query
 
-Applies a unary function to each element of an input vector.
+`f` is any scalar unary function.
+
+The query applies `f` to each element of the input vector.
 """
 lift(f) = Query(lift, f)
 
@@ -14,14 +16,16 @@ lift(rt::Runtime, input::AbstractVector, f) =
 
 
 """
-    lift_to_tuple(f)
+    lift_to_tuple(f) -> Query
 
-Applies an n-ary function to each element of an n-tuple vector.
+`f` is an n-ary function.
+
+The query applies `f` to each row of an n-tuple vector.
 """
 lift_to_tuple(f) = Query(lift_to_tuple, f)
 
 function lift_to_tuple(rt::Runtime, input::AbstractVector, f)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(lift_to_tuple(f))")
+    @ensure_fits input TupleShape(extra=true)
     _lift_to_tuple(f, length(input), columns(input)...)
 end
 
@@ -43,19 +47,23 @@ end
     lift_to_block(f)
     lift_to_block(f, default)
 
-Applies a vector function to each block of a block vector.
+`f` is a function that takes a vector argument.
+
+Applies a function `f` that takes a vector argument to each block of a block
+vector.  When specified, `default` is used instead of applying `f` to an
+empty block.
 """
 lift_to_block(f) = Query(lift_to_block, f)
 
 function lift_to_block(rt::Runtime, input::AbstractVector, f)
-    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(lift_to_block(f))")
+    @ensure_fits input BlockShape(AnyShape())
     _lift_to_block(f, input)
 end
 
 lift_to_block(f, default) = Query(lift_to_block, f, default)
 
 function lift_to_block(rt::Runtime, input::AbstractVector, f, default)
-    input isa SomeBlockVector || error("expected a block vector; got $input at\n$(lift_to_block(f, default))")
+    @ensure_fits input BlockShape(AnyShape())
     _lift_to_block(f, default, input)
 end
 
@@ -93,11 +101,8 @@ function to every combinations of values from adjacent blocks.
 lift_to_block_tuple(f) = Query(lift_to_block_tuple, f)
 
 function lift_to_block_tuple(rt::Runtime, input::AbstractVector, f)
-    input isa SomeTupleVector || error("expected a tuple vector; got $input at\n$(lift_to_block_tuple(f))")
+    @ensure_fits input TupleShape(BlockShape(AnyShape()), vararg=true)
     cols = columns(input)
-    for col in cols
-        col isa SomeBlockVector || error("expected a block vector; got $col at\n$(lift_to_block_tuple(f))")
-    end
     _lift_to_block_tuple(f, length(input), cols...)
 end
 

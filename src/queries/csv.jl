@@ -110,11 +110,16 @@ struct CSVFormat
         new(separator, quoting, labels, header)
 end
 
-csv_parse(fmt::CSVFormat) =
-    Query(csv_parse, fmt)
+"""
+    csv_parse(separator=',', quoting='"', labels=Symbol[], header=true)
 
+Parses CSV-formatted text into a table.
+"""
 csv_parse(; kws...) =
     csv_parse(CSVFormat(; kws...))
+
+csv_parse(fmt::CSVFormat) =
+    Query(csv_parse, fmt)
 
 function csv_parse(rt::Runtime, input::AbstractVector, fmt::CSVFormat)
     @assert length(input) == 1

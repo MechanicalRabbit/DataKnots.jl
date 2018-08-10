@@ -48,7 +48,7 @@ Decodes a vector with vector elements as a block vector.
 decode_vector() = Query(decode_vector)
 
 function decode_vector(rt::Runtime, input::AbstractVector)
-    eltype(input) <: AbstractVector || error("expected a vector of vectors; got $input")
+    @ensure_fits input NativeShape(AbstractVector)
     sz = 0
     for v in input
         sz += length(v)
@@ -74,13 +74,13 @@ Decodes a vector with tuple elements as a tuple vector.
 decode_tuple() = Query(decode_tuple)
 
 function decode_tuple(rt::Runtime, input::AbstractVector)
+    @ensure_fits input NativeShape(Union{Tuple,NamedTuple})
     lbls = Symbol[]
     I = eltype(input)
     if typeof(I) == DataType && I <: NamedTuple
         lbls = collect(Symbol, I.parameters[1])
         I = I.parameters[2]
     end
-    I <: Tuple && !any(Vararg <: C for C in I.parameters) || error("expected a vector of tuples; got $input")
     Is = (I.parameters...,)
     cols = _decode_tuple(input, Is...)
     TupleVector(lbls, length(input), cols)

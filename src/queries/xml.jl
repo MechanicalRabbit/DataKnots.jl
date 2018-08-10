@@ -334,6 +334,12 @@ function _xml_scan!(s::XMLScanner)
     end
 end
 
+
+"""
+    xml_parse()
+
+Parses XML-formatted text.
+"""
 xml_parse() = Query(xml_parse)
 
 function xml_parse(rt::Runtime, input::AbstractVector)

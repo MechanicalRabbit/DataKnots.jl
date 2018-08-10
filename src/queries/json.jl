@@ -301,6 +301,11 @@ end
 
 @enum JSONType JSON_NULL JSON_BOOL JSON_INT JSON_FLOAT JSON_STRING JSON_ARRAY JSON_OBJECT
 
+"""
+    json_parse()
+
+Parses JSON-formatted text.
+"""
 json_parse() = Query(json_parse)
 
 function json_parse(rt::Runtime, input::AbstractVector)

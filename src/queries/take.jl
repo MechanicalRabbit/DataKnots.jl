@@ -2,6 +2,11 @@
 # Pagination.
 #
 
+"""
+    take_by(N)
+
+Keeps the first N elements in a block.
+"""
 take_by(N::Union{Missing,Int}, rev::Bool=false) =
     Query(take_by, N, rev)
 
