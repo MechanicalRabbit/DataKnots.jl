@@ -1,11 +1,7 @@
 #!/usr/bin/env julia
 
-try
-    using Documenter
-catch
-    using Pkg
-    Pkg.add("Documenter")
-end
+using Pkg
+haskey(Pkg.installed(), "Documenter") || Pkg.add("Documenter")
 
 using Documenter
 using DataKnots
@@ -15,7 +11,6 @@ using Markdown
 Markdown.Code(code) = Markdown.Code("julia", code)
 
 makedocs(
-    format = :html,
     sitename = "DataKnots.jl",
     pages = [
         "Home" => "index.md",
@@ -28,8 +23,4 @@ makedocs(
 
 deploydocs(
     repo = "github.com/rbt-lang/DataKnots.jl.git",
-    julia = "nightly",
-    osname = "linux",
-    target = "build",
-    deps = nothing,
-    make = nothing)
+)

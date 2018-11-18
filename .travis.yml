@@ -1,26 +1,32 @@
-## Documentation: http://docs.travis-ci.com/user/languages/julia/
+# See https://github.com/JuliaLang/Example.jl/blob/master/.travis.yml
 
 language: julia
 
 os:
-  - linux
-  - osx
+- linux
+- osx
 
 julia:
-  - nightly
+- 1.0
+- nightly
 
 notifications:
   email: false
 
-git:
-  depth: 99999999
-
 env:
   global:
-    - DOCUMENTER_DEBUG=true
+  - DOCUMENTER_DEBUG=true
 
 after_success:
-  # push coverage results
-  - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("test/coverage.jl")'
+# push coverage results
+- julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("test/coverage.jl")'
+
+jobs:
+  include:
   # deploy documentation
-  - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("doc/make.jl")'
+  - stage: "Documentation"
+    os: linux
+    julia: 1.0
+    script:
+     - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("doc/make.jl")'
+    after_success: skip

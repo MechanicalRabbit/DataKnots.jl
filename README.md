@@ -10,7 +10,7 @@ practical and coherent algebra of query combinators.*
 [![Windows Build Status][appveyor-img]][appveyor-url]
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![Open Issues][issues-img]][issues-url]
-[![Latest Documentation][doc-latest-img]][doc-latest-url]
+[![Documentation][doc-dev-img]][doc-dev-url]
 [![MIT License][license-img]][license-url]
 
 DataKnots is designed to let data analysts and other
@@ -56,8 +56,8 @@ the state of the art.
 [codecov-url]: https://codecov.io/gh/rbt-lang/DataKnots.jl
 [issues-img]: https://img.shields.io/github/issues/rbt-lang/DataKnots.jl.svg
 [issues-url]: https://github.com/rbt-lang/DataKnots.jl/issues
-[doc-latest-img]: https://img.shields.io/badge/doc-latest-blue.svg
-[doc-latest-url]: https://rbt-lang.github.io/DataKnots.jl/latest/
+[doc-dev-img]: https://img.shields.io/badge/doc-dev-blue.svg
+[doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/dev/
 [license-img]: https://img.shields.io/badge/license-MIT-blue.svg
 [license-url]: https://raw.githubusercontent.com/rbt-lang/DataKnots.jl/master/LICENSE.md
 [Query Combinators]: https://arxiv.org/abs/1702.08409

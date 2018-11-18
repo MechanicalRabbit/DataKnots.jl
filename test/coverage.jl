@@ -1,15 +1,5 @@
-OS_NAME = get(ENV, "TRAVIS_OS_NAME", "")
-JULIA_VERSION = get(ENV, "TRAVIS_JULIA_VERSION", "")
+using Pkg
+haskey(Pkg.installed(), "Coverage") || Pkg.add("Coverage")
 
-if OS_NAME == "linux" && JULIA_VERSION == "nightly"
-    try
-        using Coverage
-    catch
-        using Pkg
-        Pkg.add("Coverage")
-    end
-
-    using Coverage
-
-    Codecov.submit(Codecov.process_folder())
-end
+using Coverage
+Codecov.submit(Codecov.process_folder())
