@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Lifting Scalar Functions to Combinators · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../usage/">Usage Guide</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Lifting Scalar Functions to Combinators</a><ul class="internal"></ul></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Lifting Scalar Functions to Combinators</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/lifting.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Lifting Scalar Functions to Combinators</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Lifting-Scalar-Functions-to-Combinators-1" href="#Lifting-Scalar-Functions-to-Combinators-1">Lifting Scalar Functions to Combinators</a></h1><pre><code class="language-julia">using DataKnots
+
+usedb!(
+    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
+        &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
+        &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
+    ])
+#=&gt;
+  │ DataKnot                                                   │
+  │ name    employee                                           │
+──┼────────────────────────────────────────────────────────────┤
+1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
+2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
+=#
+
+query(It.employee.name)
+#=&gt;
+  │ name      │
+──┼───────────┤
+1 │ GARRY M   │
+2 │ ANTHONY R │
+3 │ DANA A    │
+4 │ JOSE S    │
+5 │ CHARLES S │
+=#
+
+TitleCase = Lift(s -&gt; titlecase(s), It)
+
+query(It.employee.name &gt;&gt; TitleCase)
+#=&gt;
+  │ DataKnot  │
+──┼───────────┤
+1 │ Garry M   │
+2 │ Anthony R │
+3 │ Dana A    │
+4 │ Jose S    │
+5 │ Charles S │
+=#
+
+@query(titlecase(employee.name))
+#=&gt;
+  │ DataKnot  │
+──┼───────────┤
+1 │ Garry M   │
+2 │ Anthony R │
+3 │ Dana A    │
+4 │ Jose S    │
+5 │ Charles S │
+=#
+
+Split = Lift(s -&gt; split(s), It)
+
+query(It.employee.name &gt;&gt; Split)
+#=&gt;
+   │ DataKnot │
+───┼──────────┤
+ 1 │ GARRY    │
+ 2 │ M        │
+ 3 │ ANTHONY  │
+ 4 │ R        │
+ 5 │ DANA     │
+ 6 │ A        │
+ 7 │ JOSE     │
+ 8 │ S        │
+ 9 │ CHARLES  │
+10 │ S        │
+=#
+
+query(:employee =&gt;
+  It.employee &gt;&gt;
+    Record(:name =&gt;
+      It.name &gt;&gt; Split))
+#=&gt;
+  │ employee   │
+  │ name       │
+──┼────────────┤
+1 │ GARRY; M   │
+2 │ ANTHONY; R │
+3 │ DANA; A    │
+4 │ JOSE; S    │
+5 │ CHARLES; S │
+=#
+
+Repeat(V,N) = Lift((v,n) -&gt; [v for i in 1:n], V, N)
+query(Record(It.name, Repeat(&quot;Go!&quot;, 3)))
+#=&gt;
+  │ DataKnot              │
+  │ name    #2            │
+──┼───────────────────────┤
+1 │ POLICE  Go!; Go!; Go! │
+2 │ FIRE    Go!; Go!; Go! │
+=#</code></pre><footer><hr/><a class="previous" href="../combinators/"><span class="direction">Previous</span><span class="title">Query Algebra</span></a></footer></article></body></html>

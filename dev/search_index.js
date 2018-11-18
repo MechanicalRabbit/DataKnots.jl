@@ -1,7 +1,7 @@
 var documenterSearchIndex = {"docs": [
 
 {
-    "location": "index.html#",
+    "location": "#",
     "page": "Home",
     "title": "Home",
     "category": "page",
@@ -9,7 +9,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#DataKnots.jl-1",
+    "location": "#DataKnots.jl-1",
     "page": "Home",
     "title": "DataKnots.jl",
     "category": "section",
@@ -17,7 +17,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Contents-1",
+    "location": "#Contents-1",
     "page": "Home",
     "title": "Contents",
     "category": "section",
@@ -25,7 +25,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Index-1",
+    "location": "#Index-1",
     "page": "Home",
     "title": "Index",
     "category": "section",
@@ -33,7 +33,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "install.html#",
+    "location": "install/#",
     "page": "Installation Instructions",
     "title": "Installation Instructions",
     "category": "page",
@@ -41,7 +41,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "install.html#Installation-Instructions-1",
+    "location": "install/#Installation-Instructions-1",
     "page": "Installation Instructions",
     "title": "Installation Instructions",
     "category": "section",
@@ -49,7 +49,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "usage.html#",
+    "location": "usage/#",
     "page": "Usage Guide",
     "title": "Usage Guide",
     "category": "page",
@@ -57,7 +57,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "usage.html#Usage-Guide-1",
+    "location": "usage/#Usage-Guide-1",
     "page": "Usage Guide",
     "title": "Usage Guide",
     "category": "section",
@@ -65,7 +65,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "usage.html#What-is-a-DataKnot?-1",
+    "location": "usage/#What-is-a-DataKnot?-1",
     "page": "Usage Guide",
     "title": "What is a DataKnot?",
     "category": "section",
@@ -73,7 +73,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "usage.html#Querying-tabular-data-1",
+    "location": "usage/#Querying-tabular-data-1",
     "page": "Usage Guide",
     "title": "Querying tabular data",
     "category": "section",
@@ -81,7 +81,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "implementation.html#",
+    "location": "implementation/#",
     "page": "Implementation Guide",
     "title": "Implementation Guide",
     "category": "page",
@@ -89,7 +89,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "implementation.html#Implementation-Guide-1",
+    "location": "implementation/#Implementation-Guide-1",
     "page": "Implementation Guide",
     "title": "Implementation Guide",
     "category": "section",
@@ -97,7 +97,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#",
+    "location": "layouts/#",
     "page": "Optimal Layouts",
     "title": "Optimal Layouts",
     "category": "page",
@@ -105,7 +105,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#Optimal-Layouts-1",
+    "location": "layouts/#Optimal-Layouts-1",
     "page": "Optimal Layouts",
     "title": "Optimal Layouts",
     "category": "section",
@@ -113,7 +113,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#Overview-1",
+    "location": "layouts/#Overview-1",
     "page": "Optimal Layouts",
     "title": "Overview",
     "category": "section",
@@ -121,7 +121,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#DataKnots.Layouts.pretty_print",
+    "location": "layouts/#DataKnots.Layouts.pretty_print",
     "page": "Optimal Layouts",
     "title": "DataKnots.Layouts.pretty_print",
     "category": "function",
@@ -129,7 +129,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#DataKnots.Layouts.print_code",
+    "location": "layouts/#DataKnots.Layouts.print_code",
     "page": "Optimal Layouts",
     "title": "DataKnots.Layouts.print_code",
     "category": "function",
@@ -137,7 +137,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#API-Reference-1",
+    "location": "layouts/#API-Reference-1",
     "page": "Optimal Layouts",
     "title": "API Reference",
     "category": "section",
@@ -145,7 +145,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "layouts.html#Test-Suite-1",
+    "location": "layouts/#Test-Suite-1",
     "page": "Optimal Layouts",
     "title": "Test Suite",
     "category": "section",
@@ -153,7 +153,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#",
+    "location": "vectors/#",
     "page": "Column Store",
     "title": "Column Store",
     "category": "page",
@@ -161,7 +161,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Column-Store-1",
+    "location": "vectors/#Column-Store-1",
     "page": "Column Store",
     "title": "Column Store",
     "category": "section",
@@ -169,7 +169,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Overview-1",
+    "location": "vectors/#Overview-1",
     "page": "Column Store",
     "title": "Overview",
     "category": "section",
@@ -177,7 +177,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Tabular-data-1",
+    "location": "vectors/#Tabular-data-1",
     "page": "Column Store",
     "title": "Tabular data",
     "category": "section",
@@ -185,7 +185,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Blank-cells-1",
+    "location": "vectors/#Blank-cells-1",
     "page": "Column Store",
     "title": "Blank cells",
     "category": "section",
@@ -193,7 +193,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Nested-data-1",
+    "location": "vectors/#Nested-data-1",
     "page": "Column Store",
     "title": "Nested data",
     "category": "section",
@@ -201,7 +201,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Circular-data-1",
+    "location": "vectors/#Circular-data-1",
     "page": "Column Store",
     "title": "Circular data",
     "category": "section",
@@ -209,7 +209,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Databases-1",
+    "location": "vectors/#Databases-1",
     "page": "Column Store",
     "title": "Databases",
     "category": "section",
@@ -217,7 +217,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#DataKnots.Vectors.TupleVector",
+    "location": "vectors/#DataKnots.Vectors.TupleVector",
     "page": "Column Store",
     "title": "DataKnots.Vectors.TupleVector",
     "category": "type",
@@ -225,7 +225,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#DataKnots.Vectors.BlockVector",
+    "location": "vectors/#DataKnots.Vectors.BlockVector",
     "page": "Column Store",
     "title": "DataKnots.Vectors.BlockVector",
     "category": "type",
@@ -233,7 +233,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#DataKnots.Vectors.IndexVector",
+    "location": "vectors/#DataKnots.Vectors.IndexVector",
     "page": "Column Store",
     "title": "DataKnots.Vectors.IndexVector",
     "category": "type",
@@ -241,7 +241,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#DataKnots.Vectors.CapsuleVector",
+    "location": "vectors/#DataKnots.Vectors.CapsuleVector",
     "page": "Column Store",
     "title": "DataKnots.Vectors.CapsuleVector",
     "category": "type",
@@ -249,7 +249,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#API-Reference-1",
+    "location": "vectors/#API-Reference-1",
     "page": "Column Store",
     "title": "API Reference",
     "category": "section",
@@ -257,7 +257,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#Test-Suite-1",
+    "location": "vectors/#Test-Suite-1",
     "page": "Column Store",
     "title": "Test Suite",
     "category": "section",
@@ -265,7 +265,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#TupleVector-1",
+    "location": "vectors/#TupleVector-1",
     "page": "Column Store",
     "title": "TupleVector",
     "category": "section",
@@ -273,7 +273,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#BlockVector-1",
+    "location": "vectors/#BlockVector-1",
     "page": "Column Store",
     "title": "BlockVector",
     "category": "section",
@@ -281,7 +281,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#IndexVector-1",
+    "location": "vectors/#IndexVector-1",
     "page": "Column Store",
     "title": "IndexVector",
     "category": "section",
@@ -289,7 +289,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#CapsuleVector-1",
+    "location": "vectors/#CapsuleVector-1",
     "page": "Column Store",
     "title": "CapsuleVector",
     "category": "section",
@@ -297,7 +297,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors.html#@VectorTree-1",
+    "location": "vectors/#@VectorTree-1",
     "page": "Column Store",
     "title": "@VectorTree",
     "category": "section",
@@ -305,7 +305,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes.html#",
+    "location": "shapes/#",
     "page": "Type System",
     "title": "Type System",
     "category": "page",
@@ -313,7 +313,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes.html#Type-System-1",
+    "location": "shapes/#Type-System-1",
     "page": "Type System",
     "title": "Type System",
     "category": "section",
@@ -321,7 +321,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes.html#Cardinality-1",
+    "location": "shapes/#Cardinality-1",
     "page": "Type System",
     "title": "Cardinality",
     "category": "section",
@@ -329,7 +329,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes.html#Data-shapes-1",
+    "location": "shapes/#Data-shapes-1",
     "page": "Type System",
     "title": "Data shapes",
     "category": "section",
@@ -337,7 +337,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes.html#Shape-ordering-1",
+    "location": "shapes/#Shape-ordering-1",
     "page": "Type System",
     "title": "Shape ordering",
     "category": "section",
@@ -345,7 +345,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes.html#Query-signature-1",
+    "location": "shapes/#Query-signature-1",
     "page": "Type System",
     "title": "Query signature",
     "category": "section",
@@ -353,71 +353,415 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "queries.html#",
-    "page": "Query Backend",
-    "title": "Query Backend",
+    "location": "queries/#",
+    "page": "Query Execution Engine",
+    "title": "Query Execution Engine",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "queries.html#Query-Backend-1",
-    "page": "Query Backend",
-    "title": "Query Backend",
+    "location": "queries/#Query-Execution-Engine-1",
+    "page": "Query Execution Engine",
+    "title": "Query Execution Engine",
     "category": "section",
-    "text": "The Queries module contains primitive operations and combinators for transforming atomic and composite vectors.using DataKnots.Vectors\nusing DataKnots.Queries"
+    "text": ""
 },
 
 {
-    "location": "queries.html#Lifting-1",
-    "page": "Query Backend",
+    "location": "queries/#Overview-1",
+    "page": "Query Execution Engine",
+    "title": "Overview",
+    "category": "section",
+    "text": "In DataKnots, structured data is stored in a column-oriented format, serialized using specialized composite vector types.  Consequently, operations on data take the form of vectorized functions.Module DataKnots.Queries exports an interface of vectorized transformations called Query and provives a rich library of query primitives and combinators.using DataKnots.Vectors\nusing DataKnots.Queries"
+},
+
+{
+    "location": "queries/#Lifting-1",
+    "page": "Query Execution Engine",
+    "title": "Lifting",
+    "category": "section",
+    "text": "Lifting lets us convert a scalar function to a query.Any unary scalar function could be lifted to a vectorized form.  Consider, for example, function titlecase(), which transforms the input string by capitalizing the first letter of each word and converting every other character to lowercase.titlecase(\"JEFFERY A\")      #-> \"Jeffery A\"This function can be converted to a query using the lift operator.q = lift(titlecase)\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery A\", \"James A\", \"Terry A\"]If a scalar function takes several arguments, it could be lifted to a query on TupleVector instances.  For example, the comparison operator >, which maps a pair of integer values to a Boolean value, could be lifted to a query lift_to_tuple(>) that transforms a TupleVector instance with two integer columns to a Boolean vector.q = lift_to_tuple(>)\nq(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]In a similar manner, a function with a vector argument can be converted to a query on BlockVector instances.  For example, function length(), which returns the length of a vector, could be lifted to a query lift_to_block(length) that transforms a block vector to an integer vector containing block lengths.q = lift_to_block(length)\nq(@VectorTree [String] [[\"JEFFERY A\", \"NANCY A\"], [\"JAMES A\"]])\n#-> [2, 1]A constant value could be lifted to a query as well.  The lifted constant maps any input vector to a vector of constant values.q = lift_const(200000)\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [200000, 200000, 200000]"
+},
+
+{
+    "location": "queries/#Query-interface-1",
+    "page": "Query Execution Engine",
+    "title": "Query interface",
+    "category": "section",
+    "text": "Functions such as lift(), lift_to_tuple(), and many others return a Query object.  The Query interface represents a vectorized data transformation that maps an input vector to an output vector of the same length.Functions that take one or more Query instances as arguments and return a new Query object as the result are called combinators.  Combinators are used to assemble elementary queries into complex query expressions.For example, composition combinator chain_of() assembles a series of queries into a sequential composition, which transforms the input vector by sequentially applying the given queries.q = chain_of(lift(split), lift(first), lift(titlecase))\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery\", \"James\", \"Terry\"]Another combinator, tuple constructor tuple_of() assembles a series of queries into a parallel composition.  It outputs a TupleVector instance, which columns are generated by applying the given queries to the input vector.q = tuple_of(lift(titlecase), lift(last))\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree (String, Char) [(\"Jeffery A\", \'A\'), (\"James A\", \'A\'), (\"Terry A\", \'A\')]An individual column of a TupleVector instance could be extracted using a column() query.q = column(:salary)\nq(@VectorTree (name=String, salary=Int) [(\"JEFFERY A\", 101442), (\"JAMES A\", 103350), (\"TERRY A\", 93354)])\n#-> [101442, 103350, 93354]"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.Query",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.Query",
+    "category": "type",
+    "text": "Query(op, args...)\n\nA query represents a vectorized data transformation.\n\nParameter op is a function that performs the transformation. It is invoked with the following arguments:\n\nop(rt::Runtime, input::AbstractVector, args...)\n\nIt must return the output vector of the same length as the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.QueryError",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.QueryError",
+    "category": "type",
+    "text": "QueryError(msg, ::Query, ::AbstractVector)\n\nException thrown when a query gets unexpected input.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.any_block-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.any_block",
+    "category": "method",
+    "text": "any_block()\n\nChecks if there is one true value in a block of Bool values.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.as_block-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.as_block",
+    "category": "method",
+    "text": "as_block()\n\nWraps input values to one-element blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.chain_of-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.chain_of",
+    "category": "method",
+    "text": "chain_of(q₁, q₂ … qₙ)\n\nSequentially applies q₁, q₂ … qₙ.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.correlate-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.correlate",
+    "category": "method",
+    "text": "correlate()\n\nCorrelates two vectors of key-value pairs.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.count_block-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.count_block",
+    "category": "method",
+    "text": "count_block()\n\nMaps a block vector to a vector of block lengths.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.csv_parse-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.csv_parse",
+    "category": "method",
+    "text": "csv_parse(separator=\',\', quoting=\'\"\', labels=Symbol[], header=true)\n\nParses CSV-formatted text into a table.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.decode_missing-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.decode_missing",
+    "category": "method",
+    "text": "decode_missing()\n\nDecodes a vector with missing elements as a block vector, where missing elements are converted to empty blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.decode_tuple-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.decode_tuple",
+    "category": "method",
+    "text": "decode_tuple()\n\nDecodes a vector with tuple elements as a tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.decode_vector-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.decode_vector",
+    "category": "method",
+    "text": "decode_vector()\n\nDecodes a vector with vector elements as a block vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.designate-Tuple{DataKnots.Queries.Query,DataKnots.Shapes.Signature}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.designate",
+    "category": "method",
+    "text": "designate(::Query, ::Signature) -> Query\ndesignate(::Query, ::InputShape, ::OutputShape) -> Query\nq::Query |> designate(::Signature) -> Query\nq::Query |> designate(::InputShape, ::OutputShape) -> Query\n\nSets the query signature.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.flat_block-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.flat_block",
+    "category": "method",
+    "text": "flat_block()\n\nFlattens a nested block vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.flat_tuple-Tuple{Union{Int64, Symbol}}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.flat_tuple",
+    "category": "method",
+    "text": "flat_tuple(lbl)\n\nFlattens a nested tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.group_by",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.group_by",
+    "category": "function",
+    "text": "group_by()\n\nDiscriminates a sequence of key-value pairs.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.in_block-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.in_block",
+    "category": "method",
+    "text": "in_block(q)\n\nUsing q, transfors the elements of the input blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.in_tuple-Tuple{Union{Int64, Symbol},Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.in_tuple",
+    "category": "method",
+    "text": "in_tuple(lbl, q)\n\nUsing q, transforms the specified column of a tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.json_parse-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.json_parse",
+    "category": "method",
+    "text": "json_parse()\n\nParses JSON-formatted text.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift",
+    "category": "method",
+    "text": "lift(f) -> Query\n\nf is any scalar unary function.\n\nThe query applies f to each element of the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift_block-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift_block",
+    "category": "method",
+    "text": "lift_block(block)\n\nProduces a block vector filled with the given block.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift_const-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift_const",
+    "category": "method",
+    "text": "lift_const(val)\n\nProduces a vector filled with the given value.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift_null-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift_null",
+    "category": "method",
+    "text": "lift_null()\n\nProduces a block vector of empty blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift_to_block-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift_to_block",
+    "category": "method",
+    "text": "lift_to_block(f)\nlift_to_block(f, default)\n\nf is a function that takes a vector argument.\n\nApplies a function f that takes a vector argument to each block of a block vector.  When specified, default is used instead of applying f to an empty block.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift_to_block_tuple-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift_to_block_tuple",
+    "category": "method",
+    "text": "lift_to_block_tuple(f)\n\nLifts an n-ary function to a tuple vector with block columns.  Applies the function to every combinations of values from adjacent blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.lift_to_tuple-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.lift_to_tuple",
+    "category": "method",
+    "text": "lift_to_tuple(f) -> Query\n\nf is an n-ary function.\n\nThe query applies f to each row of an n-tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.optimize-Tuple{DataKnots.Queries.Query}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.optimize",
+    "category": "method",
+    "text": "optimize(::Query)::Query\n\nRewrites the query to make it more effective.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.pass-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.pass",
+    "category": "method",
+    "text": "pass()\n\nIdentity map.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.pull_block-Tuple{Any}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.pull_block",
+    "category": "method",
+    "text": "pull_block(lbl)\n\nConverts a tuple with a block column to a block of tuples.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.pull_every_block-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.pull_every_block",
+    "category": "method",
+    "text": "pull_every_block()\n\nConverts a tuple vector with block columns to a block vector over a tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.sieve-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.sieve",
+    "category": "method",
+    "text": "sieve()\n\nFilters the vector of pairs by the second column.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.sort_by",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.sort_by",
+    "category": "function",
+    "text": "sort_by()\n\nSorts the vector of key-value pairs.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.sort_it",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.sort_it",
+    "category": "function",
+    "text": "sort_it()\n\nSorts the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.store-Tuple{Symbol}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.store",
+    "category": "method",
+    "text": "store(name)\n\nConverts the input vector to an index.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.take_by",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.take_by",
+    "category": "function",
+    "text": "take_by(N)\n\nKeeps the first N elements in a block.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.tuple_of-Tuple",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.tuple_of",
+    "category": "method",
+    "text": "tuple_of(q₁, q₂ … qₙ)\n\nCombines the output of q₁, q₂ … qₙ into an n-tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Queries.xml_parse-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Queries.xml_parse",
+    "category": "method",
+    "text": "xml_parse()\n\nParses XML-formatted text.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Vectors.column-Tuple{Union{Int64, Symbol}}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Vectors.column",
+    "category": "method",
+    "text": "column(lbl)\n\nExtracts the specified column of a tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Vectors.dereference-Tuple{}",
+    "page": "Query Execution Engine",
+    "title": "DataKnots.Vectors.dereference",
+    "category": "method",
+    "text": "dereference()\n\nDereferences an index vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#API-Reference-1",
+    "page": "Query Execution Engine",
+    "title": "API Reference",
+    "category": "section",
+    "text": "Modules = [DataKnots.Queries]\nPrivate = false"
+},
+
+{
+    "location": "queries/#Test-Suite-1",
+    "page": "Query Execution Engine",
+    "title": "Test Suite",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "queries/#Lifting-2",
+    "page": "Query Execution Engine",
     "title": "Lifting",
     "category": "section",
     "text": "Many vector operations can be generated by lifting.  For example, lift_const() generates a primitive operation that maps any input vector to the output vector of the same length filled with the given value.q = lift_const(200000)\n#-> lift_const(200000)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [200000, 200000, 200000]Similarly, the output of lift_block() is a block vector filled with the given block.q = lift_block([\"POLICE\", \"FIRE\"])\n#-> lift_block([\"POLICE\", \"FIRE\"])\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String] [[\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"]]A variant of lift_block() called lift_null() outputs a block vector with empty blocks.q = lift_null()\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [Union{}] [missing, missing, missing]Any scalar function could be lifted to a vector operation by applying it to each element of the input vector.q = lift(titlecase)\n#-> lift(titlecase)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"Garry M\", \"Anthony R\", \"Dana A\"]Similarly, any scalar function of several arguments could be lifted to an operation on tuple vectors.q = lift_to_tuple(>)\n#-> lift_to_tuple(>)\n\nq(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]It is also possible to apply a scalar function of several arguments to a tuple vector that has block vectors for its columns.  In this case, the function is applied to every combination of values from all the blocks on the same row.q = lift_to_block_tuple(>)\n\nq(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])\n#-> @VectorTree [Bool] [Bool[true, false, false], missing, Bool[true, true, false, false]]Any function that takes a vector argument can be lifted to an operation on block vectors.q = lift_to_block(length)\n#-> lift_to_block(length)\n\nq(@VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> [3, 2]Some vector functions may expect a non-empty vector as an argument.  In this case, we should provide the value to replace empty blocks.q = lift_to_block(maximum, missing)\n#-> lift_to_block(maximum, missing)\n\nq(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])\n#-> Union{Missing, Int}[260004, missing, 202728]"
 },
 
 {
-    "location": "queries.html#Decoding-vectors-1",
-    "page": "Query Backend",
+    "location": "queries/#Decoding-vectors-1",
+    "page": "Query Execution Engine",
     "title": "Decoding vectors",
     "category": "section",
     "text": "Any vector of tuples can be converted to a tuple vector.q = decode_tuple()\n#-> decode_tuple()\n\nq([(\"GARRY M\", 260004), (\"ANTHONY R\", 185364), (\"DANA A\", 170112)]) |> display\n#=>\nTupleVector of 3 × (String, Int):\n (\"GARRY M\", 260004)\n (\"ANTHONY R\", 185364)\n (\"DANA A\", 170112)\n=#Vectors of named tuples are also supported.q([(name=\"GARRY M\", salary=260004), (name=\"ANTHONY R\", salary=185364), (name=\"DANA A\", salary=170112)]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"GARRY M\", salary = 260004)\n (name = \"ANTHONY R\", salary = 185364)\n (name = \"DANA A\", salary = 170112)\n=#A vector of vector objects can be converted to a block vector.q = decode_vector()\n#-> decode_vector()\n\nq([[260004, 185364, 170112], Int[], [202728, 197736]])\n#-> @VectorTree [Int] [[260004, 185364, 170112], missing, [202728, 197736]]Similarly, a vector containing missing values can be converted to a block vector with zero- and one-element blocks.q = decode_missing()\n#-> decode_missing()\n\nq([260004, 185364, 170112, missing, 202728, 197736])\n#-> @VectorTree [Int] [260004, 185364, 170112, missing, 202728, 197736]"
 },
 
 {
-    "location": "queries.html#Tuple-vectors-1",
-    "page": "Query Backend",
+    "location": "queries/#Tuple-vectors-1",
+    "page": "Query Execution Engine",
     "title": "Tuple vectors",
     "category": "section",
     "text": "To create a tuple vector, we use the combinator tuple_of(). Its arguments are the functions that generate the columns of the tuple.q = tuple_of(:title => lift(titlecase), :last => lift(last))\n#-> tuple_of([:title, :last], [lift(titlecase), lift(last)])\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]) |> display\n#=>\nTupleVector of 3 × (title = String, last = Char):\n (title = \"Garry M\", last = \'M\')\n (title = \"Anthony R\", last = \'R\')\n (title = \"Dana A\", last = \'A\')\n=#To extract a column of a tuple vector, we use the primitive column().  It accepts either the column position or the column name.q = column(1)\n#-> column(1)\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n\nq = column(:salary)\n#-> column(:salary)\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [260004, 185364, 170112]Finally, we can apply an arbitrary transformation to a selected column of a tuple vector.q = in_tuple(:name, lift(titlecase))\n#-> in_tuple(:name, lift(titlecase))\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"Garry M\", salary = 260004)\n (name = \"Anthony R\", salary = 185364)\n (name = \"Dana A\", salary = 170112)\n=#"
 },
 
 {
-    "location": "queries.html#Block-vectors-1",
-    "page": "Query Backend",
+    "location": "queries/#Block-vectors-1",
+    "page": "Query Execution Engine",
     "title": "Block vectors",
     "category": "section",
     "text": "Primitive as_block() wraps the elements of the input vector to one-element blocks.q = as_block()\n#-> as_block()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String] [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]In the opposite direction, primitive flat_block() flattens a block vector with block elements.q = flat_block()\n#-> flat_block()\n\nq(@VectorTree [[String]] [[[\"GARRY M\"], [\"ANTHONY R\", \"DANA A\"]], [missing, [\"JOSE S\"], [\"CHARLES S\"]]])\n#-> @VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]]Finally, we can apply an arbitrary transformation to every element of a block vector.q = in_block(lift(titlecase))\n#-> in_block(lift(titlecase))\n\nq(@VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The pull_block() primitive converts a tuple vector with a block column to a block vector of tuples.q = pull_block(1)\n#-> pull_block(1)\n\nq(@VectorTree ([Int], [Int]) [\n    [260004, 185364, 170112]    200000\n    missing                     200000\n    [202728, 197736]            [200000, 200000]]\n) |> display\n#=>\nBlockVector of 3 × [(Int, [Int])]:\n [(260004, 200000), (185364, 200000), (170112, 200000)]\n missing\n [(202728, [200000, 200000]), (197736, [200000, 200000])]\n=#It is also possible to pull all block columns from a tuple vector.q = pull_every_block()\n#-> pull_every_block()\n\nq(@VectorTree ([Int], [Int]) [\n    [260004, 185364, 170112]    200000\n    missing                     200000\n    [202728, 197736]            [200000, 200000]]\n) |> display\n#=>\nBlockVector of 3 × [(Int, Int)]:\n [(260004, 200000), (185364, 200000), (170112, 200000)]\n missing\n [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]\n=#"
 },
 
 {
-    "location": "queries.html#Index-vectors-1",
-    "page": "Query Backend",
+    "location": "queries/#Index-vectors-1",
+    "page": "Query Execution Engine",
     "title": "Index vectors",
     "category": "section",
     "text": "An index vector could be dereferenced using the dereference() primitive.q = dereference()\n#-> dereference()\n\nq(@VectorTree &DEPT [1, 1, 1, 2] where {DEPT = [\"POLICE\", \"FIRE\"]})\n#-> [\"POLICE\", \"POLICE\", \"POLICE\", \"FIRE\"]"
 },
 
 {
-    "location": "queries.html#Composition-1",
-    "page": "Query Backend",
+    "location": "queries/#Composition-1",
+    "page": "Query Execution Engine",
     "title": "Composition",
     "category": "section",
     "text": "We can compose a sequence of transformations using the chain_of() combinator.q = chain_of(\n        column(:employee),\n        in_block(lift(titlecase)))\n#-> chain_of(column(:employee), in_block(lift(titlecase)))\n\nq(@VectorTree (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The empty chain chain_of() has an alias pass().q = pass()\n#-> pass()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]"
 },
 
 {
-    "location": "combinators.html#",
+    "location": "combinators/#",
     "page": "Query Algebra",
     "title": "Query Algebra",
     "category": "page",
@@ -425,7 +769,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "combinators.html#Query-Algebra-1",
+    "location": "combinators/#Query-Algebra-1",
     "page": "Query Algebra",
     "title": "Query Algebra",
     "category": "section",
@@ -433,7 +777,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lifting.html#",
+    "location": "lifting/#",
     "page": "Lifting Scalar Functions to Combinators",
     "title": "Lifting Scalar Functions to Combinators",
     "category": "page",
@@ -441,7 +785,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lifting.html#Lifting-Scalar-Functions-to-Combinators-1",
+    "location": "lifting/#Lifting-Scalar-Functions-to-Combinators-1",
     "page": "Lifting Scalar Functions to Combinators",
     "title": "Lifting Scalar Functions to Combinators",
     "category": "section",
