@@ -15,6 +15,7 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "install.md",
+        "thinking.md",
         "usage.md",
         hide("implementation.md",
              ["layouts.md", "vectors.md", "shapes.md", "queries.md", "combinators.md", "lifting.md"]),

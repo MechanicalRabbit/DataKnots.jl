@@ -11,6 +11,7 @@ coherent algebra of query combinators.*
 ```@contents
 Pages = [
     "install.md",
+    "thinking.md",
     "usage.md",
     "implementation.md",
 ]
