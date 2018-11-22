@@ -294,6 +294,9 @@ function render_cell(::Type, val, avail::Int)
     return TableCell(text)
 end
 
+render_cell(::Type{Nothing}, ::Nothing, ::Int) =
+    TableCell("")
+
 function render_cell(::Type{<:Integer}, val, avail::Int)
     buf = IOBuffer()
     io = IOContext(buf, :compact => true, :limit => true)
