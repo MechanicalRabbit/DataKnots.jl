@@ -1,11 +1,25 @@
 # Thinking in DataKnots
 
-In this introduction, we describe DataKnots as a language-embedded
-library used for vectorized computation, rather than as a user-oriented
-database query language. In this library, each `DataKnot` is a
-container holding structured, often interrelated, vectorized data.
-Each `Combinator` is variable-free algebraic expression that specifies
-how to transform one DataKnot to another.
+DataKnots is a Julia library for constructing computational pipelines.
+DataKnots permit the encapsulation of data transformation logic so 
+that they could be independently tested and reused in various contexts.
+
+This library is named after the type of data objects it manipulates,
+DataKnots. Each `DataKnot` is a container holding structured, often
+interrelated, vectorized data. DataKnots come with an in-memory
+column-oriented backend which can handle tabular data from a CSV file,
+hierarchical data from JSON or XML, or even interlinked YAML graphs.
+DataKnots could also be federated to handle external data sources such
+as SQL databases or GraphQL enabled websites.
+
+Computations on DataKnots are expressed using `Pipeline` expressions.
+Pipelines are constructed algebraically using pipeline primitives and
+combinators. Primitives represent relationships among data from a given
+data source. Combinators are components that encapsulate logic.
+DataKnots provide a rich library of these pipeline components, and new
+ones could be coded in Julia. Importantly, any Julia function could be
+*lifted* to a pipeline component, providing easy and tight integration
+of Julia functions within DataKnot expressions.
 
 To start working with DataKnots, we import the package:
 
@@ -13,14 +27,11 @@ To start working with DataKnots, we import the package:
 using DataKnots
 ```
 
-## Constant Combinators
+## Pipeline Basics
 
-The DataKnots approach to computation is once indirect. One doesn't
-combine data transformation functions directly, instead one expresses
-the query with combinators.  These combinators are then converted into
-lower-level data manipulation functions. In fact, constant expressions
-are also seen as combinators, converted to functions that produce the
-same output no matter what the input.
+
+
+## Constant Combinators
 
 To explain, let's consider an example combinator query that produces a
 `DataKnot` containing a singular string value, `"Hello World"`. 
