@@ -61,7 +61,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Thinking in DataKnots",
     "title": "Thinking in DataKnots",
     "category": "section",
-    "text": "In this introduction, we describe DataKnots as a language-embedded library used for vectorized computation, rather than as a user-oriented database query language. In this library, each DataKnot is a container holding structured, often interrelated, vectorized data. Each Combinator is variable-free algebraic expression that specifies how to transform one DataKnot to another.To start working with DataKnots, we import the package:using DataKnots"
+    "text": "DataKnots is a Julia library for constructing computational pipelines. DataKnots permit the encapsulation of data transformation logic so  that they could be independently tested and reused in various contexts.This library is named after the type of data objects it manipulates, DataKnots. Each DataKnot is a container holding structured, often interrelated, vectorized data. DataKnots come with an in-memory column-oriented backend which can handle tabular data from a CSV file, hierarchical data from JSON or XML, or even interlinked YAML graphs. DataKnots could also be federated to handle external data sources such as SQL databases or GraphQL enabled websites.Computations on DataKnots are expressed using Pipeline expressions. Pipelines are constructed algebraically using pipeline primitives and combinators. Primitives represent relationships among data from a given data source. Combinators are components that encapsulate logic. DataKnots provide a rich library of these pipeline components, and new ones could be coded in Julia. Importantly, any Julia function could be lifted to a pipeline component, providing easy and tight integration of Julia functions within DataKnot expressions.To start working with DataKnots, we import the package:using DataKnots"
+},
+
+{
+    "location": "thinking/#Pipeline-Basics-1",
+    "page": "Thinking in DataKnots",
+    "title": "Pipeline Basics",
+    "category": "section",
+    "text": ""
 },
 
 {
@@ -69,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Thinking in DataKnots",
     "title": "Constant Combinators",
     "category": "section",
-    "text": "The DataKnots approach to computation is once indirect. One doesn\'t combine data transformation functions directly, instead one expresses the query with combinators.  These combinators are then converted into lower-level data manipulation functions. In fact, constant expressions are also seen as combinators, converted to functions that produce the same output no matter what the input.To explain, let\'s consider an example combinator query that produces a DataKnot containing a singular string value, \"Hello World\". query(\"Hello World\")This example can be rewritten to show how \"Hello World\" is implicitly converted into its Combinator namesake. Hence, the query() argument is not a constant value at all, but rather an combinator expression which convert to a function that produces a constant value,  \"Hello World\" for each of its inputs.query(Combinator(\"Hello World\"))But, if \"Hello World\" expresses a query function, where is the function\'s input? There is also an implicit DataKnot containing a single element, nothing. Hence, this example can be rewritten:query(DataKnot(nothing), Combinator(\"Hello World\"))There are other combinators. The identity combinator, It converts to a query function that simply reproduces its input. This would permit us to write our \"Hello World\" example once again:query(query(\"Hello World\"), It)"
+    "text": "To explain, let\'s consider an example combinator query that produces a DataKnot containing a singular string value, \"Hello World\". query(\"Hello World\")This example can be rewritten to show how \"Hello World\" is implicitly converted into its Combinator namesake. Hence, the query() argument is not a constant value at all, but rather an combinator expression which convert to a function that produces a constant value,  \"Hello World\" for each of its inputs.query(Combinator(\"Hello World\"))But, if \"Hello World\" expresses a query function, where is the function\'s input? There is also an implicit DataKnot containing a single element, nothing. Hence, this example can be rewritten:query(DataKnot(nothing), Combinator(\"Hello World\"))There are other combinators. The identity combinator, It converts to a query function that simply reproduces its input. This would permit us to write our \"Hello World\" example once again:query(query(\"Hello World\"), It)"
 },
 
 {
