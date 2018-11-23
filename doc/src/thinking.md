@@ -23,85 +23,83 @@ of Julia functions within DataKnot expressions.
 
 To start working with DataKnots, we import the package:
 
-```julia
-using DataKnots
-```
+  using DataKnots
 
-## Basic Expressions
+## Combining Pipelines
 
-Let's consider an example `Pipeline` that produces a `DataKnot`
-containing a singular string value, `"Hello World"`.
+With DataKnots, composition of independently developed data processing
+components is easy. Consider an example pipeline, `Hello` that produces
+a `DataKnot` containing a singular string value, `"Hello World"`:
 
-```julia
-Hello = Const("Hello World")
-run(Hello)
-```
-```
-│ DataKnot    │
-├─────────────┤
-│ Hello World │
-```
+  Hello = Const("Hello World")
+  run(Hello)
+  #=>
+  │ DataKnot    │
+  ├─────────────┤
+  │ Hello World │
+  =#
 
-In this example, `Const` creates a pipeline that, for each of its
-inputs, produces a constant value for its output.  Then, `run()` seeds
-the pipeline with a default data source, a `DataKnot` having a single
-element, `nothing`. Since there is one input, `Hello` produces an
-output `DataKnot` with one string value `"Hello World"`.
+The next example uses `Repeat()` to produce a `DataKnot` with a plural
+output, the sequence `1`, `2` and `3`. In the output display of plural
+knots, the index is shown in the first column.
 
-The next example produces an output `DataKnot` with 3 values:
-`1`, `2` and `3`.
+  R3 = Repeat(3)
+  run(R3)
+  #=>
+    │ DataKnot │
+  ──┼──────────┤
+  1 │        1 │
+  2 │        2 │
+  3 │        3 │
+  =#
 
-```julia
-R3 = Repeat(3)
-run(R3)
-```
-```
-  │ DataKnot │
-──┼──────────┤
-1 │        1 │
-2 │        2 │
-3 │        3 │
-```
-
-These two combinators can be combined using pipeline concatination
+These two combinators can then be combined using pipeline concatination
 operator, ``>>``. This next example produces a knot with 3 copies of
 the string value `"Hello World"`.
 
-```julia
-run(R3 >> Hello)
-```
+  run(R3 >> Hello)
+  #=>
+    │ DataKnot    │
+  ──┼─────────────┤
+  1 │ Hello World │
+  2 │ Hello World │
+  3 │ Hello World │
+  =#
 
-```
-  │ DataKnot    │
-──┼─────────────┤
-1 │ Hello World │
-2 │ Hello World │
-3 │ Hello World │
-```
+Notice that each of the two component pipelines, `Hello` and `R3` could
+be independently defined and tested. Their algebraic combination was
+then possible without using any sort of variable.
 
-While both these pipelines and their combination are both trivial,
-what's important is that each pipeline they can be independently
-defined and then combined together.
+## Sequences & Counting
 
-## Counting & Flattening
+When expressions that produce plural values are combined, the
+pipeline's output is flattened into a single sequence. For example,
+consider `Hello` defined to return a sequence having two strings,
+`"Hello"` and `"World"`:
 
-When expressions that produce plural values are combined, their output
-flattens results into a single sequence.  For example, the following
-pipeline produces 6 outputs, the sequence `1`, `2` repeated 3 times.
+  Hello = Const(["Hello", "World"])
+  run(Hello)
+  #=>
+    │ DataKnot │
+  ──┼──────────┤
+  1 │ Hello    │
+  2 │ World    │
+  =#
 
-```julia
-run(Repeat(3) >> Repeat(2))
-```
-```
-  │ DataKnot │
-──┼──────────┤
-1 │        1 │
-2 │        2 │
-3 │        1 │
-4 │        2 │
-5 │        1 │
-6 │        2 │
-```
+Then, the repetition of this sequence 3 times would have 6 entries,
+rather than a nested output.
+
+  run(Repeat(3) >> Hello)
+  #=>
+    │ DataKnot │
+  ──┼──────────┤
+  1 │ Hello    │
+  2 │ World    │
+  3 │ Hello    │
+  4 │ World    │
+  5 │ Hello    │
+  6 │ World    │
+  =#
 
 Aggregate combinators, such as `Count` collapse plural values into
 single values.
