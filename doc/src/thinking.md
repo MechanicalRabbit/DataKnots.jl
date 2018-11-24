@@ -1,8 +1,8 @@
 # Thinking in DataKnots
 
 DataKnots is a Julia library for constructing computational pipelines.
-DataKnots permit the encapsulation of data transformation logic so
-that they could be independently tested and reused in various contexts.
+DataKnots permit the encapsulation of data transformation logic so that
+they could be independently tested and reused in various contexts.
 
 This library is named after the type of data objects it manipulates,
 DataKnots. Each `DataKnot` is a container holding structured, often
@@ -14,22 +14,21 @@ as SQL databases or GraphQL enabled websites.
 
 Computations on DataKnots are expressed using `Pipeline` expressions.
 Pipelines are constructed algebraically using pipeline primitives and
-combinators. Primitives represent relationships among data from a given
-data source. Combinators are components that encapsulate logic.
-DataKnots provide a rich library of these pipeline components, and new
-ones could be coded in Julia. Importantly, any Julia function could be
-*lifted* to a pipeline component, providing easy and tight integration
-of Julia functions within DataKnot expressions.
+combinators. Primitives represent data and relationships among data
+from a given data source. Combinators are components that encapsulate
+logic. DataKnots provide a rich library of these pipeline components,
+and new ones could be coded in Julia. Importantly, any Julia function
+could be *lifted* to a pipeline component, providing easy and tight
+integration of Julia functions within DataKnot expressions.
 
 To start working with DataKnots, we import the package:
 
     using DataKnots
 
-## Combining Pipelines
+## Introduction to DataKnots
 
-With DataKnots, composition of independently developed data processing
-components is easy. Consider an example pipeline, `Hello` that produces
-a `DataKnot` containing a singular string value, `"Hello World"`:
+Consider an example pipeline `Hello` that produces a `DataKnot`
+containing a singular string value, `"Hello World"`:
 
     Hello = Const("Hello World");
     run(Hello)
@@ -39,9 +38,19 @@ a `DataKnot` containing a singular string value, `"Hello World"`:
     │ Hello World │
     =#
 
-The next example uses `Repeat()` to produce a `DataKnot` with a plural
-output, the sequence `1`, `2` and `3`. In the output display of plural
-knots, the index is shown in the first column.
+This `Hello` pipeline is constructed using the `Const` primitive, which
+converts a Julia value into a pipeline component. This pipeline can
+then be `run()` to produce a knot with the given value.
+
+### Pipeline Composition
+
+With DataKnots, composition of independently developed data processing
+components is straightforward. Above we've defined the pipeline `Hello`.
+
+Let's define another pipeline `R3` to mean the repetition of a
+subsequent expression 3 times. This is realized with the `Repeat()`
+combinator to produce a `DataKnot` with a plural output, the sequence
+`1`, `2` and `3`.
 
     R3 = Repeat(3);
     run(R3)
@@ -53,9 +62,9 @@ knots, the index is shown in the first column.
     3 │        3 │
     =#
 
-These two combinators can then be combined using pipeline concatination
-operator, ``>>``. This next example produces a knot with 3 copies of
-the string value `"Hello World"`.
+These two pipelines can then be combined using the composition
+operator, `>>`. This composed pipeline, `R3 >> Hello`, produces a knot
+with 3 copies of the string value `"Hello World"`.
 
     run(R3 >> Hello)
     #=>
@@ -66,16 +75,15 @@ the string value `"Hello World"`.
     3 │ Hello World │
     =#
 
-Notice that each of the two component pipelines, `Hello` and `R3` could
-be independently defined and tested. Their algebraic combination was
-then possible without using any sort of variable.
+Notice that each of the two components, `Hello` and `R3` could be
+independently defined, tested and refined. Their algebraic combination
+is then possible without explicit variable passing.
 
-## Sequences & Counting
+### Sequences & Counting
 
-When expressions that produce plural values are combined, the
-pipeline's output is flattened into a single sequence. For example,
-consider `Hello` defined to return a sequence having two strings,
-`"Hello"` and `"World"`:
+When pipelines that produce plural values are combined, the output is
+flattened into a single sequence. For example, consider `Hello` defined
+to return a sequence having two strings, `"Hello"` and `"World"`:
 
     Hello = Const(["Hello", "World"]);
     run(Hello)
@@ -86,10 +94,11 @@ consider `Hello` defined to return a sequence having two strings,
     2 │ World    │
     =#
 
-Then, the repetition of this sequence 3 times would have 6 entries,
-rather than a nested output.
+Then, the repetition of this sequence 3 times would have 6 entries, not
+a nested list. It's this flattening that keeps pipelines composable so
+that intermediate components can be added or removed.
 
-    run(Repeat(3) >> Hello)
+    run(R3 >> Hello)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -101,8 +110,9 @@ rather than a nested output.
     6 │ World    │
     =#
 
-Aggregate combinators, such as `Count` collapse plural values into
-single values.
+Aggregate combinators collapse plural values into singular ones. For
+example, the `Count` combinator converts any pipeline which produces a
+sequence into a pipeline producing a singular, numeric cardinality.
 
     query(Repeat(3) >> Count)
     #=>
@@ -111,18 +121,26 @@ single values.
     │        3 │
     =#
 
-## Lifting Functions to Combinators
+The operation of `Count` doesn't directly count the outputs of the
+preceding pipeline. Instead, `Count` constructs a new pipeline, and the
+new pipeline's runtime operation is what does the actual counting.
 
-In fact, any scalar value can be seen as a function, just one that
-ignores its input. Given such a function, it could be *lifted* into 
-its combinator form.
+### Lifting & Identity
 
-    hello_world() = "Hello World";
-    HelloWorld = Lift(hello_world);
-    query(HelloWorld)
+With DataKnots, any native Julia expression can be *lifted* so that it
+may be used to construct a `Pipeline`.
+
+Since any scalar value can be seen as a function with no arguments, it
+could be *lifted* into its pipeline form. This permits us to define
+`Hello` yet again.
+
+    hello() = "Hello World";
+    Hello = Lift(hello);
+    query(Hello)
     #=>
     │ DataKnot    │
     ├─────────────┤
     │ Hello World │
     =#
+
 
