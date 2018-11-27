@@ -47,12 +47,10 @@ can then be `run()` to produce a knot with the given value.
 With DataKnots, composition of independently developed data processing
 components is straightforward. Above we've defined the pipeline `Hello`.
 
-Let's define another pipeline `R3` that produces a range of integers,
-`1`, `2`, and `3`. This is realized with the `Range()` combinator
-that produces a `DataKnot` with a plural value.
+Consider the `Range` combinator, which given a numeric argument,
+produces a `DataKnot` with a plurality of integers.
 
-    R3 = Range(3);
-    run(R3)
+    run(Range(3))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -61,11 +59,11 @@ that produces a `DataKnot` with a plural value.
     3 │        3 │
     =#
 
-These two pipelines can then be combined using the composition
-operator, `>>`. This composed pipeline, `R3 >> Hello`, produces a
-knot having 3 copies of the string value `"Hello World"`.
+It can be combined with the `Hello` pipeline defined earlier using the
+composition operator, `>>`. This composition produces a knot having 3
+copies of the string value `"Hello World"`.
 
-    run(R3 >> Hello)
+    run(Range(3) >> Hello)
     #=>
       │ DataKnot    │
     ──┼─────────────┤
@@ -74,14 +72,13 @@ knot having 3 copies of the string value `"Hello World"`.
     3 │ Hello World │
     =#
 
-This output is produced because the `Hello` pipeline produces the same,
-`"Hello World"` string constant for each input it receives. In this
-case, it would receive 3 inputs, so it produces 3 outputs.
+This output is produced because the `Hello` pipeline component produces
+the same, `"Hello World"` string constant for each input it receives.
+In this case, it would receive 3 inputs, so it produces 3 outputs.
 
-Composition of pipelines forms an algebra. The *identity* pipeline with
-respect to composition is called `It`. This pipeline primitive can be
-composed with any pipeline without changing the pipeline's operation.
-Rather than ignoring its input, `It` produces a faithful copy.
+The *identity* pipeline with respect to composition is called `It`.
+This pipeline primitive can be composed with any pipeline without
+changing the pipeline's operation.
 
     run(Hello >> It)
     #=>
@@ -94,18 +91,8 @@ The identity, `It`, can be used to construct pipelines which rely upon
 the output of previous processing stages. For example, one could define
 `Increment` using broadcast addition (`.+`) as follows:
 
-    Increment = It .+ Const(1);
-    run(Const(1) >> Increment)
-    #=>
-    │ DataKnot │
-    ┼──────────┤
-    │        2 │
-    =#
-
-This `Increment` pipeline component could then be combined with other
-pipeline components.
-
-    run(R3 >> Increment)
+    Increment = It .+ 1;
+    run(Range(3) >> Increment)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -115,9 +102,9 @@ pipeline components.
     =#
 
 In this way, DataKnots implements a complete pipeline algebra. Each
-pipeline component, such as `Hello`, `R3`, `Increment` can be
-independently defined, tested and refined. Their algebraic combination
-is then possible without explicit variable passing.
+pipeline component, such as `Hello`, `Range(3)`, `Increment` can be
+independently defined, tested and refined. Their combination is then
+possible without explicit variable passing.
 
 ### Operations Within to Pipelines
 
@@ -236,7 +223,7 @@ a sequence having two strings, `"Horse"` and `"Feathers"`:
 The repetition of this sequence 3 times would produce a knot having
 have 6 entries, not a nested list.
 
-    run(R3 >> Nonsense)
+    run(Range(3) >> Nonsense)
     #=>
       │ DataKnot │
     ──┼──────────┤
