@@ -26,3 +26,19 @@ algebraic computation method we call *query combinators*. A `DataKnot`
 is a strongly-typed set of named, perhaps interrelated and
 self-referential vectorized tuples. A `Combinator` is a variable-free
 algebraic expression that transforms one DataKnot to another.
+
+Many modern query libraries express queries using bound variables and
+lambda functions. By contrast, DataKnots provides an algebraic
+system for construting query pipelines.
+
+DataKnots provies a rich pipeline algebra which does not rely upon
+lambda functions or bound variables.
+
+DataKnots can be adapted to a specific domain by expressing
+domain-specific concepts as new primitives and combinators. These
+pipelines can then be remixed, reducing complex expressions into
+readable prose.
+
+By expressing domain-specific concepts as new primitives and
+combinators, DataKnots permits complexity to be encapsulated
+and easily mixed.

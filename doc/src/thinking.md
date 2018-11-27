@@ -45,10 +45,10 @@ can then be `run()` to produce a knot with the given value.
 ### Composition & Identity
 
 With DataKnots, composition of independently developed data processing
-components is straightforward. Above we've defined the pipeline `Hello`.
+components is straightforward.
 
-Consider the `Range` combinator, which given a numeric argument,
-produces a `DataKnot` with a plurality of integers.
+Consider the pipeline `Range(3)` built with the `Range` combinator.
+When `run()`, it emits a sequence of integers from `1` to `3`.
 
     run(Range(3))
     #=>
@@ -59,9 +59,9 @@ produces a `DataKnot` with a plurality of integers.
     3 │        3 │
     =#
 
-It can be combined with the `Hello` pipeline defined earlier using the
-composition operator, `>>`. This composition produces a knot having 3
-copies of the string value `"Hello World"`.
+Two pipelines could be combined using the composition operator `>>`.
+In particular, composition of pipelines `Range(3)` and `Hello` would
+emit 3 copies of "Hello World".  
 
     run(Range(3) >> Hello)
     #=>
@@ -71,10 +71,6 @@ copies of the string value `"Hello World"`.
     2 │ Hello World │
     3 │ Hello World │
     =#
-
-This output is produced because the `Hello` pipeline component produces
-the same, `"Hello World"` string constant for each input it receives.
-In this case, it would receive 3 inputs, so it produces 3 outputs.
 
 The *identity* pipeline with respect to composition is called `It`.
 This pipeline primitive can be composed with any pipeline without
@@ -101,10 +97,9 @@ the output of previous processing stages. For example, one could define
     3 │        4 │
     =#
 
-In this way, DataKnots implements a complete pipeline algebra. Each
-pipeline component, such as `Hello`, `Range(3)`, `Increment` can be
-independently defined, tested and refined. Their combination is then
-possible without explicit variable passing.
+In DataKnots, pipelines are constructed algebraically, without using
+bound variables or lambda functions. This lets the user define
+components independently and easily remix them.
 
 ### Operations Within to Pipelines
 
