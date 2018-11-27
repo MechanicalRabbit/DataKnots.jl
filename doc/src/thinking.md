@@ -38,16 +38,15 @@ containing a singular string value, `"Hello World"`:
     │ Hello World │
     =#
 
-This `Hello` pipeline is constructed using the `Const` primitive,
-which converts a Julia value into a pipeline component. This pipeline
-can then be `run()` to produce a knot with the given value.
+This `Hello` pipeline is built using the `Const` primitive, which
+converts a Julia value into a pipeline component. This pipeline can
+then be `run()` to produce a knot with the given value.
 
 ### Composition & Identity
 
 With DataKnots, composition of independently developed data processing
-components is straightforward.
-
-Consider the pipeline `Range(3)` built with the `Range` combinator.
+components is straightforward. We've previously defined `Hello`. Now
+consider the pipeline `Range(3)` built with the `Range` combinator.
 When `run()`, it emits a sequence of integers from `1` to `3`.
 
     run(Range(3))
@@ -59,9 +58,9 @@ When `run()`, it emits a sequence of integers from `1` to `3`.
     3 │        3 │
     =#
 
-Two pipelines could be combined using the composition operator `>>`.
-In particular, composition of pipelines `Range(3)` and `Hello` would
-emit 3 copies of "Hello World".  
+These two pipelines could be connected using the composition combinator
+`>>`. The composition, `Range(3) >> Hello` would emit 3 copies of
+"Hello World."
 
     run(Range(3) >> Hello)
     #=>
@@ -97,9 +96,9 @@ the output of previous processing stages. For example, one could define
     3 │        4 │
     =#
 
-In DataKnots, pipelines are constructed algebraically, without using
-bound variables or lambda functions. This lets the user define
-components independently and easily remix them.
+In DataKnots, pipelines are built algebraically, using pipeline
+composition, identity and other combinators. This lets us define 
+sophisticated pipeline components and remix them in creative ways.
 
 ### Operations Within to Pipelines
 
