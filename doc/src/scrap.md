@@ -63,3 +63,18 @@ DataKnots provide a rich library of these pipeline components, and new
 ones could be coded in Julia. Importantly, any Julia function could be
 *lifted* to a pipeline component, providing easy and tight integration
 of Julia functions within DataKnot expressions.
+
+It's easy to imagine a pipeline as a mapping of input data to output
+data. In DataKnots, it's similar and in many cases, indistinguishable.
+However, to support complex cases, a pipeline doesn't take raw input
+data. Instead, it takes an input data *generator* and returns an output
+data generator. Hence, the ``>>`` combinator connects two pipelines and
+returns a composite pipeline. It's the composite pipeline which
+transforms the input data generator to an output data generator.  In
+DataKnots, we call these generators `queries` -- but, they are an
+implementation detail.
+
+The real picture of `>>` is more involved what `F` gets is a data
+generator `x(t)` it transforms it to generator `y(t)` then G tranforms
+`y(t)` to `z(t)` in DataKnots, we call data generators queries.
+What `>>` does is applying two transformations sequentially.

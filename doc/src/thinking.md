@@ -2,22 +2,23 @@
 
 DataKnots is a Julia library for working with computational pipelines.
 Each `DataKnot` is a container holding structured, often interrelated,
-vectorized data. Each `Pipeline` is a computation on data knots.
-Pipelines are assembled algebraically using pipeline primitives, which
-represent relationships among data, and combinators, which encapsulate
-logic.
+vectorized data. Each `Pipeline` can be seen as a data knot
+transformation. Pipelines are assembled algebraically using pipeline
+*primitives*, which represent relationships among data, and
+*combinators*, which encapsulate logic.
 
-To start working with DataKnots, we import the package:
+This description requires some explanation. To start working with
+DataKnots, we import the package:
 
     using DataKnots
 
 ## Introduction to DataKnots
 
 Consider a pipeline `Hello` that produces a `DataKnot` containing a
-singular string value, `"Hello World"`. It is built using the `Const`
-primitive, which converts a Julia string value into a pipeline
-component. This pipeline can then be `run()` to produce a knot with the
-value, `"Hello World"`.
+string value, `"Hello World"`. It is built using the `Const` primitive,
+which converts a Julia string value into a pipeline component. This
+pipeline can then be `run()` to produce a knot with the singular value,
+`"Hello World"`.
 
     Hello = Const("Hello World")
     run(Hello)
@@ -40,7 +41,7 @@ sequence of integers from `1` to `3`.
     3 │        3 │
     =#
 
-In this notation, indicies are in the first column and values are in
+In this notation, indices are in the first column and values are in
 the second column. Hence, the 3rd item in the output is `3`.
 
 ### Composition & Identity
@@ -72,9 +73,8 @@ pipeline's output.
     =#
 
 The identity, `It`, can be used to construct pipelines which rely upon
-the output from previous processing. For example, one could define
-`Increment` using broadcast addition (`.+`), which applies the given
-operation to each of its inputs.
+the output from previous processing. For example, one could define a
+pipeline `Increment` as `It .+ 1`.
 
     Increment = It .+ 1
     run(Range(3) >> Increment)
@@ -85,79 +85,6 @@ operation to each of its inputs.
     2 │        3 │
     3 │        4 │
     =#
-
-In DataKnots, pipelines are built algebraically, using pipeline
-composition, identity and other combinators. This lets us define
-sophisticated pipeline components and remix them in creative ways.
-
-### Calling Julia Functions
-
-With DataKnots, any native Julia expression can be *lifted* to a
-combinator form where it may be used to build a `Pipeline`. Consider
-the Julia function `double()`, lifted to combinator `Double`, and then
-used to build a pipeline component, `Double(It)`.
-
-    double(x) = 2x
-    const Double = Lift(double)
-    run(Range(3) >> Double(It))
-    #=>
-      │ DataKnot │
-
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
-In this composition, the output of `Range(3)` becomes the input to
-`Double(It)`. When the composition is `run()`, each of the three
-values `1-3` is sent to the `double` function. The results are then
-collected and converted into an output knot.
-
-Equivalently, this could be written.
-
-    run(Double(Range(3)))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
-Since this sort of operation is common enough, Julia's *broadcast*
-syntax (using a period) is overloaded to make simple lifting easy.
-Any scalar function can be automatically lifted as follows:
-
-    run(Range(3) >> double.(It))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
-This automatic lifting also applies to built-in Julia operators.
-In this case, the expression `It .+ 1` is a pipeline component
-that increments each one of its input values.
-
-    run(Range(3) >> It .+ 1)
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        3 │
-    3 │        4 │
-    =#
-
-Lifting of operations, either manually or automatic, converts normal
-Julia functions which work on individual values into combinators that
-work within a pipeline. Note that the operation of the lifted
-combinator operates on pipelines, its only when the pipeline is run
-that the wrapped function is invoked.
-
-### Sequence Flattening & Collapsing
 
 When pipelines that produce plural values are combined, the output is
 flattened into a single sequence. Consider `Nonsense` defined to return
@@ -187,31 +114,120 @@ have 6 entries, not a nested list.
     6 │ Feathers │
     =#
 
-Pipeline combinators have significant latitude as to what they accept
-and what they produce. For example, aggregates, such as `ThenCount` may
-collapse a plural input into a singular output, which represents the
-cardinality of its input.
+In DataKnots, pipelines are built algebraically, using pipeline
+composition, identity and other combinators. This lets us define
+sophisticated pipeline components and remix them in creative ways.
 
-    query(Range(3) >> ThenCount)
+### Lifting Julia Functions
+
+With DataKnots, any native Julia expression can be *lifted* to a
+combinator form where it may be used to build a `Pipeline`. Consider
+the Julia function `double()` that, when applied to a `Number`,
+produces a `Number`:
+
+    double(x) = 2x
+    double(3) #-> 6
+
+What we want is an analogue that, when applied to a `Pipeline`,
+produces a new `Pipeline` component. Such functions are called
+pipeline *combinators*. We can convert any Julia function to a
+pipeline combinator using `Lift`:
+
+    const Double = lift(double)
+
+This combinator can then be used to build a pipeline.  For every
+argument of the underlying Julia function, a `Pipeline` argument
+must be provided to the combinator.
+
+    run(Double(Range(3)))
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        3 │
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
     =#
 
-It's this flattening and collapsing behavior that sees pipelines as a
-processing a stream of values.
+When this pipeline is `run()`, the `Range(3)` pipeline produces three
+output values. These output values are then, at the time of generation,
+passed though our underlying function, `double`. The results are then
+collected and converted into an output knot.
 
-    hello(name) = "Hello $name"
-    const Hello = Lift(hello)
-    run(Hello("World"))
+Combinators can be used to make pipelines with late binding. In this
+next example, `ThenDouble` is a pipeline that uses the `It` primitive
+to depend upon the previous pipeline's output. It could then be
+composed using `>>` to connect it to `Range(3)`.
+
+    ThenDouble = Double(It)
+    run(Range(3) >> ThenDouble)
     #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ Hello World │
+      │ DataKnot │
+
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
     =#
 
-It is possible to define a pipeline component that takes arguments.
-For example, let's create a combinator that increments its argument.
-First, we'll define a regular Julia function that increments a numeric
-value.
+Since this sort of operation is common enough, Julia's *broadcast*
+syntax (using a period) is overloaded to make simple lifting easy.
+Any scalar function can be automatically lifted as follows:
+
+    run(double.(Range(3)))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
+    =#
+
+Or, equivalently:
+
+    run(Range(3) >> double.(It))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
+    =#
+
+This automatic lifting also applies to built-in Julia operators.
+In this case, the expression `It .+ 1` is a pipeline component that
+increments each one of its input values.
+
+    run(Range(3) >> It .+ 1)
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        3 │
+    3 │        4 │
+    =#
+
+For another example, consider how random yes/no generation could be
+easily incorporated into DataKnots processing pipelines.
+
+    using Random: seed!, rand
+    seed!(0)
+    YesOrNo = Lift(rand(Bool) ? "yes" : "no")
+    run(Range(3) >> YesOrNo())
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │ no       │
+    2 │ no       │
+    3 │ yes      │
+    =#
+
+In DataKnots, pipeline combinators can be constructed directly from
+native Julia functions. This lets us take advantage of Julia's rich
+statistical and data processing functions.
+
+### Structural Transformations
+
+With DataKnots, operations such as `Filter`, `Sort`, are provided.
+
+
+
