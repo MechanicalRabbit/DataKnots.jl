@@ -87,31 +87,19 @@ pipeline `Increment` as `It .+ 1`.
     =#
 
 When pipelines that produce plural values are combined, the output is
-flattened into a single sequence. Consider `Nonsense` defined to return
-a sequence having two strings, `"Horse"` and `"Feathers"`:
+flattened into a single sequence. The following expression calculates
+`Range(1)`, `Range(2)` and `Range(3)` and then merges the outputs.
 
-    Nonsense = Const(["Horse", "Feathers"]);
-    run(Nonsense)
+    run(Range(3) >> Range(It))
     #=>
       │ DataKnot │
     ──┼──────────┤
-    1 │ Horse    │
-    2 │ Feathers │
-    =#
-
-The repetition of this sequence 3 times would produce a knot having
-have 6 entries, not a nested list.
-
-    run(Range(3) >> Nonsense)
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │ Horse    │
-    2 │ Feathers │
-    3 │ Horse    │
-    4 │ Feathers │
-    5 │ Horse    │
-    6 │ Feathers │
+    1 │        1 │
+    2 │        1 │
+    3 │        2 │
+    4 │        1 │
+    5 │        2 │
+    6 │        3 │
     =#
 
 In DataKnots, pipelines are built algebraically, using pipeline
