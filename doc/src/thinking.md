@@ -117,13 +117,13 @@ produces a `Number`:
     double(3) #-> 6
 
 What we want is an analogue that, when applied to a `Pipeline`,
-produces a new `Pipeline` component. Such functions are called
-pipeline *combinators*. We can convert any Julia function to a
-pipeline combinator using `Lift`:
+produces a new `Pipeline` component. Such functions are called pipeline
+*combinators*. We can convert any Julia function to a pipeline
+combinator as follows:
 
-    const Double = lift(double)
+    const Double = Combinator(double)
 
-This combinator can then be used to build a pipeline.  For every
+This combinator can then be used to build a pipeline. For every
 argument of the underlying Julia function, a `Pipeline` argument
 must be provided to the analogous combinator.
 
@@ -183,11 +183,11 @@ increments each one of its input values.
     3 │        4 │
     =#
 
-When a Julia function returns a vector, the combinator constructed by
-`Lift` creates pipelines having plural output. In fact, the `Range`
-combinator used in these examples could be created as follows:
+When a Julia function returns a vector, the combinator analogue creates
+pipelines having plural output. In fact, the `Range` combinator used in
+these examples could be created as follows:
 
-    const Range = Lift(x -> 1:x)
+    Range(X) = Combinator(x -> 1:x)(X)
 
 In DataKnots, pipeline combinators can be constructed directly from
 native Julia functions. This lets us take advantage of Julia's rich
@@ -207,4 +207,5 @@ of the entries, `3`.
     ├─────────────┤
     │ 3           │
     =#
+
 
