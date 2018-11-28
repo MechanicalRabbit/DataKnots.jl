@@ -42,3 +42,24 @@ readable prose.
 By expressing domain-specific concepts as new primitives and
 combinators, DataKnots permits complexity to be encapsulated
 and easily mixed.
+
+DataKnots is a Julia library for constructing computational pipelines.
+DataKnots permit the encapsulation of data transformation logic so that
+they could be independently tested and reused in various contexts.
+
+This library is named after the type of data objects it manipulates,
+DataKnots. Each `DataKnot` is a container holding structured, often
+interrelated, vectorized data. DataKnots come with an in-memory
+column-oriented backend which can handle tabular data from a CSV file,
+hierarchical data from JSON or XML, or even interlinked RDF graphs.
+DataKnots could also be federated to handle external data sources such
+as SQL databases or GraphQL enabled websites.
+
+Computations on DataKnots are expressed using `Pipeline` expressions.
+Pipelines are constructed algebraically using pipeline primitives and
+combinators. Primitives represent relationships among data from a given
+data source. Combinators are components that encapsulate logic.
+DataKnots provide a rich library of these pipeline components, and new
+ones could be coded in Julia. Importantly, any Julia function could be
+*lifted* to a pipeline component, providing easy and tight integration
+of Julia functions within DataKnot expressions.
