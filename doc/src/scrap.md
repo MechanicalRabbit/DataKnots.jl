@@ -78,3 +78,18 @@ The real picture of `>>` is more involved what `F` gets is a data
 generator `x(t)` it transforms it to generator `y(t)` then G tranforms
 `y(t)` to `z(t)` in DataKnots, we call data generators queries.
 What `>>` does is applying two transformations sequentially.
+
+For another example, consider how random `"yes"`/`"no"` generation
+could be easily incorporated into a DataKnots' processing pipeline.
+
+    using Random: seed!, rand
+    seed!(0)
+    YesOrNo = Lift(() -> rand(Bool) ? "yes" : "no")
+    run(Range(3) >> YesOrNo())
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │ no       │
+    2 │ no       │
+    3 │ yes      │
+    =#

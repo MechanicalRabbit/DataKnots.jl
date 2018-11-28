@@ -17,8 +17,7 @@ DataKnots, we import the package:
 Consider a pipeline `Hello` that produces a `DataKnot` containing a
 string value, `"Hello World"`. It is built using the `Const` primitive,
 which converts a Julia string value into a pipeline component. This
-pipeline can then be `run()` to produce a knot with the singular value,
-`"Hello World"`.
+pipeline can then be `run()` to produce its output.
 
     Hello = Const("Hello World")
     run(Hello)
@@ -28,9 +27,9 @@ pipeline can then be `run()` to produce a knot with the singular value,
     │ Hello World │
     =#
 
-Pipelines can also produce a plural `DataKnot`. Consider the pipeline
-`Range(3)` built with the `Range` combinator. When `run()`, it emits a
-sequence of integers from `1` to `3`.
+Consider another pipeline, `Range(3)`. It is built with the `Range`
+combinator. When `run()`, it emits a sequence of integers from `1`
+to `3`.
 
     run(Range(3))
     #=>
@@ -41,8 +40,9 @@ sequence of integers from `1` to `3`.
     3 │        3 │
     =#
 
-In this notation, indices are in the first column and values are in
-the second column. Hence, the 3rd item in the output is `3`.
+Observe that `Hello` pipeline produces a *singular* value, while the
+`Range(3)` pipeline is *plural*. In the output notation for plural
+knots, indices are in the first column with values in remaining columns.
 
 ### Composition & Identity
 
@@ -125,7 +125,7 @@ pipeline combinator using `Lift`:
 
 This combinator can then be used to build a pipeline.  For every
 argument of the underlying Julia function, a `Pipeline` argument
-must be provided to the combinator.
+must be provided to the analogous combinator.
 
     run(Double(Range(3)))
     #=>
@@ -137,9 +137,9 @@ must be provided to the combinator.
     =#
 
 When this pipeline is `run()`, the `Range(3)` pipeline produces three
-output values. These output values are then, at the time of generation,
-passed though our underlying function, `double`. The results are then
-collected and converted into an output knot.
+output values. These output values are then passed though our
+underlying function, `double`. The results are then collected and
+converted into an output knot.
 
 Combinators can be used to make pipelines with late binding. In this
 next example, `ThenDouble` is a pipeline that uses the `It` primitive
@@ -170,17 +170,6 @@ Any scalar function can be automatically lifted as follows:
     3 │        6 │
     =#
 
-Or, equivalently:
-
-    run(Range(3) >> double.(It))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
 This automatic lifting also applies to built-in Julia operators.
 In this case, the expression `It .+ 1` is a pipeline component that
 increments each one of its input values.
@@ -194,28 +183,28 @@ increments each one of its input values.
     3 │        4 │
     =#
 
-For another example, consider how random yes/no generation could be
-easily incorporated into DataKnots processing pipelines.
+When a Julia function returns a vector, the combinator constructed by
+`Lift` creates pipelines having plural output. In fact, the `Range`
+combinator used in these examples could be created as follows:
 
-    using Random: seed!, rand
-    seed!(0)
-    YesOrNo = Lift(rand(Bool) ? "yes" : "no")
-    run(Range(3) >> YesOrNo())
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │ no       │
-    2 │ no       │
-    3 │ yes      │
-    =#
+    const Range = Lift(x -> 1:x)
 
 In DataKnots, pipeline combinators can be constructed directly from
 native Julia functions. This lets us take advantage of Julia's rich
 statistical and data processing functions.
 
-### Structural Transformations
+### Aggregates & Scope
 
-With DataKnots, operations such as `Filter`, `Sort`, are provided.
+With DataKnots, aggregation is also based on combinators, specifically
+ones that take a plural pipeline and build a singular one. Consider the
+the `Count` combinator with `Range(3)` as its argument. The resulting
+pipeline, `Count(Range(3))` produces a singular value having the count
+of the entries, `3`.
 
-
+    run(Count(Range(3))
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ 3           │
+    =#
 
