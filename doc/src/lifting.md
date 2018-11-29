@@ -2,7 +2,10 @@
 
     using DataKnots
 
-    usedb!(
+    using DataKnots:
+        @VectorTree
+
+    db = DataKnot(
         @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
             "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
             "FIRE"      ["JOSE S" 202728; "CHARLES S" 197736]
@@ -15,7 +18,7 @@
     2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
     =#
 
-    query(It.employee.name)
+    query(db >> It.employee.name)
     #=>
       │ name      │
     ──┼───────────┤
@@ -28,18 +31,7 @@
 
     TitleCase = Lift(s -> titlecase(s), It)
 
-    query(It.employee.name >> TitleCase)
-    #=>
-      │ DataKnot  │
-    ──┼───────────┤
-    1 │ Garry M   │
-    2 │ Anthony R │
-    3 │ Dana A    │
-    4 │ Jose S    │
-    5 │ Charles S │
-    =#
-
-    @query(titlecase(employee.name))
+    query(db >> It.employee.name >> TitleCase)
     #=>
       │ DataKnot  │
     ──┼───────────┤
@@ -52,7 +44,7 @@
 
     Split = Lift(s -> split(s), It)
 
-    query(It.employee.name >> Split)
+    query(db >> It.employee.name >> Split)
     #=>
        │ DataKnot │
     ───┼──────────┤
@@ -68,10 +60,11 @@
     10 │ S        │
     =#
 
-    query(:employee =>
-      It.employee >>
-        Record(:name =>
-          It.name >> Split))
+    query(db >> (
+        :employee =>
+          It.employee >>
+            Record(:name =>
+              It.name >> Split)))
     #=>
       │ employee   │
       │ name       │
@@ -84,7 +77,7 @@
     =#
 
     Repeat(V,N) = Lift((v,n) -> [v for i in 1:n], V, N)
-    query(Record(It.name, Repeat("Go!", 3)))
+    query(db >> Record(It.name, Repeat("Go!", 3)))
     #=>
       │ DataKnot              │
       │ name    #2            │

@@ -4,12 +4,28 @@
 
 module DataKnots
 
-include("layouts/Layouts.jl")
-include("vectors/Vectors.jl")
-include("shapes/Shapes.jl")
-include("knots/Knots.jl")
-include("queries/Queries.jl")
-include("combinators/Combinators.jl")
-include("export.jl")
+export
+    Count,
+    DataKnot,
+    Drop,
+    Field,
+    Filter,
+    Given,
+    It,
+    Lift,
+    Max,
+    Min,
+    Recall,
+    Record,
+    Take,
+    query,
+    signature
+
+include("layouts.jl")
+include("vectors.jl")
+include("shapes.jl")
+include("knots.jl")
+include("queries.jl")
+include("combinators.jl")
 
 end

@@ -3,9 +3,19 @@
 
 ## Overview
 
-Module `DataKnots.Vectors` implements an in-memory column store.
+Module `DataKnots` contains an implementation of an in-memory column store.
 
-    using DataKnots.Vectors
+    using DataKnots:
+        @VectorTree,
+        BlockVector,
+        TupleVector,
+        column,
+        columns,
+        elements,
+        labels,
+        offsets,
+        partition,
+        width
 
 
 ### Tabular data
@@ -44,7 +54,7 @@ The "tuple of vectors" layout is called a *column-oriented format*.  It is
 often used by analytical databases as it is more suited for processing complex
 analytical queries.
 
-The module `DataKnots.Vectors` implements necessary data structures to support
+The module `DataKnot` contains necessary data structures to support
 column-oriented data format.  In particular, tabular data is represented using
 `TupleVector` objects.
 
@@ -188,102 +198,11 @@ using regular tuple and vector literals.
     ]
 
 
-### Circular data
-
-Some relationships cannot be represented using tabular or nested data
-structures.  Consider, for example, the relationship between an employee and
-their manager.  To serialize this relationship, we need to use references.
-
-    emp_1 = (name = "RHAM E", position = "MAYOR", manager = missing)
-    emp_2 = (name = "EDDIE J", position = "SUPERINTENDENT OF POLICE", manager = emp_1)
-    emp_3 = (name = "KEVIN N", position = "FIRST DEPUTY SUPERINTENDENT", manager = emp_2)
-    emp_4 = (name = "FRED W", position = "CHIEF", manager = emp_2)
-
-In the column-oriented format, we replace references with array indexes.
-
-    [1, 2, 2]
-
-To specify the name of the target array, we wrap the indexes with an
-`IndexVector` instance.
-
-    IndexVector(:EMP, [1, 2, 2])
-
-After adding the regular columns, we obtain the following structure.
-
-    TupleVector(
-        :name => BlockVector(:, ["RHAM E", "EDDIE J", "KEVIN N", "FRED W"]),
-        :position => BlockVector(:, ["MAYOR", "SUPERINTENDENT OF POLICE", "FIRST DEPUTY SUPERINTENDENT", "CHIEF"]),
-        :manager => BlockVector([1, 1, 2, 3, 4], IndexVector(:EMP, [1, 2, 2])))
-
-We still need to associate the array name `EMP` with the actual array.  This
-array is provided by a `CapsuleVector` instance.
-
-    CapsuleVector(
-        IndexVector(:EMP, 1:4),
-        :EMP =>
-            TupleVector(
-                :name => BlockVector(:, ["RHAM E", "EDDIE J", "KEVIN N", "FRED W"]),
-                :position => BlockVector(:, ["MAYOR", "SUPERINTENDENT OF POLICE", "FIRST DEPUTY SUPERINTENDENT", "CHIEF"]),
-                :manager => BlockVector([1, 1, 2, 3, 4], IndexVector(:EMP, [1, 2, 2]))))
-
-
-### Databases
-
-Using a combination of `TupleVector`, `BlockVector`, and `IndexVector` wrapped
-in a `CapsuleVector` instance, we can serialize an entire database in a
-column-oriented format.
-
-For example, consider a database with two types of entities: *departments* and
-*employees*, where each employee belongs to a department.  Two collections
-of entities can be represented as follows.
-
-    TupleVector(
-        :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
-        :employee => BlockVector([1, 3, 5, 7], IndexVector(:EMP, [1, 2, 3, 4, 5, 6])))
-
-    TupleVector(
-        :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
-        :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3])),
-        :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
-        :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
-        :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))
-
-The collections are linked to each other with a pair of `IndexVector` instances.
-
-In addition, we create the database *root*, which contains indexes to each entity
-array.
-
-    TupleVector(
-        :department => BlockVector([1, 4], IndexVector(:DEPT, 1:3)),
-        :employee => BlockVector([1, 7], IndexVector(:EMP, 1:6)))
-
-The database root is wrapped in a `CapsuleVector` to provide the arrays `DEPT`
-and `EMP`.
-
-    CapsuleVector(
-        TupleVector(
-            :department => BlockVector([1, 4], IndexVector(:DEPT, 1:3)),
-            :employee => BlockVector([1, 7], IndexVector(:EMP, 1:6))),
-        :DEPT =>
-            TupleVector(
-                :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
-                :employee => BlockVector([1, 3, 5, 7], IndexVector(:EMP, [1, 2, 3, 4, 5, 6]))),
-        :EMP =>
-            TupleVector(
-                :name => BlockVector(:, ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]),
-                :department => BlockVector(:, IndexVector(:DEPT, [1, 1, 2, 2, 3, 3])),
-                :position => BlockVector(:, ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"]),
-                :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
-                :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38])))
-
-
 ## API Reference
 
 ```@docs
-DataKnots.Vectors.TupleVector
-DataKnots.Vectors.BlockVector
-DataKnots.Vectors.IndexVector
-DataKnots.Vectors.CapsuleVector
+DataKnots.BlockVector
+DataKnots.TupleVector
 ```
 
 
@@ -452,105 +371,10 @@ When indexed by a vector of indexes, an instance of `BlockVector` is returned.
     #-> @VectorTree [String] ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
 
-### `IndexVector`
-
-`IndexVector` is a vector of indexes in some named vector.
-
-    iv = IndexVector(:REF, [1, 1, 1, 2])
-    #-> @VectorTree &REF [1, 1, 1, 2]
-
-    display(iv)
-    #=>
-    IndexVector of 4 × &REF:
-     1
-     1
-     1
-     2
-    =#
-
-We can obtain the components of the vector.
-
-    identifier(iv)
-    #-> :REF
-
-    indexes(iv)
-    #-> [1, 1, 1, 2]
-
-Indexing an `IndexVector` by a vector produces another `IndexVector` instance.
-
-    iv[[4,2]]
-    #-> @VectorTree &REF [2, 1]
-
-`IndexVector` can be deferenced against a list of named vectors.
-
-    refv = ["COMISSIONER", "DEPUTY COMISSIONER", "ZONING ADMINISTRATOR", "PROJECT MANAGER"]
-
-    dereference(iv, [:REF => refv])
-    #-> ["COMISSIONER", "COMISSIONER", "COMISSIONER", "DEPUTY COMISSIONER"]
-
-Function `dereference()` has no effect on other types of vectors, or when the
-desired reference vector is not in the list.
-
-    dereference(iv, [:REF′ => refv])
-    #-> @VectorTree &REF [1, 1, 1, 2]
-
-    dereference([1, 1, 1, 2], [:REF => refv])
-    #-> [1, 1, 1, 2]
-
-
-### `CapsuleVector`
-
-`CapsuleVector` provides references for a composite vector with nested indexes.
-We use `CapsuleVector` to represent self-referential and mutually referential
-data.
-
-    cv = CapsuleVector(TupleVector(:ref => iv), :REF => refv)
-    #-> @VectorTree (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
-
-    display(cv)
-    #=>
-    CapsuleVector of 4 × (ref = &REF,):
-     (ref = 1,)
-     (ref = 1,)
-     (ref = 1,)
-     (ref = 2,)
-    where
-     REF = ["COMISSIONER", "DEPUTY COMISSIONER" … ]
-    =#
-
-Function `decapsulate()` decomposes a capsule into the underlying vector and a
-list of references.
-
-    decapsulate(cv)
-    #-> (@VectorTree (ref = &REF,) [ … ], Pair{Symbol,AbstractArray{T,1} where T}[ … ])
-
-Function `recapsulate()` applies the given function to the underlying vector
-and encapsulates the output of the function.
-
-    cv′ = recapsulate(v -> v[:, :ref], cv)
-    #-> @VectorTree &REF [1, 1, 1, 2] where {REF = [ … ]}
-
-We could dereference `CapsuleVector` if it wraps an `IndexVector` instance.
-Function `dereference()` has no effect otherwise.
-
-    dereference(cv′)
-    #-> ["COMISSIONER", "COMISSIONER", "COMISSIONER", "DEPUTY COMISSIONER"]
-
-    dereference(cv)
-    #-> @VectorTree (ref = &REF,) [(ref = 1,), (ref = 1,), (ref = 1,), (ref = 2,)] where {REF = [ … ]}
-
-Indexing `CapsuleVector` by a vector produces another instance of
-`CapsuleVector`.
-
-    cv[[4,2]]
-    #-> @VectorTree (ref = &REF,) [(ref = 2,), (ref = 1,)] where {REF = [ … ]}
-
-
 ### `@VectorTree`
 
 We can use `@VectorTree` macro to convert vector literals to the columnar form
-assembled with `TupleVector`, `BlockVector`, `IndexVector`, and
-`CapsuleVector`.
+assembled with `TupleVector` and `BlockVector` objects.
 
 `TupleVector` is created from a matrix or a vector of (named) tuples.
 
@@ -580,7 +404,7 @@ Column labels are optional.
     @VectorTree (String, Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
     #-> @VectorTree (String, Int) [("GARRY M", 260004) … ]
 
-`BlockVector` and `IndexVector` can also be constructed.
+`BlockVector` can also be constructed.
 
     @VectorTree [String] [
         "HEALTH",
@@ -589,14 +413,6 @@ Column labels are optional.
         ["POLICE", "FIRE"],
     ]
     #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
-
-    @VectorTree &REF [1, 1, 1, 2]
-    #-> @VectorTree &REF [1, 1, 1, 2]
-
-A `CapsuleVector` could be constructed using `where` syntax.
-
-    @VectorTree &REF [1, 1, 1, 2] where {REF = refv}
-    #-> @VectorTree &REF [1, 1, 1, 2] where {REF = ["COMISSIONER", "DEPUTY COMISSIONER"  … ]}
 
 Ill-formed `@VectorTree` contructors are rejected.
 
@@ -630,14 +446,7 @@ Ill-formed `@VectorTree` contructors are rejected.
     ⋮
     =#
 
-    @VectorTree &REF [[]] where (:REF => [])
-    #=>
-    ERROR: LoadError: expected an assignment; got :(:REF => [])
-    ⋮
-    =#
-
-Using `@VectorTree`, we can easily construct hierarchical and mutually
-referential data.
+Using `@VectorTree`, we can easily construct hierarchical data.
 
     hier_data = @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
         "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
@@ -648,30 +457,5 @@ referential data.
     TupleVector of 2 × (name = [String], employee = [(name = [String], salary = [Int])]):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
-    =#
-
-    mref_data = @VectorTree (department = [&DEPT], employee = [&EMP]) [
-        [1, 2]  [1, 2, 3, 4, 5]
-    ] where {
-        DEPT = @VectorTree (name = [String], employee = [&EMP]) [
-            "POLICE"    [1, 2, 3]
-            "FIRE"      [4, 5]
-        ]
-        ,
-        EMP = @VectorTree (name = [String], department = [&DEPT], salary = [Int]) [
-            "GARRY M"   1   260004
-            "ANTHONY R" 1   185364
-            "DANA A"    1   170112
-            "JOSE S"    2   202728
-            "CHARLES S" 2   197736
-        ]
-    }
-    display(mref_data)
-    #=>
-    CapsuleVector of 1 × (department = [&DEPT], employee = [&EMP]):
-     (department = [1, 2], employee = [1, 2, 3, 4, 5])
-    where
-     DEPT = @VectorTree (name = [String], employee = [&EMP]) [(name = "POLICE", employee = [1, 2, 3]) … ]
-     EMP = @VectorTree (name = [String], department = [&DEPT], salary = [Int]) [(name = "GARRY M", department = 1, salary = 260004) … ]
     =#
 

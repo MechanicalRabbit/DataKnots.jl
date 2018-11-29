@@ -2,6 +2,11 @@
 # Formatting Julia expressions.
 #
 
+using PPrint
+
+print_expr(io::IO, ex) =
+    pprint(io, tile_expr(ex))
+
 syntax(obj) =
     obj
 
@@ -75,16 +80,16 @@ syntax(v::Vector) =
 syntax(p::Pair) =
     Expr(:call, :(=>), syntax(p.first), syntax(p.second))
 
-tile_code(obj; precedence=0) =
-    tile(obj)
+tile_expr(obj; precedence=0) =
+    PPrint.tile(obj)
 
-tile_code(sym::Symbol; precedence=0) =
-    literal(sym)
+tile_expr(sym::Symbol; precedence=0) =
+    PPrint.literal(sym)
 
-tile_code(qn::QuoteNode; precedence=0) =
-    literal(string(qn))
+tile_expr(qn::QuoteNode; precedence=0) =
+    PPrint.literal(string(qn))
 
-function tile_code(ex::Expr; precedence=0)
+function tile_expr(ex::Expr; precedence=0)
     if ex.head == :call
         func = ex.args[1]
         if func isa Function
@@ -92,43 +97,38 @@ function tile_code(ex::Expr; precedence=0)
         end
         args = _flatten(func, ex.args[2:end])
         precedence′ = Base.operator_precedence(func)
-        arg_lts = Layout[tile_code(arg, precedence=precedence′) for arg in args]
+        arg_lts = PPrint.Layout[tile_expr(arg, precedence=precedence′) for arg in args]
         if func == :(=>) && length(arg_lts) == 2
             key_lt, val_lt = arg_lts
-            (key_lt * literal(" => ") | key_lt * literal(" =>") / indent(4)) * val_lt
+            PPrint.pair_layout(key_lt, val_lt)
         elseif precedence′ > 0
             sep = (" $func ", "$func ", "")
-            brk =
+            par =
                 if precedence′ < precedence
                     ("(", ")")
                 else
                     ("", "")
                 end
-            tile(arg_lts, brk=brk, sep=sep)
+            PPrint.list_layout(arg_lts, par=par, sep=sep)
         else
-            brk = ("$func(", ")")
-            tile(arg_lts, brk=brk)
+            par = ("$func(", ")")
+            PPrint.list_layout(arg_lts, par=par)
         end
     elseif ex.head == :tuple
-        tile(Layout[tile_code(arg) for arg in ex.args])
+        PPrint.list_layout(PPrint.Layout[tile_expr(arg) for arg in ex.args])
     elseif ex.head == :vect
-        tile(Layout[tile_code(arg) for arg in ex.args], brk=("[", "]"))
+        PPrint.list_layout(PPrint.Layout[tile_expr(arg) for arg in ex.args], par=("[", "]"))
     elseif ex.head == :ref && length(ex.args) >= 1
-        tile_code(ex.args[1]) * tile(Layout[tile_code(arg) for arg in ex.args[2:end]], brk=("[", "]"))
+        tile_expr(ex.args[1]) * PPrint.list_layout(PPrint.Layout[tile_expr(arg) for arg in ex.args[2:end]], par=("[", "]"))
     elseif (ex.head == :(->) || ex.head == :(<:)) && length(ex.args) == 2
         op = string(ex.head)
-        ilt = tile_code(ex.args[1])
-        olt = tile_code(ex.args[2])
-        (ilt * literal(" $op ") | ilt * literal(" $op") / indent(4)) * olt
-    elseif ex.head == :where && length(ex.args) > 1
-        op = string(ex.head)
-        ilt = tile_code(ex.args[1])
-        olt = tile(Layout[tile_code(arg) for arg in ex.args[2:end]], brk=("where {", "}"))
-        ilt * indent(1) * olt | ilt / olt
+        ilt = tile_expr(ex.args[1])
+        olt = tile_expr(ex.args[2])
+        (ilt * PPrint.literal(" $op ") | ilt * PPrint.literal(" $op") / PPrint.indent(4)) * olt
     elseif ex.head == :(...) && length(ex.args) == 1
-        tile_code(ex.args[1]) * literal("...")
+        tile_expr(ex.args[1]) * PPrint.literal("...")
     else
-        literal(string(ex))
+        PPrint.literal(string(ex))
     end
 end
 

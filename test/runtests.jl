@@ -5,6 +5,7 @@ haskey(Pkg.installed(), "NarrativeTest") || Pkg.clone("https://github.com/rbt-la
 
 # Make `print(Int)` produce identical output on 32-bit and 64-bit platforms.
 Base.show_datatype(io::IO, ::Type{Int}) = print(io, "Int")
+Base.show_datatype(io::IO, ::Type{UInt}) = print(io, "UInt")
 
 using DataKnots
 using NarrativeTest

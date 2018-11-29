@@ -1,6 +1,96 @@
 #
-# Displaying DataKnot objects.
+# DataKnot definition and operations.
 #
+
+import Base:
+    convert,
+    get,
+    show
+
+# Definition.
+
+struct DataKnot
+    shp::OutputShape
+    elts::AbstractVector
+end
+
+DataKnot(elts) = convert(DataKnot, elts)
+
+convert(::Type{DataKnot}, knot::DataKnot) = knot
+
+convert(::Type{DataKnot}, elts::AbstractVector) =
+    DataKnot(
+        OutputShape(guessshape(elts),
+                    (length(elts) < 1 ? OPT : REG) | (length(elts) > 1 ? PLU : REG)),
+        elts)
+
+convert(::Type{DataKnot}, elt::T) where {T} =
+    DataKnot(OutputShape(NativeShape(T)), T[elt])
+
+convert(::Type{DataKnot}, ::Missing) =
+    DataKnot(OutputShape(NoneShape(), OPT), Union{}[])
+
+elements(knot::DataKnot) = knot.elts
+
+syntax(knot::DataKnot) =
+    Symbol("DataKnot( … )")
+
+get(knot::DataKnot) =
+    let card = cardinality(knot.shp)
+        card == REG || card == OPT && !isempty(knot.elts) ? knot.elts[1] :
+        card == OPT ? missing : knot.elts
+    end
+
+shape(knot::DataKnot) = knot.shp
+
+signature(knot::DataKnot) = Signature(knot.shp)
+
+domain(knot::DataKnot) = domain(knot.shp)
+
+mode(knot::DataKnot) = mode(knot.shp)
+
+cardinality(knot::DataKnot) = cardinality(knot.shp)
+
+# Guessing the shape of a vector.
+
+guessshape(v::AbstractVector) =
+    NativeShape(eltype(v))
+
+function guessshape(tv::TupleVector)
+    cols = columns(tv)
+    if !all(col -> col isa BlockVector, cols)
+        return AnyShape()
+    end
+    lbls = labels(tv)
+    fields = OutputShape[]
+    for (j, col) in enumerate(cols)
+        lbl = !isempty(lbls) ? lbls[j] : nothing
+        dom = guessshape(elements(col))
+        offs = offsets(col)
+        card = REG
+        if !(offs isa Base.OneTo)
+            l = 0
+            for r in offs
+                d = r - l
+                l = r
+                if d < 1
+                    card |= OPT
+                end
+                if d > 1
+                    card |= PLU
+                end
+                if card == OPT|PLU
+                    break
+                end
+            end
+        end
+        shp = OutputShape(Decoration(label=lbl), dom, card)
+        push!(fields, shp)
+    end
+    return RecordShape(fields)
+end
+
+# Rendering.
 
 function show(io::IO, knot::DataKnot)
     maxy, maxx = displaysize(io)
@@ -32,7 +122,13 @@ function table_data(knot::DataKnot, maxy::Int)
     elts = elements(knot)
     dom = domain(knot)
     card = cardinality(knot)
-    title = String(decoration(dom, :tag, Symbol, :DataKnot))
+    title =
+        let lbl = label(shape(knot))
+            if lbl === nothing
+                lbl = :DataKnot
+            end
+            String(lbl)
+        end
     parts = data_parts(dom, elts)
     if isempty(parts)
         head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
@@ -78,13 +174,16 @@ end
 data_parts(shp::AbstractShape, vals::AbstractVector) =
     [TableData(fill(("", 0), (0, 1)), TupleVector(length(vals), AbstractVector[vals]), AbstractShape[shp])]
 
-data_parts(shp::DecoratedShape, vals::AbstractVector) =
-    data_parts(shp[], vals)
-
-function data_parts(shp::Union{TupleShape,RecordShape,IndexShape}, vals::SomeTupleVector)
+function data_parts(shp::RecordShape, vals::TupleVector)
     parts = TableData[]
     for i in eachindex(shp[:])
-        title = String(decoration(shp[i], :tag, Symbol, Symbol("#$i")))
+        title =
+            let lbl = label(shp[i])
+                if lbl === nothing
+                    lbl = Symbol("#$i")
+                end
+                String(lbl)
+            end
         head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
         body = TupleVector(length(vals), AbstractVector[column(vals, i)])
         doms = AbstractShape[shp[i]]
@@ -188,10 +287,7 @@ function populate_head!(d::TableData, l::TableLayout)
     end
 end
 
-render_cell(shp::DecoratedShape, vals::AbstractVector, idx::Int, avail::Int) =
-    render_cell(shp[], vals, idx, avail)
-
-function render_cell(shp::Union{TupleShape,RecordShape}, vals::AbstractVector, idx::Int, avail::Int)
+function render_cell(shp::RecordShape, vals::AbstractVector, idx::Int, avail::Int)
     buf = IOBuffer()
     comma = false
     for i in eachindex(shp[:])
@@ -210,39 +306,6 @@ function render_cell(shp::Union{TupleShape,RecordShape}, vals::AbstractVector, i
             comma = true
         end
     end
-    return TableCell(String(take!(buf)))
-end
-
-function render_cell(shp::ShadowShape, vals::AbstractVector, idx::Int, avail::Int)
-    buf = IOBuffer()
-    cell = render_cell(shp[], column(vals, 1), idx, avail)
-    print(buf, cell.text)
-    avail -= textwidth(cell.text)
-    for i in eachindex(shp[:])
-        print(buf, ", ")
-        avail -= 2
-        cell = render_cell(shp[i], column(vals, i+1), idx, avail)
-        print(buf, cell.text)
-        avail -= textwidth(cell.text)
-        if avail < 0
-            break
-        end
-        if !isempty(cell.text)
-            comma = true
-        end
-    end
-    return TableCell(String(take!(buf)))
-end
-
-function render_cell(shp::IndexShape, vals::AbstractVector, idx::Int, avail::Int)
-    buf = IOBuffer()
-    cell = render_cell(shp.key, column(vals, 1), idx, avail)
-    print(buf, cell.text)
-    avail -= textwidth(cell.text)
-    print(buf, " => ")
-    avail -= 4
-    cell = render_cell(shp.val, column(vals, 2), idx, avail)
-    print(buf, cell.text)
     return TableCell(String(take!(buf)))
 end
 
@@ -277,9 +340,6 @@ function render_cell(shp::OutputShape, vals::AbstractVector, idx::Int, avail::In
         return render_cell(domain(shp), elts, l, avail)
     end
 end
-
-render_cell(shp::Union{ClassShape,ClosedShape}, vals::SomeIndexVector, idx::Int, avail::Int) =
-    TableCell("[$(vals[idx])]")
 
 render_cell(shp::NativeShape, vals::AbstractVector, idx::Int, avail::Int) =
     render_cell(shp.ty, vals[idx], avail)

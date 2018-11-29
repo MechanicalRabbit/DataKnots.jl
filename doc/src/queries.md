@@ -7,11 +7,31 @@ In `DataKnots`, structured data is stored in a column-oriented format,
 serialized using specialized composite vector types.  Consequently, operations
 on data take the form of vectorized functions.
 
-Module `DataKnots.Queries` exports an interface of vectorized transformations
-called `Query` and provives a rich library of query primitives and combinators.
+Module `DataKnots` implements an interface of vectorized transformations called
+`Query` and provives a rich library of query primitives and combinators.
 
-    using DataKnots.Vectors
-    using DataKnots.Queries
+    using DataKnots:
+        @VectorTree,
+        as_block,
+        chain_of,
+        column,
+        decode_missing,
+        decode_tuple,
+        decode_vector,
+        flat_block,
+        in_block,
+        in_tuple,
+        lift,
+        lift_block,
+        lift_const,
+        lift_null,
+        lift_to_block,
+        lift_to_block_tuple,
+        lift_to_tuple,
+        pass,
+        pull_block,
+        pull_every_block,
+        tuple_of
 
 
 ### Lifting
@@ -329,17 +349,6 @@ It is also possible to pull all block columns from a tuple vector.
      missing
      [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
     =#
-
-
-## Index vectors
-
-An index vector could be dereferenced using the `dereference()` primitive.
-
-    q = dereference()
-    #-> dereference()
-
-    q(@VectorTree &DEPT [1, 1, 1, 2] where {DEPT = ["POLICE", "FIRE"]})
-    #-> ["POLICE", "POLICE", "POLICE", "FIRE"]
 
 
 ## Composition
