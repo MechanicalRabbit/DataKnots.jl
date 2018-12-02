@@ -18,7 +18,7 @@
     2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
     =#
 
-    query(db >> It.employee.name)
+    run(db >> It.employee.name)
     #=>
       │ name      │
     ──┼───────────┤
@@ -31,7 +31,7 @@
 
     TitleCase = Lift(s -> titlecase(s), It)
 
-    query(db >> It.employee.name >> TitleCase)
+    run(db >> It.employee.name >> TitleCase)
     #=>
       │ DataKnot  │
     ──┼───────────┤
@@ -44,7 +44,7 @@
 
     Split = Lift(s -> split(s), It)
 
-    query(db >> It.employee.name >> Split)
+    run(db >> It.employee.name >> Split)
     #=>
        │ DataKnot │
     ───┼──────────┤
@@ -60,7 +60,7 @@
     10 │ S        │
     =#
 
-    query(db >> (
+    run(db >> (
         :employee =>
           It.employee >>
             Record(:name =>
@@ -77,7 +77,7 @@
     =#
 
     Repeat(V,N) = Lift((v,n) -> [v for i in 1:n], V, N)
-    query(db >> Record(It.name, Repeat("Go!", 3)))
+    run(db >> Record(It.name, Repeat("Go!", 3)))
     #=>
       │ DataKnot              │
       │ name    #2            │

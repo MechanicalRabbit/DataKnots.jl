@@ -4,29 +4,30 @@
 
 import Base:
     convert,
+    run,
     show,
     >>
 
 using Statistics
 
-# Combinator interface.
+# Pipeline interface.
 
-struct Combinator
+struct Pipeline
     op
     args::Vector{Any}
     src
 
-    Combinator(op, args::Vector{Any}) =
+    Pipeline(op, args::Vector{Any}) =
         new(op, args, nothing)
 end
 
-Combinator(op, args...) =
-    Combinator(op, collect(Any, args))
+Pipeline(op, args...) =
+    Pipeline(op, collect(Any, args))
 
-syntax(F::Combinator) =
+syntax(F::Pipeline) =
     syntax(F.op, F.args)
 
-show(io::IO, F::Combinator) =
+show(io::IO, F::Pipeline) =
     print_expr(io, syntax(F))
 
 # Navigation syntax.
@@ -55,12 +56,12 @@ end
 
 show(io::IO, data::DataValue) = show(io, data.val)
 
-const SomeCombinator = Union{DataKnot, DataValue, Combinator, Navigation}
+const PipelineLike = Union{DataKnot, DataValue, Pipeline, Navigation}
 
-convert(::Type{SomeCombinator}, val::Union{Number,String}) =
+convert(::Type{PipelineLike}, val::Union{Number,String}) =
     DataValue(val)
 
-convert(::Type{SomeCombinator}, val::Base.RefValue) =
+convert(::Type{PipelineLike}, val::Base.RefValue) =
     DataValue(val.x)
 
 mutable struct Environment
@@ -75,7 +76,7 @@ combine(knot::DataKnot, env::Environment, q::Query) =
 combine(data::DataValue, env::Environment, q::Query) =
     combine(convert(DataKnot, data.val), env, q)
 
-combine(F::Combinator, env::Environment, q::Query) =
+combine(F::Pipeline, env::Environment, q::Query) =
     F.op(env, q, F.args...)
 
 function combine(nav::Navigation, env::Environment, q::Query)
@@ -101,32 +102,26 @@ istub(q::Query) =
 
 # Executing a query.
 
-query(; params...) =
-    F -> query(F; params...)
+run(F::Union{PipelineLike,Pair{Symbol,PipelineLike}}; params...) =
+    run(DataKnot(nothing), F; params...)
 
-query(F; params...) =
-    query(nothing, F; params...)
-
-query(data, F; params...) =
-    execute(convert(DataKnot, data) >> convert(SomeCombinator, F),
+run(db::DataKnot, F::Union{PipelineLike,Pair{Symbol,PipelineLike}}; params...) =
+    execute(db >> Each(convert(PipelineLike, F)),
             sort(collect(Pair{Symbol,DataKnot}, params), by=first))
 
-execute(data::DataKnot, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
-    data
-
-function execute(F::SomeCombinator, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
+function execute(F::PipelineLike, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     q = prepare(F, params)
     input = pack(q, params)
     output = q(input)
     return unpack(q, output)
 end
 
-function prepare(F::SomeCombinator, slots::Vector{Pair{Symbol,OutputShape}}=Pair{Symbol,OutputShape}[])
+function prepare(F::PipelineLike, slots::Vector{Pair{Symbol,OutputShape}}=Pair{Symbol,OutputShape}[])
     env = Environment(slots)
     optimize(combine(F, env, stub()))
 end
 
-function prepare(F::SomeCombinator, params::Vector{Pair{Symbol,DataKnot}})
+function prepare(F::PipelineLike, params::Vector{Pair{Symbol,DataKnot}})
     slots = Pair{Symbol,OutputShape}[param.first => shape(param.second) for param in params]
     prepare(F, slots)
 end
@@ -162,18 +157,29 @@ unpack(q, output) =
         DataKnot(shp, vals)
     end
 
+# Each.
+
+Each(X) = Pipeline(Each, X)
+
+Each(env::Environment, q::Query, X) =
+    compose(q, combine(X, env, stub(q)))
+
+# Const.
+
+Const(val) = DataValue(val)
+
 # Composition combinator.
 
->>(X::SomeCombinator, Xs...) =
-    Compose(X, convert.(SomeCombinator, Xs)...)
+>>(X::PipelineLike, Xs...) =
+    Compose(X, convert.(PipelineLike, Xs)...)
 
 Compose(X, Xs...) =
-    Combinator(Compose, X, Xs...)
+    Pipeline(Compose, X, Xs...)
 
 syntax(::typeof(Compose), args::Vector{Any}) =
     syntax(>>, args)
 
-function Compose(env::Environment, q::Query, Xs::SomeCombinator...)
+function Compose(env::Environment, q::Query, Xs::PipelineLike...)
     for X in Xs
         q = combine(X, env, q)
     end
@@ -251,7 +257,7 @@ flatten_output(md1::OutputMode, md2::OutputMode) =
 # Extracting parameters.
 
 Recall(name::Symbol) =
-    Combinator(Recall, name)
+    Pipeline(Recall, name)
 
 function Recall(env::Environment, q::Query, name)
     for slot in env.slots
@@ -271,7 +277,7 @@ end
 # Specifying parameters.
 
 Given(P, X) =
-    Combinator(Given, convert(SomeCombinator, P), convert(SomeCombinator, X))
+    Pipeline(Given, convert(PipelineLike, P), convert(PipelineLike, X))
 
 Given(P, Q, X...) =
     Given(P, Given(Q, X...))
@@ -343,63 +349,63 @@ end
 # Then.
 
 Then(q::Query) =
-    Combinator(Then, q)
+    Pipeline(Then, q)
 
 Then(env::Environment, q::Query, q′::Query) =
     compose(q, q′)
 
 Then(ctor, args...) =
-    Combinator(Then, ctor, args...)
+    Pipeline(Then, ctor, args...)
 
 Then(env::Environment, q::Query, ctor, args...) =
     ctor(env, istub(q), Then(q), args...)
 
 # Define.
 
-Define(name::Symbol, X::SomeCombinator) =
-    Combinator(Define, name, X)
+Define(name::Symbol, X::PipelineLike) =
+    Pipeline(Define, name, X)
 
 syntax(::typeof(Define), args::Vector{Any}) =
     syntax(Define, args...)
 
-syntax(::typeof(Define), name::Symbol, X::SomeCombinator) =
+syntax(::typeof(Define), name::Symbol, X::PipelineLike) =
     name
 
-Define(env::Environment, q::Query, name::Symbol, X::SomeCombinator) =
+Define(env::Environment, q::Query, name::Symbol, X::PipelineLike) =
     combine(X, env, q)
 
 # Assign a label.
 
 Tag(lbl::Symbol) =
-    Combinator(Tag, lbl)
+    Pipeline(Tag, lbl)
 
 Tag(env::Environment, q::Query, lbl::Symbol) =
     q |> designate(ishape(q), shape(q) |> decorate(label=lbl))
 
-convert(::Type{SomeCombinator}, p::Pair{Symbol}) =
-    Compose(convert(SomeCombinator, p.second), Tag(p.first))
+convert(::Type{PipelineLike}, p::Pair{Symbol}) =
+    Compose(convert(PipelineLike, p.second), Tag(p.first))
 
 # Lifting Julia functions.
 
-struct BroadcastCombinator <: Base.BroadcastStyle
+struct BroadcastPipeline <: Base.BroadcastStyle
 end
 
-Base.BroadcastStyle(::Type{<:SomeCombinator}) = BroadcastCombinator()
+Base.BroadcastStyle(::Type{<:PipelineLike}) = BroadcastPipeline()
 
-Base.BroadcastStyle(s::BroadcastCombinator, ::Broadcast.DefaultArrayStyle) = s
+Base.BroadcastStyle(s::BroadcastPipeline, ::Broadcast.DefaultArrayStyle) = s
 
-Base.broadcastable(X::SomeCombinator) = X
+Base.broadcastable(X::PipelineLike) = X
 
-Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{BroadcastCombinator}) = bc
+Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{BroadcastPipeline}) = bc
 
-Base.copy(bc::Broadcast.Broadcasted{BroadcastCombinator}) =
+Base.copy(bc::Broadcast.Broadcasted{BroadcastPipeline}) =
     Lift(bc.f, bc.args...)
 
-convert(::Type{SomeCombinator}, bc::Broadcast.Broadcasted{BroadcastCombinator}) =
+convert(::Type{PipelineLike}, bc::Broadcast.Broadcasted{BroadcastPipeline}) =
     Lift(bc.f, bc.args...)
 
 Lift(f, Xs...) =
-    Combinator(Lift, f, collect(SomeCombinator, Xs))
+    Pipeline(Lift, f, collect(PipelineLike, Xs))
 
 syntax(::typeof(Lift), args::Vector{Any}) =
     syntax(broadcast, Any[args[1], args[2]...])
@@ -420,15 +426,34 @@ function Lift(env::Environment, q::Query, f, Xs)
                     decode_vector())),
                 flat_block()
             ) |> designate(ishape(x),
-                     OutputShape(NativeShape(ety),
-                                 OPT|PLU))
+                           OutputShape(NativeShape(ety), OPT|PLU))
         else
             r = chain_of(
                 x,
                 in_block(lift(f))
             ) |> designate(ishape(x),
-                     OutputShape(NativeShape(oty),
-                                 mode(q)))
+                           OutputShape(NativeShape(oty), mode(x)))
+        end
+        compose(q, r)
+    elseif isempty(xs)
+        oty = Core.Compiler.return_type(f, Tuple{})
+        ishp = ibound(InputShape)
+        dsx = tuple_of(Symbol[], Query[])
+        if oty <: AbstractVector
+            ety = oty.parameters[1]
+            r = chain_of(
+                    dsx,
+                    lift_to_block_tuple(f),
+                    in_block(decode_vector()),
+                    flat_block()
+            ) |> designate(ishp,
+                           OutputShape(NativeShape(ety), OPT|PLU))
+        else
+            r = chain_of(
+                    dsx,
+                    lift_to_block_tuple(f)
+            ) |> designate(ishp,
+                           OutputShape(NativeShape(oty)))
         end
         compose(q, r)
     else
@@ -444,24 +469,25 @@ function Lift(env::Environment, q::Query, f, Xs)
                     in_block(decode_vector()),
                     flat_block()
             ) |> designate(ishp,
-                     OutputShape(NativeShape(ety),
-                                 OPT|PLU))
+                           OutputShape(NativeShape(ety), OPT|PLU))
         else
             r = chain_of(
                     dsx,
                     lift_to_block_tuple(f)
             ) |> designate(ishp,
-                     OutputShape(NativeShape(oty),
-                                 bound(mode.(xs))))
+                           OutputShape(NativeShape(oty), bound(mode.(xs))))
         end
         compose(q, r)
     end
 end
 
+Combinator(f) =
+    (args...) -> Lift(f, args...)
+
 # Attributes.
 
 Field(name) =
-    Combinator(Field, name)
+    Pipeline(Field, name)
 
 function Field(env::Environment, q::Query, name)
     if any(slot.first == name for slot in env.slots)
@@ -507,7 +533,7 @@ lookup(::Type, name) =
 # Record constructor.
 
 Record(Xs...) =
-    Combinator(Record, collect(SomeCombinator, Xs))
+    Pipeline(Record, collect(PipelineLike, Xs))
 
 function Record(env::Environment, q::Query, Xs)
     xs = combine.(Xs, Ref(env), Ref(stub(q)))
@@ -523,10 +549,10 @@ end
 
 # Count combinator.
 
-Count(X::SomeCombinator) =
-    Combinator(Count, X)
+Count(X::PipelineLike) =
+    Pipeline(Count, X)
 
-convert(::Type{SomeCombinator}, ::typeof(Count)) =
+convert(::Type{PipelineLike}, ::typeof(Count)) =
     Then(Count)
 
 function Count(env::Environment, q::Query, X)
@@ -541,22 +567,22 @@ end
 
 # Aggregate combinators.
 
-Max(X::SomeCombinator) =
-    Combinator(Max, X)
+Max(X::PipelineLike) =
+    Pipeline(Max, X)
 
-convert(::Type{SomeCombinator}, ::typeof(Max)) =
+convert(::Type{PipelineLike}, ::typeof(Max)) =
     Then(Max)
 
-Min(X::SomeCombinator) =
-    Combinator(Min, X)
+Min(X::PipelineLike) =
+    Pipeline(Min, X)
 
-convert(::Type{SomeCombinator}, ::typeof(Min)) =
+convert(::Type{PipelineLike}, ::typeof(Min)) =
     Then(Min)
 
-Mean(X::SomeCombinator) =
-    Combinator(Mean, X)
+Mean(X::PipelineLike) =
+    Pipeline(Mean, X)
 
-convert(::Type{SomeCombinator}, ::typeof(Mean)) =
+convert(::Type{PipelineLike}, ::typeof(Mean)) =
     Then(Mean)
 
 function Max(env::Environment, q::Query, X)
@@ -616,8 +642,8 @@ end
 
 # Filter combinator.
 
-Filter(X::SomeCombinator) =
-    Combinator(Filter, X)
+Filter(X::PipelineLike) =
+    Pipeline(Filter, X)
 
 function Filter(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
@@ -633,10 +659,10 @@ end
 # Pagination.
 
 Take(N) =
-    Combinator(Take, N)
+    Pipeline(Take, N)
 
 Drop(N) =
-    Combinator(Drop, N)
+    Pipeline(Drop, N)
 
 Take(env::Environment, q::Query, ::Missing, rev::Bool=false) =
     q
@@ -647,7 +673,7 @@ Take(env::Environment, q::Query, N::Int, rev::Bool=false) =
         take_by(N, rev),
     ) |> designate(ishape(q), OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(OPT))))
 
-function Take(env::Environment, q::Query, N::SomeCombinator, rev::Bool=false)
+function Take(env::Environment, q::Query, N::PipelineLike, rev::Bool=false)
     n = combine(N, env, istub(q))
     ishp = ibound(ishape(q), ishape(n))
     chain_of(
@@ -665,3 +691,14 @@ end
 
 Drop(env::Environment, q::Query, N) =
     Take(env, q, N, true)
+
+# Range.
+
+Range(N) =
+    Lift(n -> 1:n, N)
+
+Range(M, N) =
+    Lift(:, M, N)
+
+Range(M, S, N) =
+    Lift(:, M, S, N)

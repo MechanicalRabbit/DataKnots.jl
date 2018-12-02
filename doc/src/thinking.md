@@ -155,7 +155,6 @@ pipeline could then later be reused with various inputs.
     run(Range(3) >> ThenDouble)
     #=>
       │ DataKnot │
-
     ──┼──────────┤
     1 │        2 │
     2 │        4 │
@@ -192,7 +191,9 @@ When a Julia function returns a vector, a lifted combinator creates
 pipelines having plural output. In fact, the `Range` combinator used in
 these examples could be created as follows:
 
-    Range(X) = Combinator(x -> 1:x)(X)
+```julia
+Range(X) = Combinator(x -> 1:x)(X)
+```
 
 In DataKnots, pipeline combinators can be constructed directly from
 native Julia functions. This lets us take advantage of Julia's rich
@@ -206,11 +207,11 @@ the `Count` combinator with `Range(3)` as its argument. The resulting
 pipeline, `Count(Range(3))` produces a singular value having the count
 of the entries, `3`.
 
-    run(Count(Range(3))
+    run(Count(Range(3)))
     #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ 3           │
+    │ DataKnot │
+    ├──────────┤
+    │        3 │
     =#
 
 As a convenience, most aggregate combinators can be used directly as
@@ -219,9 +220,9 @@ their pipeline input.
 
     run(Range(3) >> Count)
     #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ 3           │
+    │ DataKnot │
+    ├──────────┤
+    │        3 │
     =#
 
 

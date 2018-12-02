@@ -7,7 +7,7 @@
     F = (It .+ 4) >> (It .* 6)
     #-> (It .+ 4) >> It .* 6
 
-    query(db >> F)
+    run(db >> F)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -42,7 +42,7 @@
     2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
     =#
 
-    query(db >> Field(:name))
+    run(db >> Field(:name))
     #=>
       │ name   │
     ──┼────────┤
@@ -50,7 +50,7 @@
     2 │ FIRE   │
     =#
 
-    query(db >> It.name)
+    run(db >> It.name)
     #=>
       │ name   │
     ──┼────────┤
@@ -58,7 +58,7 @@
     2 │ FIRE   │
     =#
 
-    query(db >> Field(:employee) >> Field(:salary))
+    run(db >> Field(:employee) >> Field(:salary))
     #=>
       │ salary │
     ──┼────────┤
@@ -69,7 +69,7 @@
     5 │ 197736 │
     =#
 
-    query(db >> It.employee.salary)
+    run(db >> It.employee.salary)
     #=>
       │ salary │
     ──┼────────┤
@@ -80,7 +80,7 @@
     5 │ 197736 │
     =#
 
-    query(db >> Count(It.employee))
+    run(db >> Count(It.employee))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -88,21 +88,21 @@
     2 │        2 │
     =#
 
-    query(db >> Count)
+    run(db >> Count)
     #=>
     │ DataKnot │
     ├──────────┤
     │        2 │
     =#
 
-    query(db >> Count(It.employee) >> Max)
+    run(db >> Count(It.employee) >> Max)
     #=>
     │ DataKnot │
     ├──────────┤
     │        3 │
     =#
 
-    query(db >> It.employee >> Filter(It.salary .> 200000))
+    run(db >> It.employee >> Filter(It.salary .> 200000))
     #=>
       │ employee        │
       │ name     salary │
@@ -111,7 +111,7 @@
     2 │ JOSE S   202728 │
     =#
 
-    query(db >> Count(It.employee) .> 2)
+    run(db >> Count(It.employee) .> 2)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -119,7 +119,7 @@
     2 │    false │
     =#
 
-    query(db >> Filter(Count(It.employee) .> 2))
+    run(db >> Filter(Count(It.employee) .> 2))
     #=>
       │ DataKnot                                                   │
       │ name    employee                                           │
@@ -127,14 +127,14 @@
     1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
     =#
 
-    query(db >> Filter(Count(It.employee) .> 2) >> Count)
+    run(db >> Filter(Count(It.employee) .> 2) >> Count)
     #=>
     │ DataKnot │
     ├──────────┤
     │        1 │
     =#
 
-    query(db >> Record(It.name, :size => Count(It.employee)))
+    run(db >> Record(It.name, :size => Count(It.employee)))
     #=>
       │ DataKnot     │
       │ name    size │
@@ -143,7 +143,7 @@
     2 │ FIRE       2 │
     =#
 
-    query(db >> It.employee >> Filter(It.salary .> It.S),
+    run(db >> It.employee >> Filter(It.salary .> It.S),
           S=200000)
     #=>
       │ employee        │
@@ -153,7 +153,7 @@
     2 │ JOSE S   202728 │
     =#
 
-    query(
+    run(
         db >> Given(:S => Max(It.employee.salary),
                     It.employee >> Filter(It.salary .== It.S)))
     #=>
@@ -164,7 +164,7 @@
     2 │ JOSE S   202728 │
     =#
 
-    query(db >> It.employee.salary >> Take(3))
+    run(db >> It.employee.salary >> Take(3))
     #=>
       │ salary │
     ──┼────────┤
@@ -173,7 +173,7 @@
     3 │ 170112 │
     =#
 
-    query(db >> It.employee.salary >> Drop(3))
+    run(db >> It.employee.salary >> Drop(3))
     #=>
       │ salary │
     ──┼────────┤
@@ -181,7 +181,7 @@
     2 │ 197736 │
     =#
 
-    query(db >> It.employee.salary >> Take(-3))
+    run(db >> It.employee.salary >> Take(-3))
     #=>
       │ salary │
     ──┼────────┤
@@ -189,7 +189,7 @@
     2 │ 185364 │
     =#
 
-    query(db >> It.employee.salary >> Drop(-3))
+    run(db >> It.employee.salary >> Drop(-3))
     #=>
       │ salary │
     ──┼────────┤
@@ -198,7 +198,7 @@
     3 │ 197736 │
     =#
 
-    query(db >> It.employee.salary >> Take(Count(db >> It.employee) .÷ 2))
+    run(db >> It.employee.salary >> Take(Count(db >> It.employee) .÷ 2))
     #=>
       │ salary │
     ──┼────────┤

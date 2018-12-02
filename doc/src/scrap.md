@@ -82,10 +82,11 @@ What `>>` does is applying two transformations sequentially.
 For another example, consider how random `"yes"`/`"no"` generation
 could be easily incorporated into a DataKnots' processing pipeline.
 
+    using DataKnots
     using Random: seed!, rand
     seed!(0)
     YesOrNo = Lift(() -> rand(Bool) ? "yes" : "no")
-    run(Range(3) >> YesOrNo())
+    run(Range(3) >> YesOrNo)
     #=>
       │ DataKnot │
     ──┼──────────┤

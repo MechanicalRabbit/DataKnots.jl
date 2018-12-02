@@ -5,9 +5,12 @@
 module DataKnots
 
 export
+    Combinator,
+    Const,
     Count,
     DataKnot,
     Drop,
+    Each,
     Field,
     Filter,
     Given,
@@ -15,10 +18,10 @@ export
     Lift,
     Max,
     Min,
+    Range,
     Recall,
     Record,
     Take,
-    query,
     signature
 
 include("layouts.jl")
@@ -26,6 +29,6 @@ include("vectors.jl")
 include("shapes.jl")
 include("knots.jl")
 include("queries.jl")
-include("combinators.jl")
+include("pipelines.jl")
 
 end
