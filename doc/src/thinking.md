@@ -199,7 +199,7 @@ In DataKnots, pipeline combinators can be constructed directly from
 native Julia functions. This lets us take advantage of Julia's rich
 statistical and data processing functions.
 
-### Aggregates & Scope
+### Aggregates
 
 Some pipeline combinators transform a plural pipeline into a singular
 pipeline; we call them *aggregate* combinators. Consider the pipeline,
@@ -286,12 +286,17 @@ Then, one could create a mean of sums as follows:
     │ 3.333333335 │
     =#
 
+In DataKnots, aggregate operations are naturally expressed as pipeline
+combinators and do not need explicit grouping. Nested aggregation just
+works. Moreover, custom aggregates can be easily constructed as native
+Julia functions and lifted into the query language.
+
 ## Filtering & Paging
 
-Not all combinators useful to DataKnots queries can be lifted. Some of
-them, such as composition `>>`, need to be directly written to rely
-upon the internal structure of a `DataKnot`. One such example would be
-the `Filter` combinator.
+Unsurprisingly, data filtering and paging of DataKnots' pipelines are
+also done with *combinators*. The `Filter` combinator takes one
+parameter, a predicate pipeline that for each input decides whether it
+should be included in the output.
 
     run(Range(6) >> Filter(It .> 3))
     #=>
@@ -302,3 +307,15 @@ the `Filter` combinator.
     3 │        6 │
     =#
 
+The `Take` and `Drop` combinators can be used to slice an input stream:
+`Drop` is used to skip over input, `Take` ignores output past a
+particular point.
+
+    run(Range(9) >> Drop(3) >> Take(3))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        4 │
+    2 │        5 │
+    3 │        6 │
+    =#
