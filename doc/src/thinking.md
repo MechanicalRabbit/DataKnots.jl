@@ -114,12 +114,12 @@ could be used to build a `Pipeline`. Consider the Julia function
     double(x) = 2x
     double(3) #-> 6
 
-What we want is an analogue to `double` that instead of operating on
+What we want is an analogue to `double` that, instead of operating on
 numbers, operates on pipelines. Such functions are called pipeline
 combinators. We can convert any Julia function to a pipeline
 `Combinator` as follows:
 
-    const Double = Combinator(double)
+    Double(X) = Combinator(Double, double)(X)
 
 When given an argument, the combinator `Double` can then be used to
 build a pipeline that produces the doubled value.
@@ -192,7 +192,7 @@ pipelines having plural output. In fact, the `Range` combinator used in
 these examples could be created as follows:
 
 ```julia
-Range(X) = Combinator(x -> 1:x)(X)
+Range(X) = Combinator(Range, x -> 1:x)(X)
 ```
 
 In DataKnots, pipeline combinators can be constructed directly from
@@ -201,11 +201,11 @@ statistical and data processing functions.
 
 ### Aggregates & Scope
 
-With DataKnots, aggregation is also based on combinators, specifically
-ones that take a plural pipeline and build a singular one. Consider the
-the `Count` combinator with `Range(3)` as its argument. The resulting
-pipeline, `Count(Range(3))` produces a singular value having the count
-of the entries, `3`.
+Some pipeline combinators transform a plural pipeline into a singular
+pipeline; we call them *aggregate* combinators. Consider the pipeline,
+`Count(Range(3))`. It is built by applying the `Count` combinator to
+the `Range(3)` pipeline. It outputs a singular value `3`, the number of
+entries produced by `Range(3)`.
 
     run(Count(Range(3)))
     #=>
@@ -214,9 +214,7 @@ of the entries, `3`.
     │        3 │
     =#
 
-As a convenience, most aggregate combinators can be used directly as
-if they were a pipeline. In these cases, they apply their function to
-their pipeline input.
+`Count` can also be used as a pipeline primitive.
 
     run(Range(3) >> Count)
     #=>
@@ -225,9 +223,9 @@ their pipeline input.
     │        3 │
     =#
 
-It's possible to use aggregates within a plural scope. In this example,
-as the outer `Range` goes from `1` to `3`, the `Sum` aggregate would
-calculate its output from `Range(1)`, `Range(2)` and `Range(3)`.
+It's possible to use aggregates within a plural pipeline. In this
+example, as the outer `Range` goes from `1` to `3`, the `Sum` aggregate
+would calculate its output from `Range(1)`, `Range(2)` and `Range(3)`.
 
     run(Range(3) >> Sum(Range(It)))
     #=>
@@ -238,9 +236,8 @@ calculate its output from `Range(1)`, `Range(2)` and `Range(3)`.
     3 │        6 │
     =#
 
-It's not immediately obvious how to update this expression to use `Sum`
-as a pipeline component. A niave approach first produces a sequence
-`1`, `1`,`2`, `1`,`2`,`3` and then produces their sum.
+However, if we rewrite the pipeline to use `Sum` as a pipeline
+primitive, we get a different result.
 
     run(Range(3) >> Range(It) >> Sum)
     #=>
@@ -249,10 +246,8 @@ as a pipeline component. A niave approach first produces a sequence
     │       10 │
     =#
 
-Since pipeline composition (`>>`) is associative, using a parenthesis
-will not change the result. That is, ``A >> (B >> C)`` is the same as
-``(A >> B) >> C``. Hence, in this next example, `Range(3)` is first
-computed, then `Range(It)` and then finally `Sum`.
+Since pipeline composition (`>>`) is associative, just adding
+parenthesis around `Range(It) >> Sum` would not change the result.
 
     run(Range(3) >> (Range(It) >> Sum))
     #=>
@@ -261,10 +256,9 @@ computed, then `Range(It)` and then finally `Sum`.
     │       10 │
     =#
 
-If using `Sum` as a pipeline is goal, the expected output could be
-obtained with an explicit scoping operator, `Each`. This combinator
-passes each element of the input collection one by one, and then
-accumulates the outputs.
+Instead of using parenthesis, we need to wrap `Range(It) >> Sum` with
+the `Each` combinator. This combinator builds a pipeline that processes
+its input elementwise.
 
     run(Range(3) >> Each(Range(It) >> Sum))
     #=>
@@ -277,24 +271,22 @@ accumulates the outputs.
 
 Like scalar functions, aggregates can be lifted to *Combinator* form
 with the `aggregate=true` keyword argument. This constructor produces
-the aggregate that operates on an incoming pipeline. To convert this to
-a combinator form with an argument, one could use `Each`. Hence, a
-`Mean` aggregate could be defined as follows:
+an aggregate combinator that operates on an incoming pipeline. For
+example, the `Mean` aggregate combinator could be defined as:
 
     using Statistics
-    Mean = Combinator(mean, aggregate=true)
-    Mean(X) = Each(X >> Mean)
+    Mean(X) = Combinator(Mean, mean, aggregate=true)(X)
 
 Then, one could create a mean of sums as follows:
 
-    run(Range(3) >> Sum(Range(It)) >> Mean)
+    run(Mean(Range(3) >> Sum(Range(It))))
     #=>
     │ DataKnot    │
     ├─────────────┤
     │ 3.333333335 │
     =#
 
-## Filtering & Slicing
+## Filtering & Paging
 
 Not all combinators useful to DataKnots queries can be lifted. Some of
 them, such as composition `>>`, need to be directly written to rely
