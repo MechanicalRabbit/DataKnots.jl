@@ -286,6 +286,23 @@ Then, one could create a mean of sums as follows:
     │ 3.333333335 │
     =#
 
+To use `Mean` as a pipeline primitive, there are two additional steps.
+First, a zero-argument version is required, `Mean()`. Second, an
+automatic conversion of the symbol `Mean` to a pipeline is required.
+The former is done by `Then`, the latter by Julia's built-in `convert`.
+
+    Mean() = Then(Mean)
+    convert(::Type{Pipeline}, typeof(Max)) = Max()
+
+Once these are done, one could take the sum of means as follows:
+
+    run(Range(3) >> Sum(Range(It)) >> Mean)
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ 3.333333335 │
+    =#
+
 In DataKnots, aggregate operations are naturally expressed as pipeline
 combinators and do not need explicit grouping. Nested aggregation just
 works. Moreover, custom aggregates can be easily constructed as native
@@ -319,3 +336,6 @@ particular point.
     2 │        5 │
     3 │        6 │
     =#
+
+Since these are combinators, their arguments need not be constants,
+they can be full blown pipelines.
