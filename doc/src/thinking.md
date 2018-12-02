@@ -225,4 +225,88 @@ their pipeline input.
     │        3 │
     =#
 
+It's possible to use aggregates within a plural scope. In this example,
+as the outer `Range` goes from `1` to `3`, the `Sum` aggregate would
+calculate its output from `Range(1)`, `Range(2)` and `Range(3)`.
+
+    run(Range(3) >> Sum(Range(It)))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        1 │
+    2 │        3 │
+    3 │        6 │
+    =#
+
+It's not immediately obvious how to update this expression to use `Sum`
+as a pipeline component. A niave approach first produces a sequence
+`1`, `1`,`2`, `1`,`2`,`3` and then produces their sum.
+
+    run(Range(3) >> Range(It) >> Sum)
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │       10 │
+    =#
+
+Since pipeline composition (`>>`) is associative, using a parenthesis
+will not change the result. That is, ``A >> (B >> C)`` is the same as
+``(A >> B) >> C``. Hence, in this next example, `Range(3)` is first
+computed, then `Range(It)` and then finally `Sum`.
+
+    run(Range(3) >> (Range(It) >> Sum))
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │       10 │
+    =#
+
+If using `Sum` as a pipeline is goal, the expected output could be
+obtained with an explicit scoping operator, `Each`. This combinator
+passes each element of the input collection one by one, and then
+accumulates the outputs.
+
+    run(Range(3) >> Each(Range(It) >> Sum))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        1 │
+    2 │        3 │
+    3 │        6 │
+    =#
+
+Like scalar functions, aggregates can be lifted to *Combinator* form
+with the `aggregate=true` keyword argument. This constructor produces
+the aggregate that operates on an incoming pipeline. To convert this to
+a combinator form with an argument, one could use `Each`. Hence, a
+`Mean` aggregate could be defined as follows:
+
+    using Statistics
+    Mean = Combinator(mean, aggregate=true)
+    Mean(X) = Each(X >> Mean)
+
+Then, one could create a mean of sums as follows:
+
+    run(Range(3) >> Sum(Range(It)) >> Mean)
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ 3.333333335 │
+    =#
+
+## Filtering & Slicing
+
+Not all combinators useful to DataKnots queries can be lifted. Some of
+them, such as composition `>>`, need to be directly written to rely
+upon the internal structure of a `DataKnot`. One such example would be
+the `Filter` combinator.
+
+    run(Range(6) >> Filter(It .> 3))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        4 │
+    2 │        5 │
+    3 │        6 │
+    =#
 
