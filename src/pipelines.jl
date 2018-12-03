@@ -56,7 +56,8 @@ end
 
 show(io::IO, data::DataValue) = show(io, data.val)
 
-const PipelineLike = Union{DataKnot, DataValue, Pipeline, Navigation}
+const PipelineLike = Union{DataKnot, DataValue, Pipeline, Navigation,
+                           Pair{Symbol,<:Union{DataKnot, DataValue, Pipeline, Navigation}}}
 
 convert(::Type{PipelineLike}, val::Union{Number,String}) =
     DataValue(val)
@@ -75,6 +76,9 @@ combine(knot::DataKnot, env::Environment, q::Query) =
 
 combine(data::DataValue, env::Environment, q::Query) =
     combine(convert(DataKnot, data.val), env, q)
+
+combine(p::Pair{Symbol}, env::Environment, q::Query) =
+    combine(Compose(p.second, Tag(p.first)), env::Environment, q::Query)
 
 combine(F::Pipeline, env::Environment, q::Query) =
     F.op(env, q, F.args...)
@@ -102,11 +106,11 @@ istub(q::Query) =
 
 # Executing a query.
 
-run(F::Union{PipelineLike,Pair{Symbol,<:PipelineLike}}; params...) =
+run(F::PipelineLike; params...) =
     run(DataKnot(nothing), F; params...)
 
-run(db::DataKnot, F::Union{PipelineLike,Pair{Symbol,<:PipelineLike}}; params...) =
-    execute(db >> Each(convert(PipelineLike, F)),
+run(db::DataKnot, F::PipelineLike; params...) =
+    execute(db >> Each(F),
             sort(collect(Pair{Symbol,DataKnot}, params), by=first))
 
 function execute(F::PipelineLike, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
@@ -526,6 +530,29 @@ end
 
 lookup(shp::NativeShape, name) =
     lookup(shp.ty, name)
+
+function lookup(ity::Type{<:NamedTuple}, name)
+    j = findfirst(isequal(name), ity.parameters[1])
+    if j === nothing
+        return missing
+    end
+    oty = ity.parameters[2].parameters[j]
+    f = t -> t[j]
+    if oty <: AbstractVector
+        ety = oty.parameters[1]
+        r = chain_of(
+            lift(f),
+            decode_vector(),
+        ) |> designate(InputShape(ity),
+                       OutputShape(ety, OPT|PLU))
+    else
+        r = chain_of(
+            lift(f),
+            as_block()
+        ) |> designate(InputShape(ity), OutputShape(oty))
+    end
+    r
+end
 
 lookup(::Type, name) =
     missing
