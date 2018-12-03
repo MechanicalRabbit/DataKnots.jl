@@ -102,10 +102,10 @@ istub(q::Query) =
 
 # Executing a query.
 
-run(F::Union{PipelineLike,Pair{Symbol,PipelineLike}}; params...) =
+run(F::Union{PipelineLike,Pair{Symbol,<:PipelineLike}}; params...) =
     run(DataKnot(nothing), F; params...)
 
-run(db::DataKnot, F::Union{PipelineLike,Pair{Symbol,PipelineLike}}; params...) =
+run(db::DataKnot, F::Union{PipelineLike,Pair{Symbol,<:PipelineLike}}; params...) =
     execute(db >> Each(convert(PipelineLike, F)),
             sort(collect(Pair{Symbol,DataKnot}, params), by=first))
 
