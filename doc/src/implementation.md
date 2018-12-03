@@ -2,11 +2,10 @@
 
 ```@contents
 Pages = [
-    "layouts.md",
     "vectors.md",
     "shapes.md",
     "queries.md",
-    "combinators.md",
+    "pipelines.md",
     "lifting.md",
 ]
 ```
