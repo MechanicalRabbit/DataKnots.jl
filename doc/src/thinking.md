@@ -119,7 +119,7 @@ numbers, operates on pipelines. Such functions are called pipeline
 combinators. We can convert any Julia function to a pipeline
 `Combinator` as follows:
 
-    Double(X) = Combinator(Double, double)(X)
+    Double(X) = Combinator(double)(X)
 
 When given an argument, the combinator `Double` can then be used to
 build a pipeline that produces the doubled value.
@@ -292,7 +292,7 @@ automatic conversion of the symbol `Mean` to a pipeline is required.
 The former is done by `Then`, the latter by Julia's built-in `convert`.
 
     Mean() = Then(Mean)
-    convert(::Type{Pipeline}, typeof(Max)) = Max()
+    convert(::Type{Pipeline}, ::typeof(Mean)) = Mean()
 
 Once these are done, one could take the sum of means as follows:
 

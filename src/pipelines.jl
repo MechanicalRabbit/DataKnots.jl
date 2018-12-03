@@ -358,7 +358,7 @@ Then(ctor, args...) =
     Pipeline(Then, ctor, args...)
 
 Then(env::Environment, q::Query, ctor, args...) =
-    ctor(env, istub(q), Then(q), args...)
+    combine(ctor(Then(q), args...), env, istub(q))
 
 # Define.
 
@@ -567,6 +567,12 @@ end
 
 # Aggregate combinators.
 
+Sum(X::PipelineLike) =
+    Pipeline(Sum, X)
+
+convert(::Type{PipelineLike}, ::typeof(Sum)) =
+    Then(Sum)
+
 Max(X::PipelineLike) =
     Pipeline(Max, X)
 
@@ -584,6 +590,16 @@ Mean(X::PipelineLike) =
 
 convert(::Type{PipelineLike}, ::typeof(Mean)) =
     Then(Mean)
+
+function Sum(env::Environment, q::Query, X)
+    x = combine(X, env, stub(q))
+    r = chain_of(
+            x,
+            lift_to_block(sum),
+            as_block(),
+    ) |> designate(ishape(x), OutputShape(domain(x)))
+    compose(q, r)
+end
 
 function Max(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))

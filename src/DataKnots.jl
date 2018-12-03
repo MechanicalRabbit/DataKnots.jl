@@ -21,7 +21,9 @@ export
     Range,
     Recall,
     Record,
+    Sum,
     Take,
+    Then,
     signature
 
 include("layouts.jl")
