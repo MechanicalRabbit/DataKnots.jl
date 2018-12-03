@@ -411,6 +411,19 @@ To make `Lookup` convenient, `It` provides a shorthand syntax.
     │ Hello World │
     =#
 
+Query parameters are available anywhere in the query. They could,
+for example be used within a filter.
+
+    query = Range(6) >> Filter(It .> It.START)
+    run(query, START=3)
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        4 │
+    2 │        5 │
+    3 │        6 │
+    =#
+
 If a query parameter is a list, it is accessible as a plural knot.
 
     run(It.DATA, DATA=["GARRY M", "ANTHONY R", "DANA A"])
@@ -438,9 +451,9 @@ within queries.
     3 │ (name = "DANA A", salary = 170112)    │
     =#
 
-Access to slots in a named tuple is done with `Field`.
+Access to slots in a named tuple is also done with `Lookup`.
 
-    run(It.DATA >> Field(:name), DATA=DATA)
+    run(It.DATA >> Lookup(:name), DATA=DATA)
     #=>
       │ DataKnot  │
     ──┼───────────┤
@@ -449,9 +462,9 @@ Access to slots in a named tuple is done with `Field`.
     3 │ DANA A    │
     =#
 
-For convenience, named tuple field access is also provided by `It`.
+Therefore it could be done via the `It` convenience method.
 
-    run(It.DATA >> It.name, DATA=DATA)
+    run(It.DATA.name, DATA=DATA)
     #=>
       │ DataKnot  │
     ──┼───────────┤
@@ -460,22 +473,8 @@ For convenience, named tuple field access is also provided by `It`.
     3 │ DANA A    │
     =#
 
-That said, during `Lookup`, parameter access comes before field access,
-hence, express use of `Field` is sometimes necessary. This is also why
-we recommend using lower-case for field names and upper case for
-parameter access.
-
-    run(It.DATA >> It.name, DATA=DATA, name="Unexpected?")
-    #=>
-      │ DataKnot    │
-    ──┼─────────────┤
-    1 │ Unexpected? │
-    2 │ Unexpected? │
-    3 │ Unexpected? │
-    =#
-
-Since DataKnots is based upon sequential processing, there is
-no array access primitive. That said, it isn't hard to make one.
+Since DataKnots is based upon sequential processing, there is no array
+indexing primitive. That said, it isn't hard to make one.
 
     Index(I) = Drop(I .- 1) >> TakeFirst()
     run(It.DATA >> Index(2) >> It.name, DATA=DATA)
@@ -485,25 +484,27 @@ no array access primitive. That said, it isn't hard to make one.
     │ ANTHONY R │
     =#
 
-Query parameters can also be complete knots.
+Together with previous combinators, DataKnots could be used to create
+readable queries, such as "who has the greatest salary"?
 
-    run(It.DATA, DATA=run(Range(3)))
+    run(It.DATA
+        >> Filter(It.salary .== Max(It.DATA.salary))
+        >> It.name
+        >> TakeFirst())
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        1 │
-    2 │        2 │
-    3 │        3 │
+    │ DataKnot │
+    ┼──────────┤
+    │ GARRY M  │
     =#
 
 In DataKnots, query parameters permit queries to access native Julia
 data structures and even previously generated knots.
 
-### Records
+### Records & Descriptors
 
 Internally, DataKnots use a column-oriented storage mechanism that
-handles hierarchical and graphs. Data structured in this way can be
-constructed using the `Record` combinator.
+handles hierarchies and graphs. Data objects in this model can be
+created using the `Record` combinator.
 
     GM = Record(:name => "GARRY M", :salary => 260004)
     run(GM)
@@ -514,12 +515,114 @@ constructed using the `Record` combinator.
     │ GARRY M  260004 │
     =#
 
-Using the `Field` combinator, one could obtain a particular value
-from a record.
+Field access is also possible via `Lookup` or via the `It` shortcut.
 
-    run(GM >> Record(Field(:name))
+    run(GM >> It.name)
     #=>
     │ name    │
     ├─────────┤
     │ GARRY M │
     =#
+
+As seen in the output above, field names also act as display labels.
+It is possible to label the top-level output as well using Juila's
+`pair` constructor (`=>`) and a `Symbol` that represents the label.
+
+    Hello = :greeting => Const("Hello World")
+    run(Hello)
+    #=>
+    │ greeting    │
+    ├─────────────┤
+    │ Hello World │
+    =#
+
+When a record is created, it can use the label from which it
+originates. In this case, the `:greeting` label from `Hello` was
+implicitly used to make the field label.
+
+    run(:seasons => Record(Hello))
+    #=>
+    │ seasons     │
+    │ greeting    │
+    ├─────────────┤
+    │ Hello World │
+    =#
+
+Records can be plural. Here is a table of obvious statistics.
+
+    Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)
+    run(Range(3) >> Stats)
+    #=>
+      │ DataKnot   │
+      │ n¹  n²  n³ │
+    ──┼────────────┤
+    1 │  1   1   1 │
+    2 │  2   4   8 │
+    3 │  3   9  27 │
+    =#
+
+Calculations could be run on record sets as follows:
+
+    run(Range(3) >> Stats >> (It.n² .+ It.n³))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │       12 │
+    3 │       36 │
+    =#
+
+External data can be turned into plural `Record` knots.
+
+    POLICE = [(name = "GARRY M", salary = 260004),
+              (name = "ANTHONY R", salary = 185364),
+              (name = "DANA A", salary = 170112)]
+
+    DB =
+     :staff =>
+       Const(POLICE) >> Record(It.name, It.salary))
+
+    run(DB)
+    #=>
+      │ staff             │
+      │ name       salary │
+    ──┼───────────────────┤
+    1 │ GARRY M    260004 │
+    2 │ ANTHONY R  185364 │
+    3 │ DANA A     170112 │
+    =#
+
+Records can even contain lists of subordinate records.
+
+    FIRE   = [(name = "JOSE S", salary = 202728),
+              (name = "CHARLES S", salary = 197736)]
+
+    DB =
+     :department =>
+      Record(
+       :name => "FIRE",
+       :staff => Const(FIRE) >> Record(It.name, It.salary))
+
+    run(DB)
+    #=>
+    │ department                              │
+    │ name  staff                             │
+    ├─────────────────────────────────────────┤
+    │ FIRE  JOSE S, 202728; CHARLES S, 197736 │
+    =#
+
+These subordinate records can be summarized.
+
+    run(DB >> Record(:dept => It.name,
+                     :count => Count(It.staff)))
+    #=>
+    │ DataKnot    │
+    │ dept  count │
+    ├─────────────┤
+    │ FIRE      2 │
+    =#
+
+In DataKnots, there are rich abilities to construct and query
+hierarchical data. In a future release, `Merge` and `Unique` will
+permit the direct construction of plural data structures.
+
