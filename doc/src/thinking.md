@@ -365,8 +365,7 @@ pipeline returning the first half of an input stream.
     3 │        3 │
     =#
 
-Using `Then`, this combinator could then be used within pipeline
-composition:
+Using `Then`, this combinator could be used with pipeline composition:
 
     run(Range(6) >> Then(FirstHalf))
     #=>
@@ -377,5 +376,150 @@ composition:
     3 │        3 │
     =#
 
+The `TakeFirst` combinator is similar to `Take(1)`, only that it
+returns a singular, rather than plural knot.
+
+    run(Range(3) >> TakeFirst())
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        1 │
+    =#
+
 In DataKnots, filtering and paging operations can be used to build
 interesting components that can then be reused within queries.
+
+### Query Parameters
+
+With DataKnots, parameters can be provided so that static data can
+be used within query expressions. By convention, we use upper case,
+singular labels for query parameters.
+
+    run(Lookup(:DATA), DATA="Hello World")
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ Hello World │
+    =#
+
+To make `Lookup` convenient, `It` provides a shorthand syntax.
+
+    run(It.DATA, DATA="Hello World")
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ Hello World │
+    =#
+
+If a query parameter is a list, it is accessible as a plural knot.
+
+    run(It.DATA, DATA=["GARRY M", "ANTHONY R", "DANA A"])
+    #=>
+      │ DataKnot  │
+    ──┼───────────┤
+    1 │ GARRY M   │
+    2 │ ANTHONY R │
+    3 │ DANA A    │
+    =#
+
+Named tuples are also supported, so that tabular data can be accessed
+within queries.
+
+    DATA =[(name = "GARRY M", salary = 260004),
+           (name = "ANTHONY R", salary = 185364),
+           (name = "DANA A", salary = 170112)]
+
+    run(It.DATA, DATA=DATA)
+    #=>
+      │ DataKnot                              │
+    ──┼───────────────────────────────────────┤
+    1 │ (name = "GARRY M", salary = 260004)   │
+    2 │ (name = "ANTHONY R", salary = 185364) │
+    3 │ (name = "DANA A", salary = 170112)    │
+    =#
+
+Access to slots in a named tuple is done with `Field`.
+
+    run(It.DATA >> Field(:name), DATA=DATA)
+    #=>
+      │ DataKnot  │
+    ──┼───────────┤
+    1 │ GARRY M   │
+    2 │ ANTHONY R │
+    3 │ DANA A    │
+    =#
+
+For convenience, named tuple field access is also provided by `It`.
+
+    run(It.DATA >> It.name, DATA=DATA)
+    #=>
+      │ DataKnot  │
+    ──┼───────────┤
+    1 │ GARRY M   │
+    2 │ ANTHONY R │
+    3 │ DANA A    │
+    =#
+
+That said, during `Lookup`, parameter access comes before field access,
+hence, express use of `Field` is sometimes necessary. This is also why
+we recommend using lower-case for field names and upper case for
+parameter access.
+
+    run(It.DATA >> It.name, DATA=DATA, name="Unexpected?")
+    #=>
+      │ DataKnot    │
+    ──┼─────────────┤
+    1 │ Unexpected? │
+    2 │ Unexpected? │
+    3 │ Unexpected? │
+    =#
+
+Since DataKnots is based upon sequential processing, there is
+no array access primitive. That said, it isn't hard to make one.
+
+    Index(I) = Drop(I .- 1) >> TakeFirst()
+    run(It.DATA >> Index(2) >> It.name, DATA=DATA)
+    #=>
+    │ DataKnot  │
+    ┼───────────┤
+    │ ANTHONY R │
+    =#
+
+Query parameters can also be complete knots.
+
+    run(It.DATA, DATA=run(Range(3)))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        1 │
+    2 │        2 │
+    3 │        3 │
+    =#
+
+In DataKnots, query parameters permit queries to access native Julia
+data structures and even previously generated knots.
+
+### Records
+
+Internally, DataKnots use a column-oriented storage mechanism that
+handles hierarchical and graphs. Data structured in this way can be
+constructed using the `Record` combinator.
+
+    GM = Record(:name => "GARRY M", :salary => 260004)
+    run(GM)
+    #=>
+    │ DataKnot        │
+    │ name     salary │
+    ├─────────────────┤
+    │ GARRY M  260004 │
+    =#
+
+Using the `Field` combinator, one could obtain a particular value
+from a record.
+
+    run(GM >> Record(Field(:name))
+    #=>
+    │ name    │
+    ├─────────┤
+    │ GARRY M │
+    =#
