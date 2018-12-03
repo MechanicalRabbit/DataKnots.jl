@@ -6,10 +6,10 @@ import Base:
     IndexStyle,
     OneTo,
     getindex,
-    setindex!,
     show,
     size,
     summary
+
 
 #
 # Vector of tuples in columnar form.
@@ -18,7 +18,8 @@ import Base:
 # Constructors.
 
 """
-    TupleVector([lbls::Vector{Symbol}], len::Int, cols::Vector{AbstractVector})
+    TupleVector([lbls::Vector{Symbol},] len::Int, cols::Vector{AbstractVector})
+    TupleVector([lbls::Vector{Symbol},] idxs::AbstractVector{Int}, cols::Vector{AbstractVector})
     TupleVector(cols::Pair{Symbol,<:AbstractVector}...)
 
 Vector of tuples stored as a collection of column vectors.
@@ -103,11 +104,11 @@ end
 
 # Printing.
 
-signature_syntax(tv::TupleVector) =
+sigsyntax(tv::TupleVector) =
     if isempty(tv.lbls)
-        Expr(:tuple, [signature_syntax(col) for col in tv.cols]...)
+        Expr(:tuple, sigsyntax.(tv.cols)...)
     else
-        Expr(:tuple, [Expr(:(=), lbl, signature_syntax(col)) for (lbl, col) in zip(tv.lbls, tv.cols)]...)
+        Expr(:tuple, sigsyntax.(tv.lbls .=> tv.cols)...)
     end
 
 show(io::IO, tv::TupleVector) =
@@ -180,6 +181,7 @@ end
     tv′
 end
 
+
 #
 # Vector of vectors in a columnar form.
 #
@@ -188,7 +190,7 @@ end
 
 """
     BlockVector(offs::AbstractVector{Int}, elts::AbstractVector)
-    BlockVector(blks::AbstractVector)
+    BlockVector(:, elts::AbstractVector)
 
 Vector of vectors (blocks) stored as a vector of elements partitioned by a
 vector of offsets.
@@ -211,21 +213,6 @@ end
     bv
 end
 
-function BlockVector(blks::AbstractVector)
-    offs = [1]
-    vals = []
-    for blk in blks
-        if blk isa AbstractVector
-            append!(vals, blk)
-        elseif blk !== missing
-            push!(vals, blk)
-        end
-        push!(offs, length(vals)+1)
-    end
-    @inbounds bv = BlockVector(offs, Base.grow_to!(Vector{Union{}}(), vals))
-    bv
-end
-
 function _checkblock(len::Int, offs::OneTo{Int})
     !isempty(offs) || error("partition must be non-empty")
     offs[end] == len+1 || error("partition must enclose the elements")
@@ -245,8 +232,8 @@ end
 
 # Printing.
 
-signature_syntax(bv::BlockVector) =
-    Expr(:vect, signature_syntax(bv.elts))
+sigsyntax(bv::BlockVector) =
+    Expr(:vect, sigsyntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
     show_columnar(io, bv)
@@ -415,17 +402,20 @@ end
 # Printing columnar vectors.
 #
 
-signature_syntax(v::AbstractVector) = eltype(v)
+sigsyntax(v::AbstractVector) = eltype(v)
+
+sigsyntax(p::Pair{Symbol,<:AbstractVector}) =
+    Expr(:(=), p.first, sigsyntax(p.second))
 
 Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
     if !get(io, :compact, false)::Bool
-        "@VectorTree $(signature_syntax(cv)) "
+        "@VectorTree $(sigsyntax(cv)) "
     else
         ""
     end
 
 summary(io::IO, cv::Union{TupleVector,BlockVector}) =
-    print(io, "$(typeof(cv).name.name) of $(length(cv)) × $(signature_syntax(cv))")
+    print(io, "$(typeof(cv).name.name) of $(length(cv)) × $(sigsyntax(cv))")
 
 show_columnar(io::IO, v::AbstractVector) =
     Base.show_vector(io, v)
@@ -440,126 +430,128 @@ function display_columnar(io::IO, v::AbstractVector)
     Base.print_array(io, v)
 end
 
+
 #
 # @VectorTree constructor.
 #
 
 macro VectorTree(sig, ex)
-    ctor = sig2ctor(sig)
-    ex = vectorize(ctor, ex)
+    mk = sig2mk(sig)
+    ex = vectorize(mk, ex)
     return esc(ex)
 end
 
-function sig2ctor(sig)
+function sig2mk(sig)
     if sig isa Expr && sig.head == :tuple
         lbls = Symbol[]
-        col_ctors = AbstractVectorConstructor[]
+        col_mks = MakeAbstractVector[]
         for arg in sig.args
             if arg isa Expr && arg.head == :(=) && length(arg.args) == 2 && arg.args[1] isa Symbol
                 push!(lbls, arg.args[1])
-                push!(col_ctors, sig2ctor(arg.args[2]))
+                push!(col_mks, sig2mk(arg.args[2]))
             else
-                push!(col_ctors, sig2ctor(arg))
+                push!(col_mks, sig2mk(arg))
             end
         end
-        return TupleVectorConstructor(lbls, col_ctors)
+        return MakeTupleVector(lbls, col_mks)
     elseif sig isa Expr && sig.head == :vect && length(sig.args) == 1
-        elts_ctor = sig2ctor(sig.args[1])
-        return BlockVectorConstructor(elts_ctor)
+        elts_mk = sig2mk(sig.args[1])
+        return MakeBlockVector(elts_mk)
     else
         ty = sig
-        return VectorConstructor(ty)
+        return MakeVector(ty)
     end
 end
 
-abstract type AbstractVectorConstructor end
+abstract type MakeAbstractVector end
 
-mutable struct TupleVectorConstructor <: AbstractVectorConstructor
+mutable struct MakeTupleVector <: MakeAbstractVector
     lbls::Vector{Symbol}
-    col_ctors::Vector{AbstractVectorConstructor}
+    col_mks::Vector{MakeAbstractVector}
     len::Int
 
-    TupleVectorConstructor(lbls, col_ctors) = new(lbls, col_ctors, 0)
+    MakeTupleVector(lbls, col_mks) = new(lbls, col_mks, 0)
 end
 
-mutable struct BlockVectorConstructor <: AbstractVectorConstructor
-    elts_ctor::AbstractVectorConstructor
+mutable struct MakeBlockVector <: MakeAbstractVector
+    elts_mk::MakeAbstractVector
     offs::Vector{Int}
     top::Int
 
-    BlockVectorConstructor(elts_ctor) = new(elts_ctor, [1], 1)
+    MakeBlockVector(elts_mk) = new(elts_mk, [1], 1)
 end
 
-mutable struct VectorConstructor <: AbstractVectorConstructor
+mutable struct MakeVector <: MakeAbstractVector
     ty::Any
     vals::Vector{Any}
 
-    VectorConstructor(ty) = new(ty, [])
+    MakeVector(ty) = new(ty, [])
 end
 
-function vectorize(ctor::AbstractVectorConstructor, ex)
+function vectorize(mk::MakeAbstractVector, ex)
     if ex isa Expr && (ex.head == :vect || ex.head == :vcat)
         for arg in ex.args
-            rearrange!(ctor, arg)
+            _rearrange!(mk, arg)
         end
-        return reconstruct(ctor)
+        return _reconstruct(mk)
     else
         error("expected a vector literal; got $(repr(ex))")
     end
 end
 
-function rearrange!(ctor::TupleVectorConstructor, ex)
+function _rearrange!(mk::MakeTupleVector, ex)
     if ex isa Expr && (ex.head == :tuple || ex.head == :row)
-        if length(ex.args) == length(ctor.col_ctors)
-            for (j, (arg, col_ctor)) in enumerate(zip(ex.args, ctor.col_ctors))
+        if length(ex.args) == length(mk.col_mks)
+            for (j, (arg, col_mk)) in enumerate(zip(ex.args, mk.col_mks))
                 if arg isa Expr && arg.head == :(=) && length(arg.args) == 2
-                    if j <= length(ctor.lbls) && arg.args[1] == ctor.lbls[j]
+                    if j <= length(mk.lbls) && arg.args[1] == mk.lbls[j]
                         arg = arg.args[2]
-                    elseif j < length(ctor.lbls)
-                        error("expected label $(repr(ctor.lbls[j])); got $(repr(arg))")
+                    elseif j < length(mk.lbls)
+                        error("expected label $(repr(mk.lbls[j])); got $(repr(arg))")
                     else
                         error("expected no label; got $(repr(arg))")
                     end
                 end
-                rearrange!(col_ctor, arg)
+                _rearrange!(col_mk, arg)
             end
         else
-            error("expected $(length(ctor.col_ctors)) column(s); got $(repr(ex))")
+            error("expected $(length(mk.col_mks)) column(s); got $(repr(ex))")
         end
-        ctor.len += 1
-    elseif length(ctor.col_ctors) == 1
-        rearrange!(ctor.col_ctors[1], ex)
-        ctor.len += 1
+        mk.len += 1
+    elseif length(mk.col_mks) == 1
+        _rearrange!(mk.col_mks[1], ex)
+        mk.len += 1
     else
         error("expected a tuple or a row literal; got $(repr(ex))")
     end
 end
 
-function rearrange!(ctor::BlockVectorConstructor, ex)
+function _rearrange!(mk::MakeBlockVector, ex)
     if ex isa Expr && (ex.head == :vect || ex.head == :vcat)
         for arg in ex.args
-            rearrange!(ctor.elts_ctor, arg)
-            ctor.top += 1
+            _rearrange!(mk.elts_mk, arg)
+            mk.top += 1
         end
     elseif ex !== :missing
-        rearrange!(ctor.elts_ctor, ex)
-        ctor.top += 1
+        _rearrange!(mk.elts_mk, ex)
+        mk.top += 1
     end
-    push!(ctor.offs, ctor.top)
+    push!(mk.offs, mk.top)
 end
 
-function rearrange!(ctor::VectorConstructor, ex)
-    push!(ctor.vals, ex)
+function _rearrange!(mk::MakeVector, ex)
+    push!(mk.vals, ex)
 end
 
-reconstruct(ctor::TupleVectorConstructor) =
+_reconstruct(mk::MakeTupleVector) =
     Expr(:call, TupleVector,
-                ctor.lbls,
-                ctor.len,
-                Expr(:ref, AbstractVector, map(reconstruct, ctor.col_ctors)...))
+                mk.lbls,
+                mk.len,
+                Expr(:ref, AbstractVector, _reconstruct.(mk.col_mks)...))
 
-reconstruct(ctor::BlockVectorConstructor) =
-    Expr(:call, BlockVector, ctor.offs, reconstruct(ctor.elts_ctor))
+_reconstruct(mk::MakeBlockVector) =
+    Expr(:call, BlockVector, mk.offs, _reconstruct(mk.elts_mk))
 
-reconstruct(ctor::VectorConstructor) =
-    Expr(:ref, ctor.ty, ctor.vals...)
+_reconstruct(mk::MakeVector) =
+    Expr(:ref, mk.ty, mk.vals...)
+

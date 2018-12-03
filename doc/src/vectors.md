@@ -279,7 +279,7 @@ column vectors.  Updated column vectors are generated on demand.
 `BlockVector` is a vector of homogeneous vectors (blocks) stored as a vector of
 elements partitioned into individual blocks by a vector of offsets.
 
-    bv = BlockVector([["HEALTH"], ["FINANCE", "HUMAN RESOURCES"], [], ["POLICE", "FIRE"]])
+    bv = BlockVector([1, 2, 4, 4, 6], ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"])
     #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
 
     display(bv)
@@ -290,17 +290,6 @@ elements partitioned into individual blocks by a vector of offsets.
      missing
      ["POLICE", "FIRE"]
     =#
-
-We can omit brackets for singular blocks and use `missing` in place of empty
-blocks.
-
-    BlockVector(["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]])
-    #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
-
-It is possible to specify the offset and the element vectors separately.
-
-    BlockVector([1, 2, 4, 4, 6], ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"])
-    #-> @VectorTree [String] ["HEALTH", ["FINANCE", "HUMAN RESOURCES"], missing, ["POLICE", "FIRE"]]
 
 If each block contains exactly one element, we could use `:` in place of the
 offset vector.
