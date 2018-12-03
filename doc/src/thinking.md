@@ -337,5 +337,45 @@ particular point.
     3 │        6 │
     =#
 
-Since these are combinators, their arguments need not be constants,
-they can be full blown pipelines.
+Sometimes it's helpful to encapsulate filter logic as a `Pipeline`
+component so it could be reused. Consider `KeepEven` that would keep
+only even values.
+
+    KeepEven = Filter(iseven.(It))
+    run(Range(6) >> KeepEven)
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
+    =#
+
+Since `Take` is a combinator, its argument could also be a full blown
+pipeline. This next example, `FirstHalf` is a combinator that builds a
+pipeline returning the first half of an input stream.
+
+    FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
+    run(FirstHalf(Range(6)))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        1 │
+    2 │        2 │
+    3 │        3 │
+    =#
+
+Using `Then`, this combinator could then be used within pipeline
+composition:
+
+    run(Range(6) >> Then(FirstHalf))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        1 │
+    2 │        2 │
+    3 │        3 │
+    =#
+
+In DataKnots, filtering and paging operations can be used to build
+interesting components that can then be reused within queries.
