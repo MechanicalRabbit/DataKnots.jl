@@ -395,16 +395,16 @@ With DataKnots, parameters can be provided so that static data can
 be used within query expressions. By convention, we use upper case,
 singular labels for query parameters.
 
-    run(Lookup(:DATA), DATA="Hello World")
+    run("Hello " .* Lookup(:WHO), WHO="World")
     #=>
-    │ DataKnot    │
+    │ WHOKnot    │
     ├─────────────┤
     │ Hello World │
     =#
 
 To make `Lookup` convenient, `It` provides a shorthand syntax.
 
-    run(It.DATA, DATA="Hello World")
+    run("Hello " .* It.WHO, WHO="World")
     #=>
     │ DataKnot    │
     ├─────────────┤
@@ -424,81 +424,38 @@ for example be used within a filter.
     3 │        6 │
     =#
 
-If a query parameter is a list, it is accessible as a plural knot.
+Parameters can also be defined as part of a query using `Given`. This
+combinator takes set of pairs (`=>`) that map symbols (`:name`) onto
+query expressions. The subsequent argument is then evaluated in a
+naming context where the defined parameters are available for reuse.
 
-    run(It.DATA, DATA=["GARRY M", "ANTHONY R", "DANA A"])
+    run(Given(:WHO => "World",
+        "Hello " .* Lookup(:WHO)))
     #=>
-      │ DataKnot  │
-    ──┼───────────┤
-    1 │ GARRY M   │
-    2 │ ANTHONY R │
-    3 │ DANA A    │
+    │ DataKnot    │
+    ├─────────────┤
+    │ Hello World │
     =#
 
-Named tuples are also supported, so that tabular data can be accessed
-within queries.
+Query parameters can be especially useful when managing aggregates, or
+with expressions that one may wish to repeat more than once.
 
-    DATA =[(name = "GARRY M", salary = 260004),
-           (name = "ANTHONY R", salary = 185364),
-           (name = "DANA A", salary = 170112)]
+    GreaterThanAverage(X) =
+      Given(:AVG => Mean(X),
+            X >> Filter(It .> Lookup(:AVG)))
 
-    run(It.DATA, DATA=DATA)
+    run(Range(6) >> Then(GreaterThanAverage))
     #=>
-      │ DataKnot                              │
-    ──┼───────────────────────────────────────┤
-    1 │ (name = "GARRY M", salary = 260004)   │
-    2 │ (name = "ANTHONY R", salary = 185364) │
-    3 │ (name = "DANA A", salary = 170112)    │
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        4 │
+    2 │        5 │
+    3 │        6 │
     =#
 
-Access to slots in a named tuple is also done with `Lookup`.
-
-    run(It.DATA >> Lookup(:name), DATA=DATA)
-    #=>
-      │ DataKnot  │
-    ──┼───────────┤
-    1 │ GARRY M   │
-    2 │ ANTHONY R │
-    3 │ DANA A    │
-    =#
-
-Therefore it could be done via the `It` convenience method.
-
-    run(It.DATA.name, DATA=DATA)
-    #=>
-      │ DataKnot  │
-    ──┼───────────┤
-    1 │ GARRY M   │
-    2 │ ANTHONY R │
-    3 │ DANA A    │
-    =#
-
-Since DataKnots is based upon sequential processing, there is no array
-indexing primitive. That said, it isn't hard to make one.
-
-    Index(I) = Drop(I .- 1) >> TakeFirst()
-    run(It.DATA >> Index(2) >> It.name, DATA=DATA)
-    #=>
-    │ DataKnot  │
-    ┼───────────┤
-    │ ANTHONY R │
-    =#
-
-Together with previous combinators, DataKnots could be used to create
-readable queries, such as "who has the greatest salary"?
-
-    run(It.DATA
-        >> Filter(It.salary .== Max(It.DATA.salary))
-        >> It.name
-        >> TakeFirst())
-    #=>
-    │ DataKnot │
-    ┼──────────┤
-    │ GARRY M  │
-    =#
-
-In DataKnots, query parameters permit queries to access native Julia
-data structures and even previously generated knots.
+In DataKnots, query parameters passed in to the `run` command permit
+external data to be used within query expressions. Parameters that are
+defined with `Given` can be used to remember values and reuse them.
 
 ### Records & Descriptors
 
@@ -572,57 +529,17 @@ Calculations could be run on record sets as follows:
     3 │       36 │
     =#
 
-External data can be turned into plural `Record` knots.
+Any values can be used within a Record, including other records and
+plural values.
 
-    POLICE = [(name = "GARRY M", salary = 260004),
-              (name = "ANTHONY R", salary = 185364),
-              (name = "DANA A", salary = 170112)]
-
-    DB =
-     :staff =>
-       Const(POLICE) >> Record(It.name, It.salary))
-
-    run(DB)
+    run(:nesting_example =>
+        Record(:record => Record("nested"), :list => Range(3)))
     #=>
-      │ staff             │
-      │ name       salary │
-    ──┼───────────────────┤
-    1 │ GARRY M    260004 │
-    2 │ ANTHONY R  185364 │
-    3 │ DANA A     170112 │
+    │ nesting_example │
+    │ record  list    │
+    ├─────────────────┤
+    │ nested  1; 2; 3 │
     =#
 
-Records can even contain lists of subordinate records.
-
-    FIRE   = [(name = "JOSE S", salary = 202728),
-              (name = "CHARLES S", salary = 197736)]
-
-    DB =
-     :department =>
-      Record(
-       :name => "FIRE",
-       :staff => Const(FIRE) >> Record(It.name, It.salary))
-
-    run(DB)
-    #=>
-    │ department                              │
-    │ name  staff                             │
-    ├─────────────────────────────────────────┤
-    │ FIRE  JOSE S, 202728; CHARLES S, 197736 │
-    =#
-
-These subordinate records can be summarized.
-
-    run(DB >> Record(:dept => It.name,
-                     :count => Count(It.staff)))
-    #=>
-    │ DataKnot    │
-    │ dept  count │
-    ├─────────────┤
-    │ FIRE      2 │
-    =#
-
-In DataKnots, there are rich abilities to construct and query
-hierarchical data. In a future release, `Merge` and `Unique` will
-permit the direct construction of plural data structures.
-
+In DataKnots, records provide rich ways to structure data to form
+hierarchies.
