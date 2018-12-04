@@ -566,11 +566,11 @@ Arrays of named tuples can be wrapped with `Const` in order to provide
 a series of tuples. Since DataKnots works fluidly with Julia, any sort
 of Julia object may be used.
 
-    SOURCE = Const([(name = "GARRY M", salary = 260004),
-                    (name = "ANTHONY R", salary = 185364),
-                    (name = "DANA A", salary = 170112)])
+    DATA = Const([(name = "GARRY M", salary = 260004),
+                  (name = "ANTHONY R", salary = 185364),
+                  (name = "DANA A", salary = 170112)])
 
-    run(SOURCE)
+    run(DATA)
     #=>
       │ DataKnot                              │
     ──┼───────────────────────────────────────┤
@@ -581,7 +581,7 @@ of Julia object may be used.
 
 Access to slots in a named tuple is also done with `Lookup`.
 
-    run(SOURCE >> Lookup(:name))
+    run(DATA >> Lookup(:name))
     #=>
       │ DataKnot  │
     ──┼───────────┤
@@ -592,7 +592,7 @@ Access to slots in a named tuple is also done with `Lookup`.
 
 This data could be turned into plural records.
 
-    DATA = run(:staff => SOURCE >> Record(It.name, It.salary))
+    run(:staff => DATA >> Record(It.name, It.salary))
     #=>
       │ staff             │
       │ name       salary │
@@ -624,6 +624,15 @@ Records can even contain lists of subordinate records.
        :staff => It.FIRE >> Record(It.name, It.salary)),
      FIRE=[(name = "JOSE S", salary = 202728),
            (name = "CHARLES S", salary = 197736)])
+    #=>
+    │ department                    │
+    │ name  staff                   │
+    ├───────────────────────────────┤
+    │ FIRE    │ name       salary │ │       
+    │       ──┼───────────────────┤ │       
+    │       1 │ JOSE S     202728 │ │       
+    │       2 │ CHARLES S  197736 │ │       
+    =#
 
 These subordinate records can then be summarized.
 
