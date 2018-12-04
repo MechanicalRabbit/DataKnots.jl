@@ -457,7 +457,7 @@ In DataKnots, query parameters passed in to the `run` command permit
 external data to be used within query expressions. Parameters that are
 defined with `Given` can be used to remember values and reuse them.
 
-### Records & Descriptors
+### Records & Labels
 
 Internally, DataKnots use a column-oriented storage mechanism that
 handles hierarchies and graphs. Data objects in this model can be
@@ -482,8 +482,19 @@ Field access is also possible via `Lookup` or via the `It` shortcut.
     =#
 
 As seen in the output above, field names also act as display labels.
-It is possible to label the top-level output as well using Juila's
-`pair` constructor (`=>`) and a `Symbol` that represents the label.
+It is possible to provide a name to any expression with the `Label`
+combinator. Labeling doesn't affect the actual output, only the field
+name given to the expression and its display.
+
+    run(Const("Hello World") >> Label("greeting")
+    #=>
+    │ greeting    │
+    ├─────────────┤
+    │ Hello World │
+    =#
+
+Alternatively, Julia's pair constructor (`=>`) and and a `Symbol`
+denoted by a colon (`:`) can be used to label an expression.
 
     Hello = :greeting => Const("Hello World")
     run(Hello)
@@ -494,8 +505,9 @@ It is possible to label the top-level output as well using Juila's
     =#
 
 When a record is created, it can use the label from which it
-originates. In this case, the `:greeting` label from `Hello` was
-implicitly used to make the field label.
+originates. In this case, the `:greeting` label from the `Hello` is
+used to make the field label used within the `Record`. The record
+itself is also expressly labeled.
 
     run(:seasons => Record(Hello))
     #=>
@@ -532,14 +544,18 @@ Calculations could be run on record sets as follows:
 Any values can be used within a Record, including other records and
 plural values.
 
-    run(:nesting_example =>
-        Record(:record => Record("nested"), :list => Range(3)))
+    run(:work_schedule =>
+     Record(:staff => Record(:name => "Jim Rockford",
+                             :phone => "555-2368"),
+            :workday => Const(["Su", "M","Tu", "F"])))
     #=>
-    │ nesting_example │
-    │ record  list    │
-    ├─────────────────┤
-    │ nested  1; 2; 3 │
+    │ work_schedule                            │
+    │ staff                       workday      │
+    ├──────────────────────────────────────────┤
+    │ │ name          phone    │  Su; M; Tu; F │
+    │ ├────────────────────────┤               │
+    │ │ Jim Rockford  555-2386 │               │
     =#
 
 In DataKnots, records provide rich ways to structure data to form
-hierarchies.
+hierarchies and other rich data structures.
