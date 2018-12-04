@@ -564,35 +564,14 @@ hierarchies and other rich data structures.
 
 Arrays of named tuples can be wrapped with `Const` in order to provide
 a series of tuples. Since DataKnots works fluidly with Julia, any sort
-of Julia object may be used.
+of Julia object may be used. In this case, `NamedTuple` has special
+support so that it prints well.
 
     DATA = Const([(name = "GARRY M", salary = 260004),
                   (name = "ANTHONY R", salary = 185364),
                   (name = "DANA A", salary = 170112)])
 
-    run(DATA)
-    #=>
-      │ DataKnot                              │
-    ──┼───────────────────────────────────────┤
-    1 │ (name = "GARRY M", salary = 260004)   │
-    2 │ (name = "ANTHONY R", salary = 185364) │
-    3 │ (name = "DANA A", salary = 170112)    │
-    =#
-
-Access to slots in a named tuple is also done with `Lookup`.
-
-    run(DATA >> Lookup(:name))
-    #=>
-      │ DataKnot  │
-    ──┼───────────┤
-    1 │ GARRY M   │
-    2 │ ANTHONY R │
-    3 │ DANA A    │
-    =#
-
-This data could be turned into plural records.
-
-    run(:staff => DATA >> Record(It.name, It.salary))
+    run(:staff => DATA)
     #=>
       │ staff             │
       │ name       salary │
@@ -602,14 +581,25 @@ This data could be turned into plural records.
     3 │ DANA A     170112 │
     =#
 
+Access to slots in a `NamedTuple` is also supported by `Lookup`.
+
+    run(DATA >> Lookup(:name))
+    #=>
+      │ name      │
+    ──┼───────────┤
+    1 │ GARRY M   │
+    2 │ ANTHONY R │
+    3 │ DANA A    │
+    =#
+
 Together with previous combinators, DataKnots could be used to create
 readable queries, such as "who has the greatest salary"?
 
-    run(Given(:MAX => Max(DATA >> It.salary),
-        DATA >> Filter(It.salary .== Lookup(:MAX))
-             >> Record(It.name, It.salary)))
+    run(:highest_salary =>
+      Given(:MAX => Max(DATA >> It.salary),
+            DATA >> Filter(It.salary .== Lookup(:MAX))))
     #=>
-      │ DataKnot        │
+      │ highest_salary  │
       │ name     salary │
     ──┼─────────────────┤
     1 │ GARRY M  260004 │
@@ -617,29 +607,28 @@ readable queries, such as "who has the greatest salary"?
 
 Records can even contain lists of subordinate records.
 
-    DB = run(
-     :department =>
-      Record(
-       :name => "FIRE",
-       :staff => It.FIRE >> Record(It.name, It.salary)),
-     FIRE=[(name = "JOSE S", salary = 202728),
-           (name = "CHARLES S", salary = 197736)])
+    DB =
+      run(:department =>
+        Record(:name => "FIRE", :staff => It.FIRE),
+        FIRE=[(name = "JOSE S", salary = 202728),
+              (name = "CHARLES S", salary = 197736)])
     #=>
     │ department                    │
     │ name  staff                   │
     ├───────────────────────────────┤
-    │ FIRE    │ name       salary │ │       
-    │       ──┼───────────────────┤ │       
-    │       1 │ JOSE S     202728 │ │       
-    │       2 │ CHARLES S  197736 │ │       
+    │ FIRE    │ name       salary │ │
+    │       ──┼───────────────────┤ │
+    │       1 │ JOSE S     202728 │ │
+    │       2 │ CHARLES S  197736 │ │
     =#
 
 These subordinate records can then be summarized.
 
-    run(DB >> Record(:dept => It.name,
-                     :count => Count(It.staff)))
+    run(:statistics =>
+      DB >> Record(:dept => It.name,
+                   :count => Count(It.staff)))
     #=>
-    │ DataKnot    │
+    │ statistics  |
     │ dept  count │
     ├─────────────┤
     │ FIRE      2 │
