@@ -11,7 +11,7 @@ To start working with DataKnots, we import the package:
 
     using DataKnots
 
-## Introduction to DataKnots
+## Constructing Pipelines
 
 Consider a pipeline `Hello` that produces a `DataKnot` containing a
 string value, `"Hello World"`. It is built using the `Const` primitive,
@@ -486,7 +486,7 @@ It is possible to provide a name to any expression with the `Label`
 combinator. Labeling doesn't affect the actual output, only the field
 name given to the expression and its display.
 
-    run(Const("Hello World") >> Label("greeting")
+    run(Const("Hello World") >> Label(:greeting)
     #=>
     │ greeting    │
     ├─────────────┤
@@ -559,3 +559,108 @@ plural values.
 
 In DataKnots, records provide rich ways to structure data to form
 hierarchies and other rich data structures.
+
+## Working With Data
+
+Arrays of named tuples can be wrapped with `Const` in order to provide
+a series of tuples. Since DataKnots works fluidly with Julia, any sort
+of Julia object may be used.
+
+    DATA =[(name = "GARRY M", salary = 260004),
+           (name = "ANTHONY R", salary = 185364),
+           (name = "DANA A", salary = 170112)]
+
+    run(Const(DATA))
+    #=>
+      │ DataKnot                              │
+    ──┼───────────────────────────────────────┤
+    1 │ (name = "GARRY M", salary = 260004)   │
+    2 │ (name = "ANTHONY R", salary = 185364) │
+    3 │ (name = "DANA A", salary = 170112)    │
+    =#
+
+Access to slots in a named tuple is also done with `Lookup`.
+
+    run(Const(DATA) >> Lookup(:name))
+    #=>
+      │ DataKnot  │
+    ──┼───────────┤
+    1 │ GARRY M   │
+    2 │ ANTHONY R │
+    3 │ DANA A    │
+    =#
+
+Since DataKnots is based upon sequential processing, there is no array
+indexing primitive. That said, it isn't hard to make one.
+
+    Index(I) = Drop(I .- 1) >> TakeFirst()
+    run(Const(It.DATA) >> Index(2) >> It.name)
+    #=>
+    │ DataKnot  │
+    ┼───────────┤
+    │ ANTHONY R │
+    =#
+
+Together with previous combinators, DataKnots could be used to create
+readable queries, such as "who has the greatest salary"?
+
+    run(Const(DATA)
+        >> Given(:max => Max(It.salary),
+             Filter(It.salary .== Lookup(:max))
+             >> It.name
+             >> TakeFirst()))
+    #=>
+    │ DataKnot │
+    ┼──────────┤
+    │ GARRY M  │
+    =#
+
+External data can be turned into plural `Record` knots.
+
+    POLICE = [(name = "GARRY M", salary = 260004),
+              (name = "ANTHONY R", salary = 185364),
+              (name = "DANA A", salary = 170112)]
+
+    DB =
+     :staff =>
+       Const(POLICE) >> Record(It.name, It.salary))
+
+    run(DB)
+    #=>
+      │ staff             │
+      │ name       salary │
+    ──┼───────────────────┤
+    1 │ GARRY M    260004 │
+    2 │ ANTHONY R  185364 │
+    3 │ DANA A     170112 │
+    =#
+
+Records can even contain lists of subordinate records.
+
+    FIRE   = [(name = "JOSE S", salary = 202728),
+              (name = "CHARLES S", salary = 197736)]
+
+    DB =
+     :department =>
+      Record(
+       :name => "FIRE",
+       :staff => Const(FIRE) >> Record(It.name, It.salary))
+
+    run(DB)
+    #=>
+    │ department                              │
+    │ name  staff                             │
+    ├─────────────────────────────────────────┤
+    │ FIRE  JOSE S, 202728; CHARLES S, 197736 │
+    =#
+
+These subordinate records can be summarized.
+
+    run(DB >> Record(:dept => It.name,
+                     :count => Count(It.staff)))
+    #=>
+    │ DataKnot    │
+    │ dept  count │
+    ├─────────────┤
+    │ FIRE      2 │
+    =#
