@@ -228,24 +228,20 @@ function lift_to_block(rt::Runtime, input::AbstractVector, f, default)
 end
 
 function _lift_to_block(f, input)
-    cr = cursor(input)
-    I = Tuple{typeof(cr)}
+    I = Tuple{typeof(cursor(input))}
     O = Core.Compiler.return_type(f, I)
     output = Vector{O}(undef, length(input))
-    @inbounds while !done(cr)
-        next!(cr)
+    @inbounds for cr in cursor(input)
         output[cr.pos] = f(cr)
     end
     output
 end
 
 function _lift_to_block(f, default, input)
-    cr = cursor(input)
-    I = Tuple{typeof(cr)}
+    I = Tuple{typeof(cursor(input))}
     O = Union{Core.Compiler.return_type(f, I), typeof(default)}
     output = Vector{O}(undef, length(input))
-    @inbounds while !done(cr)
-        next!(cr)
+    @inbounds for cr in cursor(input)
         output[cr.pos] = !isempty(cr) ? f(cr) : default
     end
     output

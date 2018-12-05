@@ -201,8 +201,18 @@ using regular tuple and vector literals.
 ## API Reference
 
 ```@docs
+DataKnots.@VectorTree
+DataKnots.BlockCursor
 DataKnots.BlockVector
 DataKnots.TupleVector
+DataKnots.column(::DataKnots.TupleVector, ::Int)
+DataKnots.columns
+DataKnots.cursor
+DataKnots.elements
+DataKnots.labels
+DataKnots.locate
+DataKnots.offsets
+DataKnots.width
 ```
 
 
@@ -325,9 +335,6 @@ We can access individual components of the vector.
     elements(bv)
     #-> ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"]
 
-    partition(bv)
-    #-> ([1, 2, 4, 4, 6], ["HEALTH", "FINANCE", "HUMAN RESOURCES", "POLICE", "FIRE"])
-
 When indexed by a vector of indexes, an instance of `BlockVector` is returned.
 
     elts = ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
@@ -393,7 +400,8 @@ Column labels are optional.
     @VectorTree (String, Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
     #-> @VectorTree (String, Int) [("GARRY M", 260004) … ]
 
-`BlockVector` can also be constructed.
+`BlockVector` is constructed from a vector of vector literals.  A one-element
+block could be represented by the element itself; an empty block by `missing`.
 
     @VectorTree [String] [
         "HEALTH",

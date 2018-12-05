@@ -6,6 +6,7 @@ import Base:
     IndexStyle,
     OneTo,
     getindex,
+    iterate,
     show,
     size,
     summary
@@ -119,10 +120,26 @@ show(io::IO, ::MIME"text/plain", tv::TupleVector) =
 
 # Properties.
 
+"""
+    labels(::TupleVector) :: Vector{Symbol}
+
+Returns a vector of column labels.  Returns an empty list if the columns have
+no labels assigned.
+"""
 @inline labels(tv::TupleVector) = tv.lbls
 
+"""
+    width(::TupleVector) :: Int
+
+Returns the number of columns.
+"""
 @inline width(tv::TupleVector) = length(tv.cols)
 
+"""
+    columns(::TupleVector) :: Vector{AbstractVector}
+
+Returns a vector of column vectors.
+"""
 function columns(tv::TupleVector)
     for j = 1:length(tv.cols)
         if !isassigned(tv.icols, j)
@@ -132,6 +149,12 @@ function columns(tv::TupleVector)
     tv.icols
 end
 
+"""
+    column(::TupleVector, j::Int) :: AbstractVector
+    column(::TupleVector, lbl::Symbol) :: AbstractVector
+
+Returns the `j`-th column or the column with the given label.
+"""
 function column(tv::TupleVector, j::Int)
     if !isassigned(tv.icols, j)
         @inbounds tv.icols[j] = tv.cols[j][tv.idxs]
@@ -145,6 +168,11 @@ end
 @inline locate(tv::TupleVector, j::Int) =
     1 <= j <= length(tv.cols) ? j : nothing
 
+"""
+    locate(::TupleVector, lbl::Symbol) :: Union{Int,Nothing}
+
+Finds the column position by its label.
+"""
 @inline locate(tv::TupleVector, lbl::Symbol) =
     findfirst(isequal(lbl), tv.lbls)
 
@@ -243,11 +271,19 @@ show(io::IO, ::MIME"text/plain", bv::BlockVector) =
 
 # Properties.
 
+"""
+    offsets(::BlockVector) :: AbstractVector{Int}
+
+Returns the vector of offsets.
+"""
 @inline offsets(bv::BlockVector) = bv.offs
 
-@inline elements(bv::BlockVector) = bv.elts
+"""
+    elements(::BlockVector) :: AbstractVector
 
-@inline partition(bv::BlockVector) = (bv.offs, bv.elts)
+Returns the vector of elements.
+"""
+@inline elements(bv::BlockVector) = bv.elts
 
 # Vector interface.
 
@@ -327,8 +363,13 @@ function _getindex(bv::BlockVector{OneTo{Int}}, ks::OneTo)
     bv′
 end
 
-# Mutable view over a block vector.
+# Allocation-free view.
 
+"""
+    BlockCursor(::BlockVector)
+
+Mutable view over `BlockVector`.
+"""
 mutable struct BlockCursor{T,O<:AbstractVector{Int},E<:AbstractVector{T}} <: AbstractVector{T}
     pos::Int
     l::Int
@@ -354,6 +395,13 @@ BlockCursor(pos, l, r, bv::BlockVector{O,E}) where {T,O<:AbstractVector{Int},E<:
 
 # Cursor interface for block vector.
 
+"""
+    cursor(::BlockVector) :: BlockCursor
+    cursor(::BlockVector, ::Int) :: BlockCursor
+
+Creates a cursor at the beginning or at the given position of the `BlockVector`
+instance.
+"""
 @inline cursor(bv::BlockVector) =
     BlockCursor(bv)
 
@@ -361,24 +409,13 @@ BlockCursor(pos, l, r, bv::BlockVector{O,E}) where {T,O<:AbstractVector{Int},E<:
     BlockCursor(pos, bv)
 end
 
-@inline function move!(cr::BlockCursor, pos::Int)
-    @boundscheck checkbounds(cr.offs, pos:pos+1)
-    cr.pos = pos
-    @inbounds cr.l = cr.offs[pos]
-    @inbounds cr.r = cr.offs[pos+1]
-    cr
-end
-
-@inline function next!(cr::BlockCursor)
-    @boundscheck checkbounds(cr.offs, cr.pos+1)
+@inline function iterate(cr::BlockCursor, ::Nothing=nothing)
     cr.pos += 1
     cr.l = cr.r
+    cr.pos < length(cr.offs) || return nothing
     @inbounds cr.r = cr.offs[cr.pos+1]
-    cr
+    (cr, nothing)
 end
-
-@inline done(cr::BlockCursor) =
-    cr.pos+1 >= length(cr.offs)
 
 # Vector interface for cursor.
 
@@ -435,9 +472,30 @@ end
 # @VectorTree constructor.
 #
 
-macro VectorTree(sig, ex)
+"""
+    @VectorTree sig vec
+
+Generates a columnar vector from a regular vector literal.
+
+The first parameter, `sig`, describes the shape of the columnar vector.  It is
+defined recursively:
+
+- Julia type `T` indicates a regular vector of type `T`.
+- Tuple `(col₁, col₂, ...)` indicates a `TupleVector` instance.
+- Named tuple `(lbl₁ = col₁, lbl₂ = col₂, ...)` indicates a `TupleVector` instance
+  with the given labels.
+- One-element vector `[elt]` indicates a `BlockVector` instance.
+
+The second parameter, `vec`, is a vector literal in row-oriented format:
+
+- `TupleVector` data is specified either by a vector of (named) tuples or by a
+  matrix.
+- `BlockVector` data is specified by a vector of vectors.  A one-element block
+  could be represented by its element; an empty block by `missing` literal.
+"""
+macro VectorTree(sig, vec)
     mk = sig2mk(sig)
-    ex = vectorize(mk, ex)
+    ex = vectorize(mk, vec)
     return esc(ex)
 end
 
