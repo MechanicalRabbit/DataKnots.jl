@@ -17,6 +17,10 @@ env:
   global:
   - DOCUMENTER_DEBUG=true
 
+script:
+- if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+- julia --color=yes -e 'using Pkg; Pkg.clone("https://github.com/rbt-lang/PPrint.jl"); Pkg.build(); Pkg.test(coverage=true)'
+
 after_success:
 # push coverage results
 - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("test/coverage.jl")'
