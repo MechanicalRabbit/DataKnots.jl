@@ -32,5 +32,5 @@ jobs:
     os: linux
     julia: 1.0
     script:
-    - julia -e 'using Pkg; cd(Pkg.dir("DataKnots")); include("doc/make.jl")'
+    - julia -e 'using Pkg; Pkg.clone("https://github.com/rbt-lang/PPrint.jl"); cd(Pkg.dir("DataKnots")); include("doc/make.jl")'
     after_success: skip
