@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../thinking/">Thinking in DataKnots</a></li><li><a class="toctext" href="../usage/">Usage Guide</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Query Algebra</a><ul class="internal"></ul></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/pipelines.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><pre><code class="language-julia">using DataKnots
+
+db = DataKnot(3)
+
+F = (It .+ 4) &gt;&gt; (It .* 6)
+#-&gt; (It .+ 4) &gt;&gt; It .* 6
+
+run(db &gt;&gt; F)
+#=&gt;
+│ DataKnot │
+├──────────┤
+│       42 │
+=#
+
+using DataKnots: prepare
+
+prepare(DataKnot(3) &gt;&gt; F)
+#=&gt;
+chain_of(lift_block([3]),
+         in_block(chain_of(tuple_of([], [as_block(), lift_block([4])]),
+                           lift_to_block_tuple(+))),
+         flat_block(),
+         in_block(chain_of(tuple_of([], [as_block(), lift_block([6])]),
+                           lift_to_block_tuple(*))),
+         flat_block())
+=#
+
+using DataKnots: @VectorTree
+
+db = DataKnot(
+    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
+        &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
+        &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
+    ])
+#=&gt;
+  │ DataKnot                                                   │
+  │ name    employee                                           │
+──┼────────────────────────────────────────────────────────────┤
+1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
+2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
+=#
+
+run(db &gt;&gt; Field(:name))
+#=&gt;
+  │ name   │
+──┼────────┤
+1 │ POLICE │
+2 │ FIRE   │
+=#
+
+run(db &gt;&gt; It.name)
+#=&gt;
+  │ name   │
+──┼────────┤
+1 │ POLICE │
+2 │ FIRE   │
+=#
+
+run(db &gt;&gt; Field(:employee) &gt;&gt; Field(:salary))
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 260004 │
+2 │ 185364 │
+3 │ 170112 │
+4 │ 202728 │
+5 │ 197736 │
+=#
+
+run(db &gt;&gt; It.employee.salary)
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 260004 │
+2 │ 185364 │
+3 │ 170112 │
+4 │ 202728 │
+5 │ 197736 │
+=#
+
+run(db &gt;&gt; Count(It.employee))
+#=&gt;
+  │ DataKnot │
+──┼──────────┤
+1 │        3 │
+2 │        2 │
+=#
+
+run(db &gt;&gt; Count)
+#=&gt;
+│ DataKnot │
+├──────────┤
+│        2 │
+=#
+
+run(db &gt;&gt; Count(It.employee) &gt;&gt; Max)
+#=&gt;
+│ DataKnot │
+├──────────┤
+│        3 │
+=#
+
+run(db &gt;&gt; It.employee &gt;&gt; Filter(It.salary .&gt; 200000))
+#=&gt;
+  │ employee        │
+  │ name     salary │
+──┼─────────────────┤
+1 │ GARRY M  260004 │
+2 │ JOSE S   202728 │
+=#
+
+run(db &gt;&gt; Count(It.employee) .&gt; 2)
+#=&gt;
+  │ DataKnot │
+──┼──────────┤
+1 │     true │
+2 │    false │
+=#
+
+run(db &gt;&gt; Filter(Count(It.employee) .&gt; 2))
+#=&gt;
+  │ DataKnot                                                   │
+  │ name    employee                                           │
+──┼────────────────────────────────────────────────────────────┤
+1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
+=#
+
+run(db &gt;&gt; Filter(Count(It.employee) .&gt; 2) &gt;&gt; Count)
+#=&gt;
+│ DataKnot │
+├──────────┤
+│        1 │
+=#
+
+run(db &gt;&gt; Record(It.name, :size =&gt; Count(It.employee)))
+#=&gt;
+  │ DataKnot     │
+  │ name    size │
+──┼──────────────┤
+1 │ POLICE     3 │
+2 │ FIRE       2 │
+=#
+
+run(db &gt;&gt; It.employee &gt;&gt; Filter(It.salary .&gt; It.S),
+      S=200000)
+#=&gt;
+  │ employee        │
+  │ name     salary │
+──┼─────────────────┤
+1 │ GARRY M  260004 │
+2 │ JOSE S   202728 │
+=#
+
+run(
+    db &gt;&gt; Given(:S =&gt; Max(It.employee.salary),
+                It.employee &gt;&gt; Filter(It.salary .== It.S)))
+#=&gt;
+  │ employee        │
+  │ name     salary │
+──┼─────────────────┤
+1 │ GARRY M  260004 │
+2 │ JOSE S   202728 │
+=#
+
+run(db &gt;&gt; It.employee.salary &gt;&gt; Take(3))
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 260004 │
+2 │ 185364 │
+3 │ 170112 │
+=#
+
+run(db &gt;&gt; It.employee.salary &gt;&gt; Drop(3))
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 202728 │
+2 │ 197736 │
+=#
+
+run(db &gt;&gt; It.employee.salary &gt;&gt; Take(-3))
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 260004 │
+2 │ 185364 │
+=#
+
+run(db &gt;&gt; It.employee.salary &gt;&gt; Drop(-3))
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 170112 │
+2 │ 202728 │
+3 │ 197736 │
+=#
+
+run(db &gt;&gt; It.employee.salary &gt;&gt; Take(Count(db &gt;&gt; It.employee) .÷ 2))
+#=&gt;
+  │ salary │
+──┼────────┤
+1 │ 260004 │
+2 │ 185364 │
+=#</code></pre><footer><hr/><a class="previous" href="../lifting/"><span class="direction">Previous</span><span class="title">Lifting Scalar Functions to Combinators</span></a></footer></article></body></html>
