@@ -544,12 +544,12 @@ function lookup(ity::Type{<:NamedTuple}, name)
             lift(f),
             decode_vector(),
         ) |> designate(InputShape(ity),
-                       OutputShape(ety, OPT|PLU))
+                       OutputShape(name, ety, OPT|PLU))
     else
         r = chain_of(
             lift(f),
             as_block()
-        ) |> designate(InputShape(ity), OutputShape(oty))
+        ) |> designate(InputShape(ity), OutputShape(name, oty))
     end
     r
 end
