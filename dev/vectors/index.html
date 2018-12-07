@@ -1,35 +1,43 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Column Store · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../thinking/">Thinking in DataKnots</a></li><li><a class="toctext" href="../usage/">Usage Guide</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Column Store</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Column Store</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/vectors.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Column Store</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Column-Store-1" href="#Column-Store-1">Column Store</a></h1><h2><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h2><p>Module <code>DataKnots</code> contains an implementation of an in-memory column store.</p><pre><code class="language-julia">using DataKnots:
     @VectorTree,
+    OPT,
+    PLU,
+    REG,
     BlockVector,
+    Cardinality,
     TupleVector,
+    cardinality,
     column,
     columns,
     elements,
+    isoptional,
+    isplural,
+    isregular,
     labels,
     offsets,
-    partition,
-    width</code></pre><h3><a class="nav-anchor" id="Tabular-data-1" href="#Tabular-data-1">Tabular data</a></h3><p>Structured data can often be represented in a tabular form.  For example, information about city employees can be arranged in the following table.</p><table><tr><th>name</th><th>position</th><th>salary</th></tr><tr><td>JEFFERY A</td><td>SERGEANT</td><td>101442</td></tr><tr><td>JAMES A</td><td>FIRE ENGINEER-EMT</td><td>103350</td></tr><tr><td>TERRY A</td><td>POLICE OFFICER</td><td>93354</td></tr></table><p>Internally, a database engine can store tabular data using composite data structures such as <em>tuples</em> and <em>vectors</em>.</p><p>A tuple is a fixed-size collection of heterogeneous values and can represent a table row.</p><pre><code class="language-julia">(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442)</code></pre><p>A vector is a variable-size collection of homogeneous values and can store a table column.</p><pre><code class="language-julia">[&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;]</code></pre><p>For a table as a whole, we have two options: either store it as a vector of tuples or store it as a tuple of vectors.  The former is called a <em>row-oriented format</em>, commonly used in programming and traditional database engines.</p><pre><code class="language-julia">[(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
+    width</code></pre><h3><a class="nav-anchor" id="Tabular-data-1" href="#Tabular-data-1">Tabular data</a></h3><p>Structured data can often be represented in a tabular form.  For example, information about city employees can be arranged in the following table.</p><table><tr><th>name</th><th>position</th><th>salary</th></tr><tr><td>JEFFERY A</td><td>SERGEANT</td><td>101442</td></tr><tr><td>JAMES A</td><td>FIRE ENGINEER-EMT</td><td>103350</td></tr><tr><td>TERRY A</td><td>POLICE OFFICER</td><td>93354</td></tr></table><p>Internally, a database engine stores tabular data using composite data structures such as <em>tuples</em> and <em>vectors</em>.</p><p>A tuple is a fixed-size collection of heterogeneous values and can represent a table row.</p><pre><code class="language-julia">(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442)</code></pre><p>A vector is a variable-size collection of homogeneous values and can store a table column.</p><pre><code class="language-julia">[&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;]</code></pre><p>For a table as a whole, we have two options: either store it as a vector of tuples or store it as a tuple of vectors.  The former is called a <em>row-oriented format</em>, commonly used in programming and traditional database engines.</p><pre><code class="language-julia">[(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
  (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350),
- (name = &quot;TERRY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 93354)]</code></pre><p>The &quot;tuple of vectors&quot; layout is called a <em>column-oriented format</em>.  It is often used by analytical databases as it is more suited for processing complex analytical queries.</p><p>The module <code>DataKnot</code> contains necessary data structures to support column-oriented data format.  In particular, tabular data is represented using <code>TupleVector</code> objects.</p><pre><code class="language-julia">TupleVector(:name =&gt; [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;],
+ (name = &quot;TERRY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 93354)]</code></pre><p>The other option, &quot;tuple of vectors&quot; layout, is called a <em>column-oriented format</em>.  It is often used by analytical databases as it is more suited for processing complex analytical queries.</p><p>The module <code>DataKnot</code> implements data structures to support column-oriented data format.  In particular, tabular data is represented using <code>TupleVector</code> objects.</p><pre><code class="language-julia">TupleVector(:name =&gt; [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;],
             :position =&gt; [&quot;SERGEANT&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;POLICE OFFICER&quot;],
-            :salary =&gt; [101442, 103350, 93354])</code></pre><h3><a class="nav-anchor" id="Blank-cells-1" href="#Blank-cells-1">Blank cells</a></h3><p>As we arrange data in a tabular form, we may need to leave some cells blank.</p><p>For example, consider that a city employee could be compensated either with salary or with hourly pay.  To display the compensation data in a table, we add two columns: the annual salary and the hourly rate.  However, only one of the columns per each row is filled.</p><table><tr><th>name</th><th>position</th><th>salary</th><th>rate</th></tr><tr><td>JEFFERY A</td><td>SERGEANT</td><td>101442</td><td></td></tr><tr><td>JAMES A</td><td>FIRE ENGINEER-EMT</td><td>103350</td><td></td></tr><tr><td>TERRY A</td><td>POLICE OFFICER</td><td>93354</td><td></td></tr><tr><td>LAKENYA A</td><td>CROSSING GUARD</td><td></td><td>17.68</td></tr></table><p>How can this data be serialized in a column-oriented format?  To retain the advantages of the format, we&#39;d like to keep the column data in tightly packed vectors of <em>elements</em>.</p><pre><code class="language-julia">[&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;, &quot;LAKENYA A&quot;]
-[&quot;SERGEANT&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;POLICE OFFICER&quot;, &quot;CROSSING GUARD&quot;]
-[101442, 103350, 93354]
-[17.68]</code></pre><p>Vectors of elements are partitioned into individual cells by the vectors of <em>offsets</em>.</p><pre><code class="language-julia">[1, 2, 3, 4, 5]
-[1, 2, 3, 4, 5]
-[1, 2, 3, 4, 4]
-[1, 1, 1, 1, 2]</code></pre><p>Together, elements and offsets faithfully reproduce the layout of the table columns.  A pair of the offset and the element vectors is encapsulated with a <code>BlockVector</code> instance.</p><pre><code class="language-julia">BlockVector(:, [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;, &quot;LAKENYA A&quot;])
-BlockVector(:, [&quot;SERGEANT&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;POLICE OFFICER&quot;, &quot;CROSSING GUARD&quot;])
-BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354])
-BlockVector([1, 1, 1, 1, 2], [17.68])</code></pre><p>Here, the symbol <code>:</code> is used as a shortcut for a unit range vector.</p><p>A <code>BlockVector</code> instance is a column-oriented encoding of a vector of variable-size blocks.  In this specific case, each block corresponds to a table cell: an empty block for a blank cell and a one-element block for a filled cell.</p><pre><code class="language-julia">[[&quot;JEFFERY A&quot;], [&quot;JAMES A&quot;], [&quot;TERRY A&quot;], [&quot;LAKENYA A&quot;]]
-[[&quot;SERGEANT&quot;], [&quot;FIRE ENGINEER-EMT&quot;], [&quot;POLICE OFFICER&quot;], [&quot;CROSSING GUARD&quot;]]
-[[101442], [103350], [93354], []]
-[[], [], [], [17.68]]</code></pre><p>To represent the whole table, the columns should be wrapped with a <code>TupleVector</code>.</p><pre><code class="language-julia">TupleVector(
-    :name =&gt; BlockVector(:, [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;, &quot;LAKENYA A&quot;]),
-    :position =&gt; BlockVector(:, [&quot;SERGEANT&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;POLICE OFFICER&quot;, &quot;CROSSING GUARD&quot;]),
-    :salary =&gt; BlockVector([1, 2, 3, 4, 4], [101442, 103350, 93354]),
-    :rate =&gt; BlockVector([1, 1, 1, 1, 2], [17.68]))</code></pre><h3><a class="nav-anchor" id="Nested-data-1" href="#Nested-data-1">Nested data</a></h3><p>When data does not fit a single table, it can often be presented in a top-down fashion.  For example, HR data can be seen as a collection of departments, each of which containing the associated employees.</p><p>Such data is serialized using <em>nested</em> data structures.</p><pre><code class="language-julia">[(name = &quot;POLICE&quot;,
+            :salary =&gt; [101442, 103350, 93354])</code></pre><h3><a class="nav-anchor" id="Blank-cells-1" href="#Blank-cells-1">Blank cells</a></h3><p>As we arrange data in a tabular form, we may need to leave some cells blank.</p><p>For example, consider that a city employee could be compensated either with salary or with hourly pay.  To display the compensation data in a table, we add two columns: the annual salary and the hourly rate.  However, only one of the columns per each row is filled.</p><table><tr><th>name</th><th>position</th><th>salary</th><th>rate</th></tr><tr><td>JEFFERY A</td><td>SERGEANT</td><td>101442</td><td></td></tr><tr><td>JAMES A</td><td>FIRE ENGINEER-EMT</td><td>103350</td><td></td></tr><tr><td>TERRY A</td><td>POLICE OFFICER</td><td>93354</td><td></td></tr><tr><td>LAKENYA A</td><td>CROSSING GUARD</td><td></td><td>17.68</td></tr></table><p>How can this data be serialized in a column-oriented format?  To retain the advantages of the format, we&#39;d like to keep the column data in tightly packed vectors of <em>elements</em>.</p><pre><code class="language-julia">name_elts = [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;, &quot;LAKENYA A&quot;]
+position_elts = [&quot;SERGEANT&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;POLICE OFFICER&quot;, &quot;CROSSING GUARD&quot;]
+salary_elts = [101442, 103350, 93354]
+rate_elts = [17.68]</code></pre><p>These vectors are partitioned into table cells by the vectors of <em>offsets</em>.</p><pre><code class="language-julia">name_offs = [1, 2, 3, 4, 5]
+position_offs = [1, 2, 3, 4, 5]
+salary_offs = [1, 2, 3, 4, 4]
+rate_offs = [1, 1, 1, 1, 2]</code></pre><p>Each pair of adjacent offsets maps a slice of the element vector to the corresponding column cell.  For example, here is how we fetch the 4-th row of the table:</p><pre><code class="language-julia">(name_elts[name_offs[4]:name_offs[5]-1],
+ position_elts[position_offs[4]:position_offs[5]-1],
+ salary_elts[salary_offs[4]:salary_offs[5]-1],
+ rate_elts[rate_offs[4]:rate_offs[5]-1])
+#-&gt; ([&quot;LAKENYA A&quot;], [&quot;CROSSING GUARD&quot;], Int[], [17.68])</code></pre><p>Together, elements and offsets faithfully reproduce the layout of the column. A pair of the offset and the element vectors is encapsulated with a <code>BlockVector</code> instance.</p><pre><code class="language-julia">name_col = BlockVector(name_offs, name_elts, REG)
+position_col = BlockVector(position_offs, position_elts, REG)
+salary_col = BlockVector(salary_offs, salary_elts, OPT)
+rate_col = BlockVector(rate_offs, rate_elts, OPT)</code></pre><p><code>BlockVector</code> is a column-oriented encoding of a vector of variable-size blocks.  The last parameter of the <code>BlockVector</code> constructor is the <em>cardinality</em> constraint on the size of the blocks.  <code>REG</code> indicates that each block has exactly one element; <code>OPT</code> allows a block to be empty.  The constraint <code>PLU</code> is used to indicate that a block may contain more than one element.</p><p>In this specific case, each block corresponds to a table cell: an empty block to a blank cell and a one-element block to a filled cell.  To represent the whole table, the columns should be wrapped with a <code>TupleVector</code>.</p><pre><code class="language-julia">TupleVector(
+    :name =&gt; name_col,
+    :position =&gt; position_col,
+    :salary =&gt; salary_col,
+    :rate =&gt; rate_col)</code></pre><h3><a class="nav-anchor" id="Nested-data-1" href="#Nested-data-1">Nested data</a></h3><p>When data does not fit a single table, it can often be presented in a top-down fashion.  For example, HR data can be seen as a collection of departments, each of which containing the associated employees.  Such data is serialized using <em>nested</em> data structures, which, in row-oriented format, may look as follows:</p><pre><code class="language-julia">[(name = &quot;POLICE&quot;,
   employee = [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442, rate = missing),
               (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016, rate = missing)]),
  (name = &quot;FIRE&quot;,
@@ -37,27 +45,18 @@ BlockVector([1, 1, 1, 1, 2], [17.68])</code></pre><p>Here, the symbol <code>:</c
               (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484, rate = missing)]),
  (name = &quot;OEMC&quot;,
   employee = [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68),
-              (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)])]</code></pre><p>To store this data in a column-oriented format, we should use nested <code>TupleVector</code> and <code>BlockVector</code> instances.  We start with representing employee data.</p><pre><code class="language-julia">TupleVector(
-    :name =&gt; BlockVector(:, [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;JAMES A&quot;, &quot;DANIEL A&quot;, &quot;LAKENYA A&quot;, &quot;DORIS A&quot;]),
-    :position =&gt; BlockVector(:, [&quot;SERGEANT&quot;, &quot;POLICE OFFICER&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;FIRE FIGHTER-EMT&quot;, &quot;CROSSING GUARD&quot;, &quot;CROSSING GUARD&quot;]),
-    :salary =&gt; BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
-    :rate =&gt; BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))</code></pre><p>The aggregated employee data could be partitioned to individual departments using a vector of offsets.</p><pre><code class="language-julia">BlockVector(
-    [1, 3, 5, 7],
+              (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)])]</code></pre><p>To store this data in a column-oriented format, we should use nested <code>TupleVector</code> and <code>BlockVector</code> instances.  We start with representing employee data.</p><pre><code class="language-julia">employee_elts =
     TupleVector(
         :name =&gt; BlockVector(:, [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;JAMES A&quot;, &quot;DANIEL A&quot;, &quot;LAKENYA A&quot;, &quot;DORIS A&quot;]),
         :position =&gt; BlockVector(:, [&quot;SERGEANT&quot;, &quot;POLICE OFFICER&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;FIRE FIGHTER-EMT&quot;, &quot;CROSSING GUARD&quot;, &quot;CROSSING GUARD&quot;]),
-        :salary =&gt; BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
-        :rate =&gt; BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38])))</code></pre><p>Adding a column of department names, we obtain HR data in a column-oriented format.</p><pre><code class="language-julia">TupleVector(
+        :salary =&gt; BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484], OPT),
+        :rate =&gt; BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], OPT))</code></pre><p>Then we partition employee data by departments:</p><pre><code class="language-julia">employee_col = BlockVector([1, 3, 5, 7], employee_elts, PLU)</code></pre><p>Adding a column of department names, we obtain HR data in a column-oriented format.</p><pre><code class="language-julia">TupleVector(
     :name =&gt; BlockVector(:, [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;OEMC&quot;]),
-    :employee =&gt;
-        BlockVector(
-            [1, 3, 5, 7],
-            TupleVector(
-                :name =&gt; BlockVector(:, [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;JAMES A&quot;, &quot;DANIEL A&quot;, &quot;LAKENYA A&quot;, &quot;DORIS A&quot;]),
-                :position =&gt; BlockVector(:, [&quot;SERGEANT&quot;, &quot;POLICE OFFICER&quot;, &quot;FIRE ENGINEER-EMT&quot;, &quot;FIRE FIGHTER-EMT&quot;, &quot;CROSSING GUARD&quot;, &quot;CROSSING GUARD&quot;]),
-                :salary =&gt; BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484]),
-                :rate =&gt; BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38]))))</code></pre><p>Since writing offset vectors manually is tedious, <code>DataKnots</code> provides a convenient macro <code>@VectorTree</code>, which lets you specify column-oriented data using regular tuple and vector literals.</p><pre><code class="language-julia">@VectorTree (name = [String],
-             employee = [(name = [String], position = [String], salary = [Int], rate = [Float64])]) [
+    :employee =&gt; employee_col)</code></pre><p>Since writing offset vectors manually is tedious, <code>DataKnots</code> provides a convenient macro <code>@VectorTree</code>, which lets you specify column-oriented data using regular tuple and vector literals.</p><pre><code class="language-julia">@VectorTree (name = [String, REG],
+             employee = [(name = [String, REG],
+                          position = [String, REG],
+                          salary = [Int, OPT],
+                          rate = [Float64, OPT]), PLU]) [
     (name = &quot;POLICE&quot;,
      employee = [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442, rate = missing),
                  (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016, rate = missing)]),
@@ -67,12 +66,13 @@ BlockVector([1, 1, 1, 1, 2], [17.68])</code></pre><p>Here, the symbol <code>:</c
     (name = &quot;OEMC&quot;,
      employee = [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68),
                  (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)])
-]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.@VectorTree" href="#DataKnots.@VectorTree"><code>DataKnots.@VectorTree</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-julia">@VectorTree sig vec</code></pre><p>Generates a columnar vector from a regular vector literal.</p><p>The first parameter, <code>sig</code>, describes the shape of the columnar vector.  It is defined recursively:</p><ul><li>Julia type <code>T</code> indicates a regular vector of type <code>T</code>.</li><li>Tuple <code>(col₁, col₂, ...)</code> indicates a <code>TupleVector</code> instance.</li><li>Named tuple <code>(lbl₁ = col₁, lbl₂ = col₂, ...)</code> indicates a <code>TupleVector</code> instance with the given labels.</li><li>One-element vector <code>[elt]</code> indicates a <code>BlockVector</code> instance.</li></ul><p>The second parameter, <code>vec</code>, is a vector literal in row-oriented format:</p><ul><li><code>TupleVector</code> data is specified either by a vector of (named) tuples or by a matrix.</li><li><code>BlockVector</code> data is specified by a vector of vectors.  A one-element block could be represented by its element; an empty block by <code>missing</code> literal.</li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L475-L495">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.BlockCursor" href="#DataKnots.BlockCursor"><code>DataKnots.BlockCursor</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">BlockCursor(::BlockVector)</code></pre><p>Mutable view over <code>BlockVector</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L368-L372">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.BlockVector" href="#DataKnots.BlockVector"><code>DataKnots.BlockVector</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">BlockVector(offs::AbstractVector{Int}, elts::AbstractVector)
-BlockVector(:, elts::AbstractVector)</code></pre><p>Vector of vectors (blocks) stored as a vector of elements partitioned by a vector of offsets.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L219-L225">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.TupleVector" href="#DataKnots.TupleVector"><code>DataKnots.TupleVector</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">TupleVector([lbls::Vector{Symbol},] len::Int, cols::Vector{AbstractVector})
+]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.BlockVector" href="#DataKnots.BlockVector"><code>DataKnots.BlockVector</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=OPT|PLU)
+BlockVector(:, elts::AbstractVector, card::Cardinality=REG)</code></pre><p>Vector of vectors (blocks) stored as a vector of elements partitioned by a vector of offsets.</p><ul><li><code>elts</code> is a continuous vector of block elements.</li><li><code>offs</code> is a vector of indexes that subdivide <code>elts</code> into separate blocks. Should be monotonous with <code>offs[1] == 1</code> and <code>offs[end] == length(elts)+1</code>.</li><li><code>card</code> is the expected cardinality of the blocks.</li></ul><p>The second constructor creates a <code>BlockVector</code> of one-element blocks.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/e3f51645abe3d04ef6875466333f17904014c7c4/src/vectors.jl#L258-L271">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Cardinality" href="#DataKnots.Cardinality"><code>DataKnots.Cardinality</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">REG::Cardinality
+OPT::Cardinality
+PLU::Cardinality
+OPT|PLU::Cardinality</code></pre><p>Cardinality constraints on a block of values.  <code>REG</code> stands for <em>1…1</em>, <code>OPT</code> for <em>0…1</em>, <code>PLU</code> for <em>1…∞</em>, <code>OPT|PLU</code> for <em>0…∞</em>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/e3f51645abe3d04ef6875466333f17904014c7c4/src/vectors.jl#L211-L219">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.TupleVector" href="#DataKnots.TupleVector"><code>DataKnots.TupleVector</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">TupleVector([lbls::Vector{Symbol},] len::Int, cols::Vector{AbstractVector})
 TupleVector([lbls::Vector{Symbol},] idxs::AbstractVector{Int}, cols::Vector{AbstractVector})
-TupleVector(cols::Pair{Symbol,&lt;:AbstractVector}...)</code></pre><p>Vector of tuples stored as a collection of column vectors.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L21-L27">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.column-Tuple{DataKnots.TupleVector,Int64}" href="#DataKnots.column-Tuple{DataKnots.TupleVector,Int64}"><code>DataKnots.column</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">column(::TupleVector, j::Int) :: AbstractVector
-column(::TupleVector, lbl::Symbol) :: AbstractVector</code></pre><p>Returns the <code>j</code>-th column or the column with the given label.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L152-L157">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.columns" href="#DataKnots.columns"><code>DataKnots.columns</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">columns(::TupleVector) :: Vector{AbstractVector}</code></pre><p>Returns a vector of column vectors.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L138-L142">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.cursor" href="#DataKnots.cursor"><code>DataKnots.cursor</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">cursor(::BlockVector) :: BlockCursor
-cursor(::BlockVector, ::Int) :: BlockCursor</code></pre><p>Creates a cursor at the beginning or at the given position of the <code>BlockVector</code> instance.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L398-L404">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.elements" href="#DataKnots.elements"><code>DataKnots.elements</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">elements(::BlockVector) :: AbstractVector</code></pre><p>Returns the vector of elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L281-L285">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.labels" href="#DataKnots.labels"><code>DataKnots.labels</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">labels(::TupleVector) :: Vector{Symbol}</code></pre><p>Returns a vector of column labels.  Returns an empty list if the columns have no labels assigned.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L123-L128">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.locate" href="#DataKnots.locate"><code>DataKnots.locate</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">locate(::TupleVector, lbl::Symbol) :: Union{Int,Nothing}</code></pre><p>Finds the column position by its label.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L171-L175">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.offsets" href="#DataKnots.offsets"><code>DataKnots.offsets</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">offsets(::BlockVector) :: AbstractVector{Int}</code></pre><p>Returns the vector of offsets.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L274-L278">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.width" href="#DataKnots.width"><code>DataKnots.width</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">width(::TupleVector) :: Int</code></pre><p>Returns the number of columns.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/d17f96c4507019ea1cb92159455aab581eb5d1d6/src/vectors.jl#L131-L135">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="TupleVector-1" href="#TupleVector-1"><code>TupleVector</code></a></h3><p><code>TupleVector</code> is a vector of tuples stored as a collection of parallel vectors.</p><pre><code class="language-julia">tv = TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;],
+TupleVector(lcols::Pair{Symbol,&lt;:AbstractVector}...)</code></pre><p>Vector of tuples stored as a collection of column vectors.</p><ul><li><code>cols</code> is a vector of columns; optional <code>lbls</code> is a vector of column labels. Alternatively, labels and columns could be provided as a list of pairs <code>lcols</code>.</li><li><code>len</code> is the vector length, which must coincide with the length of all the columns.  Alternatively, the vector could be constructed from a subset of the column data using a vector of indexes <code>idxs</code>.</li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/e3f51645abe3d04ef6875466333f17904014c7c4/src/vectors.jl#L23-L36">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnots.BlockVector,AbstractArray{T,1} where T}" href="#Base.getindex-Tuple{DataKnots.BlockVector,AbstractArray{T,1} where T}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">(::BlockVector)[ks::AbstractVector{Int}] :: BlockVector</code></pre><p>Returns a new <code>BlockVector</code> with a selection of blocks specified by indexes <code>ks</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/e3f51645abe3d04ef6875466333f17904014c7c4/src/vectors.jl#L364-L369">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnots.TupleVector,AbstractArray{T,1} where T}" href="#Base.getindex-Tuple{DataKnots.TupleVector,AbstractArray{T,1} where T}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">(::TupleVector)[ks::AbstractVector{Int}] :: TupleVector</code></pre><p>Returns a new <code>TupleVector</code> with a subset of rows specified by indexes <code>ks</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/e3f51645abe3d04ef6875466333f17904014c7c4/src/vectors.jl#L185-L189">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.@VectorTree-Tuple{Any,Any}" href="#DataKnots.@VectorTree-Tuple{Any,Any}"><code>DataKnots.@VectorTree</code></a> — <span class="docstring-category">Macro</span>.</div><div><div><pre><code class="language-julia">@VectorTree sig vec</code></pre><p>Constructs a tree of columnar vectors from a plain vector literal.</p><p>The first parameter, <code>sig</code>, describes the tree structure.  It is defined recursively:</p><ul><li>Julia type <code>T</code> indicates a regular vector of type <code>T</code>.</li><li>Tuple <code>(col₁, col₂, ...)</code> indicates a <code>TupleVector</code> instance.</li><li>Named tuple <code>(lbl₁ = col₁, lbl₂ = col₂, ...)</code> indicates a <code>TupleVector</code> instance with the given labels.</li><li>One-element vector <code>[elt]</code> indicates a <code>BlockVector</code> instance.</li><li>Two-element vector <code>[elt, card]</code> indicates a <code>BlockVector</code> with the given cardinality.</li></ul><p>The second parameter, <code>vec</code>, is a vector literal in row-oriented format:</p><ul><li><code>TupleVector</code> data is specified either by a matrix or by a vector of (regular or named) tuples.</li><li><code>BlockVector</code> data is specified by a vector of vectors.  A one-element block could be represented by its element; an empty block by <code>missing</code> literal.</li></ul></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/e3f51645abe3d04ef6875466333f17904014c7c4/src/vectors.jl#L523-L545">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="TupleVector-1" href="#TupleVector-1"><code>TupleVector</code></a></h3><p><code>TupleVector</code> is a vector of tuples stored as a collection of parallel vectors.</p><pre><code class="language-julia">tv = TupleVector(:name =&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;],
                  :salary =&gt; [260004, 185364, 170112])
 #-&gt; @VectorTree (name = String, salary = Int) [(name = &quot;GARRY M&quot;, salary = 260004) … ]
 
@@ -108,19 +108,32 @@ display(tv′)
 TupleVector of 2 × (name = String, salary = Int):
  (name = &quot;DANA A&quot;, salary = 170112)
  (name = &quot;GARRY M&quot;, salary = 260004)
-=#</code></pre><p>Note that the new instance keeps a reference to the index and the original column vectors.  Updated column vectors are generated on demand.</p><pre><code class="language-julia">column(tv′, 2)
-#-&gt; [170112, 260004]</code></pre><h3><a class="nav-anchor" id="BlockVector-1" href="#BlockVector-1"><code>BlockVector</code></a></h3><p><code>BlockVector</code> is a vector of homogeneous vectors (blocks) stored as a vector of elements partitioned into individual blocks by a vector of offsets.</p><pre><code class="language-julia">bv = BlockVector([1, 2, 4, 4, 6], [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])
-#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]
+=#</code></pre><p>Note that the new instance wraps the index and the original column vectors. Updated column vectors are generated on demand.</p><pre><code class="language-julia">column(tv′, 2)
+#-&gt; [170112, 260004]</code></pre><h3><a class="nav-anchor" id="Cardinality-1" href="#Cardinality-1"><code>Cardinality</code></a></h3><p>Enumerated type <code>Cardinality</code> is used to constrain the cardinality of a data block.  A block of data is called <em>regular</em> if it must contain exactly one element; <em>optional</em> if it may have no elements; and <em>plural</em> if it may have more than one element.  This gives us four different cardinality constraints.</p><pre><code class="language-julia">display(Cardinality)
+#=&gt;
+Enum Cardinality:
+REG = 0x00
+OPT = 0x01
+PLU = 0x02
+OPT_PLU = 0x03
+=#</code></pre><p>Cardinality values support bitwise operations.</p><pre><code class="language-julia">REG|OPT|PLU             #-&gt; OPT_PLU::Cardinality = 3
+PLU&amp;~PLU                #-&gt; REG::Cardinality = 0</code></pre><p>We can use predicates <code>isregular()</code>, <code>isoptional()</code>, <code>isplural()</code> to check cardinality values.</p><pre><code class="language-julia">isregular(REG)          #-&gt; true
+isregular(OPT)          #-&gt; false
+isregular(PLU)          #-&gt; false
+isoptional(OPT)         #-&gt; true
+isoptional(PLU)         #-&gt; false
+isplural(PLU)           #-&gt; true
+isplural(OPT)           #-&gt; false</code></pre><h3><a class="nav-anchor" id="BlockVector-1" href="#BlockVector-1"><code>BlockVector</code></a></h3><p><code>BlockVector</code> is a vector of homogeneous vectors (blocks) stored as a vector of elements partitioned into individual blocks by a vector of offsets.</p><pre><code class="language-julia">bv = BlockVector([1, 3, 5, 7], [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;JAMES A&quot;, &quot;DANIEL A&quot;, &quot;LAKENYA A&quot;, &quot;DORIS A&quot;], PLU)
+#-&gt; @VectorTree [String, PLU] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;], [&quot;LAKENYA A&quot;, &quot;DORIS A&quot;]]
 
 display(bv)
 #=&gt;
-BlockVector of 4 × [String]:
- &quot;HEALTH&quot;
- [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;]
- missing
- [&quot;POLICE&quot;, &quot;FIRE&quot;]
-=#</code></pre><p>If each block contains exactly one element, we could use <code>:</code> in place of the offset vector.</p><pre><code class="language-julia">BlockVector(:, [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;])
-#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><p>The <code>BlockVector</code> constructor verifies that the offset vector is well-formed.</p><pre><code class="language-julia">BlockVector(Base.OneTo(0), [])
+BlockVector of 3 × [String, PLU]:
+ [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;]
+ [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]
+ [&quot;LAKENYA A&quot;, &quot;DORIS A&quot;]
+=#</code></pre><p>If each block contains exactly one element, we could use <code>:</code> in place of the offset vector.</p><pre><code class="language-julia">BlockVector(:, [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;OEMC&quot;])
+#-&gt; @VectorTree [String, REG] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;OEMC&quot;]</code></pre><p>The <code>BlockVector</code> constructor verifies that the offset vector is well-formed.</p><pre><code class="language-julia">BlockVector(Base.OneTo(0), [])
 #-&gt; ERROR: partition must be non-empty
 
 BlockVector(Int[], [])
@@ -136,38 +149,45 @@ BlockVector(Base.OneTo(4), [&quot;HEALTH&quot;, &quot;FINANCE&quot;])
 #-&gt; ERROR: partition must enclose the elements
 
 BlockVector([1,2,3,6], [&quot;HEALTH&quot;, &quot;FINANCE&quot;])
-#-&gt; ERROR: partition must enclose the elements</code></pre><p>We can access individual components of the vector.</p><pre><code class="language-julia">offsets(bv)
-#-&gt; [1, 2, 4, 4, 6]
+#-&gt; ERROR: partition must enclose the elements</code></pre><p>The constructor also validates the cardinality constraint.</p><pre><code class="language-julia">BlockVector([1, 3, 5, 7], [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;JAMES A&quot;, &quot;DANIEL A&quot;, &quot;LAKENYA A&quot;, &quot;DORIS A&quot;], OPT)
+#-&gt; ERROR: singular blocks must have at most one element
+
+BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], REG)
+#-&gt; ERROR: mandatory blocks must have at least one element</code></pre><p>We can access individual components of the vector.</p><pre><code class="language-julia">offsets(bv)
+#-&gt; [1, 3, 5, 7]
 
 elements(bv)
-#-&gt; [&quot;HEALTH&quot;, &quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><p>When indexed by a vector of indexes, an instance of <code>BlockVector</code> is returned.</p><pre><code class="language-julia">elts = [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
+#-&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;JAMES A&quot;, &quot;DANIEL A&quot;, &quot;LAKENYA A&quot;, &quot;DORIS A&quot;]
 
-reg_bv = BlockVector(:, elts)
-#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
+cardinality(bv)
+#-&gt; PLU::Cardinality = 2</code></pre><p>When indexed by a vector of indexes, an instance of <code>BlockVector</code> is returned.</p><pre><code class="language-julia">elts = [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
 
-opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts)
-#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]
+reg_bv = BlockVector(:, elts, REG)
+#-&gt; @VectorTree [String, REG] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
 
-plu_bv = BlockVector([1, 1, 1, 2, 2, 4, 4, 6, 7], elts)
-#-&gt; @VectorTree [String] [missing, missing, &quot;POLICE&quot;, missing, [&quot;FIRE&quot;, &quot;HEALTH&quot;], missing, [&quot;AVIATION&quot;, &quot;WATER MGMNT&quot;], &quot;FINANCE&quot;]
+opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts, OPT)
+#-&gt; @VectorTree [String, OPT] [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]
+
+plu_bv = BlockVector([1, 1, 1, 2, 2, 4, 4, 6, 7], elts, OPT|PLU)
+#-&gt; @VectorTree [String] [[], [], [&quot;POLICE&quot;], [], [&quot;FIRE&quot;, &quot;HEALTH&quot;], [], [&quot;AVIATION&quot;, &quot;WATER MGMNT&quot;], [&quot;FINANCE&quot;]]
 
 reg_bv[[1,3,5,3]]
-#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;HEALTH&quot;, &quot;WATER MGMNT&quot;, &quot;HEALTH&quot;]
+#-&gt; @VectorTree [String, REG] [&quot;POLICE&quot;, &quot;HEALTH&quot;, &quot;WATER MGMNT&quot;, &quot;HEALTH&quot;]
 
 plu_bv[[1,3,5,3]]
-#-&gt; @VectorTree [String] [missing, &quot;POLICE&quot;, [&quot;FIRE&quot;, &quot;HEALTH&quot;], &quot;POLICE&quot;]
+#-&gt; @VectorTree [String] [[], [&quot;POLICE&quot;], [&quot;FIRE&quot;, &quot;HEALTH&quot;], [&quot;POLICE&quot;]]
 
 reg_bv[Base.OneTo(4)]
-#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;]
+#-&gt; @VectorTree [String, REG] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;]
 
 reg_bv[Base.OneTo(6)]
-#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
+#-&gt; @VectorTree [String, REG] [&quot;POLICE&quot;, &quot;FIRE&quot;, &quot;HEALTH&quot;, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, &quot;FINANCE&quot;]
 
 plu_bv[Base.OneTo(6)]
-#-&gt; @VectorTree [String] [missing, missing, &quot;POLICE&quot;, missing, [&quot;FIRE&quot;, &quot;HEALTH&quot;], missing]
+#-&gt; @VectorTree [String] [[], [], [&quot;POLICE&quot;], [], [&quot;FIRE&quot;, &quot;HEALTH&quot;], []]
 
 opt_bv[Base.OneTo(10)]
-#-&gt; @VectorTree [String] [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]</code></pre><h3><a class="nav-anchor" id="@VectorTree-1" href="#@VectorTree-1"><code>@VectorTree</code></a></h3><p>We can use <code>@VectorTree</code> macro to convert vector literals to the columnar form assembled with <code>TupleVector</code> and <code>BlockVector</code> objects.</p><p><code>TupleVector</code> is created from a matrix or a vector of (named) tuples.</p><pre><code class="language-julia">@VectorTree (name = String, salary = Int) [
+#-&gt; @VectorTree [String, OPT] [&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;HEALTH&quot;, missing, &quot;AVIATION&quot;, &quot;WATER MGMNT&quot;, missing, missing, &quot;FINANCE&quot;]</code></pre><h3><a class="nav-anchor" id="@VectorTree-1" href="#@VectorTree-1"><code>@VectorTree</code></a></h3><p>We can use <code>@VectorTree</code> macro to convert vector literals to the columnar form assembled with <code>TupleVector</code> and <code>BlockVector</code> objects.</p><p><code>TupleVector</code> is created from a matrix or a vector of (named) tuples.</p><pre><code class="language-julia">@VectorTree (name = String, salary = Int) [
     &quot;GARRY M&quot;   260004
     &quot;ANTHONY R&quot; 185364
     &quot;DANA A&quot;    170112
@@ -193,7 +213,7 @@ opt_bv[Base.OneTo(10)]
     missing,
     [&quot;POLICE&quot;, &quot;FIRE&quot;],
 ]
-#-&gt; @VectorTree [String] [&quot;HEALTH&quot;, [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], missing, [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>Ill-formed <code>@VectorTree</code> contructors are rejected.</p><pre><code class="language-julia">@VectorTree (String, Int) (&quot;GARRY M&quot;, 260004)
+#-&gt; @VectorTree [String] [[&quot;HEALTH&quot;], [&quot;FINANCE&quot;, &quot;HUMAN RESOURCES&quot;], [], [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>Ill-formed <code>@VectorTree</code> contructors are rejected.</p><pre><code class="language-julia">@VectorTree (String, Int) (&quot;GARRY M&quot;, 260004)
 #=&gt;
 ERROR: LoadError: expected a vector literal; got :((&quot;GARRY M&quot;, 260004))
 ⋮
@@ -221,13 +241,13 @@ ERROR: LoadError: expected 2 column(s); got :((&quot;GARRY M&quot;, &quot;SUPERI
 #=&gt;
 ERROR: LoadError: expected a tuple or a row literal; got &quot;GARRY M&quot;
 ⋮
-=#</code></pre><p>Using <code>@VectorTree</code>, we can easily construct hierarchical data.</p><pre><code class="language-julia">hier_data = @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
+=#</code></pre><p>Using <code>@VectorTree</code>, we can easily construct hierarchical data.</p><pre><code class="language-julia">hier_data = @VectorTree (name = [String, REG], employee = [(name = [String, REG], salary = [Int, OPT])]) [
     &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
     &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
 ]
 display(hier_data)
 #=&gt;
-TupleVector of 2 × (name = [String], employee = [(name = [String], salary = [Int])]):
+TupleVector of 2 × (name = [String, REG], employee = [(name = [String, REG], salary = [Int, OPT])]):
  (name = &quot;POLICE&quot;, employee = [(name = &quot;GARRY M&quot;, salary = 260004) … ])
  (name = &quot;FIRE&quot;, employee = [(name = &quot;JOSE S&quot;, salary = 202728) … ])
 =#</code></pre><footer><hr/><a class="previous" href="../implementation/"><span class="direction">Previous</span><span class="title">Implementation Guide</span></a><a class="next" href="../shapes/"><span class="direction">Next</span><span class="title">Type System</span></a></footer></article></body></html>

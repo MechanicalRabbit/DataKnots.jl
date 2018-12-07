@@ -40,12 +40,12 @@ Private = false</code></pre><h2><a class="nav-anchor" id="Test-Suite-1" href="#T
 
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
 #-&gt; [200000, 200000, 200000]</code></pre><p>Similarly, the output of <code>lift_block()</code> is a block vector filled with the given block.</p><pre><code class="language-julia">q = lift_block([&quot;POLICE&quot;, &quot;FIRE&quot;])
-#-&gt; lift_block([&quot;POLICE&quot;, &quot;FIRE&quot;])
+#-&gt; lift_block([&quot;POLICE&quot;, &quot;FIRE&quot;], OPT | PLU)
 
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
 #-&gt; @VectorTree [String] [[&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>A variant of <code>lift_block()</code> called <code>lift_null()</code> outputs a block vector with empty blocks.</p><pre><code class="language-julia">q = lift_null()
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree [Union{}] [missing, missing, missing]</code></pre><p>Any scalar function could be lifted to a vector operation by applying it to each element of the input vector.</p><pre><code class="language-julia">q = lift(titlecase)
+#-&gt; @VectorTree [Union{}, OPT] [missing, missing, missing]</code></pre><p>Any scalar function could be lifted to a vector operation by applying it to each element of the input vector.</p><pre><code class="language-julia">q = lift(titlecase)
 #-&gt; lift(titlecase)
 
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
@@ -56,7 +56,7 @@ q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
 #-&gt; Bool[true, false, false]</code></pre><p>It is also possible to apply a scalar function of several arguments to a tuple vector that has block vectors for its columns.  In this case, the function is applied to every combination of values from all the blocks on the same row.</p><pre><code class="language-julia">q = lift_to_block_tuple(&gt;)
 
 q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-#-&gt; @VectorTree [Bool] [Bool[true, false, false], missing, Bool[true, true, false, false]]</code></pre><p>Any function that takes a vector argument can be lifted to an operation on block vectors.</p><pre><code class="language-julia">q = lift_to_block(length)
+#-&gt; @VectorTree [Bool] [[true, false, false], [], [true, true, false, false]]</code></pre><p>Any function that takes a vector argument can be lifted to an operation on block vectors.</p><pre><code class="language-julia">q = lift_to_block(length)
 #-&gt; lift_to_block(length)
 
 q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
@@ -83,11 +83,11 @@ TupleVector of 3 × (name = String, salary = Int):
 #-&gt; decode_vector()
 
 q([[260004, 185364, 170112], Int[], [202728, 197736]])
-#-&gt; @VectorTree [Int] [[260004, 185364, 170112], missing, [202728, 197736]]</code></pre><p>Similarly, a vector containing <code>missing</code> values can be converted to a block vector with zero- and one-element blocks.</p><pre><code class="language-julia">q = decode_missing()
+#-&gt; @VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]]</code></pre><p>Similarly, a vector containing <code>missing</code> values can be converted to a block vector with zero- and one-element blocks.</p><pre><code class="language-julia">q = decode_missing()
 #-&gt; decode_missing()
 
 q([260004, 185364, 170112, missing, 202728, 197736])
-#-&gt; @VectorTree [Int] [260004, 185364, 170112, missing, 202728, 197736]</code></pre><h2><a class="nav-anchor" id="Tuple-vectors-1" href="#Tuple-vectors-1">Tuple vectors</a></h2><p>To create a tuple vector, we use the combinator <code>tuple_of()</code>. Its arguments are the functions that generate the columns of the tuple.</p><pre><code class="language-julia">q = tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
+#-&gt; @VectorTree [Int, OPT] [260004, 185364, 170112, missing, 202728, 197736]</code></pre><h2><a class="nav-anchor" id="Tuple-vectors-1" href="#Tuple-vectors-1">Tuple vectors</a></h2><p>To create a tuple vector, we use the combinator <code>tuple_of()</code>. Its arguments are the functions that generate the columns of the tuple.</p><pre><code class="language-julia">q = tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
 #-&gt; tuple_of([:title, :last], [lift(titlecase), lift(last)])
 
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]) |&gt; display
@@ -119,7 +119,7 @@ TupleVector of 3 × (name = String, salary = Int):
 #-&gt; as_block()
 
 q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree [String] [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>In the opposite direction, primitive <code>flat_block()</code> flattens a block vector with block elements.</p><pre><code class="language-julia">q = flat_block()
+#-&gt; @VectorTree [String, REG] [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>In the opposite direction, primitive <code>flat_block()</code> flattens a block vector with block elements.</p><pre><code class="language-julia">q = flat_block()
 #-&gt; flat_block()
 
 q(@VectorTree [[String]] [[[&quot;GARRY M&quot;], [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]], [missing, [&quot;JOSE S&quot;], [&quot;CHARLES S&quot;]]])
@@ -137,8 +137,8 @@ q(@VectorTree ([Int], [Int]) [
 ) |&gt; display
 #=&gt;
 BlockVector of 3 × [(Int, [Int])]:
- [(260004, 200000), (185364, 200000), (170112, 200000)]
- missing
+ [(260004, [200000]), (185364, [200000]), (170112, [200000])]
+ []
  [(202728, [200000, 200000]), (197736, [200000, 200000])]
 =#</code></pre><p>It is also possible to pull all block columns from a tuple vector.</p><pre><code class="language-julia">q = pull_every_block()
 #-&gt; pull_every_block()
@@ -151,7 +151,7 @@ q(@VectorTree ([Int], [Int]) [
 #=&gt;
 BlockVector of 3 × [(Int, Int)]:
  [(260004, 200000), (185364, 200000), (170112, 200000)]
- missing
+ []
  [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
 =#</code></pre><h2><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h2><p>We can compose a sequence of transformations using the <code>chain_of()</code> combinator.</p><pre><code class="language-julia">q = chain_of(
         column(:employee),

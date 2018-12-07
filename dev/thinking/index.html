@@ -212,7 +212,7 @@ run(GM)
 │ name    │
 ├─────────┤
 │ GARRY M │
-=#</code></pre><p>As seen in the output above, field names also act as display labels. It is possible to provide a name to any expression with the <code>Label</code> combinator. Labeling doesn&#39;t affect the actual output, only the field name given to the expression and its display.</p><pre><code class="language-julia">run(Const(&quot;Hello World&quot;) &gt;&gt; Label(:greeting)
+=#</code></pre><p>As seen in the output above, field names also act as display labels. It is possible to provide a name to any expression with the <code>Label</code> combinator. Labeling doesn&#39;t affect the actual output, only the field name given to the expression and its display.</p><pre><code class="language-julia">run(Const(&quot;Hello World&quot;) &gt;&gt; Label(:greeting))
 #=&gt;
 │ greeting    │
 ├─────────────┤
@@ -300,7 +300,7 @@ run(:staff =&gt; DATA)
   DB &gt;&gt; Record(:dept =&gt; It.name,
                :count =&gt; Count(It.staff)))
 #=&gt;
-│ statistics  |
+│ statistics  │
 │ dept  count │
 ├─────────────┤
 │ FIRE      2 │
