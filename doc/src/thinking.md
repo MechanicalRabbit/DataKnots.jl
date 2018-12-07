@@ -486,7 +486,7 @@ It is possible to provide a name to any expression with the `Label`
 combinator. Labeling doesn't affect the actual output, only the field
 name given to the expression and its display.
 
-    run(Const("Hello World") >> Label(:greeting)
+    run(Const("Hello World") >> Label(:greeting))
     #=>
     │ greeting    │
     ├─────────────┤
@@ -628,7 +628,7 @@ These subordinate records can then be summarized.
       DB >> Record(:dept => It.name,
                    :count => Count(It.staff)))
     #=>
-    │ statistics  |
+    │ statistics  │
     │ dept  count │
     ├─────────────┤
     │ FIRE      2 │

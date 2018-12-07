@@ -141,7 +141,7 @@ Similarly, the output of `lift_block()` is a block vector filled with the given
 block.
 
     q = lift_block(["POLICE", "FIRE"])
-    #-> lift_block(["POLICE", "FIRE"])
+    #-> lift_block(["POLICE", "FIRE"], OPT | PLU)
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> @VectorTree [String] [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
@@ -151,7 +151,7 @@ empty blocks.
 
     q = lift_null()
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [Union{}] [missing, missing, missing]
+    #-> @VectorTree [Union{}, OPT] [missing, missing, missing]
 
 Any scalar function could be lifted to a vector operation by applying it to
 each element of the input vector.
@@ -178,7 +178,7 @@ applied to every combination of values from all the blocks on the same row.
     q = lift_to_block_tuple(>)
 
     q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-    #-> @VectorTree [Bool] [Bool[true, false, false], missing, Bool[true, true, false, false]]
+    #-> @VectorTree [Bool] [[true, false, false], [], [true, true, false, false]]
 
 Any function that takes a vector argument can be lifted to an operation on
 block vectors.
@@ -230,7 +230,7 @@ A vector of vector objects can be converted to a block vector.
     #-> decode_vector()
 
     q([[260004, 185364, 170112], Int[], [202728, 197736]])
-    #-> @VectorTree [Int] [[260004, 185364, 170112], missing, [202728, 197736]]
+    #-> @VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]]
 
 Similarly, a vector containing `missing` values can be converted to a block
 vector with zero- and one-element blocks.
@@ -239,7 +239,7 @@ vector with zero- and one-element blocks.
     #-> decode_missing()
 
     q([260004, 185364, 170112, missing, 202728, 197736])
-    #-> @VectorTree [Int] [260004, 185364, 170112, missing, 202728, 197736]
+    #-> @VectorTree [Int, OPT] [260004, 185364, 170112, missing, 202728, 197736]
 
 
 ## Tuple vectors
@@ -296,7 +296,7 @@ Primitive `as_block()` wraps the elements of the input vector to one-element blo
     #-> as_block()
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [String] ["GARRY M", "ANTHONY R", "DANA A"]
+    #-> @VectorTree [String, REG] ["GARRY M", "ANTHONY R", "DANA A"]
 
 In the opposite direction, primitive `flat_block()` flattens a block vector
 with block elements.
@@ -328,8 +328,8 @@ block vector of tuples.
     ) |> display
     #=>
     BlockVector of 3 × [(Int, [Int])]:
-     [(260004, 200000), (185364, 200000), (170112, 200000)]
-     missing
+     [(260004, [200000]), (185364, [200000]), (170112, [200000])]
+     []
      [(202728, [200000, 200000]), (197736, [200000, 200000])]
     =#
 
@@ -346,7 +346,7 @@ It is also possible to pull all block columns from a tuple vector.
     #=>
     BlockVector of 3 × [(Int, Int)]:
      [(260004, 200000), (185364, 200000), (170112, 200000)]
-     missing
+     []
      [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
     =#
 

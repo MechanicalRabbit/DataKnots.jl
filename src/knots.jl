@@ -66,24 +66,7 @@ function guessshape(tv::TupleVector)
     for (j, col) in enumerate(cols)
         lbl = !isempty(lbls) ? lbls[j] : nothing
         dom = guessshape(elements(col))
-        offs = offsets(col)
-        card = REG
-        if !(offs isa Base.OneTo)
-            l = 0
-            for r in offs
-                d = r - l
-                l = r
-                if d < 1
-                    card |= OPT
-                end
-                if d > 1
-                    card |= PLU
-                end
-                if card == OPT|PLU
-                    break
-                end
-            end
-        end
+        card = cardinality(col)
         shp = OutputShape(Decoration(label=lbl), dom, card)
         push!(fields, shp)
     end

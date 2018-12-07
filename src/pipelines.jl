@@ -72,7 +72,7 @@ end
 combine(knot::DataKnot, env::Environment, q::Query) =
     compose(
         q,
-        lift_block(elements(knot)) |> designate(InputShape(AnyShape()), shape(knot)))
+        lift_block(elements(knot), cardinality(knot)) |> designate(InputShape(AnyShape()), shape(knot)))
 
 combine(data::DataValue, env::Environment, q::Query) =
     combine(convert(DataKnot, data.val), env, q)
@@ -149,7 +149,7 @@ function pack(q, params)
                 error("parameter is not specified: $(slot.first)")
             end
             elts = elements(params[k].second)
-            push!(cols, BlockVector(length(elts) == 1 ? (:) : [1, length(elts)+1], elts))
+            push!(cols, BlockVector(length(elts) == 1 ? (:) : [1, length(elts)+1], elts, cardinality(slot.second)))
         end
         return TupleVector(1, AbstractVector[data, TupleVector(1, cols)])
     end

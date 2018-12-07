@@ -263,10 +263,11 @@ end
 @generated function _lift_to_block_tuple(f, len::Int, cols::BlockVector...)
     D = length(cols)
     return quote
+        card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa OneTo{Int})
-            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...))
+            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...), card)
         end
         len′ = 0
         regular = true
@@ -276,7 +277,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...))
+            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...), card)
         end
         I = Tuple{eltype.(@ntuple $D elts)...}
         O = Core.Compiler.return_type(f, I)
@@ -290,7 +291,7 @@ end
             end
             offs′[k+1] = top
         end
-        return BlockVector(offs′, elts′)
+        return BlockVector(offs′, elts′, card)
     end
 end
 
@@ -312,20 +313,20 @@ Produces a block vector of empty blocks.
 lift_null() = Query(lift_null)
 
 lift_null(rt::Runtime, input::AbstractVector) =
-    BlockVector(fill(1, length(input)+1), Union{}[])
+    BlockVector(fill(1, length(input)+1), Union{}[], OPT)
 
 """
-    lift_block(block)
+    lift_block(block, card::Cardinality)
 
 Produces a block vector filled with the given block.
 """
-lift_block(block) = Query(lift_block, block)
+lift_block(block, card::Cardinality=OPT|PLU) = Query(lift_block, block, card)
 
-function lift_block(rt::Runtime, input::AbstractVector, block::AbstractVector)
+function lift_block(rt::Runtime, input::AbstractVector, block::AbstractVector, card::Cardinality)
     if isempty(input)
-        return BlockVector(:, block[[]])
+        return BlockVector(:, block[[]], card)
     elseif length(input) == 1
-        return BlockVector([1, length(block)+1], block)
+        return BlockVector([1, length(block)+1], block, card)
     else
         len = length(input)
         sz = length(block)
@@ -333,7 +334,7 @@ function lift_block(rt::Runtime, input::AbstractVector, block::AbstractVector)
         for k in eachindex(input)
             copyto!(perm, 1 + sz * (k - 1), 1:sz)
         end
-        return BlockVector(1:sz:(len*sz+1), block[perm])
+        return BlockVector(1:sz:(len*sz+1), block[perm], card)
     end
 end
 
@@ -349,7 +350,7 @@ decode_missing() = Query(decode_missing)
 
 function decode_missing(rt::Runtime, input::AbstractVector)
     if !(Missing <: eltype(input))
-        return BlockVector(:, input)
+        return BlockVector(:, input, OPT)
     end
     sz = 0
     for elt in input
@@ -359,7 +360,7 @@ function decode_missing(rt::Runtime, input::AbstractVector)
     end
     O = Base.nonmissingtype(eltype(input))
     if sz == length(input)
-        return BlockVector(:, collect(O, input))
+        return BlockVector(:, collect(O, input), OPT)
     end
     offs = Vector{Int}(undef, length(input)+1)
     elts = Vector{O}(undef, sz)
@@ -372,7 +373,7 @@ function decode_missing(rt::Runtime, input::AbstractVector)
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, elts)
+    return BlockVector(offs, elts, OPT)
 end
 
 """
@@ -398,7 +399,7 @@ function decode_vector(rt::Runtime, input::AbstractVector)
         top += length(v)
         offs[k+1] = top
     end
-    return BlockVector(offs, elts)
+    return BlockVector(offs, elts, OPT|PLU)
 end
 
 """
@@ -560,7 +561,7 @@ Wraps input values to one-element blocks.
 as_block() = Query(as_block)
 
 as_block(rt::Runtime, input::AbstractVector) =
-    BlockVector(:, input)
+    BlockVector(:, input, REG)
 
 
 """
@@ -572,7 +573,7 @@ in_block(q) = Query(in_block, q)
 
 function in_block(rt::Runtime, input::AbstractVector, q)
     @assert input isa BlockVector
-    BlockVector(offsets(input), q(rt, elements(input)))
+    BlockVector(offsets(input), q(rt, elements(input)), cardinality(input))
 end
 
 """
@@ -588,7 +589,8 @@ function flat_block(rt::Runtime, input::AbstractVector)
     nested = elements(input)
     nested_offs = offsets(nested)
     elts = elements(nested)
-    BlockVector(_flat_block(offs, nested_offs), elts)
+    card = cardinality(input)|cardinality(nested)
+    BlockVector(_flat_block(offs, nested_offs), elts, card)
 end
 
 _flat_block(offs1::AbstractVector{Int}, offs2::AbstractVector{Int}) =
@@ -614,12 +616,13 @@ function pull_block(rt::Runtime, input::AbstractVector, lbl)
     lbls = labels(input)
     cols = columns(input)
     col = cols[j]
+    card = cardinality(col)
     offs = offsets(col)
     col′ = elements(col)
     cols′ = copy(cols)
     if offs isa OneTo{Int}
         cols′[j] = col′
-        return BlockVector(offs, TupleVector(lbls, len, cols′))
+        return BlockVector(offs, TupleVector(lbls, len, cols′), card)
     end
     len′ = length(col′)
     perm = Vector{Int}(undef, len′)
@@ -639,7 +642,7 @@ function pull_block(rt::Runtime, input::AbstractVector, lbl)
                 cols′[i][perm]
             end
     end
-    return BlockVector(offs, TupleVector(lbls, len′, cols′))
+    return BlockVector(offs, TupleVector(lbls, len′, cols′), card)
 end
 
 """
@@ -659,10 +662,11 @@ end
 @generated function _pull_every_block(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
     D = length(cols)
     return quote
+        card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa OneTo{Int})
-            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
+            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]), card)
         end
         len′ = 0
         regular = true
@@ -672,7 +676,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
+            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]), card)
         end
         offs′ = Vector{Int}(undef, len+1)
         @nextract $D perm (d -> Vector{Int}(undef, len′))
@@ -685,7 +689,7 @@ end
             offs′[k+1] = top
         end
         cols′ = @nref $D AbstractVector (d -> elts_d[perm_d])
-        return BlockVector(offs′, TupleVector(lbls, len′, cols′))
+        return BlockVector(offs′, TupleVector(lbls, len′, cols′), card)
     end
 end
 
@@ -760,9 +764,9 @@ function sieve(rt::Runtime, input::AbstractVector)
     val_col, pred_col = columns(input)
     sz = count(pred_col)
     if sz == len
-        return BlockVector(:, val_col)
+        return BlockVector(:, val_col, OPT)
     elseif sz == 0
-        return BlockVector(fill(1, len+1), val_col[[]])
+        return BlockVector(fill(1, len+1), val_col[[]], OPT)
     end
     offs = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
@@ -774,7 +778,7 @@ function sieve(rt::Runtime, input::AbstractVector)
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, val_col[perm])
+    return BlockVector(offs, val_col[perm], OPT)
 end
 
 # Pagination.
@@ -823,7 +827,8 @@ function take_by(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    return BlockVector(offs′, elts′)
+    card = cardinality(input)|OPT
+    return BlockVector(offs′, elts′, card)
 end
 
 take_by(rev::Bool=false) =
@@ -867,7 +872,8 @@ function take_by(rt::Runtime, input::AbstractVector, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    return BlockVector(offs′, elts′)
+    card = cardinality(vals)|OPT
+    return BlockVector(offs′, elts′, card)
 end
 
 @inline _take_range(n::Int, l::Int, rev::Bool) =

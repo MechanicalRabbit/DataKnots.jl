@@ -6,8 +6,7 @@ import Base:
     convert,
     getindex,
     eltype,
-    show,
-    &, |, ~
+    show
 
 #
 # Generic lattice operations.
@@ -70,45 +69,6 @@ ibound(xs::Vector{T}) where {T} =
 #
 # Cardinality of a collection.
 #
-
-"""
-    Cardinality
-    REG::Cardinality
-    OPT::Cardinality
-    PLU::Cardinality
-    OPT|PLU::Cardinality
-
-Cardinality constraint on a collection of values.  `REG` stands for *1…1*,
-`OPT` for *0…1*, `PLU` for *1…∞*, `OPT|PLU` for *0…∞*.
-"""
-@enum Cardinality::UInt8 REG OPT PLU OPT_PLU
-
-syntax(c::Cardinality) =
-    c == REG ? :REG :
-    c == OPT ? :OPT :
-    c == PLU ? :PLU : Expr(:call, :(|), :OPT, :PLU)
-
-# Bitwise operations.
-
-(~)(c::Cardinality) =
-    Base.bitcast(Cardinality, (~UInt8(c))&UInt8(OPT|PLU))
-
-(|)(c1::Cardinality, c2::Cardinality) =
-    Base.bitcast(Cardinality, UInt8(c1)|UInt8(c2))
-
-(&)(c1::Cardinality, c2::Cardinality) =
-    Base.bitcast(Cardinality, UInt8(c1)&UInt8(c2))
-
-# Predicates.
-
-isregular(c::Cardinality) =
-    c == REG
-
-isoptional(c::Cardinality) =
-    c & OPT == OPT
-
-isplural(c::Cardinality) =
-    c & PLU == PLU
 
 # Partial order.
 
