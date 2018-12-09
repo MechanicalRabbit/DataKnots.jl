@@ -15,8 +15,8 @@ To start working with DataKnots, we import the package:
 
 Consider a pipeline `Hello` that produces a string value, `"Hello
 World"`. It is built using the `Const` primitive, which converts a
-Julia string value into a pipeline component. This pipeline can then
-be `run()` to produce its output.
+Julia value into a pipeline component. This pipeline can then be
+`run()` to produce its output.
 
     Hello = Const("Hello World")
     run(Hello)
@@ -27,8 +27,8 @@ be `run()` to produce its output.
     =#
 
 The output of the pipeline is encapsulated in a `DataKnot`, which is a
-container holding structured, vectorized data. We can get the actual
-Julia string value using `get()`.
+container holding structured, vectorized data. We can get the
+corresponding Julia value using `get()`.
 
     get(run(Hello)) #-> "Hello World"
 
@@ -55,11 +55,11 @@ knots, indices are in the first column with values in remaining columns.
 
 ### Composition & Identity
 
-With DataKnots, composition with independently developed data
-processing components is straightforward. Two pipelines could be
-connected using the composition combinator `>>`. Since the constant
-`Hello` pipeline does not depend upon its input, the composition
-`Range(3) >> Hello` would emit 3 copies of `"Hello World"`.
+In DataKnots, two pipelines could be connected sequentially using the
+composition combinator (`>>`). Consider the composition `Range(3) >>
+Hello`. Since `Range(3)` emits 3 values and `Hello` emits `"Hello
+World"` regardless of its input, their composition emits 3 copies of
+`"Hello World"`.
 
     run(Range(3) >> Hello)
     #=>
@@ -82,7 +82,7 @@ pipeline's output.
     =#
 
 The identity, `It`, can be used to construct pipelines which rely upon
-the output from previous processing. For example, one could define a
+the output from previous processing. For example, one can define a
 pipeline `Increment` as `It .+ 1`.
 
     Increment = It .+ 1
@@ -117,9 +117,9 @@ sophisticated pipeline components and remix them in creative ways.
 
 ### Lifting Julia Functions
 
-With DataKnots, any native Julia expression can be lifted so that it
-could be used to build a `Pipeline`. Consider the Julia function
-`double()` that, when applied to a `Number`, produces a `Number`:
+With DataKnots, any native Julia expression can be lifted to build a
+`Pipeline`. Consider the Julia function `double()` that, when applied
+to a `Number`, produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
@@ -159,7 +159,7 @@ The results are then collected and converted into a plural output knot.
 Sometimes it's handy to use pipeline composition, rather than passing
 by combinator arguments. To build a pipeline component that doubles its
 input, the `Double` combinator could use `It` as its argument. This
-pipeline could then later be reused with various inputs.
+pipeline can then later be reused with various inputs.
 
     ThenDouble = Double(It)
     run(Range(3) >> ThenDouble)
@@ -314,16 +314,14 @@ Once these are done, one could take the sum of means as follows:
     =#
 
 In DataKnots, aggregate operations are naturally expressed as pipeline
-combinators and do not need explicit grouping. Nested aggregation just
-works. Moreover, custom aggregates can be easily constructed as native
-Julia functions and lifted into the query language.
+combinators. Moreover, custom aggregates can be easily constructed as
+native Julia functions and lifted into the pipeline algebra.
 
-## Filtering & Paging
+## Filtering & Slicing Data
 
-Unsurprisingly, data filtering and paging of DataKnots' pipelines are
-also done with *combinators*. The `Filter` combinator takes one
-parameter, a predicate pipeline that for each input decides whether it
-should be included in the output.
+DataKnots comes with combinators for rearranging data. Consider
+`Filter`, which takes one parameter, a predicate pipeline that for each
+input value decides if that value should be included in the output.
 
     run(Range(6) >> Filter(It .> 3))
     #=>
@@ -334,22 +332,13 @@ should be included in the output.
     3 │        6 │
     =#
 
-The `Take` and `Drop` combinators can be used to slice an input stream:
-`Drop` is used to skip over input, `Take` ignores output past a
-particular point.
+Contrast this with the built-in Julia function `filter()`.
 
-    run(Range(9) >> Drop(3) >> Take(3))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        4 │
-    2 │        5 │
-    3 │        6 │
-    =#
+    filter(x -> x > 3, 1:6) #-> [4, 5, 6]
 
-Sometimes it's helpful to encapsulate filter logic as a `Pipeline`
-component so it could be reused. Consider `KeepEven` that would keep
-only even values.
+Where `filter()` returns a filtered dataset, the `Filter` combinator
+returns a pipeline component, which could then be composed with
+any data generating pipeline.
 
     KeepEven = Filter(iseven.(It))
     run(Range(6) >> KeepEven)
@@ -358,6 +347,19 @@ only even values.
     ──┼──────────┤
     1 │        2 │
     2 │        4 │
+    3 │        6 │
+    =#
+
+Similar to `Filter`, the `Take` and `Drop` combinators can be used to
+slice an input stream: `Drop` is used to skip over input, `Take`
+ignores output past a particular point.
+
+    run(Range(9) >> Drop(3) >> Take(3))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        4 │
+    2 │        5 │
     3 │        6 │
     =#
 
@@ -396,8 +398,10 @@ returns a singular, rather than plural knot.
     │        1 │
     =#
 
-In DataKnots, filtering and paging operations can be used to build
-interesting components that can then be reused within queries.
+In DataKnots, filtering and slicing are realized as pipeline
+components. They are attached to data processing pipelines using the
+composition combinator. This brings common data processing concepts
+into our pipeline algebra.
 
 ### Query Parameters
 
@@ -407,7 +411,7 @@ singular labels for query parameters.
 
     run("Hello " .* Lookup(:WHO), WHO="World")
     #=>
-    │ WHOKnot    │
+    │ DataKnot    │
     ├─────────────┤
     │ Hello World │
     =#
@@ -567,8 +571,8 @@ plural values.
     │ │ Jim Rockford  555-2386 │               │
     =#
 
-In DataKnots, records provide rich ways to structure data to form
-hierarchies and other rich data structures.
+In DataKnots, records are used to generate tabular data. Using nested
+records, it is possible to represent complex, hierarchical data.
 
 ## Working With Data
 
