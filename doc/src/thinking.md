@@ -1,11 +1,11 @@
-# Thinking in DataKnots
+# Thinking in Combinators
 
-DataKnots are a Julia library for working with computational pipelines.
-Each `DataKnot` is a container holding structured, often interrelated,
-vectorized data. Each `Pipeline` can be seen as a data knot
-transformation. Pipelines are assembled algebraically using pipeline
-*primitives*, which represent relationships among data, and
-*combinators*, which encapsulate logic.
+DataKnots are a Julia library for building data processing pipelines.
+In DataKnots, pipelines are assembled algebraically: they either come
+from a set of atomic *primitives* or are built from other pipelines
+using *combinators*. In this tutorial, we show how to build pipelines
+starting from smaller components and then combining them algebraically
+to implement complex processing tasks.
 
 To start working with DataKnots, we import the package:
 
@@ -13,10 +13,10 @@ To start working with DataKnots, we import the package:
 
 ## Constructing Pipelines
 
-Consider a pipeline `Hello` that produces a `DataKnot` containing a
-string value, `"Hello World"`. It is built using the `Const` primitive,
-which converts a Julia string value into a pipeline component. This
-pipeline can then be `run()` to produce its output.
+Consider a pipeline `Hello` that produces a string value, `"Hello
+World"`. It is built using the `Const` primitive, which converts a
+Julia string value into a pipeline component. This pipeline can then
+be `run()` to produce its output.
 
     Hello = Const("Hello World")
     run(Hello)
@@ -25,6 +25,12 @@ pipeline can then be `run()` to produce its output.
     ├─────────────┤
     │ Hello World │
     =#
+
+The output of the pipeline is encapsulated in a `DataKnot`, which is a
+container holding structured, vectorized data. We can get the actual
+Julia string value using `get()`.
+
+    get(run(Hello)) #-> "Hello World"
 
 Consider another pipeline, `Range(3)`. It is built with the `Range`
 combinator. When `run()`, it emits a sequence of integers from `1`
@@ -38,6 +44,10 @@ to `3`.
     2 │        2 │
     3 │        3 │
     =#
+
+The output of this knot can also be converted to native Julia.
+
+    get(run(Range(3))) #-> [1, 2, 3]
 
 Observe that `Hello` pipeline produces a *singular* value, while the
 `Range(3)` pipeline is *plural*. In the output notation for plural
