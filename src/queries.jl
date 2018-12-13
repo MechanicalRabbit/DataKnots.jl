@@ -1,18 +1,20 @@
 #
-# Backend algebra.
+# Combinator algebra of vectorized data transformations.
 #
 
-using Base: OneTo
 import Base:
-    show,
-    showerror
+    OneTo,
+    show
 
 using Base.Cartesian
 
+
+#
 # Query interface.
+#
 
 """
-    Runtime(refs)
+    Runtime()
 
 Runtime state for query evaluation.
 """
@@ -22,20 +24,26 @@ end
 """
     Query(op, args...)
 
-A query represents a vectorized data transformation.
+A query object represents a vectorized data transformation.
 
-Parameter `op` is a function that performs the transformation.
-It is invoked with the following arguments:
+Parameter `op` is a function that performs the transformation; `args` are
+extra arguments to be passed to the function.
+
+The query transforms any input vector by invoking `op` with the following
+arguments:
 
     op(rt::Runtime, input::AbstractVector, args...)
 
-It must return the output vector of the same length as the input vector.
+The result of `op` must be the output vector, which should be of the same
+length as the input vector.
 """
 struct Query
     op
     args::Vector{Any}
     sig::Signature
-    src::Any
+
+    Query(op, args::Vector{Any}, sig::Signature) =
+        new(op, args, sig)
 end
 
 let NO_SIG = Signature()
@@ -43,22 +51,24 @@ let NO_SIG = Signature()
     global Query
 
     Query(op, args...) =
-        Query(op, collect(Any, args), NO_SIG, nothing)
+        Query(op, collect(Any, args), NO_SIG)
 end
 
 """
-    designate(::Query, ::Signature) -> Query
-    designate(::Query, ::InputShape, ::OutputShape) -> Query
-    q::Query |> designate(::Signature) -> Query
-    q::Query |> designate(::InputShape, ::OutputShape) -> Query
+    designate(::Query, ::Signature) :: Query
+    designate(::Query, ::InputShape, ::OutputShape) :: Query
+    q::Query |> designate(::Signature) :: Query
+    q::Query |> designate(::InputShape, ::OutputShape) :: Query
 
 Sets the query signature.
 """
+function designate end
+
 designate(q::Query, sig::Signature) =
-    Query(q.op, q.args, sig, q.src)
+    Query(q.op, q.args, sig)
 
 designate(q::Query, ishp::InputShape, shp::OutputShape) =
-    Query(q.op, q.args, Signature(ishp, shp), q.src)
+    Query(q.op, q.args, Signature(ishp, shp))
 
 designate(sig::Signature) =
     q::Query -> designate(q, sig)
@@ -67,7 +77,7 @@ designate(ishp::InputShape, shp::OutputShape) =
     q::Query -> designate(q, Signature(ishp, shp))
 
 """
-    signature(::Query) -> Signature
+    signature(::Query) :: Signature
 
 Returns the query signature.
 """
@@ -109,14 +119,7 @@ function (q::Query)(input::AbstractVector)
 end
 
 function (q::Query)(rt::Runtime, input::AbstractVector)
-    try
-        q.op(rt, input, q.args...)
-    catch err
-        if err isa QueryError && err.q === nothing && err.input === nothing
-            err = err |> setquery(q) |> setinput(encapsulate(input, rt.refs))
-        end
-        rethrow(err)
-    end
+    q.op(rt, input, q.args...)
 end
 
 syntax(q::Query) =
@@ -126,46 +129,20 @@ show(io::IO, q::Query) =
     print_expr(io, syntax(q))
 
 """
-    optimize(::Query)::Query
+    optimize(::Query) :: Query
 
-Rewrites the query to make it more effective.
+Rewrites the query to make it (hopefully) faster.
 """
 optimize(q::Query) =
     simplify(q) |> designate(q.sig)
 
-"""
-    QueryError(msg, ::Query, ::AbstractVector)
 
-Exception thrown when a query gets unexpected input.
-"""
-struct QueryError <: Exception
-    msg::String
-    q::Union{Nothing,Query}
-    input::Union{Nothing,AbstractVector}
-end
-
-QueryError(msg) = QueryError(msg, nothing, nothing)
-
-setquery(q::Query) =
-    err::QueryError -> QueryError(err.msg, q, err.input)
-
-setinput(input::AbstractVector) =
-    err::QueryError -> QueryError(err.msg, err.q, input)
-
-function showerror(io::IO, err::QueryError)
-    print(io, "$(nameof(QueryError)): $(err.msg)")
-    if err.q !== nothing && err.input !== nothing
-        println(io, " at:")
-        println(io, err.q)
-        println(io, "with input:")
-        print(IOContext(io, :limit => true), err.input)
-    end
-end
-
+#
 # Vectorizing scalar functions.
+#
 
 """
-    lift(f) -> Query
+    lift(f) :: Query
 
 `f` is any scalar unary function.
 
@@ -177,7 +154,7 @@ lift(rt::Runtime, input::AbstractVector, f) =
     f.(input)
 
 """
-    lift_to_tuple(f) -> Query
+    lift_to_tuple(f) :: Query
 
 `f` is an n-ary function.
 
@@ -204,15 +181,16 @@ end
 end
 
 """
-    lift_to_block(f)
-    lift_to_block(f, default)
+    lift_to_block(f) :: Query
+    lift_to_block(f, default) :: Query
 
-`f` is a function that takes a vector argument.
+`f` is a function that expects a vector argument.
 
-Applies a function `f` that takes a vector argument to each block of a block
-vector.  When specified, `default` is used instead of applying `f` to an
-empty block.
+The query applies `f` to each block of the input block vector.  When a block is
+empty, `default` (if specified) is used as the output value.
 """
+function lift_to_block end
+
 lift_to_block(f) = Query(lift_to_block, f)
 
 function lift_to_block(rt::Runtime, input::AbstractVector, f)
@@ -248,10 +226,13 @@ function _lift_to_block(f, default, input)
 end
 
 """
-    lift_to_block_tuple(f)
+    lift_to_block_tuple(f) :: Query
 
-Lifts an n-ary function to a tuple vector with block columns.  Applies the
-function to every combinations of values from adjacent blocks.
+`f` is an n-ary function.
+
+This query expects the input to be an n-tuple vector with each column being a
+block vector.  The query produces a block vector, where each block is generated
+by applying `f` to every combination of values from the input blocks.
 """
 lift_to_block_tuple(f) = Query(lift_to_block_tuple, f)
 
@@ -266,7 +247,7 @@ end
         card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
-        if @nall $D (d -> offs_d isa OneTo{Int})
+        if @nall $D (d -> offs_d isa Base.OneTo{Int})
             return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...), card)
         end
         len′ = 0
@@ -296,9 +277,9 @@ end
 end
 
 """
-    lift_const(val)
+    lift_const(val) :: Query
 
-Produces a vector filled with the given value.
+This query produces a vector filled with the given value.
 """
 lift_const(val) = Query(lift_const, val)
 
@@ -306,9 +287,9 @@ lift_const(rt::Runtime, input::AbstractVector, val) =
     fill(val, length(input))
 
 """
-    lift_null()
+    lift_null() :: Query
 
-Produces a block vector of empty blocks.
+This query produces a block vector with empty blocks.
 """
 lift_null() = Query(lift_null)
 
@@ -316,9 +297,9 @@ lift_null(rt::Runtime, input::AbstractVector) =
     BlockVector(fill(1, length(input)+1), Union{}[], OPT)
 
 """
-    lift_block(block, card::Cardinality)
+    lift_block(block::AbstractVector, card::Cardinality) :: Query
 
-Produces a block vector filled with the given block.
+This query produces a block vector filled with the given block.
 """
 lift_block(block, card::Cardinality=OPT|PLU) = Query(lift_block, block, card)
 
@@ -338,13 +319,16 @@ function lift_block(rt::Runtime, input::AbstractVector, block::AbstractVector, c
     end
 end
 
-# Decoding regular vectors of composite values as columnar/SoA vectors.
+
+#
+# Converting regular vectors to columnar vectors.
+#
 
 """
-    decode_missing()
+    decode_missing() :: Query
 
-Decodes a vector with `missing` elements as a block vector, where `missing`
-elements are converted to empty blocks.
+This query transforms a vector that contains `missing` elements to a block
+vector with `missing` elements replaced by empty blocks.
 """
 decode_missing() = Query(decode_missing)
 
@@ -377,9 +361,9 @@ function decode_missing(rt::Runtime, input::AbstractVector)
 end
 
 """
-    decode_vector()
+    decode_vector() :: Query
 
-Decodes a vector with vector elements as a block vector.
+This query transforms a vector with vector elements to a block vector.
 """
 decode_vector() = Query(decode_vector)
 
@@ -403,9 +387,9 @@ function decode_vector(rt::Runtime, input::AbstractVector)
 end
 
 """
-    decode_tuple()
+    decode_tuple() :: Query
 
-Decodes a vector with tuple elements as a tuple vector.
+This query transforms a vector of tuples to a tuple vector.
 """
 decode_tuple() = Query(decode_tuple)
 
@@ -435,12 +419,15 @@ end
     end
 end
 
+
+#
 # Identity and composition.
+#
 
 """
-    pass()
+    pass() :: Query
 
-Identity map.
+This query returns its input unchanged.
 """
 pass() = Query(pass)
 
@@ -448,10 +435,12 @@ pass(rt::Runtime, input::AbstractVector) =
     input
 
 """
-    chain_of(q₁, q₂ … qₙ)
+    chain_of(q₁::Query, q₂::Query … qₙ::Query) :: Query
 
-Sequentially applies q₁, q₂ … qₙ.
+This query sequentially applies `q₁`, `q₂` … `qₙ`.
 """
+function chain_of end
+
 chain_of() = pass()
 
 chain_of(q) = q
@@ -477,12 +466,16 @@ function chain_of(rt::Runtime, input::AbstractVector, qs)
     output
 end
 
+
+#
 # Operations on tuple vectors.
+#
 
 """
-    tuple_of(q₁, q₂ … qₙ)
+    tuple_of(q₁::Query, q₂::Query … qₙ::Query) :: Query
 
-Combines the output of q₁, q₂ … qₙ into an n-tuple vector.
+This query produces an n-tuple vector, whose columns are generated by applying
+`q₁`, `q₂` … `qₙ` to the input vector.
 """
 tuple_of(qs...) =
     tuple_of(Symbol[], collect(qs))
@@ -499,9 +492,9 @@ function tuple_of(rt::Runtime, input::AbstractVector, lbls, qs)
 end
 
 """
-    column(lbl)
+    column(lbl::Union{Int,Symbol}) :: Query
 
-Extracts the specified column of a tuple vector.
+This query extracts the specified column of a tuple vector.
 """
 column(lbl::Union{Int,Symbol}) = Query(column, lbl)
 
@@ -512,9 +505,9 @@ function column(rt::Runtime, input::AbstractVector, lbl)
 end
 
 """
-    in_tuple(lbl, q)
+    in_tuple(lbl::Union{Int,Symbol}, q::Query) :: Query
 
-Using q, transforms the specified column of a tuple vector.
+This query transforms a tuple vector by applying `q` to the specified column.
 """
 in_tuple(lbl::Union{Int,Symbol}, q) = Query(in_tuple, lbl, q)
 
@@ -527,9 +520,9 @@ function in_tuple(rt::Runtime, input::AbstractVector, lbl, q)
 end
 
 """
-    flat_tuple(lbl)
+    flat_tuple(lbl::Union{Int,Symbol}) :: Query
 
-Flattens a nested tuple vector.
+This query flattens a nested tuple vector.
 """
 flat_tuple(lbl::Union{Int,Symbol}) = Query(flat_tuple, lbl)
 
@@ -551,12 +544,16 @@ function flat_tuple(rt::Runtime, input::AbstractVector, lbl)
     TupleVector(lbls′, length(input), cols′)
 end
 
+
+#
 # Operations on block vectors.
+#
 
 """
-    as_block()
+    as_block() :: Query
 
-Wraps input values to one-element blocks.
+This query produces a block vector with one-element blocks wrapping the values
+of the input vector.
 """
 as_block() = Query(as_block)
 
@@ -565,9 +562,9 @@ as_block(rt::Runtime, input::AbstractVector) =
 
 
 """
-    in_block(q)
+    in_block(q::Query) :: Query
 
-Using q, transfors the elements of the input blocks.
+This query transforms a block vector by applying `q` to its vector of elements.
 """
 in_block(q) = Query(in_block, q)
 
@@ -577,9 +574,9 @@ function in_block(rt::Runtime, input::AbstractVector, q)
 end
 
 """
-    flat_block()
+    flat_block() :: Query
 
-Flattens a nested block vector.
+This query flattens a nested block vector.
 """
 flat_block() = Query(flat_block)
 
@@ -603,9 +600,10 @@ _flat_block(offs1::OneTo{Int}, offs2::AbstractVector{Int}) = offs2
 _flat_block(offs1::AbstractVector{Int}, offs2::OneTo{Int}) = offs1
 
 """
-    pull_block(lbl)
+    pull_block(lbl::Union{Int,Symbol}) :: Query
 
-Converts a tuple with a block column to a block of tuples.
+This query transforms a tuple vector with a column of blocks to a block vector
+with tuple elements.
 """
 pull_block(lbl) = Query(pull_block, lbl)
 
@@ -646,10 +644,10 @@ function pull_block(rt::Runtime, input::AbstractVector, lbl)
 end
 
 """
-    pull_every_block()
+    pull_every_block() :: Query
 
-Converts a tuple vector with block columns to a block vector over a tuple
-vector.
+This query transforms a tuple vector with block columns to a block vector with
+tuple elements.
 """
 pull_every_block() = Query(pull_every_block)
 
@@ -694,9 +692,9 @@ end
 end
 
 """
-    count_block()
+    count_block() :: Query
 
-Maps a block vector to a vector of block lengths.
+This query converts a block vector to a vector of block lengths.
 """
 count_block() = Query(count_block)
 
@@ -718,9 +716,9 @@ function _count_block(offs::AbstractVector{Int})
 end
 
 """
-    any_block()
+    any_block() :: Query
 
-Checks if there is one `true` value in a block of `Bool` values.
+This query applies `any` to a block vector with `Bool` elements.
 """
 any_block() = Query(any_block)
 
@@ -749,12 +747,18 @@ function any_block(rt::Runtime, input::AbstractVector)
     return output
 end
 
-# Sieving a vector.
+
+#
+# Filtering.
+#
 
 """
-    sieve()
+    sieve() :: Query
 
-Filters a vector of pairs by the second column.
+This query filters a vector of pairs by the second column.  The query expects a
+pair vector, whose second column is a `Bool` vector.  It produces a block
+vector with 0-element or 1-element blocks containing the elements of the first
+column.
 """
 sieve() = Query(sieve)
 
@@ -781,12 +785,16 @@ function sieve(rt::Runtime, input::AbstractVector)
     return BlockVector(offs, val_col[perm], OPT)
 end
 
-# Pagination.
+
+#
+# Slicing.
+#
 
 """
-    take_by(N)
+    take_by(N::Int, rev::Bool=false) :: Query
 
-Keeps the first N elements in a block.
+This query transforms a block vector by keeping the first `N` elements of each
+block.  If `rev` is true, the query drops the first `N` elements of each block.
 """
 take_by(N::Union{Missing,Int}, rev::Bool=false) =
     Query(take_by, N, rev)
@@ -831,6 +839,12 @@ function take_by(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
     return BlockVector(offs′, elts′, card)
 end
 
+"""
+    take_by(rev::Bool=false) :: Query
+
+This query takes a pair vector of blocks and integers, and returns the first
+column with blocks restricted by the second column.
+"""
 take_by(rev::Bool=false) =
     Query(take_by, rev)
 
@@ -886,7 +900,10 @@ end
 @inline _take_range(::Missing, l::Int, ::Bool) =
     (1, l)
 
+
+#
 # Optimizing a query expression.
+#
 
 function simplify(q::Query)
     qs = simplify_chain(q)

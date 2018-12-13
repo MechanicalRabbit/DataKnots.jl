@@ -1,7 +1,7 @@
-# Type System
+# Data Shape
 
-Module `DataKnot` permits describing the shape of data and the signature of
-queries.
+In `DataKnots`, the structure of vectorized data is described using *shape*
+objects.
 
     using DataKnots:
         OPT,
@@ -31,6 +31,15 @@ queries.
         isregular,
         mode,
         shape
+
+
+## Input and output shapes
+
+
+## Atomic shapes
+
+
+## Record shape
 
 
 ## Cardinality

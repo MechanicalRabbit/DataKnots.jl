@@ -23,8 +23,7 @@ export
     Record,
     Sum,
     Take,
-    Then,
-    signature
+    Then
 
 include("layouts.jl")
 include("vectors.jl")

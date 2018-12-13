@@ -43,8 +43,6 @@ get(knot::DataKnot) =
 
 shape(knot::DataKnot) = knot.shp
 
-signature(knot::DataKnot) = Signature(knot.shp)
-
 domain(knot::DataKnot) = domain(knot.shp)
 
 mode(knot::DataKnot) = mode(knot.shp)

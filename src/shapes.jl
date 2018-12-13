@@ -638,8 +638,6 @@ end
 show(io::IO, sig::Signature) =
     print_expr(io, sigsyntax(sig))
 
-signature(sig::Signature) = sig
-
 ishape(sig::Signature) = sig.ishp
 
 shape(sig::Signature) = sig.shp

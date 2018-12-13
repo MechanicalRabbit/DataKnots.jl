@@ -3,7 +3,8 @@
 
 ## Overview
 
-Module `DataKnots` contains an implementation of an in-memory column store.
+This section describes how `DataKnots` implements an in-memory column store.
+We will need the following definitions:
 
     using DataKnots:
         @VectorTree,

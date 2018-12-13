@@ -1,14 +1,15 @@
-# Query Execution Engine
+# Query Algebra
 
 
 ## Overview
 
 In `DataKnots`, structured data is stored in a column-oriented format,
 serialized using specialized composite vector types.  Consequently, operations
-on data take the form of vectorized functions.
+on data must also be adapted to the column-oriented format.
 
-Module `DataKnots` implements an interface of vectorized transformations called
-`Query` and provives a rich library of query primitives and combinators.
+Module `DataKnots` implements the `Query` interface of vectorized data
+transformations and provives a rich library of query primitives and
+combinators.
 
     using DataKnots:
         @VectorTree,
@@ -117,8 +118,8 @@ An individual column of a `TupleVector` instance could be extracted using a
 ## API Reference
 
 ```@autodocs
-Modules = [DataKnots.Queries]
-Private = false
+Modules = [DataKnots]
+Pages = ["queries.jl"]
 ```
 
 
