@@ -154,20 +154,20 @@ lift(rt::Runtime, input::AbstractVector, f) =
     f.(input)
 
 """
-    lift_to_tuple(f) :: Query
+    tuple_lift(f) :: Query
 
 `f` is an n-ary function.
 
 The query applies `f` to each row of an n-tuple vector.
 """
-lift_to_tuple(f) = Query(lift_to_tuple, f)
+tuple_lift(f) = Query(tuple_lift, f)
 
-function lift_to_tuple(rt::Runtime, input::AbstractVector, f)
+function tuple_lift(rt::Runtime, input::AbstractVector, f)
     @assert input isa TupleVector
-    _lift_to_tuple(f, length(input), columns(input)...)
+    _tuple_lift(f, length(input), columns(input)...)
 end
 
-@generated function _lift_to_tuple(f, len::Int, cols::AbstractVector...)
+@generated function _tuple_lift(f, len::Int, cols::AbstractVector...)
     D = length(cols)
     return quote
         I = Tuple{eltype.(cols)...}
@@ -181,31 +181,31 @@ end
 end
 
 """
-    lift_to_block(f) :: Query
-    lift_to_block(f, default) :: Query
+    block_lift(f) :: Query
+    block_lift(f, default) :: Query
 
 `f` is a function that expects a vector argument.
 
 The query applies `f` to each block of the input block vector.  When a block is
 empty, `default` (if specified) is used as the output value.
 """
-function lift_to_block end
+function block_lift end
 
-lift_to_block(f) = Query(lift_to_block, f)
+block_lift(f) = Query(block_lift, f)
 
-function lift_to_block(rt::Runtime, input::AbstractVector, f)
+function block_lift(rt::Runtime, input::AbstractVector, f)
     @assert input isa BlockVector
-    _lift_to_block(f, input)
+    _block_lift(f, input)
 end
 
-lift_to_block(f, default) = Query(lift_to_block, f, default)
+block_lift(f, default) = Query(block_lift, f, default)
 
-function lift_to_block(rt::Runtime, input::AbstractVector, f, default)
+function block_lift(rt::Runtime, input::AbstractVector, f, default)
     @assert input isa BlockVector
-    _lift_to_block(f, default, input)
+    _block_lift(f, default, input)
 end
 
-function _lift_to_block(f, input)
+function _block_lift(f, input)
     I = Tuple{typeof(cursor(input))}
     O = Core.Compiler.return_type(f, I)
     output = Vector{O}(undef, length(input))
@@ -215,7 +215,7 @@ function _lift_to_block(f, input)
     output
 end
 
-function _lift_to_block(f, default, input)
+function _block_lift(f, default, input)
     I = Tuple{typeof(cursor(input))}
     O = Union{Core.Compiler.return_type(f, I), typeof(default)}
     output = Vector{O}(undef, length(input))
@@ -226,7 +226,7 @@ function _lift_to_block(f, default, input)
 end
 
 """
-    lift_to_block_tuple(f) :: Query
+    record_lift(f) :: Query
 
 `f` is an n-ary function.
 
@@ -234,21 +234,21 @@ This query expects the input to be an n-tuple vector with each column being a
 block vector.  The query produces a block vector, where each block is generated
 by applying `f` to every combination of values from the input blocks.
 """
-lift_to_block_tuple(f) = Query(lift_to_block_tuple, f)
+record_lift(f) = Query(record_lift, f)
 
-function lift_to_block_tuple(rt::Runtime, input::AbstractVector, f)
+function record_lift(rt::Runtime, input::AbstractVector, f)
     @assert input isa TupleVector && all(col isa BlockVector for col in columns(input))
-    _lift_to_block_tuple(f, length(input), columns(input)...)
+    _record_lift(f, length(input), columns(input)...)
 end
 
-@generated function _lift_to_block_tuple(f, len::Int, cols::BlockVector...)
+@generated function _record_lift(f, len::Int, cols::BlockVector...)
     D = length(cols)
     return quote
         card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa Base.OneTo{Int})
-            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...), card)
+            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), card)
         end
         len′ = 0
         regular = true
@@ -258,7 +258,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, _lift_to_tuple(f, len, (@ntuple $D elts)...), card)
+            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), card)
         end
         I = Tuple{eltype.(@ntuple $D elts)...}
         O = Core.Compiler.return_type(f, I)
@@ -277,33 +277,33 @@ end
 end
 
 """
-    lift_const(val) :: Query
+    filler(val) :: Query
 
 This query produces a vector filled with the given value.
 """
-lift_const(val) = Query(lift_const, val)
+filler(val) = Query(filler, val)
 
-lift_const(rt::Runtime, input::AbstractVector, val) =
+filler(rt::Runtime, input::AbstractVector, val) =
     fill(val, length(input))
 
 """
-    lift_null() :: Query
+    null_filler() :: Query
 
 This query produces a block vector with empty blocks.
 """
-lift_null() = Query(lift_null)
+null_filler() = Query(null_filler)
 
-lift_null(rt::Runtime, input::AbstractVector) =
+null_filler(rt::Runtime, input::AbstractVector) =
     BlockVector(fill(1, length(input)+1), Union{}[], OPT)
 
 """
-    lift_block(block::AbstractVector, card::Cardinality) :: Query
+    block_filler(block::AbstractVector, card::Cardinality) :: Query
 
 This query produces a block vector filled with the given block.
 """
-lift_block(block, card::Cardinality=OPT|PLU) = Query(lift_block, block, card)
+block_filler(block, card::Cardinality=OPT|PLU) = Query(block_filler, block, card)
 
-function lift_block(rt::Runtime, input::AbstractVector, block::AbstractVector, card::Cardinality)
+function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector, card::Cardinality)
     if isempty(input)
         return BlockVector(:, block[[]], card)
     elseif length(input) == 1

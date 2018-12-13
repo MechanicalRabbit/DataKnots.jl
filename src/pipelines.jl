@@ -72,7 +72,7 @@ end
 combine(knot::DataKnot, env::Environment, q::Query) =
     compose(
         q,
-        lift_block(elements(knot), cardinality(knot)) |> designate(InputShape(AnyShape()), shape(knot)))
+        block_filler(elements(knot), cardinality(knot)) |> designate(InputShape(AnyShape()), shape(knot)))
 
 combine(data::DataValue, env::Environment, q::Query) =
     combine(convert(DataKnot, data.val), env, q)
@@ -447,7 +447,7 @@ function Lift(env::Environment, q::Query, f, Xs)
             ety = oty.parameters[1]
             r = chain_of(
                     dsx,
-                    lift_to_block_tuple(f),
+                    record_lift(f),
                     in_block(decode_vector()),
                     flat_block()
             ) |> designate(ishp,
@@ -455,7 +455,7 @@ function Lift(env::Environment, q::Query, f, Xs)
         else
             r = chain_of(
                     dsx,
-                    lift_to_block_tuple(f)
+                    record_lift(f)
             ) |> designate(ishp,
                            OutputShape(NativeShape(oty)))
         end
@@ -469,7 +469,7 @@ function Lift(env::Environment, q::Query, f, Xs)
             ety = oty.parameters[1]
             r = chain_of(
                     dsx,
-                    lift_to_block_tuple(f),
+                    record_lift(f),
                     in_block(decode_vector()),
                     flat_block()
             ) |> designate(ishp,
@@ -477,7 +477,7 @@ function Lift(env::Environment, q::Query, f, Xs)
         else
             r = chain_of(
                     dsx,
-                    lift_to_block_tuple(f)
+                    record_lift(f)
             ) |> designate(ishp,
                            OutputShape(NativeShape(oty), bound(mode.(xs))))
         end
@@ -622,7 +622,7 @@ function Sum(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     r = chain_of(
             x,
-            lift_to_block(sum),
+            block_lift(sum),
             as_block(),
     ) |> designate(ishape(x), OutputShape(domain(x)))
     compose(q, r)
@@ -633,13 +633,13 @@ function Max(env::Environment, q::Query, X)
     if fits(OPT, cardinality(x))
         r = chain_of(
                 x,
-                lift_to_block(maximum, missing),
+                block_lift(maximum, missing),
                 decode_missing(),
         ) |> designate(ishape(x), OutputShape(domain(x), OPT))
     else
         r = chain_of(
                 x,
-                lift_to_block(maximum),
+                block_lift(maximum),
                 as_block(),
         ) |> designate(ishape(x), OutputShape(domain(x)))
     end
@@ -651,13 +651,13 @@ function Min(env::Environment, q::Query, X)
     if fits(OPT, cardinality(x))
         r = chain_of(
                 x,
-                lift_to_block(minimum, missing),
+                block_lift(minimum, missing),
                 decode_missing(),
         ) |> designate(ishape(x), OutputShape(domain(x), OPT))
     else
         r = chain_of(
                 x,
-                lift_to_block(minimum),
+                block_lift(minimum),
                 as_block(),
         ) |> designate(ishape(x), OutputShape(domain(x)))
     end
@@ -670,13 +670,13 @@ function Mean(env::Environment, q::Query, X)
     if fits(OPT, cardinality(x))
         r = chain_of(
                 x,
-                lift_to_block(mean, missing),
+                block_lift(mean, missing),
                 decode_missing(),
         ) |> designate(ishape(x), OutputShape(T, OPT))
     else
         r = chain_of(
                 x,
-                lift_to_block(mean),
+                block_lift(mean),
                 as_block(),
         ) |> designate(ishape(x), OutputShape(T))
     end
@@ -726,8 +726,8 @@ function Take(env::Environment, q::Query, N::PipelineLike, rev::Bool=false)
             chain_of(project_input(mode(ishp), imode(n)),
                      n,
                      fits(OPT, cardinality(n)) ?
-                        lift_to_block(first, missing) :
-                        lift_to_block(first))),
+                        block_lift(first, missing) :
+                        block_lift(first))),
         take_by(rev),
     ) |> designate(ishp, OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(OPT))))
 end
