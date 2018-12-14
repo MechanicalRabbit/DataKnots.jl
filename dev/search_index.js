@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Implementation Guide",
     "title": "Implementation Guide",
     "category": "section",
-    "text": "Pages = [\n    \"vectors.md\",\n    \"shapes.md\",\n    \"queries.md\",\n    \"pipelines.md\",\n    \"lifting.md\",\n]"
+    "text": "Pages = [\n    \"vectors.md\",\n    \"queries.md\",\n    \"shapes.md\",\n    \"pipelines.md\",\n    \"lifting.md\",\n]"
 },
 
 {
@@ -321,6 +321,342 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "queries/#",
+    "page": "Query Algebra",
+    "title": "Query Algebra",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "queries/#Query-Algebra-1",
+    "page": "Query Algebra",
+    "title": "Query Algebra",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "queries/#Overview-1",
+    "page": "Query Algebra",
+    "title": "Overview",
+    "category": "section",
+    "text": "This section describes the Query interface of vectorized data transformations.  We will need the following definitions:using DataKnots:\n    @VectorTree,\n    adapt_missing,\n    adapt_tuple,\n    adapt_vector,\n    block_filler,\n    block_lift,\n    chain_of,\n    column,\n    distribute,\n    distribute_all,\n    filler,\n    flatten,\n    lift,\n    null_filler,\n    pass,\n    record_lift,\n    tuple_lift,\n    tuple_of,\n    with_column,\n    with_elements,\n    wrap"
+},
+
+{
+    "location": "queries/#Lifting-and-fillers-1",
+    "page": "Query Algebra",
+    "title": "Lifting and fillers",
+    "category": "section",
+    "text": "DataKnots stores structured data in a column-oriented format, serialized using specialized composite vector types.  Consequently, operations on data must also be adapted to the column-oriented format.In DataKnots, operations on column-oriented data are called queries.  A query is a vectorized transformation: it takes a vector of input values and produces a vector of the same size containing output values.Any unary scalar function could be vectorized, which gives us a simple method for creating new queries.  Consider, for example, function titlecase(), which transforms the input string by capitalizing the first letter of each word and converting every other character to lowercase.titlecase(\"JEFFERY A\")      #-> \"Jeffery A\"This function can be converted to a query, or lifted, using the lift operator.q = lift(titlecase)\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery A\", \"James A\", \"Terry A\"]A scalar function with N arguments could be lifted by tuple_lift to make a query that transforms a TupleVector with N columns.  For example, the comparison operator >, which maps a pair of integers to a Boolean value, gives rise to a query tuple_lift(>) that transforms the input TupleVector with two integer columns to a Boolean vector.q = tuple_lift(>)\nq(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]In a similar manner, a function with a vector argument can be lifted by block_lift to make a query that expects a BlockVector input.  For example, function length(), which returns the length of a vector, could be converted to a query block_lift(length) that transforms a block vector to an integer vector containing block lengths.q = block_lift(length)\nq(@VectorTree [String] [[\"JEFFERY A\", \"NANCY A\"], [\"JAMES A\"]])\n#-> [2, 1]Not just functions, but also regular values could give rise to queries.  The filler operator make a query from any scalar value.  This query maps any input vector to a vector filled with the given scalar.q = filler(200000)\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [200000, 200000, 200000]Similarly, block_filler makes a query from any vector value.  This query produces a BlockVector filled with the given vector.q = block_filler([\"POLICE\", \"FIRE\"])\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String] [[\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"]]A variant of block_filler called null_filler makes a query that produces a BlockVector filled with empty blocks.q = null_filler()\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [Union{}, OPT] [missing, missing, missing]"
+},
+
+{
+    "location": "queries/#Query-interface-1",
+    "page": "Query Algebra",
+    "title": "Query interface",
+    "category": "section",
+    "text": "Functions such as lift(), tuple_lift(), and many others return a Query object.  The Query interface represents a vectorized data transformation that maps an input vector to an output vector of the same length.Functions that take one or more Query instances as arguments and return a new Query object as the result are called combinators.  Combinators are used to assemble elementary queries into complex query expressions.For example, composition combinator chain_of() assembles a series of queries into a sequential composition, which transforms the input vector by sequentially applying the given queries.q = chain_of(lift(split), lift(first), lift(titlecase))\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery\", \"James\", \"Terry\"]Another combinator, tuple constructor tuple_of() assembles a series of queries into a parallel composition.  It outputs a TupleVector instance, which columns are generated by applying the given queries to the input vector.q = tuple_of(lift(titlecase), lift(last))\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree (String, Char) [(\"Jeffery A\", \'A\'), (\"James A\", \'A\'), (\"Terry A\", \'A\')]An individual column of a TupleVector instance could be extracted using a column() query.q = column(:salary)\nq(@VectorTree (name=String, salary=Int) [(\"JEFFERY A\", 101442), (\"JAMES A\", 103350), (\"TERRY A\", 93354)])\n#-> [101442, 103350, 93354]"
+},
+
+{
+    "location": "queries/#DataKnots.Query",
+    "page": "Query Algebra",
+    "title": "DataKnots.Query",
+    "category": "type",
+    "text": "Query(op, args...)\n\nA query object represents a vectorized data transformation.\n\nParameter op is a function that performs the transformation; args are extra arguments to be passed to the function.\n\nThe query transforms any input vector by invoking op with the following arguments:\n\nop(rt::Runtime, input::AbstractVector, args...)\n\nThe result of op must be the output vector, which should be of the same length as the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.Runtime",
+    "page": "Query Algebra",
+    "title": "DataKnots.Runtime",
+    "category": "type",
+    "text": "Runtime()\n\nRuntime state for query evaluation.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.adapt_missing-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.adapt_missing",
+    "category": "method",
+    "text": "adapt_missing() :: Query\n\nThis query transforms a vector that contains missing elements to a block vector with missing elements replaced by empty blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.adapt_tuple-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.adapt_tuple",
+    "category": "method",
+    "text": "adapt_tuple() :: Query\n\nThis query transforms a vector of tuples to a tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.adapt_vector-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.adapt_vector",
+    "category": "method",
+    "text": "adapt_vector() :: Query\n\nThis query transforms a vector with vector elements to a block vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.block_any-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.block_any",
+    "category": "method",
+    "text": "block_any() :: Query\n\nThis query applies any to a block vector with Bool elements.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.block_filler",
+    "page": "Query Algebra",
+    "title": "DataKnots.block_filler",
+    "category": "function",
+    "text": "block_filler(block::AbstractVector, card::Cardinality) :: Query\n\nThis query produces a block vector filled with the given block.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.block_length-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.block_length",
+    "category": "method",
+    "text": "block_length() :: Query\n\nThis query converts a block vector to a vector of block lengths.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.block_lift",
+    "page": "Query Algebra",
+    "title": "DataKnots.block_lift",
+    "category": "function",
+    "text": "block_lift(f) :: Query\nblock_lift(f, default) :: Query\n\nf is a function that expects a vector argument.\n\nThe query applies f to each block of the input block vector.  When a block is empty, default (if specified) is used as the output value.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.chain_of",
+    "page": "Query Algebra",
+    "title": "DataKnots.chain_of",
+    "category": "function",
+    "text": "chain_of(q₁::Query, q₂::Query … qₙ::Query) :: Query\n\nThis query sequentially applies q₁, q₂ … qₙ.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.column-Tuple{Union{Int64, Symbol}}",
+    "page": "Query Algebra",
+    "title": "DataKnots.column",
+    "category": "method",
+    "text": "column(lbl::Union{Int,Symbol}) :: Query\n\nThis query extracts the specified column of a tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.designate",
+    "page": "Query Algebra",
+    "title": "DataKnots.designate",
+    "category": "function",
+    "text": "designate(::Query, ::Signature) :: Query\ndesignate(::Query, ::InputShape, ::OutputShape) :: Query\nq::Query |> designate(::Signature) :: Query\nq::Query |> designate(::InputShape, ::OutputShape) :: Query\n\nSets the query signature.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.distribute-Tuple{Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.distribute",
+    "category": "method",
+    "text": "distribute(lbl::Union{Int,Symbol}) :: Query\n\nThis query transforms a tuple vector with a column of blocks to a block vector with tuple elements.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.distribute_all-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.distribute_all",
+    "category": "method",
+    "text": "distribute_all() :: Query\n\nThis query transforms a tuple vector with block columns to a block vector with tuple elements.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.filler-Tuple{Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.filler",
+    "category": "method",
+    "text": "filler(val) :: Query\n\nThis query produces a vector filled with the given value.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.flatten-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.flatten",
+    "category": "method",
+    "text": "flatten() :: Query\n\nThis query flattens a nested block vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.lift-Tuple{Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.lift",
+    "category": "method",
+    "text": "lift(f) :: Query\n\nf is any scalar unary function.\n\nThe query applies f to each element of the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.null_filler-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.null_filler",
+    "category": "method",
+    "text": "null_filler() :: Query\n\nThis query produces a block vector with empty blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.optimize-Tuple{DataKnots.Query}",
+    "page": "Query Algebra",
+    "title": "DataKnots.optimize",
+    "category": "method",
+    "text": "optimize(::Query) :: Query\n\nRewrites the query to make it (hopefully) faster.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.pass-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.pass",
+    "category": "method",
+    "text": "pass() :: Query\n\nThis query returns its input unchanged.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.record_lift-Tuple{Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.record_lift",
+    "category": "method",
+    "text": "record_lift(f) :: Query\n\nf is an n-ary function.\n\nThis query expects the input to be an n-tuple vector with each column being a block vector.  The query produces a block vector, where each block is generated by applying f to every combination of values from the input blocks.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.sieve-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.sieve",
+    "category": "method",
+    "text": "sieve() :: Query\n\nThis query filters a vector of pairs by the second column.  The query expects a pair vector, whose second column is a Bool vector.  It produces a block vector with 0-element or 1-element blocks containing the elements of the first column.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.signature-Tuple{DataKnots.Query}",
+    "page": "Query Algebra",
+    "title": "DataKnots.signature",
+    "category": "method",
+    "text": "signature(::Query) :: Signature\n\nReturns the query signature.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.slice",
+    "page": "Query Algebra",
+    "title": "DataKnots.slice",
+    "category": "function",
+    "text": "slice(rev::Bool=false) :: Query\n\nThis query takes a pair vector of blocks and integers, and returns the first column with blocks restricted by the second column.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.slice",
+    "page": "Query Algebra",
+    "title": "DataKnots.slice",
+    "category": "function",
+    "text": "slice(N::Int, rev::Bool=false) :: Query\n\nThis query transforms a block vector by keeping the first N elements of each block.  If rev is true, the query drops the first N elements of each block.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.tuple_lift-Tuple{Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.tuple_lift",
+    "category": "method",
+    "text": "tuple_lift(f) :: Query\n\nf is an n-ary function.\n\nThe query applies f to each row of an n-tuple vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.tuple_of-Tuple",
+    "page": "Query Algebra",
+    "title": "DataKnots.tuple_of",
+    "category": "method",
+    "text": "tuple_of(q₁::Query, q₂::Query … qₙ::Query) :: Query\n\nThis query produces an n-tuple vector, whose columns are generated by applying q₁, q₂ … qₙ to the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.with_column-Tuple{Union{Int64, Symbol},Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.with_column",
+    "category": "method",
+    "text": "with_column(lbl::Union{Int,Symbol}, q::Query) :: Query\n\nThis query transforms a tuple vector by applying q to the specified column.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.with_elements-Tuple{Any}",
+    "page": "Query Algebra",
+    "title": "DataKnots.with_elements",
+    "category": "method",
+    "text": "with_elements(q::Query) :: Query\n\nThis query transforms a block vector by applying q to its vector of elements.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#DataKnots.wrap-Tuple{}",
+    "page": "Query Algebra",
+    "title": "DataKnots.wrap",
+    "category": "method",
+    "text": "wrap() :: Query\n\nThis query produces a block vector with one-element blocks wrapping the values of the input vector.\n\n\n\n\n\n"
+},
+
+{
+    "location": "queries/#API-Reference-1",
+    "page": "Query Algebra",
+    "title": "API Reference",
+    "category": "section",
+    "text": "Modules = [DataKnots]\nPages = [\"queries.jl\"]"
+},
+
+{
+    "location": "queries/#Test-Suite-1",
+    "page": "Query Algebra",
+    "title": "Test Suite",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "queries/#Fillers-and-lifting-1",
+    "page": "Query Algebra",
+    "title": "Fillers and lifting",
+    "category": "section",
+    "text": "Many useful queries could be generated by lifting scalar functions and values. For example, filler(val) is a query that maps any input vector to the output vector filled with val.q = filler(200000)\n#-> filler(200000)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [200000, 200000, 200000]Similarly, block_filler(blk) maps any input vector to a block vector filled with the given block.q = block_filler([\"POLICE\", \"FIRE\"])\n#-> block_filler([\"POLICE\", \"FIRE\"], OPT | PLU)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String] [[\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"]]A variant of block_filler() called null_filler() produces a block vector with empty blocks.q = null_filler()\n#-> null_filler()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [Union{}, OPT] [missing, missing, missing]Any unary function f could be converted to a query lift(f) that transforms the input vector by applying f to its elements.q = lift(titlecase)\n#-> lift(titlecase)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"Garry M\", \"Anthony R\", \"Dana A\"]Similarly, any scalar function f of several arguments could be lifted into tuple vectors with tuple_lift(f).q = tuple_lift(>)\n#-> tuple_lift(>)\n\nq(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]A query record_lift(f) is a shortcut for chain_of(distribute_all(), tuple_lift(f)).  record_lift(f) expects a tuple vector whose columns are block vectors.  It produces a block vector, where each block is composed by applying f to every combination of values from all the blocks on the same row.q = record_lift(>)\n\nq(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])\n#-> @VectorTree [Bool] [[true, false, false], [], [true, true, false, false]]`record_liftAny function that takes a vector argument can be lifted into block vectors.q = block_lift(length)\n#-> block_lift(length)\n\nq(@VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> [3, 2]Some vector functions may expect a non-empty vector as an argument.  In this case, we should provide the value to replace empty blocks.q = block_lift(maximum, missing)\n#-> block_lift(maximum, missing)\n\nq(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])\n#-> Union{Missing, Int}[260004, missing, 202728]"
+},
+
+{
+    "location": "queries/#Decoding-vectors-1",
+    "page": "Query Algebra",
+    "title": "Decoding vectors",
+    "category": "section",
+    "text": "Any vector of tuples can be converted to a tuple vector.q = adapt_tuple()\n#-> adapt_tuple()\n\nq([(\"GARRY M\", 260004), (\"ANTHONY R\", 185364), (\"DANA A\", 170112)]) |> display\n#=>\nTupleVector of 3 × (String, Int):\n (\"GARRY M\", 260004)\n (\"ANTHONY R\", 185364)\n (\"DANA A\", 170112)\n=#Vectors of named tuples are also supported.q([(name=\"GARRY M\", salary=260004), (name=\"ANTHONY R\", salary=185364), (name=\"DANA A\", salary=170112)]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"GARRY M\", salary = 260004)\n (name = \"ANTHONY R\", salary = 185364)\n (name = \"DANA A\", salary = 170112)\n=#A vector of vector objects can be converted to a block vector.q = adapt_vector()\n#-> adapt_vector()\n\nq([[260004, 185364, 170112], Int[], [202728, 197736]])\n#-> @VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]]Similarly, a vector containing missing values can be converted to a block vector with zero- and one-element blocks.q = adapt_missing()\n#-> adapt_missing()\n\nq([260004, 185364, 170112, missing, 202728, 197736])\n#-> @VectorTree [Int, OPT] [260004, 185364, 170112, missing, 202728, 197736]"
+},
+
+{
+    "location": "queries/#Tuple-vectors-1",
+    "page": "Query Algebra",
+    "title": "Tuple vectors",
+    "category": "section",
+    "text": "To create a tuple vector, we use the combinator tuple_of(). Its arguments are the functions that generate the columns of the tuple.q = tuple_of(:title => lift(titlecase), :last => lift(last))\n#-> tuple_of(:title => lift(titlecase), :last => lift(last))\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]) |> display\n#=>\nTupleVector of 3 × (title = String, last = Char):\n (title = \"Garry M\", last = \'M\')\n (title = \"Anthony R\", last = \'R\')\n (title = \"Dana A\", last = \'A\')\n=#To extract a column of a tuple vector, we use the primitive column().  It accepts either the column position or the column name.q = column(1)\n#-> column(1)\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n\nq = column(:salary)\n#-> column(:salary)\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [260004, 185364, 170112]Finally, we can apply an arbitrary transformation to a selected column of a tuple vector.q = with_column(:name, lift(titlecase))\n#-> with_column(:name, lift(titlecase))\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"Garry M\", salary = 260004)\n (name = \"Anthony R\", salary = 185364)\n (name = \"Dana A\", salary = 170112)\n=#"
+},
+
+{
+    "location": "queries/#Block-vectors-1",
+    "page": "Query Algebra",
+    "title": "Block vectors",
+    "category": "section",
+    "text": "Primitive wrap() wraps the elements of the input vector to one-element blocks.q = wrap()\n#-> wrap()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String, REG] [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]In the opposite direction, primitive flatten() flattens a block vector with block elements.q = flatten()\n#-> flatten()\n\nq(@VectorTree [[String]] [[[\"GARRY M\"], [\"ANTHONY R\", \"DANA A\"]], [missing, [\"JOSE S\"], [\"CHARLES S\"]]])\n#-> @VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]]Finally, we can apply an arbitrary transformation to every element of a block vector.q = with_elements(lift(titlecase))\n#-> with_elements(lift(titlecase))\n\nq(@VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The distribute() primitive converts a tuple vector with a block column to a block vector of tuples.q = distribute(1)\n#-> distribute(1)\n\nq(@VectorTree ([Int], [Int]) [\n    [260004, 185364, 170112]    200000\n    missing                     200000\n    [202728, 197736]            [200000, 200000]]\n) |> display\n#=>\nBlockVector of 3 × [(Int, [Int])]:\n [(260004, [200000]), (185364, [200000]), (170112, [200000])]\n []\n [(202728, [200000, 200000]), (197736, [200000, 200000])]\n=#It is also possible to pull all block columns from a tuple vector.q = distribute_all()\n#-> distribute_all()\n\nq(@VectorTree ([Int], [Int]) [\n    [260004, 185364, 170112]    200000\n    missing                     200000\n    [202728, 197736]            [200000, 200000]]\n) |> display\n#=>\nBlockVector of 3 × [(Int, Int)]:\n [(260004, 200000), (185364, 200000), (170112, 200000)]\n []\n [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]\n=#"
+},
+
+{
+    "location": "queries/#Composition-1",
+    "page": "Query Algebra",
+    "title": "Composition",
+    "category": "section",
+    "text": "We can compose a sequence of transformations using the chain_of() combinator.q = chain_of(\n        column(:employee),\n        with_elements(lift(titlecase)))\n#-> chain_of(column(:employee), with_elements(lift(titlecase)))\n\nq(@VectorTree (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The empty chain chain_of() has an alias pass().q = pass()\n#-> pass()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]"
+},
+
+{
     "location": "shapes/#",
     "page": "Data Shape",
     "title": "Data Shape",
@@ -393,350 +729,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "queries/#",
-    "page": "Query Algebra",
-    "title": "Query Algebra",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "queries/#Query-Algebra-1",
-    "page": "Query Algebra",
-    "title": "Query Algebra",
-    "category": "section",
-    "text": ""
-},
-
-{
-    "location": "queries/#Overview-1",
-    "page": "Query Algebra",
-    "title": "Overview",
-    "category": "section",
-    "text": "In DataKnots, structured data is stored in a column-oriented format, serialized using specialized composite vector types.  Consequently, operations on data must also be adapted to the column-oriented format.Module DataKnots implements the Query interface of vectorized data transformations and provives a rich library of query primitives and combinators.using DataKnots:\n    @VectorTree,\n    as_block,\n    block_filler,\n    block_lift,\n    chain_of,\n    column,\n    decode_missing,\n    decode_tuple,\n    decode_vector,\n    filler,\n    flat_block,\n    in_block,\n    in_tuple,\n    lift,\n    null_filler,\n    pass,\n    pull_block,\n    pull_every_block,\n    record_lift,\n    tuple_lift,\n    tuple_of"
-},
-
-{
-    "location": "queries/#Lifting-1",
-    "page": "Query Algebra",
-    "title": "Lifting",
-    "category": "section",
-    "text": "Lifting lets us convert a scalar function to a query.Any unary scalar function could be lifted to a vectorized form.  Consider, for example, function titlecase(), which transforms the input string by capitalizing the first letter of each word and converting every other character to lowercase.titlecase(\"JEFFERY A\")      #-> \"Jeffery A\"This function can be converted to a query using the lift operator.q = lift(titlecase)\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery A\", \"James A\", \"Terry A\"]If a scalar function takes several arguments, it could be lifted to a query on TupleVector instances.  For example, the comparison operator >, which maps a pair of integer values to a Boolean value, could be lifted to a query tuple_lift(>) that transforms a TupleVector instance with two integer columns to a Boolean vector.q = tuple_lift(>)\nq(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]In a similar manner, a function with a vector argument can be converted to a query on BlockVector instances.  For example, function length(), which returns the length of a vector, could be lifted to a query block_lift(length) that transforms a block vector to an integer vector containing block lengths.q = block_lift(length)\nq(@VectorTree [String] [[\"JEFFERY A\", \"NANCY A\"], [\"JAMES A\"]])\n#-> [2, 1]A constant value could be lifted to a query as well.  The lifted constant maps any input vector to a vector of constant values.q = filler(200000)\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [200000, 200000, 200000]"
-},
-
-{
-    "location": "queries/#Query-interface-1",
-    "page": "Query Algebra",
-    "title": "Query interface",
-    "category": "section",
-    "text": "Functions such as lift(), tuple_lift(), and many others return a Query object.  The Query interface represents a vectorized data transformation that maps an input vector to an output vector of the same length.Functions that take one or more Query instances as arguments and return a new Query object as the result are called combinators.  Combinators are used to assemble elementary queries into complex query expressions.For example, composition combinator chain_of() assembles a series of queries into a sequential composition, which transforms the input vector by sequentially applying the given queries.q = chain_of(lift(split), lift(first), lift(titlecase))\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery\", \"James\", \"Terry\"]Another combinator, tuple constructor tuple_of() assembles a series of queries into a parallel composition.  It outputs a TupleVector instance, which columns are generated by applying the given queries to the input vector.q = tuple_of(lift(titlecase), lift(last))\nq([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree (String, Char) [(\"Jeffery A\", \'A\'), (\"James A\", \'A\'), (\"Terry A\", \'A\')]An individual column of a TupleVector instance could be extracted using a column() query.q = column(:salary)\nq(@VectorTree (name=String, salary=Int) [(\"JEFFERY A\", 101442), (\"JAMES A\", 103350), (\"TERRY A\", 93354)])\n#-> [101442, 103350, 93354]"
-},
-
-{
-    "location": "queries/#DataKnots.Query",
-    "page": "Query Algebra",
-    "title": "DataKnots.Query",
-    "category": "type",
-    "text": "Query(op, args...)\n\nA query object represents a vectorized data transformation.\n\nParameter op is a function that performs the transformation; args are extra arguments to be passed to the function.\n\nThe query transforms any input vector by invoking op with the following arguments:\n\nop(rt::Runtime, input::AbstractVector, args...)\n\nThe result of op must be the output vector, which should be of the same length as the input vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Runtime",
-    "page": "Query Algebra",
-    "title": "DataKnots.Runtime",
-    "category": "type",
-    "text": "Runtime()\n\nRuntime state for query evaluation.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.any_block-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.any_block",
-    "category": "method",
-    "text": "any_block() :: Query\n\nThis query applies any to a block vector with Bool elements.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.as_block-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.as_block",
-    "category": "method",
-    "text": "as_block() :: Query\n\nThis query produces a block vector with one-element blocks wrapping the values of the input vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.block_filler",
-    "page": "Query Algebra",
-    "title": "DataKnots.block_filler",
-    "category": "function",
-    "text": "block_filler(block::AbstractVector, card::Cardinality) :: Query\n\nThis query produces a block vector filled with the given block.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.block_lift",
-    "page": "Query Algebra",
-    "title": "DataKnots.block_lift",
-    "category": "function",
-    "text": "block_lift(f) :: Query\nblock_lift(f, default) :: Query\n\nf is a function that expects a vector argument.\n\nThe query applies f to each block of the input block vector.  When a block is empty, default (if specified) is used as the output value.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.chain_of",
-    "page": "Query Algebra",
-    "title": "DataKnots.chain_of",
-    "category": "function",
-    "text": "chain_of(q₁::Query, q₂::Query … qₙ::Query) :: Query\n\nThis query sequentially applies q₁, q₂ … qₙ.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.column-Tuple{Union{Int64, Symbol}}",
-    "page": "Query Algebra",
-    "title": "DataKnots.column",
-    "category": "method",
-    "text": "column(lbl::Union{Int,Symbol}) :: Query\n\nThis query extracts the specified column of a tuple vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.count_block-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.count_block",
-    "category": "method",
-    "text": "count_block() :: Query\n\nThis query converts a block vector to a vector of block lengths.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.decode_missing-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.decode_missing",
-    "category": "method",
-    "text": "decode_missing() :: Query\n\nThis query transforms a vector that contains missing elements to a block vector with missing elements replaced by empty blocks.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.decode_tuple-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.decode_tuple",
-    "category": "method",
-    "text": "decode_tuple() :: Query\n\nThis query transforms a vector of tuples to a tuple vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.decode_vector-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.decode_vector",
-    "category": "method",
-    "text": "decode_vector() :: Query\n\nThis query transforms a vector with vector elements to a block vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.designate",
-    "page": "Query Algebra",
-    "title": "DataKnots.designate",
-    "category": "function",
-    "text": "designate(::Query, ::Signature) :: Query\ndesignate(::Query, ::InputShape, ::OutputShape) :: Query\nq::Query |> designate(::Signature) :: Query\nq::Query |> designate(::InputShape, ::OutputShape) :: Query\n\nSets the query signature.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.filler-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.filler",
-    "category": "method",
-    "text": "filler(val) :: Query\n\nThis query produces a vector filled with the given value.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.flat_block-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.flat_block",
-    "category": "method",
-    "text": "flat_block() :: Query\n\nThis query flattens a nested block vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.flat_tuple-Tuple{Union{Int64, Symbol}}",
-    "page": "Query Algebra",
-    "title": "DataKnots.flat_tuple",
-    "category": "method",
-    "text": "flat_tuple(lbl::Union{Int,Symbol}) :: Query\n\nThis query flattens a nested tuple vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.in_block-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.in_block",
-    "category": "method",
-    "text": "in_block(q::Query) :: Query\n\nThis query transforms a block vector by applying q to its vector of elements.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.in_tuple-Tuple{Union{Int64, Symbol},Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.in_tuple",
-    "category": "method",
-    "text": "in_tuple(lbl::Union{Int,Symbol}, q::Query) :: Query\n\nThis query transforms a tuple vector by applying q to the specified column.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.lift-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.lift",
-    "category": "method",
-    "text": "lift(f) :: Query\n\nf is any scalar unary function.\n\nThe query applies f to each element of the input vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.null_filler-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.null_filler",
-    "category": "method",
-    "text": "null_filler() :: Query\n\nThis query produces a block vector with empty blocks.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.optimize-Tuple{DataKnots.Query}",
-    "page": "Query Algebra",
-    "title": "DataKnots.optimize",
-    "category": "method",
-    "text": "optimize(::Query) :: Query\n\nRewrites the query to make it (hopefully) faster.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.pass-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.pass",
-    "category": "method",
-    "text": "pass() :: Query\n\nThis query returns its input unchanged.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.pull_block-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.pull_block",
-    "category": "method",
-    "text": "pull_block(lbl::Union{Int,Symbol}) :: Query\n\nThis query transforms a tuple vector with a column of blocks to a block vector with tuple elements.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.pull_every_block-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.pull_every_block",
-    "category": "method",
-    "text": "pull_every_block() :: Query\n\nThis query transforms a tuple vector with block columns to a block vector with tuple elements.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.record_lift-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.record_lift",
-    "category": "method",
-    "text": "record_lift(f) :: Query\n\nf is an n-ary function.\n\nThis query expects the input to be an n-tuple vector with each column being a block vector.  The query produces a block vector, where each block is generated by applying f to every combination of values from the input blocks.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.sieve-Tuple{}",
-    "page": "Query Algebra",
-    "title": "DataKnots.sieve",
-    "category": "method",
-    "text": "sieve() :: Query\n\nThis query filters a vector of pairs by the second column.  The query expects a pair vector, whose second column is a Bool vector.  It produces a block vector with 0-element or 1-element blocks containing the elements of the first column.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.signature-Tuple{DataKnots.Query}",
-    "page": "Query Algebra",
-    "title": "DataKnots.signature",
-    "category": "method",
-    "text": "signature(::Query) :: Signature\n\nReturns the query signature.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.take_by",
-    "page": "Query Algebra",
-    "title": "DataKnots.take_by",
-    "category": "function",
-    "text": "take_by(rev::Bool=false) :: Query\n\nThis query takes a pair vector of blocks and integers, and returns the first column with blocks restricted by the second column.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.take_by",
-    "page": "Query Algebra",
-    "title": "DataKnots.take_by",
-    "category": "function",
-    "text": "take_by(N::Int, rev::Bool=false) :: Query\n\nThis query transforms a block vector by keeping the first N elements of each block.  If rev is true, the query drops the first N elements of each block.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.tuple_lift-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.tuple_lift",
-    "category": "method",
-    "text": "tuple_lift(f) :: Query\n\nf is an n-ary function.\n\nThe query applies f to each row of an n-tuple vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.tuple_of-Tuple",
-    "page": "Query Algebra",
-    "title": "DataKnots.tuple_of",
-    "category": "method",
-    "text": "tuple_of(q₁::Query, q₂::Query … qₙ::Query) :: Query\n\nThis query produces an n-tuple vector, whose columns are generated by applying q₁, q₂ … qₙ to the input vector.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#API-Reference-1",
-    "page": "Query Algebra",
-    "title": "API Reference",
-    "category": "section",
-    "text": "Modules = [DataKnots]\nPages = [\"queries.jl\"]"
-},
-
-{
-    "location": "queries/#Test-Suite-1",
-    "page": "Query Algebra",
-    "title": "Test Suite",
-    "category": "section",
-    "text": ""
-},
-
-{
-    "location": "queries/#Lifting-2",
-    "page": "Query Algebra",
-    "title": "Lifting",
-    "category": "section",
-    "text": "Many vector operations can be generated by lifting.  For example, filler() generates a primitive operation that maps any input vector to the output vector of the same length filled with the given value.q = filler(200000)\n#-> filler(200000)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [200000, 200000, 200000]Similarly, the output of block_filler() is a block vector filled with the given block.q = block_filler([\"POLICE\", \"FIRE\"])\n#-> block_filler([\"POLICE\", \"FIRE\"], OPT | PLU)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String] [[\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"]]A variant of block_filler() called null_filler() outputs a block vector with empty blocks.q = null_filler()\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [Union{}, OPT] [missing, missing, missing]Any scalar function could be lifted to a vector operation by applying it to each element of the input vector.q = lift(titlecase)\n#-> lift(titlecase)\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"Garry M\", \"Anthony R\", \"Dana A\"]Similarly, any scalar function of several arguments could be lifted to an operation on tuple vectors.q = tuple_lift(>)\n#-> tuple_lift(>)\n\nq(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[true, false, false]It is also possible to apply a scalar function of several arguments to a tuple vector that has block vectors for its columns.  In this case, the function is applied to every combination of values from all the blocks on the same row.q = record_lift(>)\n\nq(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])\n#-> @VectorTree [Bool] [[true, false, false], [], [true, true, false, false]]Any function that takes a vector argument can be lifted to an operation on block vectors.q = block_lift(length)\n#-> block_lift(length)\n\nq(@VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> [3, 2]Some vector functions may expect a non-empty vector as an argument.  In this case, we should provide the value to replace empty blocks.q = block_lift(maximum, missing)\n#-> block_lift(maximum, missing)\n\nq(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])\n#-> Union{Missing, Int}[260004, missing, 202728]"
-},
-
-{
-    "location": "queries/#Decoding-vectors-1",
-    "page": "Query Algebra",
-    "title": "Decoding vectors",
-    "category": "section",
-    "text": "Any vector of tuples can be converted to a tuple vector.q = decode_tuple()\n#-> decode_tuple()\n\nq([(\"GARRY M\", 260004), (\"ANTHONY R\", 185364), (\"DANA A\", 170112)]) |> display\n#=>\nTupleVector of 3 × (String, Int):\n (\"GARRY M\", 260004)\n (\"ANTHONY R\", 185364)\n (\"DANA A\", 170112)\n=#Vectors of named tuples are also supported.q([(name=\"GARRY M\", salary=260004), (name=\"ANTHONY R\", salary=185364), (name=\"DANA A\", salary=170112)]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"GARRY M\", salary = 260004)\n (name = \"ANTHONY R\", salary = 185364)\n (name = \"DANA A\", salary = 170112)\n=#A vector of vector objects can be converted to a block vector.q = decode_vector()\n#-> decode_vector()\n\nq([[260004, 185364, 170112], Int[], [202728, 197736]])\n#-> @VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]]Similarly, a vector containing missing values can be converted to a block vector with zero- and one-element blocks.q = decode_missing()\n#-> decode_missing()\n\nq([260004, 185364, 170112, missing, 202728, 197736])\n#-> @VectorTree [Int, OPT] [260004, 185364, 170112, missing, 202728, 197736]"
-},
-
-{
-    "location": "queries/#Tuple-vectors-1",
-    "page": "Query Algebra",
-    "title": "Tuple vectors",
-    "category": "section",
-    "text": "To create a tuple vector, we use the combinator tuple_of(). Its arguments are the functions that generate the columns of the tuple.q = tuple_of(:title => lift(titlecase), :last => lift(last))\n#-> tuple_of([:title, :last], [lift(titlecase), lift(last)])\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]) |> display\n#=>\nTupleVector of 3 × (title = String, last = Char):\n (title = \"Garry M\", last = \'M\')\n (title = \"Anthony R\", last = \'R\')\n (title = \"Dana A\", last = \'A\')\n=#To extract a column of a tuple vector, we use the primitive column().  It accepts either the column position or the column name.q = column(1)\n#-> column(1)\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n\nq = column(:salary)\n#-> column(:salary)\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112])\n#-> [260004, 185364, 170112]Finally, we can apply an arbitrary transformation to a selected column of a tuple vector.q = in_tuple(:name, lift(titlecase))\n#-> in_tuple(:name, lift(titlecase))\n\nq(@VectorTree (name = String, salary = Int) [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]) |> display\n#=>\nTupleVector of 3 × (name = String, salary = Int):\n (name = \"Garry M\", salary = 260004)\n (name = \"Anthony R\", salary = 185364)\n (name = \"Dana A\", salary = 170112)\n=#"
-},
-
-{
-    "location": "queries/#Block-vectors-1",
-    "page": "Query Algebra",
-    "title": "Block vectors",
-    "category": "section",
-    "text": "Primitive as_block() wraps the elements of the input vector to one-element blocks.q = as_block()\n#-> as_block()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree [String, REG] [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]In the opposite direction, primitive flat_block() flattens a block vector with block elements.q = flat_block()\n#-> flat_block()\n\nq(@VectorTree [[String]] [[[\"GARRY M\"], [\"ANTHONY R\", \"DANA A\"]], [missing, [\"JOSE S\"], [\"CHARLES S\"]]])\n#-> @VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]]Finally, we can apply an arbitrary transformation to every element of a block vector.q = in_block(lift(titlecase))\n#-> in_block(lift(titlecase))\n\nq(@VectorTree [String] [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The pull_block() primitive converts a tuple vector with a block column to a block vector of tuples.q = pull_block(1)\n#-> pull_block(1)\n\nq(@VectorTree ([Int], [Int]) [\n    [260004, 185364, 170112]    200000\n    missing                     200000\n    [202728, 197736]            [200000, 200000]]\n) |> display\n#=>\nBlockVector of 3 × [(Int, [Int])]:\n [(260004, [200000]), (185364, [200000]), (170112, [200000])]\n []\n [(202728, [200000, 200000]), (197736, [200000, 200000])]\n=#It is also possible to pull all block columns from a tuple vector.q = pull_every_block()\n#-> pull_every_block()\n\nq(@VectorTree ([Int], [Int]) [\n    [260004, 185364, 170112]    200000\n    missing                     200000\n    [202728, 197736]            [200000, 200000]]\n) |> display\n#=>\nBlockVector of 3 × [(Int, Int)]:\n [(260004, 200000), (185364, 200000), (170112, 200000)]\n []\n [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]\n=#"
-},
-
-{
-    "location": "queries/#Composition-1",
-    "page": "Query Algebra",
-    "title": "Composition",
-    "category": "section",
-    "text": "We can compose a sequence of transformations using the chain_of() combinator.q = chain_of(\n        column(:employee),\n        in_block(lift(titlecase)))\n#-> chain_of(column(:employee), in_block(lift(titlecase)))\n\nq(@VectorTree (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]])\n#-> @VectorTree [String] [[\"Garry M\", \"Anthony R\", \"Dana A\"], [\"Jose S\", \"Charles S\"]]The empty chain chain_of() has an alias pass().q = pass()\n#-> pass()\n\nq([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]"
-},
-
-{
     "location": "lifting/#",
     "page": "Lifting Scalar Functions to Combinators",
     "title": "Lifting Scalar Functions to Combinators",
@@ -765,7 +757,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "Query Algebra",
     "category": "section",
-    "text": "using DataKnots\n\ndb = DataKnot(3)\n\nF = (It .+ 4) >> (It .* 6)\n#-> (It .+ 4) >> It .* 6\n\nrun(db >> F)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#\n\nusing DataKnots: prepare\n\nprepare(DataKnot(3) >> F)\n#=>\nchain_of(block_filler([3], REG),\n         in_block(chain_of(tuple_of([], [as_block(), block_filler([4], REG)]),\n                           record_lift(+))),\n         flat_block(),\n         in_block(chain_of(tuple_of([], [as_block(), block_filler([6], REG)]),\n                           record_lift(*))),\n         flat_block())\n=#\n\nusing DataKnots: @VectorTree\n\ndb = DataKnot(\n    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [\n        \"POLICE\"    [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]\n        \"FIRE\"      [\"JOSE S\" 202728; \"CHARLES S\" 197736]\n    ])\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │\n=#\n\nrun(db >> Field(:name))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nrun(db >> It.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nrun(db >> Field(:employee) >> Field(:salary))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nrun(db >> It.employee.salary)\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nrun(db >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        3 │\n2 │        2 │\n=#\n\nrun(db >> Count)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#\n\nrun(db >> Count(It.employee) >> Max)\n#=>\n│ DataKnot │\n├──────────┤\n│        3 │\n=#\n\nrun(db >> It.employee >> Filter(It.salary .> 200000))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(db >> Count(It.employee) .> 2)\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │     true │\n2 │    false │\n=#\n\nrun(db >> Filter(Count(It.employee) .> 2))\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n=#\n\nrun(db >> Filter(Count(It.employee) .> 2) >> Count)\n#=>\n│ DataKnot │\n├──────────┤\n│        1 │\n=#\n\nrun(db >> Record(It.name, :size => Count(It.employee)))\n#=>\n  │ DataKnot     │\n  │ name    size │\n──┼──────────────┤\n1 │ POLICE     3 │\n2 │ FIRE       2 │\n=#\n\nrun(db >> It.employee >> Filter(It.salary .> It.S),\n      S=200000)\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(\n    db >> Given(:S => Max(It.employee.salary),\n                It.employee >> Filter(It.salary .== It.S)))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(db >> It.employee.salary >> Take(3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n=#\n\nrun(db >> It.employee.salary >> Drop(3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 202728 │\n2 │ 197736 │\n=#\n\nrun(db >> It.employee.salary >> Take(-3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n=#\n\nrun(db >> It.employee.salary >> Drop(-3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 170112 │\n2 │ 202728 │\n3 │ 197736 │\n=#\n\nrun(db >> It.employee.salary >> Take(Count(db >> It.employee) .÷ 2))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n=#"
+    "text": "using DataKnots\n\ndb = DataKnot(3)\n\nF = (It .+ 4) >> (It .* 6)\n#-> (It .+ 4) >> It .* 6\n\nrun(db >> F)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#\n\nusing DataKnots: prepare\n\nprepare(DataKnot(3) >> F)\n#=>\nchain_of(block_filler([3], REG),\n         with_elements(chain_of(tuple_of(wrap(), block_filler([4], REG)),\n                                record_lift(+))),\n         flatten(),\n         with_elements(chain_of(tuple_of(wrap(), block_filler([6], REG)),\n                                record_lift(*))),\n         flatten())\n=#\n\nusing DataKnots: @VectorTree\n\ndb = DataKnot(\n    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [\n        \"POLICE\"    [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]\n        \"FIRE\"      [\"JOSE S\" 202728; \"CHARLES S\" 197736]\n    ])\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │\n=#\n\nrun(db >> Field(:name))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nrun(db >> It.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nrun(db >> Field(:employee) >> Field(:salary))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nrun(db >> It.employee.salary)\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nrun(db >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        3 │\n2 │        2 │\n=#\n\nrun(db >> Count)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#\n\nrun(db >> Count(It.employee) >> Max)\n#=>\n│ DataKnot │\n├──────────┤\n│        3 │\n=#\n\nrun(db >> It.employee >> Filter(It.salary .> 200000))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(db >> Count(It.employee) .> 2)\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │     true │\n2 │    false │\n=#\n\nrun(db >> Filter(Count(It.employee) .> 2))\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n=#\n\nrun(db >> Filter(Count(It.employee) .> 2) >> Count)\n#=>\n│ DataKnot │\n├──────────┤\n│        1 │\n=#\n\nrun(db >> Record(It.name, :size => Count(It.employee)))\n#=>\n  │ DataKnot     │\n  │ name    size │\n──┼──────────────┤\n1 │ POLICE     3 │\n2 │ FIRE       2 │\n=#\n\nrun(db >> It.employee >> Filter(It.salary .> It.S),\n      S=200000)\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(\n    db >> Given(:S => Max(It.employee.salary),\n                It.employee >> Filter(It.salary .== It.S)))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(db >> It.employee.salary >> Take(3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n=#\n\nrun(db >> It.employee.salary >> Drop(3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 202728 │\n2 │ 197736 │\n=#\n\nrun(db >> It.employee.salary >> Take(-3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n=#\n\nrun(db >> It.employee.salary >> Drop(-3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 170112 │\n2 │ 202728 │\n3 │ 197736 │\n=#\n\nrun(db >> It.employee.salary >> Take(Count(db >> It.employee) .÷ 2))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n=#"
 },
 
 ]}
