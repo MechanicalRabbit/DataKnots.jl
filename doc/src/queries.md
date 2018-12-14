@@ -8,26 +8,26 @@ transformations.  We will need the following definitions:
 
     using DataKnots:
         @VectorTree,
-        as_block,
+        adapt_missing,
+        adapt_tuple,
+        adapt_vector,
         block_filler,
         block_lift,
         chain_of,
         column,
-        decode_missing,
-        decode_tuple,
-        decode_vector,
+        distribute,
+        distribute_all,
         filler,
-        flat_block,
-        in_block,
-        in_tuple,
+        flatten,
         lift,
         null_filler,
         pass,
-        pull_block,
-        pull_every_block,
         record_lift,
         tuple_lift,
-        tuple_of
+        tuple_of,
+        with_column,
+        with_elements,
+        wrap
 
 
 ### Lifting and fillers
@@ -191,7 +191,7 @@ tuple vectors with `tuple_lift(f)`.
     q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
     #-> Bool[true, false, false]
 
-A query `record_lift(f)` is a shortcut for `chain_of(pull_every_block(),
+A query `record_lift(f)` is a shortcut for `chain_of(distribute_all(),
 tuple_lift(f))`.  `record_lift(f)` expects a tuple vector whose columns are
 block vectors.  It produces a block vector, where each block is composed by
 applying `f` to every combination of values from all the blocks on the same
@@ -226,8 +226,8 @@ case, we should provide the value to replace empty blocks.
 
 Any vector of tuples can be converted to a tuple vector.
 
-    q = decode_tuple()
-    #-> decode_tuple()
+    q = adapt_tuple()
+    #-> adapt_tuple()
 
     q([("GARRY M", 260004), ("ANTHONY R", 185364), ("DANA A", 170112)]) |> display
     #=>
@@ -249,8 +249,8 @@ Vectors of named tuples are also supported.
 
 A vector of vector objects can be converted to a block vector.
 
-    q = decode_vector()
-    #-> decode_vector()
+    q = adapt_vector()
+    #-> adapt_vector()
 
     q([[260004, 185364, 170112], Int[], [202728, 197736]])
     #-> @VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]]
@@ -258,8 +258,8 @@ A vector of vector objects can be converted to a block vector.
 Similarly, a vector containing `missing` values can be converted to a block
 vector with zero- and one-element blocks.
 
-    q = decode_missing()
-    #-> decode_missing()
+    q = adapt_missing()
+    #-> adapt_missing()
 
     q([260004, 185364, 170112, missing, 202728, 197736])
     #-> @VectorTree [Int, OPT] [260004, 185364, 170112, missing, 202728, 197736]
@@ -271,7 +271,7 @@ To create a tuple vector, we use the combinator `tuple_of()`. Its arguments are
 the functions that generate the columns of the tuple.
 
     q = tuple_of(:title => lift(titlecase), :last => lift(last))
-    #-> tuple_of([:title, :last], [lift(titlecase), lift(last)])
+    #-> tuple_of(:title => lift(titlecase), :last => lift(last))
 
     q(["GARRY M", "ANTHONY R", "DANA A"]) |> display
     #=>
@@ -299,8 +299,8 @@ accepts either the column position or the column name.
 Finally, we can apply an arbitrary transformation to a selected column of a
 tuple vector.
 
-    q = in_tuple(:name, lift(titlecase))
-    #-> in_tuple(:name, lift(titlecase))
+    q = with_column(:name, lift(titlecase))
+    #-> with_column(:name, lift(titlecase))
 
     q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]) |> display
     #=>
@@ -313,36 +313,36 @@ tuple vector.
 
 ## Block vectors
 
-Primitive `as_block()` wraps the elements of the input vector to one-element blocks.
+Primitive `wrap()` wraps the elements of the input vector to one-element blocks.
 
-    q = as_block()
-    #-> as_block()
+    q = wrap()
+    #-> wrap()
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> @VectorTree [String, REG] ["GARRY M", "ANTHONY R", "DANA A"]
 
-In the opposite direction, primitive `flat_block()` flattens a block vector
+In the opposite direction, primitive `flatten()` flattens a block vector
 with block elements.
 
-    q = flat_block()
-    #-> flat_block()
+    q = flatten()
+    #-> flatten()
 
     q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [missing, ["JOSE S"], ["CHARLES S"]]])
     #-> @VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
 
 Finally, we can apply an arbitrary transformation to every element of a block vector.
 
-    q = in_block(lift(titlecase))
-    #-> in_block(lift(titlecase))
+    q = with_elements(lift(titlecase))
+    #-> with_elements(lift(titlecase))
 
     q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
     #-> @VectorTree [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
 
-The `pull_block()` primitive converts a tuple vector with a block column to a
+The `distribute()` primitive converts a tuple vector with a block column to a
 block vector of tuples.
 
-    q = pull_block(1)
-    #-> pull_block(1)
+    q = distribute(1)
+    #-> distribute(1)
 
     q(@VectorTree ([Int], [Int]) [
         [260004, 185364, 170112]    200000
@@ -358,8 +358,8 @@ block vector of tuples.
 
 It is also possible to pull all block columns from a tuple vector.
 
-    q = pull_every_block()
-    #-> pull_every_block()
+    q = distribute_all()
+    #-> distribute_all()
 
     q(@VectorTree ([Int], [Int]) [
         [260004, 185364, 170112]    200000
@@ -380,8 +380,8 @@ We can compose a sequence of transformations using the `chain_of()` combinator.
 
     q = chain_of(
             column(:employee),
-            in_block(lift(titlecase)))
-    #-> chain_of(column(:employee), in_block(lift(titlecase)))
+            with_elements(lift(titlecase)))
+    #-> chain_of(column(:employee), with_elements(lift(titlecase)))
 
     q(@VectorTree (department = String, employee = [String]) [
         "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]

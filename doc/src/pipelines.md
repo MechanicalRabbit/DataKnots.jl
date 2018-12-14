@@ -19,12 +19,12 @@
     prepare(DataKnot(3) >> F)
     #=>
     chain_of(block_filler([3], REG),
-             in_block(chain_of(tuple_of([], [as_block(), block_filler([4], REG)]),
-                               record_lift(+))),
-             flat_block(),
-             in_block(chain_of(tuple_of([], [as_block(), block_filler([6], REG)]),
-                               record_lift(*))),
-             flat_block())
+             with_elements(chain_of(tuple_of(wrap(), block_filler([4], REG)),
+                                    record_lift(+))),
+             flatten(),
+             with_elements(chain_of(tuple_of(wrap(), block_filler([6], REG)),
+                                    record_lift(*))),
+             flatten())
     =#
 
     using DataKnots: @VectorTree

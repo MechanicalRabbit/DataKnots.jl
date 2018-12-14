@@ -325,14 +325,14 @@ end
 #
 
 """
-    decode_missing() :: Query
+    adapt_missing() :: Query
 
 This query transforms a vector that contains `missing` elements to a block
 vector with `missing` elements replaced by empty blocks.
 """
-decode_missing() = Query(decode_missing)
+adapt_missing() = Query(adapt_missing)
 
-function decode_missing(rt::Runtime, input::AbstractVector)
+function adapt_missing(rt::Runtime, input::AbstractVector)
     if !(Missing <: eltype(input))
         return BlockVector(:, input, OPT)
     end
@@ -361,13 +361,13 @@ function decode_missing(rt::Runtime, input::AbstractVector)
 end
 
 """
-    decode_vector() :: Query
+    adapt_vector() :: Query
 
 This query transforms a vector with vector elements to a block vector.
 """
-decode_vector() = Query(decode_vector)
+adapt_vector() = Query(adapt_vector)
 
-function decode_vector(rt::Runtime, input::AbstractVector)
+function adapt_vector(rt::Runtime, input::AbstractVector)
     @assert eltype(input) <: AbstractVector
     sz = 0
     for v in input
@@ -387,13 +387,13 @@ function decode_vector(rt::Runtime, input::AbstractVector)
 end
 
 """
-    decode_tuple() :: Query
+    adapt_tuple() :: Query
 
 This query transforms a vector of tuples to a tuple vector.
 """
-decode_tuple() = Query(decode_tuple)
+adapt_tuple() = Query(adapt_tuple)
 
-function decode_tuple(rt::Runtime, input::AbstractVector)
+function adapt_tuple(rt::Runtime, input::AbstractVector)
     @assert eltype(input) <: Union{Tuple,NamedTuple}
     lbls = Symbol[]
     I = eltype(input)
@@ -402,11 +402,11 @@ function decode_tuple(rt::Runtime, input::AbstractVector)
         I = I.parameters[2]
     end
     Is = (I.parameters...,)
-    cols = _decode_tuple(input, Is...)
+    cols = _adapt_tuple(input, Is...)
     TupleVector(lbls, length(input), cols)
 end
 
-@generated function _decode_tuple(input, Is...)
+@generated function _adapt_tuple(input, Is...)
     width = length(Is)
     return quote
         len = length(input)
@@ -485,6 +485,17 @@ tuple_of(lqs::Pair{Symbol}...) =
 
 tuple_of(lbls::Vector{Symbol}, qs::Vector) = Query(tuple_of, lbls, qs)
 
+syntax(::typeof(tuple_of), args::Vector{Any}) =
+    if length(args) == 2 && args[1] isa Vector{Symbol} && args[2] isa Vector
+        if isempty(args[1])
+            Expr(:call, tuple_of, syntax.(args[2])...)
+        else
+            Expr(:call, tuple_of, syntax.(args[1] .=> args[2])...)
+        end
+    else
+        Expr(:call, tuple_of, syntax.(args)...)
+    end
+
 function tuple_of(rt::Runtime, input::AbstractVector, lbls, qs)
     len = length(input)
     cols = AbstractVector[q(rt, input) for q in qs]
@@ -505,43 +516,18 @@ function column(rt::Runtime, input::AbstractVector, lbl)
 end
 
 """
-    in_tuple(lbl::Union{Int,Symbol}, q::Query) :: Query
+    with_column(lbl::Union{Int,Symbol}, q::Query) :: Query
 
 This query transforms a tuple vector by applying `q` to the specified column.
 """
-in_tuple(lbl::Union{Int,Symbol}, q) = Query(in_tuple, lbl, q)
+with_column(lbl::Union{Int,Symbol}, q) = Query(with_column, lbl, q)
 
-function in_tuple(rt::Runtime, input::AbstractVector, lbl, q)
+function with_column(rt::Runtime, input::AbstractVector, lbl, q)
     @assert input isa TupleVector
     j = locate(input, lbl)
     cols′ = copy(columns(input))
     cols′[j] = q(rt, cols′[j])
     TupleVector(labels(input), length(input), cols′)
-end
-
-"""
-    flat_tuple(lbl::Union{Int,Symbol}) :: Query
-
-This query flattens a nested tuple vector.
-"""
-flat_tuple(lbl::Union{Int,Symbol}) = Query(flat_tuple, lbl)
-
-function flat_tuple(rt::Runtime, input::AbstractVector, lbl)
-    @assert input isa TupleVector
-    j = locate(input, lbl)
-    nested = column(input, j)
-    lbls = labels(input)
-    cols = columns(input)
-    nested_lbls = labels(nested)
-    nested_cols = columns(nested)
-    lbls′ =
-        if !isempty(lbls) && (!isempty(nested_lbls) || isempty(nested_cols))
-            [lbls[1:j-1]; nested_lbls; lbls[j+1:end]]
-        else
-            Symbol[]
-        end
-    cols′ = [cols[1:j-1]; nested_cols; cols[j+1:end]]
-    TupleVector(lbls′, length(input), cols′)
 end
 
 
@@ -550,64 +536,64 @@ end
 #
 
 """
-    as_block() :: Query
+    wrap() :: Query
 
 This query produces a block vector with one-element blocks wrapping the values
 of the input vector.
 """
-as_block() = Query(as_block)
+wrap() = Query(wrap)
 
-as_block(rt::Runtime, input::AbstractVector) =
+wrap(rt::Runtime, input::AbstractVector) =
     BlockVector(:, input, REG)
 
 
 """
-    in_block(q::Query) :: Query
+    with_elements(q::Query) :: Query
 
 This query transforms a block vector by applying `q` to its vector of elements.
 """
-in_block(q) = Query(in_block, q)
+with_elements(q) = Query(with_elements, q)
 
-function in_block(rt::Runtime, input::AbstractVector, q)
+function with_elements(rt::Runtime, input::AbstractVector, q)
     @assert input isa BlockVector
     BlockVector(offsets(input), q(rt, elements(input)), cardinality(input))
 end
 
 """
-    flat_block() :: Query
+    flatten() :: Query
 
 This query flattens a nested block vector.
 """
-flat_block() = Query(flat_block)
+flatten() = Query(flatten)
 
-function flat_block(rt::Runtime, input::AbstractVector)
+function flatten(rt::Runtime, input::AbstractVector)
     @assert input isa BlockVector && elements(input) isa BlockVector
     offs = offsets(input)
     nested = elements(input)
     nested_offs = offsets(nested)
     elts = elements(nested)
     card = cardinality(input)|cardinality(nested)
-    BlockVector(_flat_block(offs, nested_offs), elts, card)
+    BlockVector(_flatten(offs, nested_offs), elts, card)
 end
 
-_flat_block(offs1::AbstractVector{Int}, offs2::AbstractVector{Int}) =
+_flatten(offs1::AbstractVector{Int}, offs2::AbstractVector{Int}) =
     Int[offs2[off] for off in offs1]
 
-_flat_block(offs1::OneTo{Int}, offs2::OneTo{Int}) = offs1
+_flatten(offs1::OneTo{Int}, offs2::OneTo{Int}) = offs1
 
-_flat_block(offs1::OneTo{Int}, offs2::AbstractVector{Int}) = offs2
+_flatten(offs1::OneTo{Int}, offs2::AbstractVector{Int}) = offs2
 
-_flat_block(offs1::AbstractVector{Int}, offs2::OneTo{Int}) = offs1
+_flatten(offs1::AbstractVector{Int}, offs2::OneTo{Int}) = offs1
 
 """
-    pull_block(lbl::Union{Int,Symbol}) :: Query
+    distribute(lbl::Union{Int,Symbol}) :: Query
 
 This query transforms a tuple vector with a column of blocks to a block vector
 with tuple elements.
 """
-pull_block(lbl) = Query(pull_block, lbl)
+distribute(lbl) = Query(distribute, lbl)
 
-function pull_block(rt::Runtime, input::AbstractVector, lbl)
+function distribute(rt::Runtime, input::AbstractVector, lbl)
     @assert input isa TupleVector && column(input, lbl) isa BlockVector
     j = locate(input, lbl)
     len = length(input)
@@ -644,20 +630,20 @@ function pull_block(rt::Runtime, input::AbstractVector, lbl)
 end
 
 """
-    pull_every_block() :: Query
+    distribute_all() :: Query
 
 This query transforms a tuple vector with block columns to a block vector with
 tuple elements.
 """
-pull_every_block() = Query(pull_every_block)
+distribute_all() = Query(distribute_all)
 
-function pull_every_block(rt::Runtime, input::AbstractVector)
+function distribute_all(rt::Runtime, input::AbstractVector)
     @assert input isa TupleVector && all(col isa BlockVector for col in columns(input))
     cols = columns(input)
-    _pull_every_block(labels(input), length(input), cols...)
+    _distribute_all(labels(input), length(input), cols...)
 end
 
-@generated function _pull_every_block(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
+@generated function _distribute_all(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
     D = length(cols)
     return quote
         card = foldl(|, cardinality.(cols), init=REG)
@@ -692,21 +678,21 @@ end
 end
 
 """
-    count_block() :: Query
+    block_length() :: Query
 
 This query converts a block vector to a vector of block lengths.
 """
-count_block() = Query(count_block)
+block_length() = Query(block_length)
 
-function count_block(rt::Runtime, input::AbstractVector)
+function block_length(rt::Runtime, input::AbstractVector)
     @assert input isa BlockVector
-    _count_block(offsets(input))
+    _block_length(offsets(input))
 end
 
-_count_block(offs::OneTo{Int}) =
+_block_length(offs::OneTo{Int}) =
     fill(1, length(offs)-1)
 
-function _count_block(offs::AbstractVector{Int})
+function _block_length(offs::AbstractVector{Int})
     len = length(offs) - 1
     output = Vector{Int}(undef, len)
     @inbounds for k = 1:len
@@ -716,13 +702,13 @@ function _count_block(offs::AbstractVector{Int})
 end
 
 """
-    any_block() :: Query
+    block_any() :: Query
 
 This query applies `any` to a block vector with `Bool` elements.
 """
-any_block() = Query(any_block)
+block_any() = Query(block_any)
 
-function any_block(rt::Runtime, input::AbstractVector)
+function block_any(rt::Runtime, input::AbstractVector)
     @assert input isa BlockVector && eltype(elements(input)) <: Bool
     len = length(input)
     offs = offsets(input)
@@ -791,20 +777,20 @@ end
 #
 
 """
-    take_by(N::Int, rev::Bool=false) :: Query
+    slice(N::Int, rev::Bool=false) :: Query
 
 This query transforms a block vector by keeping the first `N` elements of each
 block.  If `rev` is true, the query drops the first `N` elements of each block.
 """
-take_by(N::Union{Missing,Int}, rev::Bool=false) =
-    Query(take_by, N, rev)
+slice(N::Union{Missing,Int}, rev::Bool=false) =
+    Query(slice, N, rev)
 
-function take_by(rt::Runtime, input::AbstractVector, N::Missing, rev::Bool)
+function slice(rt::Runtime, input::AbstractVector, N::Missing, rev::Bool)
     @assert input isa BlockVector
     input
 end
 
-function take_by(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
+function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
     @assert input isa BlockVector
     len = length(input)
     offs = offsets(input)
@@ -840,15 +826,15 @@ function take_by(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
 end
 
 """
-    take_by(rev::Bool=false) :: Query
+    slice(rev::Bool=false) :: Query
 
 This query takes a pair vector of blocks and integers, and returns the first
 column with blocks restricted by the second column.
 """
-take_by(rev::Bool=false) =
-    Query(take_by, rev)
+slice(rev::Bool=false) =
+    Query(slice, rev)
 
-function take_by(rt::Runtime, input::AbstractVector, rev::Bool)
+function slice(rt::Runtime, input::AbstractVector, rev::Bool)
     @assert input isa TupleVector
     cols = columns(input)
     @assert length(cols) == 2
@@ -933,14 +919,14 @@ end
 
 function simplify_block(qs)
     while true
-        if !any(qs[k].op == as_block && qs[k+1].op == in_block && qs[k+2].op == flat_block
+        if !any(qs[k].op == wrap && qs[k+1].op == with_elements && qs[k+2].op == flatten
                 for k = 1:length(qs)-2)
             return qs
         end
         qs′ = Query[]
         k = 1
         while k <= length(qs)
-            if k <= length(qs)-2 && qs[k].op == as_block && qs[k+1].op == in_block && qs[k+2].op == flat_block
+            if k <= length(qs)-2 && qs[k].op == wrap && qs[k+1].op == with_elements && qs[k+2].op == flatten
                 q = qs[k+1].args[1]
                 if q.op == pass
                 elseif q.op == chain_of

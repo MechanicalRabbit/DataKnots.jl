@@ -91,10 +91,10 @@ function combine(nav::Navigation, env::Environment, q::Query)
 end
 
 stub(shp::AbstractShape) =
-    as_block() |> designate(InputShape(shp), OutputShape(shp))
+    wrap() |> designate(InputShape(shp), OutputShape(shp))
 
 stub(dr::Decoration, shp::AbstractShape) =
-    as_block() |> designate(InputShape(dr, shp), OutputShape(dr, shp))
+    wrap() |> designate(InputShape(dr, shp), OutputShape(dr, shp))
 
 stub() = stub(NativeShape(Nothing))
 
@@ -218,18 +218,18 @@ in_input(md::InputMode, q::Query) =
     if isfree(md)
         q
     else
-        in_tuple(1, q)
+        with_column(1, q)
     end
 
 distribute(imd::InputMode, md::OutputMode) =
     if isfree(imd)
         pass()
     else
-        pull_block(1)
+        distribute(1)
     end
 
 in_output(md::OutputMode, q::Query) =
-    in_block(q)
+    with_elements(q)
 
 function project_input(md1::InputMode, md2::InputMode)
     if isfree(md1) && isfree(md2) || slots(md1) == slots(md2) && isframed(md1) == isframed(md2)
@@ -256,7 +256,7 @@ function project_input(md1::InputMode, md2::InputMode)
 end
 
 flatten_output(md1::OutputMode, md2::OutputMode) =
-    flat_block()
+    flatten()
 
 # Extracting parameters.
 
@@ -424,17 +424,17 @@ function Lift(env::Environment, q::Query, f, Xs)
             ety = oty.parameters[1]
             r = chain_of(
                 x,
-                in_block(
+                with_elements(
                   chain_of(
                     lift(f),
-                    decode_vector())),
-                flat_block()
+                    adapt_vector())),
+                flatten()
             ) |> designate(ishape(x),
                            OutputShape(NativeShape(ety), OPT|PLU))
         else
             r = chain_of(
                 x,
-                in_block(lift(f))
+                with_elements(lift(f))
             ) |> designate(ishape(x),
                            OutputShape(NativeShape(oty), mode(x)))
         end
@@ -448,8 +448,8 @@ function Lift(env::Environment, q::Query, f, Xs)
             r = chain_of(
                     dsx,
                     record_lift(f),
-                    in_block(decode_vector()),
-                    flat_block()
+                    with_elements(adapt_vector()),
+                    flatten()
             ) |> designate(ishp,
                            OutputShape(NativeShape(ety), OPT|PLU))
         else
@@ -470,8 +470,8 @@ function Lift(env::Environment, q::Query, f, Xs)
             r = chain_of(
                     dsx,
                     record_lift(f),
-                    in_block(decode_vector()),
-                    flat_block()
+                    with_elements(adapt_vector()),
+                    flatten()
             ) |> designate(ishp,
                            OutputShape(NativeShape(ety), OPT|PLU))
         else
@@ -542,13 +542,13 @@ function lookup(ity::Type{<:NamedTuple}, name)
         ety = oty.parameters[1]
         r = chain_of(
             lift(f),
-            decode_vector(),
+            adapt_vector(),
         ) |> designate(InputShape(ity),
                        OutputShape(name, ety, OPT|PLU))
     else
         r = chain_of(
             lift(f),
-            as_block()
+            wrap()
         ) |> designate(InputShape(ity), OutputShape(name, oty))
     end
     r
@@ -569,7 +569,7 @@ function Record(env::Environment, q::Query, Xs)
     lbls = Symbol[let lbl = label(shape(x)); lbl !== nothing ? lbl : Symbol("#$i") end for (i, x) in enumerate(xs)]
     r = chain_of(
             tuple_of(lbls, [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs]),
-            as_block()
+            wrap()
     ) |> designate(ishp, shp)
     compose(q, r)
 end
@@ -586,8 +586,8 @@ function Count(env::Environment, q::Query, X)
     x = combine(X, env, stub(q))
     r = chain_of(
             x,
-            count_block(),
-            as_block(),
+            block_length(),
+            wrap(),
     ) |> designate(ishape(x), OutputShape(NativeShape(Int)))
     compose(q, r)
 end
@@ -623,7 +623,7 @@ function Sum(env::Environment, q::Query, X)
     r = chain_of(
             x,
             block_lift(sum),
-            as_block(),
+            wrap(),
     ) |> designate(ishape(x), OutputShape(domain(x)))
     compose(q, r)
 end
@@ -634,13 +634,13 @@ function Max(env::Environment, q::Query, X)
         r = chain_of(
                 x,
                 block_lift(maximum, missing),
-                decode_missing(),
+                adapt_missing(),
         ) |> designate(ishape(x), OutputShape(domain(x), OPT))
     else
         r = chain_of(
                 x,
                 block_lift(maximum),
-                as_block(),
+                wrap(),
         ) |> designate(ishape(x), OutputShape(domain(x)))
     end
     compose(q, r)
@@ -652,13 +652,13 @@ function Min(env::Environment, q::Query, X)
         r = chain_of(
                 x,
                 block_lift(minimum, missing),
-                decode_missing(),
+                adapt_missing(),
         ) |> designate(ishape(x), OutputShape(domain(x), OPT))
     else
         r = chain_of(
                 x,
                 block_lift(minimum),
-                as_block(),
+                wrap(),
         ) |> designate(ishape(x), OutputShape(domain(x)))
     end
     compose(q, r)
@@ -671,13 +671,13 @@ function Mean(env::Environment, q::Query, X)
         r = chain_of(
                 x,
                 block_lift(mean, missing),
-                decode_missing(),
+                adapt_missing(),
         ) |> designate(ishape(x), OutputShape(T, OPT))
     else
         r = chain_of(
                 x,
                 block_lift(mean),
-                as_block(),
+                wrap(),
         ) |> designate(ishape(x), OutputShape(T))
     end
     compose(q, r)
@@ -693,7 +693,7 @@ function Filter(env::Environment, q::Query, X)
     r = chain_of(
             tuple_of(
                 project_input(imode(x), InputMode()),
-                chain_of(x, any_block())),
+                chain_of(x, block_any())),
             sieve(),
     ) |> designate(ishape(x), OutputShape(decoration(q), domain(q), OPT))
     compose(q, r)
@@ -713,7 +713,7 @@ Take(env::Environment, q::Query, ::Missing, rev::Bool=false) =
 Take(env::Environment, q::Query, N::Int, rev::Bool=false) =
     chain_of(
         q,
-        take_by(N, rev),
+        slice(N, rev),
     ) |> designate(ishape(q), OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(OPT))))
 
 function Take(env::Environment, q::Query, N::PipelineLike, rev::Bool=false)
@@ -728,7 +728,7 @@ function Take(env::Environment, q::Query, N::PipelineLike, rev::Bool=false)
                      fits(OPT, cardinality(n)) ?
                         block_lift(first, missing) :
                         block_lift(first))),
-        take_by(rev),
+        slice(rev),
     ) |> designate(ishp, OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(OPT))))
 end
 
