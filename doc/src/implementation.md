@@ -3,8 +3,8 @@
 ```@contents
 Pages = [
     "vectors.md",
-    "shapes.md",
     "queries.md",
+    "shapes.md",
     "pipelines.md",
     "lifting.md",
 ]
