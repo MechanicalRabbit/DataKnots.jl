@@ -33,21 +33,21 @@ REG = 0x00
 OPT = 0x01
 PLU = 0x02
 OPT_PLU = 0x03
-=#</code></pre><p>Cardinality values support bitwise operations.</p><pre><code class="language-julia">REG|OPT|PLU             #-&gt; OPT_PLU::Cardinality = 3
-PLU&amp;~PLU                #-&gt; REG::Cardinality = 0</code></pre><p>We can use predicates <code>isregular()</code>, <code>isoptional()</code>, <code>isplural()</code> to check cardinality values.</p><pre><code class="language-julia">isregular(REG)          #-&gt; true
-isregular(OPT)          #-&gt; false
-isregular(PLU)          #-&gt; false
-isoptional(OPT)         #-&gt; true
-isoptional(PLU)         #-&gt; false
-isplural(PLU)           #-&gt; true
-isplural(OPT)           #-&gt; false</code></pre><p>There is a partial ordering defined on <code>Cardinality</code> values.  We can determine the greatest and the least cardinality; the least upper bound and the greatest lower bound of a collection of <code>Cardinality</code> values; and, for two <code>Cardinality</code> values, determine whether one of the values is smaller than the other.</p><pre><code class="language-julia">bound(Cardinality)      #-&gt; REG::Cardinality = 0
-ibound(Cardinality)     #-&gt; OPT_PLU::Cardinality = 3
+=#</code></pre><p>Cardinality values support bitwise operations.</p><pre><code class="language-julia">print(REG|OPT|PLU)          #-&gt; OPT_PLU
+print(PLU&amp;~PLU)             #-&gt; REG</code></pre><p>We can use predicates <code>isregular()</code>, <code>isoptional()</code>, <code>isplural()</code> to check cardinality values.</p><pre><code class="language-julia">isregular(REG)              #-&gt; true
+isregular(OPT)              #-&gt; false
+isregular(PLU)              #-&gt; false
+isoptional(OPT)             #-&gt; true
+isoptional(PLU)             #-&gt; false
+isplural(PLU)               #-&gt; true
+isplural(OPT)               #-&gt; false</code></pre><p>There is a partial ordering defined on <code>Cardinality</code> values.  We can determine the greatest and the least cardinality; the least upper bound and the greatest lower bound of a collection of <code>Cardinality</code> values; and, for two <code>Cardinality</code> values, determine whether one of the values is smaller than the other.</p><pre><code class="language-julia">print(bound(Cardinality))   #-&gt; REG
+print(ibound(Cardinality))  #-&gt; OPT_PLU
 
-bound(OPT, PLU)         #-&gt; OPT_PLU::Cardinality = 3
-ibound(PLU, OPT)        #-&gt; REG::Cardinality = 0
+print(bound(OPT, PLU))      #-&gt; OPT_PLU
+print(ibound(PLU, OPT))     #-&gt; REG
 
-fits(OPT, PLU)          #-&gt; false
-fits(REG, OPT|PLU)      #-&gt; true</code></pre><h2><a class="nav-anchor" id="Data-shapes-1" href="#Data-shapes-1">Data shapes</a></h2><p>The structure of composite data is specified with <em>shape</em> objects.</p><p><code>NativeShape</code> indicates a regular Julia value of a specific type.</p><pre><code class="language-julia">str_shp = NativeShape(String)
+fits(OPT, PLU)              #-&gt; false
+fits(REG, OPT|PLU)          #-&gt; true</code></pre><h2><a class="nav-anchor" id="Data-shapes-1" href="#Data-shapes-1">Data shapes</a></h2><p>The structure of composite data is specified with <em>shape</em> objects.</p><p><code>NativeShape</code> indicates a regular Julia value of a specific type.</p><pre><code class="language-julia">str_shp = NativeShape(String)
 #-&gt; NativeShape(String)
 
 eltype(str_shp)
@@ -65,8 +65,8 @@ mode(i_shp)
 #-&gt; InputMode([:D =&gt; OutputShape(String)], true)</code></pre><p>To describe the query output, we specify the shape and the cardinality of the output elements.</p><pre><code class="language-julia">o_shp = OutputShape(Int, OPT|PLU)
 #-&gt; OutputShape(Int, OPT | PLU)
 
-cardinality(o_shp)
-#-&gt; OPT_PLU::Cardinality = 3
+print(cardinality(o_shp))
+#-&gt; OPT_PLU
 
 domain(o_shp)
 #-&gt; NativeShape(Int)
@@ -209,7 +209,7 @@ ibound(OutputShape(Int), OutputShape(:salary, Number))
 #-&gt; OutputShape(:salary, Int)</code></pre><h2><a class="nav-anchor" id="Query-signature-1" href="#Query-signature-1">Query signature</a></h2><p>The signature of a query is a pair of an <code>InputShape</code> object and an <code>OutputShape</code> object.</p><pre><code class="language-julia">sig = Signature(InputShape(UInt),
                 OutputShape(RecordShape(OutputShape(:name, String),
                                         OutputShape(:employee, UInt, OPT|PLU))))
-#-&gt; UInt64 -&gt; (name =&gt; String[1 .. 1], employee =&gt; UInt64[0 .. ∞])[1 .. 1]</code></pre><p>Different components of the signature can be easily extracted.</p><pre><code class="language-julia">shape(sig)
+#-&gt; UInt -&gt; (name =&gt; String[1 .. 1], employee =&gt; UInt[0 .. ∞])[1 .. 1]</code></pre><p>Different components of the signature can be easily extracted.</p><pre><code class="language-julia">shape(sig)
 #=&gt;
 OutputShape(RecordShape(OutputShape(:name, String),
                         OutputShape(:employee, UInt, OPT | PLU)))

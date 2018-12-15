@@ -250,12 +250,10 @@ run(Range(3) &gt;&gt; Stats)
                          :phone =&gt; &quot;555-2368&quot;),
         :workday =&gt; Const([&quot;Su&quot;, &quot;M&quot;,&quot;Tu&quot;, &quot;F&quot;])))
 #=&gt;
-│ work_schedule                            │
-│ staff                       workday      │
-├──────────────────────────────────────────┤
-│ │ name          phone    │  Su; M; Tu; F │
-│ ├────────────────────────┤               │
-│ │ Jim Rockford  555-2386 │               │
+│ work_schedule                        │
+│ staff                   workday      │
+├──────────────────────────────────────┤
+│ Jim Rockford, 555-2368  Su; M; Tu; F │
 =#</code></pre><p>In DataKnots, records are used to generate tabular data. Using nested records, it is possible to represent complex, hierarchical data.</p><h2><a class="nav-anchor" id="Working-With-Data-1" href="#Working-With-Data-1">Working With Data</a></h2><p>Arrays of named tuples can be wrapped with <code>Const</code> in order to provide a series of tuples. Since DataKnots works fluidly with Julia, any sort of Julia object may be used. In this case, <code>NamedTuple</code> has special support so that it prints well.</p><pre><code class="language-julia">DATA = Const([(name = &quot;GARRY M&quot;, salary = 260004),
               (name = &quot;ANTHONY R&quot;, salary = 185364),
               (name = &quot;DANA A&quot;, salary = 170112)])
@@ -289,13 +287,10 @@ run(:staff =&gt; DATA)
     FIRE=[(name = &quot;JOSE S&quot;, salary = 202728),
           (name = &quot;CHARLES S&quot;, salary = 197736)])
 #=&gt;
-│ department                    │
-│ name  staff                   │
-├───────────────────────────────┤
-│ FIRE    │ name       salary │ │
-│       ──┼───────────────────┤ │
-│       1 │ JOSE S     202728 │ │
-│       2 │ CHARLES S  197736 │ │
+│ department                              │
+│ name  staff                             │
+├─────────────────────────────────────────┤
+│ FIRE  JOSE S, 202728; CHARLES S, 197736 │
 =#</code></pre><p>These subordinate records can then be summarized.</p><pre><code class="language-julia">run(:statistics =&gt;
   DB &gt;&gt; Record(:dept =&gt; It.name,
                :count =&gt; Count(It.staff)))
