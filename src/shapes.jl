@@ -366,8 +366,7 @@ convert(::Type{AbstractShape}, ty::Type) =
 syntax(shp::NativeShape) =
     Expr(:call, nameof(NativeShape), shp.ty)
 
-sigsyntax(shp::NativeShape) =
-    shp.ty isa DataType ? nameof(shp.ty) : shp.ty
+sigsyntax(shp::NativeShape) = shp.ty
 
 eltype(shp::NativeShape) = shp.ty
 

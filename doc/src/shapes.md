@@ -327,7 +327,7 @@ The signature of a query is a pair of an `InputShape` object and an
     sig = Signature(InputShape(UInt),
                     OutputShape(RecordShape(OutputShape(:name, String),
                                             OutputShape(:employee, UInt, OPT|PLU))))
-    #-> UInt64 -> (name => String[1 .. 1], employee => UInt64[0 .. ∞])[1 .. 1]
+    #-> UInt -> (name => String[1 .. 1], employee => UInt[0 .. ∞])[1 .. 1]
 
 Different components of the signature can be easily extracted.
 
