@@ -294,8 +294,8 @@ more than one element.  This gives us four different cardinality constraints.
 
 Cardinality values support bitwise operations.
 
-    REG|OPT|PLU             #-> OPT_PLU::Cardinality = 3
-    PLU&~PLU                #-> REG::Cardinality = 0
+    print(REG|OPT|PLU)      #-> OPT_PLU
+    print(PLU&~PLU)         #-> REG
 
 We can use predicates `isregular()`, `isoptional()`, `isplural()` to check
 cardinality values.
@@ -367,8 +367,8 @@ We can access individual components of the vector.
     elements(bv)
     #-> ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]
 
-    cardinality(bv)
-    #-> PLU::Cardinality = 2
+    print(cardinality(bv))
+    #-> PLU
 
 When indexed by a vector of indexes, an instance of `BlockVector` is returned.
 

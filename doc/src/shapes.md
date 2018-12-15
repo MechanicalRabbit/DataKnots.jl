@@ -60,33 +60,33 @@ more than one element.  This gives us four different cardinality constraints.
 
 Cardinality values support bitwise operations.
 
-    print(REG|OPT|PLU)      #-> OPT_PLU
-    print(PLU&~PLU)         #-> REG
+    print(REG|OPT|PLU)          #-> OPT_PLU
+    print(PLU&~PLU)             #-> REG
 
 We can use predicates `isregular()`, `isoptional()`, `isplural()` to check
 cardinality values.
 
-    isregular(REG)          #-> true
-    isregular(OPT)          #-> false
-    isregular(PLU)          #-> false
-    isoptional(OPT)         #-> true
-    isoptional(PLU)         #-> false
-    isplural(PLU)           #-> true
-    isplural(OPT)           #-> false
+    isregular(REG)              #-> true
+    isregular(OPT)              #-> false
+    isregular(PLU)              #-> false
+    isoptional(OPT)             #-> true
+    isoptional(PLU)             #-> false
+    isplural(PLU)               #-> true
+    isplural(OPT)               #-> false
 
 There is a partial ordering defined on `Cardinality` values.  We can determine
 the greatest and the least cardinality; the least upper bound and the greatest
 lower bound of a collection of `Cardinality` values; and, for two `Cardinality`
 values, determine whether one of the values is smaller than the other.
 
-    bound(Cardinality)      #-> REG::Cardinality = 0
-    ibound(Cardinality)     #-> OPT_PLU::Cardinality = 3
+    print(bound(Cardinality))   #-> REG
+    print(ibound(Cardinality))  #-> OPT_PLU
 
-    bound(OPT, PLU)         #-> OPT_PLU::Cardinality = 3
-    ibound(PLU, OPT)        #-> REG::Cardinality = 0
+    print(bound(OPT, PLU))      #-> OPT_PLU
+    print(ibound(PLU, OPT))     #-> REG
 
-    fits(OPT, PLU)          #-> false
-    fits(REG, OPT|PLU)      #-> true
+    fits(OPT, PLU)              #-> false
+    fits(REG, OPT|PLU)          #-> true
 
 
 ## Data shapes
@@ -131,8 +131,8 @@ output elements.
     o_shp = OutputShape(Int, OPT|PLU)
     #-> OutputShape(Int, OPT | PLU)
 
-    cardinality(o_shp)
-    #-> OPT_PLU::Cardinality = 3
+    print(cardinality(o_shp))
+    #-> OPT_PLU
 
     domain(o_shp)
     #-> NativeShape(Int)
