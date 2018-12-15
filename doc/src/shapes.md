@@ -60,8 +60,8 @@ more than one element.  This gives us four different cardinality constraints.
 
 Cardinality values support bitwise operations.
 
-    REG|OPT|PLU             #-> OPT_PLU::Cardinality = 3
-    PLU&~PLU                #-> REG::Cardinality = 0
+    print(REG|OPT|PLU)      #-> OPT_PLU
+    print(PLU&~PLU)         #-> REG
 
 We can use predicates `isregular()`, `isoptional()`, `isplural()` to check
 cardinality values.
