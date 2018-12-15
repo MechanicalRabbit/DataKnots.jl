@@ -9,4 +9,6 @@ Base.show_datatype(io::IO, ::Type{UInt}) = print(io, "UInt")
 
 using DataKnots
 using NarrativeTest
-runtests()
+
+args = !isempty(ARGS) ? ARGS : [relpath(joinpath(dirname(abspath(PROGRAM_FILE)), "../doc/src"))]
+exit(!runtests(args))
