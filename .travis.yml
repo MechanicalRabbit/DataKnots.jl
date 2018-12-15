@@ -19,7 +19,7 @@ env:
 
 script:
 - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-- julia --color=yes -e 'using Pkg; Pkg.clone("https://github.com/rbt-lang/PPrint.jl"); Pkg.build(); Pkg.test(coverage=true)'
+- julia --color=yes -e 'using Pkg; Pkg.clone("https://github.com/rbt-lang/PPrint.jl"); Pkg.build(); Pkg.add("Random"); Pkg.test(coverage=true)'
 
 after_success:
 # push coverage results
