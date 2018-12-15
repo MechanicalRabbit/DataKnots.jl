@@ -173,6 +173,16 @@ function data_parts(shp::RecordShape, vals::TupleVector)
     parts
 end
 
+function data_parts(::NativeShape, vals::AbstractVector{<:NamedTuple})
+    ty = eltype(vals)
+    lbls = collect(Symbol, ty.parameters[1])
+    coltys = ty.parameters[2].parameters
+    cols = AbstractVector[BlockVector(:, collect(coltys[j], map(t -> t[j], vals)))
+                          for j = eachindex(coltys)]
+    vals′ = TupleVector(lbls, length(vals), cols)
+    data_parts(guessshape(vals′), vals′)
+end
+
 struct TableCell
     text::String
     align::Int
@@ -278,6 +288,31 @@ function render_cell(shp::RecordShape, vals::AbstractVector, idx::Int, avail::In
             comma = false
         end
         cell = render_cell(shp[i], column(vals, i), idx, avail)
+        print(buf, cell.text)
+        avail -= textwidth(cell.text)
+        if avail < 0
+            break
+        end
+        if !isempty(cell.text)
+            comma = true
+        end
+    end
+    return TableCell(String(take!(buf)))
+end
+
+function render_cell(::NativeShape, vals::AbstractVector{<:Union{Tuple,NamedTuple}}, idx::Int, avail::Int)
+    ty = eltype(vals)
+    w = length(ty <: Tuple ? ty.parameters : ty.parameters[2].parameters)
+    buf = IOBuffer()
+    comma = false
+    for i in 1:w
+        if comma
+            print(buf, ", ")
+            avail -= 2
+            comma = false
+        end
+        val = vals[idx][i]
+        cell = render_cell(typeof(val), val, avail)
         print(buf, cell.text)
         avail -= textwidth(cell.text)
         if avail < 0

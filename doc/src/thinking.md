@@ -289,29 +289,35 @@ example, the `Mean` aggregate combinator could be defined as:
 
 Then, one could create a mean of sums as follows:
 
-    run(Mean(Range(3) >> Sum(Range(It))))
-    #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ 3.333333335 │
-    =#
+```julia
+run(Mean(Range(3) >> Sum(Range(It))))
+#=>
+│ DataKnot    │
+├─────────────┤
+│ 3.333333335 │
+=#
+```
 
 To use `Mean` as a pipeline primitive, there are two additional steps.
 First, a zero-argument version is required, `Mean()`. Second, an
 automatic conversion of the symbol `Mean` to a pipeline is required.
 The former is done by `Then`, the latter by Julia's built-in `convert`.
 
-    Mean() = Then(Mean)
-    convert(::Type{Pipeline}, ::typeof(Mean)) = Mean()
+```julia
+Mean() = Then(Mean)
+convert(::Type{Pipeline}, ::typeof(Mean)) = Mean()
+```
 
 Once these are done, one could take the sum of means as follows:
 
-    run(Range(3) >> Sum(Range(It)) >> Mean)
-    #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ 3.333333335 │
-    =#
+```julia
+run(Range(3) >> Sum(Range(It)) >> Mean)
+#=>
+│ DataKnot    │
+├─────────────┤
+│ 3.333333335 │
+=#
+```
 
 In DataKnots, aggregate operations are naturally expressed as pipeline
 combinators. Moreover, custom aggregates can be easily constructed as
@@ -391,12 +397,14 @@ Using `Then`, this combinator could be used with pipeline composition:
 The `TakeFirst` combinator is similar to `Take(1)`, only that it
 returns a singular, rather than plural knot.
 
-    run(Range(3) >> TakeFirst())
-    #=>
-    │ DataKnot │
-    ├──────────┤
-    │        1 │
-    =#
+```julia
+run(Range(3) >> TakeFirst())
+#=>
+│ DataKnot │
+├──────────┤
+│        1 │
+=#
+```
 
 In DataKnots, filtering and slicing are realized as pipeline
 components. They are attached to data processing pipelines using the
@@ -454,18 +462,20 @@ naming context where the defined parameters are available for reuse.
 Query parameters can be especially useful when managing aggregates, or
 with expressions that one may wish to repeat more than once.
 
-    GreaterThanAverage(X) =
-      Given(:AVG => Mean(X),
-            X >> Filter(It .> Lookup(:AVG)))
+```julia
+GreaterThanAverage(X) =
+  Given(:AVG => Mean(X),
+        X >> Filter(It .> Lookup(:AVG)))
 
-    run(Range(6) >> Then(GreaterThanAverage))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        4 │
-    2 │        5 │
-    3 │        6 │
-    =#
+run(Range(6) >> Then(GreaterThanAverage))
+#=>
+  │ DataKnot │
+──┼──────────┤
+1 │        4 │
+2 │        5 │
+3 │        6 │
+=#
+```
 
 In DataKnots, query parameters passed in to the `run` command permit
 external data to be used within query expressions. Parameters that are
@@ -563,12 +573,10 @@ plural values.
                              :phone => "555-2368"),
             :workday => Const(["Su", "M","Tu", "F"])))
     #=>
-    │ work_schedule                            │
-    │ staff                       workday      │
-    ├──────────────────────────────────────────┤
-    │ │ name          phone    │  Su; M; Tu; F │
-    │ ├────────────────────────┤               │
-    │ │ Jim Rockford  555-2386 │               │
+    │ work_schedule                        │
+    │ staff                   workday      │
+    ├──────────────────────────────────────┤
+    │ Jim Rockford, 555-2368  Su; M; Tu; F │
     =#
 
 In DataKnots, records are used to generate tabular data. Using nested
@@ -627,13 +635,10 @@ Records can even contain lists of subordinate records.
         FIRE=[(name = "JOSE S", salary = 202728),
               (name = "CHARLES S", salary = 197736)])
     #=>
-    │ department                    │
-    │ name  staff                   │
-    ├───────────────────────────────┤
-    │ FIRE    │ name       salary │ │
-    │       ──┼───────────────────┤ │
-    │       1 │ JOSE S     202728 │ │
-    │       2 │ CHARLES S  197736 │ │
+    │ department                              │
+    │ name  staff                             │
+    ├─────────────────────────────────────────┤
+    │ FIRE  JOSE S, 202728; CHARLES S, 197736 │
     =#
 
 These subordinate records can then be summarized.

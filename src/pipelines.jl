@@ -389,6 +389,8 @@ Tag(env::Environment, q::Query, lbl::Symbol) =
 convert(::Type{PipelineLike}, p::Pair{Symbol}) =
     Compose(convert(PipelineLike, p.second), Tag(p.first))
 
+const Label = Tag
+
 # Lifting Julia functions.
 
 struct BroadcastPipeline <: Base.BroadcastStyle
@@ -501,6 +503,8 @@ function Field(env::Environment, q::Query, name)
     r !== missing || error("unknown attribute $name at\n$(domain(q))")
     compose(q, r)
 end
+
+const Lookup = Field
 
 function lookup(env::Environment, name)
     for slot in env.slots
