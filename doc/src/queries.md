@@ -25,6 +25,7 @@ transformations.  We will use the following definitions:
         null_filler,
         pass,
         record_lift,
+        sieve,
         tuple_lift,
         tuple_of,
         with_column,
@@ -164,22 +165,76 @@ Dual to `wrap()` is the query `flatten()`, which transforms a nested
     q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [[], ["JOSE S"], ["CHARLES S"]]])
     #-> @VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
 
+The `distribute` constructor makes a query that rearranges a `TupleVector` with
+a `BlockVector` column.  Specifically, it takes each tuple, which should
+contain a block value, and transforms it to a block of tuples by distributing
+the block value over the tuple.
 
-### Creating query constructors
+    q = distribute(:employee)
+    q(@VectorTree (department = String, employee = [String]) [
+        "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
+        "FIRE"      ["JOSE S", "CHARLES S"]]) |> display
+    #=>
+    BlockVector of 2 × [(department = String, employee = String)]:
+     [(department = "POLICE", employee = "GARRY M"), (department = "POLICE", employee = "ANTHONY R"), (department = "POLICE", employee = "DANA A")]
+     [(department = "FIRE", employee = "JOSE S"), (department = "FIRE", employee = "CHARLES S")]
+    =#
+
+Often we need to transform only a part of a composite vector, leaving the rest
+of the structure intact.  This can be achieved using `with_column` and
+`with_elements` combinators.  Specifically, `with_column` transforms a specific
+column of a `TupleVector` while `with_elements` transforms the vector of
+elements of a `BlockVector`.
+
+    q = with_column(:employee, with_elements(lift(titlecase)))
+    q(@VectorTree (department = String, employee = [String]) [
+        "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
+        "FIRE"      ["JOSE S", "CHARLES S"]]) |> display
+    #=>
+    TupleVector of 2 × (department = String, employee = [String]):
+     (department = "POLICE", employee = ["Garry M", "Anthony R", "Dana A"])
+     (department = "FIRE", employee = ["Jose S", "Charles S"])
+    =#
+
+
+### Specialized queries
+
+Not every data transformation can be implemented with lifting.  `DataKnots`
+provide query constructors for some common transformation tasks.
+
+For example, data filtering is implemented with the query `sieve()`.  As input,
+it expects a `TupleVector` of pairs containing a value and a `Bool` flag.
+`sieve()` transforms the input to a `BlockVector` containing 0- and 1-element
+blocks.  When the flag is `false`, it is mapped to an empty block, otherwise,
+it is mapped to a one-element block containing the data value.
+
+    q = sieve()
+    q(@VectorTree (String, Bool) [("JEFFERY A", true), ("JAMES A", true), ("TERRY A", false)])
+    #->  @VectorTree [String, OPT] ["JEFFERY A", "JAMES A", missing]
+
+If `DataKnots` does not provide a specific transformation, it is easy to
+create a new one.  For example, let us create a query constructor `double`
+which makes a query that doubles the elements of the input vector.
+
+We need to provide two definitions: to create a `Query` object and to perform
+the query action on the given input vector.
 
     double() = Query(double)
-    double(::Runtime, input) = input .* 2
+    double(::Runtime, input::AbstractVector{<:Number}) = input .* 2
 
     q = double()
-    q(1:10)
-    #-> 2:2:20
+    q([260004, 185364, 170112])
+    #-> [520008, 370728, 340224]
+
+It is also easy to create new query combinators.  Let us create a combinator
+`twice`, which applies the given query to the input two times.
 
     twice(q) = Query(twice, q)
     twice(::Runtime, input, q) = q(q(input))
 
     q = twice(double())
-    q(1:10)
-    #-> 4:4:40
+    q([260004, 185364, 170112])
+    #-> [1040016, 741456, 680448]
 
 
 ## API Reference
