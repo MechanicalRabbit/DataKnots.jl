@@ -1,5 +1,5 @@
 #
-# Representing the shape of the data.
+# Representing signatures of monadic queries.
 #
 
 import Base:
@@ -7,6 +7,7 @@ import Base:
     getindex,
     eltype,
     show
+
 
 #
 # Generic lattice operations.
@@ -16,20 +17,16 @@ import Base:
 # `bound(::Type{T})` and `bound(x::T, y::T)`.
 
 """
-    bound(::Type{T})
+    bound(::Type{T}) :: T
 
-The least element of the type `T`.
+The most specific constraint of the type `T`.
 
-    bound(x::T, y::T)
+    bound(xs::T...) :: T
+    bound(xs::Vector{T}) :: T
 
-The tight upper bound of the given two values of type `T`.
-
-    bound(xs::T...)
-    bound(xs::Vector{T}...)
-
-The tight upper bound of the given sequence.
+The tight upper bound of the given sequence of constraints.
 """
-function bound end;
+function bound end
 
 bound(x) = x
 
@@ -43,20 +40,16 @@ bound(xs::Vector{T}) where {T} =
 # `ibound(::Type{T})` and `ibound(x::T, y::T)`.
 
 """
-    ibound(::Type{T})
+    ibound(::Type{T}) :: T
 
-The greatest element of the type `T`.
+The least specific constraint of the type `T`.
 
-    ibound(x::T, y::Y)
+    ibound(xs::T...) :: T
+    ibound(xs::Vector{T}) :: T
 
-The tight lower bound of the given two values of type `T`.
-
-    ibound(xs::T...)
-    ibound(xs::Vector{T}...)
-
-The tight lower bound of the given sequence.
+The tight lower bound of the given sequence of constraints.
 """
-function ibound end;
+function ibound end
 
 ibound(x) = x
 
@@ -66,11 +59,19 @@ ibound(x1, x2, x3, xs...) =
 ibound(xs::Vector{T}) where {T} =
     foldl(ibound, xs, init=ibound(T))
 
-#
-# Cardinality of a collection.
-#
+# Ordering test.
 
-# Partial order.
+"""
+    fits(x::T, y::T) :: Bool
+
+Checks if constraint `x` implies constraint `y`.
+"""
+function fits end
+
+
+#
+# Order on cardinalities.
+#
 
 bound(::Type{Cardinality}) = REG
 
@@ -82,12 +83,16 @@ ibound(c1::Cardinality, c2::Cardinality) = c1 & c2
 
 fits(c1::Cardinality, c2::Cardinality) = (c1 | c2) == c2
 
+
 #
 # Data shapes.
 #
 
-# Shape types.
+"""
+    AbstractShape
 
+Represents the shape of column-oriented data.
+"""
 abstract type AbstractShape end
 
 syntax(shp::AbstractShape) =
@@ -105,8 +110,11 @@ sigsyntax(p::Pair{<:Any,AbstractShape}) =
 show(io::IO, shp::AbstractShape) =
     print_expr(io, syntax(shp))
 
-# Arbitrary data.
+"""
+    AnyShape()
 
+No constraints on the data.
+"""
 struct AnyShape <: AbstractShape
 end
 
@@ -116,8 +124,11 @@ syntax(::AnyShape) =
 sigsyntax(::AnyShape) =
     :Any
 
-# Indicates contradictory constraints on the data.
+"""
+    NoneShape()
 
+Inconsistent constraints on the data.
+"""
 struct NoneShape <: AbstractShape
 end
 
@@ -126,8 +137,11 @@ syntax(::NoneShape) = Expr(:call, nameof(NoneShape))
 sigsyntax(::NoneShape) =
     :None
 
-# Annotations on the query input and output.
+"""
+    Decoration(label::Union{Nothing,Symbol}=nothing)
 
+Annotations on the query input and output.
+"""
 struct Decoration
     lbl::Union{Nothing,Symbol}
 
@@ -137,9 +151,7 @@ end
 
 function syntax(dr::Decoration)
     args = []
-    if dr.lbl !== nothing
-        push!(args, QuoteNode(dr.lbl))
-    end
+    dr.lbl == nothing || push!(args, QuoteNode(dr.lbl))
     Expr(:call, nameof(Decoration), args...)
 end
 
@@ -154,8 +166,13 @@ decorate(dr::Decoration; label::Union{Missing,Nothing,Symbol}=missing) =
 decorate(; label::Union{Missing,Nothing,Symbol}=missing) =
     dr -> decorate(dr; label=label)
 
-# Shape of the query output.
+"""
+    OutputMode(card::Cardinality=REG)
 
+Monadic constraints on the query output.
+
+Parameter `card` is the cardinality of the query output.
+"""
 struct OutputMode
     card::Cardinality
 end
@@ -181,6 +198,11 @@ isoptional(md::OutputMode) = isoptional(md.card)
 
 isplural(md::OutputMode) = isplural(md.card)
 
+"""
+    OutputShape(::Decoration, ::AbstractShape, ::OutputMode)
+
+The shape of the query output.
+"""
 struct OutputShape <: AbstractShape
     dr::Decoration
     dom::AbstractShape
@@ -204,17 +226,9 @@ OutputShape(lbl::Symbol, dom::Union{Type,AbstractShape}, md::Union{Cardinality,O
 
 function syntax(shp::OutputShape)
     args = []
-    if shp.dr.lbl !== nothing
-        push!(args, QuoteNode(shp.dr.lbl))
-    end
-    if shp.dom isa NativeShape
-        push!(args, shp.dom.ty)
-    else
-        push!(args, syntax(shp.dom))
-    end
-    if shp.md.card != REG
-        push!(args, syntax(shp.md.card))
-    end
+    shp.dr.lbl == nothing || push!(args, QuoteNode(shp.dr.lbl))
+    push!(args, shp.dom isa NativeShape ? shp.dom.ty : syntax(shp.dom))
+    shp.md.card == REG || push!(args, syntax(shp.md.card))
     Expr(:call, nameof(OutputShape), args...)
 end
 
@@ -248,8 +262,16 @@ isoptional(shp::OutputShape) = isoptional(shp.md)
 
 isplural(shp::OutputShape) = isplural(shp.md)
 
-# Shape of the query input.
+"""
+    InputMode(slots::Union{Nothing,Vector{Pair{Symbol,OutputShape}}},
+              framed::Bool)
 
+Comonadic constraints on the query input.
+
+Parameter `slots` is a list of named query parameters and their shapes.
+
+Parameter `framed` indicates if the query input is partitioned into frames.
+"""
 struct InputMode
     slots::Union{Nothing,Vector{Pair{Symbol,OutputShape}}}
     framed::Bool
@@ -289,6 +311,11 @@ isframed(md::InputMode) = md.framed
 
 isfree(md::InputMode) = md.slots !== nothing && isempty(md.slots) && !md.framed
 
+"""
+    InputShape(::Decoration, ::AbstractShape, ::InputMode)
+
+The shape of the query input.
+"""
 struct InputShape <: AbstractShape
     dr::Decoration
     dom::AbstractShape
@@ -304,17 +331,9 @@ InputShape(dom::Union{Type,AbstractShape}, md::InputMode) =
 
 function syntax(shp::InputShape)
     args = []
-    if shp.dr.lbl !== nothing
-        push!(args, syntax(shp.dr))
-    end
-    if shp.dom isa NativeShape
-        push!(args, shp.dom.ty)
-    else
-        push!(args, syntax(shp.dom))
-    end
-    if !isfree(shp.md)
-        push!(args, syntax(shp.md))
-    end
+    shp.dr.lbl == nothing || push!(args, syntax(shp.dr))
+    push!(args, shp.dom isa NativeShape ? shp.dom.ty : syntax(shp.dom))
+    isfree(shp.md) || push!(args, syntax(shp.md))
     Expr(:call, nameof(InputShape), args...)
 end
 
@@ -348,7 +367,11 @@ isframed(shp::InputShape) = isframed(shp.md)
 
 isfree(shp::InputShape) = isfree(shp.md)
 
-# A regular Julia value of the given type.
+"""
+    NativeShape(::Type)
+
+Regular Julia vector with the elements of the given type.
+"""
 
 struct NativeShape <: AbstractShape
     ty::Type
@@ -370,8 +393,11 @@ sigsyntax(shp::NativeShape) = shp.ty
 
 eltype(shp::NativeShape) = shp.ty
 
-# Shape of a record.
+"""
+    RecordShape(flds::OutputShape...)
 
+Record vector with the given fields.
+"""
 struct RecordShape <: AbstractShape
     flds::Vector{OutputShape}
 end
@@ -388,6 +414,7 @@ sigsyntax(shp::RecordShape) =
 getindex(shp::RecordShape, ::Colon) = shp.flds
 
 getindex(shp::RecordShape, i) = shp.flds[i]
+
 
 #
 # Shape lattice.
@@ -605,10 +632,16 @@ ibound(shp1::RecordShape, shp2::RecordShape) =
         RecordShape(OutputShape[ibound(fld1, fld2) for (fld1, fld2) in zip(shp1.flds, shp2.flds)]) :
         NoneShape()
 
+
 #
 # Signagure of a query.
 #
 
+"""
+    Signature(::InputShape, ::OutputShape)
+
+Signature of a monadic query.
+"""
 struct Signature
     ishp::InputShape
     shp::OutputShape

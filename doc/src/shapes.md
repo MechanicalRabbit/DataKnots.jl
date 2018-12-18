@@ -1,4 +1,4 @@
-# Data Shape
+# Monadic Signature
 
 In `DataKnots`, the structure of vectorized data is described using *shape*
 objects.
@@ -33,16 +33,21 @@ objects.
         shape
 
 
-## Input and output shapes
+## Overview
 
 
-## Atomic shapes
+## API Reference
+
+```@autodocs
+Modules = [DataKnots]
+Pages = ["shapes.jl"]
+```
 
 
-## Record shape
+## Test Suite
 
 
-## Cardinality
+### Cardinality
 
 Enumerated type `Cardinality` is used to constrain the cardinality of a data
 block.  A block of data is called *regular* if it must contain exactly one
@@ -89,7 +94,7 @@ values, determine whether one of the values is smaller than the other.
     fits(REG, OPT|PLU)          #-> true
 
 
-## Data shapes
+### Data shapes
 
 The structure of composite data is specified with *shape* objects.
 
@@ -193,7 +198,7 @@ data source.
     =#
 
 
-## Shape ordering
+### Shape ordering
 
 The same data can satisfy many different shape constraints.  For example, a
 vector `BlockVector([Chicago])` can be said to have, among others, the shape
@@ -319,7 +324,7 @@ For decorated shapes, incompatible labels are replaed with an empty label.
     #-> OutputShape(:salary, Int)
 
 
-## Query signature
+### Query signature
 
 The signature of a query is a pair of an `InputShape` object and an
 `OutputShape` object.

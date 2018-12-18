@@ -8,4 +8,5 @@ Pages = [
     "pipelines.md",
     "lifting.md",
 ]
+Depth = 3
 ```
