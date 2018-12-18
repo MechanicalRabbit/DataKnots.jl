@@ -173,7 +173,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Implementation Guide",
     "title": "Implementation Guide",
     "category": "section",
-    "text": "Pages = [\n    \"vectors.md\",\n    \"queries.md\",\n    \"shapes.md\",\n    \"pipelines.md\",\n    \"lifting.md\",\n]"
+    "text": "Pages = [\n    \"vectors.md\",\n    \"queries.md\",\n    \"shapes.md\",\n    \"pipelines.md\",\n    \"lifting.md\",\n]\nDepth = 3"
 },
 
 {
@@ -698,47 +698,151 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "shapes/#",
-    "page": "Data Shape",
-    "title": "Data Shape",
+    "page": "Monadic Signature",
+    "title": "Monadic Signature",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "shapes/#Data-Shape-1",
-    "page": "Data Shape",
-    "title": "Data Shape",
+    "location": "shapes/#Monadic-Signature-1",
+    "page": "Monadic Signature",
+    "title": "Monadic Signature",
     "category": "section",
     "text": "In DataKnots, the structure of vectorized data is described using shape objects.using DataKnots:\n    OPT,\n    PLU,\n    REG,\n    AnyShape,\n    Cardinality,\n    InputMode,\n    InputShape,\n    NativeShape,\n    NoneShape,\n    OutputMode,\n    OutputShape,\n    RecordShape,\n    Signature,\n    bound,\n    cardinality,\n    decorate,\n    domain,\n    fits,\n    ibound,\n    idomain,\n    imode,\n    ishape,\n    isoptional,\n    isplural,\n    isregular,\n    mode,\n    shape"
 },
 
 {
-    "location": "shapes/#Input-and-output-shapes-1",
-    "page": "Data Shape",
-    "title": "Input and output shapes",
+    "location": "shapes/#Overview-1",
+    "page": "Monadic Signature",
+    "title": "Overview",
     "category": "section",
     "text": ""
 },
 
 {
-    "location": "shapes/#Atomic-shapes-1",
-    "page": "Data Shape",
-    "title": "Atomic shapes",
-    "category": "section",
-    "text": ""
+    "location": "shapes/#DataKnots.AbstractShape",
+    "page": "Monadic Signature",
+    "title": "DataKnots.AbstractShape",
+    "category": "type",
+    "text": "AbstractShape\n\nRepresents the shape of column-oriented data.\n\n\n\n\n\n"
 },
 
 {
-    "location": "shapes/#Record-shape-1",
-    "page": "Data Shape",
-    "title": "Record shape",
+    "location": "shapes/#DataKnots.AnyShape",
+    "page": "Monadic Signature",
+    "title": "DataKnots.AnyShape",
+    "category": "type",
+    "text": "AnyShape()\n\nNo constraints on the data.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.Decoration",
+    "page": "Monadic Signature",
+    "title": "DataKnots.Decoration",
+    "category": "type",
+    "text": "Decoration(label::Union{Nothing,Symbol}=nothing)\n\nAnnotations on the query input and output.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.InputMode",
+    "page": "Monadic Signature",
+    "title": "DataKnots.InputMode",
+    "category": "type",
+    "text": "InputMode(slots::Union{Nothing,Vector{Pair{Symbol,OutputShape}}},\n          framed::Bool)\n\nComonadic constraints on the query input.\n\nParameter slots is a list of named query parameters and their shapes.\n\nParameter framed indicates if the query input is partitioned into frames.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.InputShape",
+    "page": "Monadic Signature",
+    "title": "DataKnots.InputShape",
+    "category": "type",
+    "text": "InputShape(::Decoration, ::AbstractShape, ::InputMode)\n\nThe shape of the query input.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.NoneShape",
+    "page": "Monadic Signature",
+    "title": "DataKnots.NoneShape",
+    "category": "type",
+    "text": "NoneShape()\n\nInconsistent constraints on the data.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.OutputMode",
+    "page": "Monadic Signature",
+    "title": "DataKnots.OutputMode",
+    "category": "type",
+    "text": "OutputMode(card::Cardinality=REG)\n\nMonadic constraints on the query output.\n\nParameter card is the cardinality of the query output.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.OutputShape",
+    "page": "Monadic Signature",
+    "title": "DataKnots.OutputShape",
+    "category": "type",
+    "text": "OutputShape(::Decoration, ::AbstractShape, ::OutputMode)\n\nThe shape of the query output.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.RecordShape",
+    "page": "Monadic Signature",
+    "title": "DataKnots.RecordShape",
+    "category": "type",
+    "text": "RecordShape(flds::OutputShape...)\n\nRecord vector with the given fields.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.Signature",
+    "page": "Monadic Signature",
+    "title": "DataKnots.Signature",
+    "category": "type",
+    "text": "Signature(::InputShape, ::OutputShape)\n\nSignature of a monadic query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.bound",
+    "page": "Monadic Signature",
+    "title": "DataKnots.bound",
+    "category": "function",
+    "text": "bound(::Type{T}) :: T\n\nThe most specific constraint of the type T.\n\nbound(xs::T...) :: T\nbound(xs::Vector{T}) :: T\n\nThe tight upper bound of the given sequence of constraints.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.fits",
+    "page": "Monadic Signature",
+    "title": "DataKnots.fits",
+    "category": "function",
+    "text": "fits(x::T, y::T) :: Bool\n\nChecks if constraint x implies constraint y.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#DataKnots.ibound",
+    "page": "Monadic Signature",
+    "title": "DataKnots.ibound",
+    "category": "function",
+    "text": "ibound(::Type{T}) :: T\n\nThe least specific constraint of the type T.\n\nibound(xs::T...) :: T\nibound(xs::Vector{T}) :: T\n\nThe tight lower bound of the given sequence of constraints.\n\n\n\n\n\n"
+},
+
+{
+    "location": "shapes/#API-Reference-1",
+    "page": "Monadic Signature",
+    "title": "API Reference",
+    "category": "section",
+    "text": "Modules = [DataKnots]\nPages = [\"shapes.jl\"]"
+},
+
+{
+    "location": "shapes/#Test-Suite-1",
+    "page": "Monadic Signature",
+    "title": "Test Suite",
     "category": "section",
     "text": ""
 },
 
 {
     "location": "shapes/#Cardinality-1",
-    "page": "Data Shape",
+    "page": "Monadic Signature",
     "title": "Cardinality",
     "category": "section",
     "text": "Enumerated type Cardinality is used to constrain the cardinality of a data block.  A block of data is called regular if it must contain exactly one element; optional if it may have no elements; and plural if it may have more than one element.  This gives us four different cardinality constraints.display(Cardinality)\n#=>\nEnum Cardinality:\nREG = 0x00\nOPT = 0x01\nPLU = 0x02\nOPT_PLU = 0x03\n=#Cardinality values support bitwise operations.print(REG|OPT|PLU)          #-> OPT_PLU\nprint(PLU&~PLU)             #-> REGWe can use predicates isregular(), isoptional(), isplural() to check cardinality values.isregular(REG)              #-> true\nisregular(OPT)              #-> false\nisregular(PLU)              #-> false\nisoptional(OPT)             #-> true\nisoptional(PLU)             #-> false\nisplural(PLU)               #-> true\nisplural(OPT)               #-> falseThere is a partial ordering defined on Cardinality values.  We can determine the greatest and the least cardinality; the least upper bound and the greatest lower bound of a collection of Cardinality values; and, for two Cardinality values, determine whether one of the values is smaller than the other.print(bound(Cardinality))   #-> REG\nprint(ibound(Cardinality))  #-> OPT_PLU\n\nprint(bound(OPT, PLU))      #-> OPT_PLU\nprint(ibound(PLU, OPT))     #-> REG\n\nfits(OPT, PLU)              #-> false\nfits(REG, OPT|PLU)          #-> true"
@@ -746,7 +850,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "shapes/#Data-shapes-1",
-    "page": "Data Shape",
+    "page": "Monadic Signature",
     "title": "Data shapes",
     "category": "section",
     "text": "The structure of composite data is specified with shape objects.NativeShape indicates a regular Julia value of a specific type.str_shp = NativeShape(String)\n#-> NativeShape(String)\n\neltype(str_shp)\n#-> StringTwo special shape types are used to indicate the value of any shape, and a value that cannot exist.any_shp = AnyShape()\n#-> AnyShape()\n\nnone_shp = NoneShape()\n#-> NoneShape()InputShape and OutputShape describe the structure of the query input and the query output.To describe the query input, we specify the shape of the input elements, the shapes of the parameters, and whether or not the input is framed.i_shp = InputShape(UInt, InputMode([:D => OutputShape(String)], true))\n#-> InputShape(UInt, InputMode([:D => OutputShape(String)], true))\n\ndomain(i_shp)\n#-> NativeShape(UInt)\n\nmode(i_shp)\n#-> InputMode([:D => OutputShape(String)], true)To describe the query output, we specify the shape and the cardinality of the output elements.o_shp = OutputShape(Int, OPT|PLU)\n#-> OutputShape(Int, OPT | PLU)\n\nprint(cardinality(o_shp))\n#-> OPT_PLU\n\ndomain(o_shp)\n#-> NativeShape(Int)\n\nmode(o_shp)\n#-> OutputMode(OPT | PLU)It is possible to decorate InputShape and OutputShape objects to specify additional attributes.  Currently, we can specify the label.o_shp |> decorate(label=:output)\n#-> OutputShape(:output, Int, OPT | PLU)RecordShape` specifies the shape of a record value where each field has a certain shape and cardinality.dept_shp = RecordShape(OutputShape(:name, String),\n                       OutputShape(:employee, UInt, OPT|PLU))\n#=>\nRecordShape(OutputShape(:name, String),\n            OutputShape(:employee, UInt, OPT | PLU))\n=#\n\nemp_shp = RecordShape(OutputShape(:name, String),\n                      OutputShape(:department, UInt),\n                      OutputShape(:position, String),\n                      OutputShape(:salary, Int),\n                      OutputShape(:manager, UInt, OPT),\n                      OutputShape(:subordinate, UInt, OPT|PLU))\n#=>\nRecordShape(OutputShape(:name, String),\n            OutputShape(:department, UInt),\n            OutputShape(:position, String),\n            OutputShape(:salary, Int),\n            OutputShape(:manager, UInt, OPT),\n            OutputShape(:subordinate, UInt, OPT | PLU))\n=#Using the combination of different shapes we can describe the structure of any data source.db_shp = RecordShape(OutputShape(:department, dept_shp, OPT|PLU),\n                     OutputShape(:employee, emp_shp, OPT|PLU))\n#=>\nRecordShape(OutputShape(:department,\n                        RecordShape(OutputShape(:name, String),\n                                    OutputShape(:employee, UInt, OPT | PLU)),\n                        OPT | PLU),\n            OutputShape(:employee,\n                        RecordShape(\n                            OutputShape(:name, String),\n                            OutputShape(:department, UInt),\n                            OutputShape(:position, String),\n                            OutputShape(:salary, Int),\n                            OutputShape(:manager, UInt, OPT),\n                            OutputShape(:subordinate, UInt, OPT | PLU)),\n                        OPT | PLU))\n=#"
@@ -754,7 +858,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "shapes/#Shape-ordering-1",
-    "page": "Data Shape",
+    "page": "Monadic Signature",
     "title": "Shape ordering",
     "category": "section",
     "text": "The same data can satisfy many different shape constraints.  For example, a vector BlockVector([Chicago]) can be said to have, among others, the shape OutputShape(String), the shape OutputShape(String, OPT|PLU) or the shape AnyShape().  We can tell, for any two shapes, if one of them is more specific than the other.fits(NativeShape(Int), NativeShape(Number))     #-> true\nfits(NativeShape(Int), NativeShape(String))     #-> false\n\nfits(InputShape(Int,\n                InputMode([:X => OutputShape(Int),\n                           :Y => OutputShape(String)],\n                          true)),\n     InputShape(Number,\n                InputMode([:X => OutputShape(Int, OPT)])))\n#-> true\nfits(InputShape(Int),\n     InputShape(Number, InputMode(true)))\n#-> false\nfits(InputShape(Int,\n                InputMode([:X => OutputShape(Int, OPT)])),\n     InputShape(Number,\n                InputMode([:X => OutputShape(Int)])))\n#-> false\n\nfits(OutputShape(Int),\n     OutputShape(Number, OPT))                  #-> true\nfits(OutputShape(Int, PLU),\n     OutputShape(Number, OPT))                  #-> false\nfits(OutputShape(Int),\n     OutputShape(String, OPT))                  #-> false\n\nfits(RecordShape(OutputShape(Int),\n                 OutputShape(String, OPT)),\n     RecordShape(OutputShape(Number),\n                 OutputShape(String, OPT|PLU)))     #-> true\nfits(RecordShape(OutputShape(Int, OPT),\n                 OutputShape(String)),\n     RecordShape(OutputShape(Number),\n                 OutputShape(String, OPT|PLU)))     #-> false\nfits(RecordShape(OutputShape(Int)),\n     RecordShape(OutputShape(Number),\n                 OutputShape(String, OPT|PLU)))     #-> falseShapes of different kinds are typically not compatible with each other.  The exceptions are AnyShape and NullShape.fits(NativeShape(Int), OutputShape(Int))    #-> false\nfits(NativeShape(Int), AnyShape())          #-> true\nfits(NoneShape(), NativeShape(Int))         #-> trueShape decorations are treated as additional shape constraints.fits(OutputShape(:name, String),\n     OutputShape(:name, String))                            #-> true\nfits(OutputShape(String),\n     OutputShape(:position, String))                        #-> false\nfits(OutputShape(:position, String),\n     OutputShape(String))                                   #-> true\nfits(OutputShape(:position, String),\n     OutputShape(:name, String))                            #-> falseFor any given number of shapes, we can find their upper bound, the shape that is more general than each of them.  We can also find their lower bound.bound(NativeShape(Int), NativeShape(Number))\n#-> NativeShape(Number)\nibound(NativeShape(Int), NativeShape(Number))\n#-> NativeShape(Int)\n\nbound(InputShape(Int, InputMode([:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true)),\n      InputShape(Number, InputMode([:X => OutputShape(Int)])))\n#=>\nInputShape(Number, InputMode([:X => OutputShape(Int, OPT)]))\n=#\nibound(InputShape(Int, InputMode([:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true)),\n       InputShape(Number, InputMode([:X => OutputShape(Int)])))\n#=>\nInputShape(Int,\n           InputMode([:X => OutputShape(Int), :Y => OutputShape(String)],\n                     true))\n=#\n\nbound(OutputShape(String, OPT), OutputShape(String, PLU))\n#-> OutputShape(String, OPT | PLU)\nibound(OutputShape(String, OPT), OutputShape(String, PLU))\n#-> OutputShape(String)\n\nbound(RecordShape(OutputShape(Int, PLU),\n                  OutputShape(String, OPT)),\n      RecordShape(OutputShape(Number),\n                  OutputShape(UInt, OPT|PLU)))\n#=>\nRecordShape(OutputShape(Number, PLU), OutputShape(AnyShape(), OPT | PLU))\n=#\nibound(RecordShape(OutputShape(Int, PLU),\n                   OutputShape(String, OPT)),\n       RecordShape(OutputShape(Number),\n                   OutputShape(UInt, OPT|PLU)))\n#=>\nRecordShape(OutputShape(Int), OutputShape(NoneShape(), OPT))\n=#For decorated shapes, incompatible labels are replaed with an empty label.bound(OutputShape(:name, String), OutputShape(:name, String))\n#-> OutputShape(:name, String)\n\nibound(OutputShape(:name, String), OutputShape(:name, String))\n#-> OutputShape(:name, String)\n\nbound(OutputShape(:position, String), OutputShape(:salary, Number))\n#-> OutputShape(AnyShape())\n\nibound(OutputShape(:position, String), OutputShape(:salary, Number))\n#-> OutputShape(Symbol(\"\"), NoneShape())\n\nbound(OutputShape(Int), OutputShape(:salary, Number))\n#-> OutputShape(Number)\n\nibound(OutputShape(Int), OutputShape(:salary, Number))\n#-> OutputShape(:salary, Int)"
@@ -762,7 +866,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "shapes/#Query-signature-1",
-    "page": "Data Shape",
+    "page": "Monadic Signature",
     "title": "Query signature",
     "category": "section",
     "text": "The signature of a query is a pair of an InputShape object and an OutputShape object.sig = Signature(InputShape(UInt),\n                OutputShape(RecordShape(OutputShape(:name, String),\n                                        OutputShape(:employee, UInt, OPT|PLU))))\n#-> UInt -> (name => String[1 .. 1], employee => UInt[0 .. ∞])[1 .. 1]Different components of the signature can be easily extracted.shape(sig)\n#=>\nOutputShape(RecordShape(OutputShape(:name, String),\n                        OutputShape(:employee, UInt, OPT | PLU)))\n=#\n\nishape(sig)\n#-> InputShape(UInt)\n\ndomain(sig)\n#=>\nRecordShape(OutputShape(:name, String),\n            OutputShape(:employee, UInt, OPT | PLU))\n=#\n\nmode(sig)\n#-> OutputMode()\n\nidomain(sig)\n#-> NativeShape(UInt)\n\nimode(sig)\n#-> InputMode()"
