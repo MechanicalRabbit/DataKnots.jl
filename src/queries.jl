@@ -445,8 +445,10 @@ chain_of() = pass()
 
 chain_of(q) = q
 
-chain_of(qs...) =
-    Query(chain_of, collect(qs))
+function chain_of(qs...)
+    qs′ = filter(q -> !(q isa Query && q.op == pass), collect(qs))
+    isempty(qs′) ? pass() : length(qs′) == 1 ? qs′[1] : chain_of(qs′)
+end
 
 chain_of(qs::Vector) =
     Query(chain_of, qs)

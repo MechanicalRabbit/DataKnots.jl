@@ -1,7 +1,11 @@
 # Monadic Signature
 
-In `DataKnots`, the structure of vectorized data is described using *shape*
-objects.
+
+## Overview
+
+In `DataKnots`, a query is called *monadic* if the format of the query input
+and output can be expressed using a *monadic signature*.  Monadic signatures
+are created using the following definitions.
 
     using DataKnots:
         OPT,
@@ -17,9 +21,13 @@ objects.
         OutputShape,
         RecordShape,
         Signature,
+        adapt_vector,
         bound,
         cardinality,
+        chain_of,
+        compose,
         decorate,
+        designate,
         domain,
         fits,
         ibound,
@@ -29,11 +37,90 @@ objects.
         isoptional,
         isplural,
         isregular,
+        lift,
         mode,
-        shape
+        shape,
+        signature,
+        wrap
 
 
-## Overview
+### Monadic queries
+
+In `DataKnots`, vectorized transformations are called *queries*.  The format of
+the query input and output is called the query *signature*.
+
+Among all queries, `DataKnots` distinguishes a special class of queries with
+*monadic* signature, or monadic queries.
+
+Consider, for example, the following query.
+
+    q₁ = chain_of(lift(split), adapt_vector())
+    #-> chain_of(lift(split), adapt_vector())
+
+This query transforms a vector of `String` values to a block vector with `String`
+elements by splitting each input string into a block of words.
+
+    q₁(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> @VectorTree [SubString{String}] [["JEFFERY", "A"], ["JAMES", "A"], ["TERRY", "A"]]
+
+This query has a monadic signature, which we can attach to the query object.
+
+    q₁ = q₁ |> designate(InputShape(AbstractString), OutputShape(AbstractString, OPT|PLU))
+
+    signature(q₁)
+    #-> AbstractString -> AbstractString[0 .. ∞]
+
+This signature indicates that the query takes `String` values and produces
+`String` values with optional and plural cardinality.
+
+    idomain(q₁)         #-> NativeShape(AbstractString)
+    domain(q₁)          #-> NativeShape(AbstractString)
+    cardinality(q₁)     #-> OPT_PLU::Cardinality = 3
+
+Let us make another query, which transforms each input string by applying `titlecase`
+and wrapping it in one-element block.
+
+Consider another query, which transforms a `String` vector by lifting
+`titlecase` and wrapping the output in one-element blocks.
+
+    q₂ = chain_of(lift(titlecase), wrap())
+    #-> chain_of(lift(titlecase), wrap())
+
+    q₂(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> @VectorTree [String, REG] ["Jeffery A", "James A", "Terry A"]
+
+This is also a query with monadic signature.
+
+    q₂ = q₂ |> designate(InputShape(AbstractString), OutputShape(AbstractString, REG))
+
+    signature(q₂)
+    #-> AbstractString -> AbstractString[1 .. 1]
+
+    idomain(q₂)         #-> NativeShape(AbstractString)
+    domain(q₂)          #-> NativeShape(AbstractString)
+    cardinality(q₂)     #-> REG::Cardinality = 0
+
+Since the output domain of `q₁` coincides with the input domain of `q₂`, we can
+form monadic composition of `q₁` and `q₂`.
+
+    q = compose(q₁, q₂)
+    #=>
+    chain_of(chain_of(lift(split), adapt_vector()),
+             with_elements(chain_of(lift(titlecase), wrap())),
+             flatten())
+    =#
+
+This query combines the operations of `q₁` and `q₂`.
+
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> @VectorTree [String] [["Jeffery", "A"], ["James", "A"], ["Terry", "A"]]
+
+The composition inherits the input and output domains from the first and the
+last components.  The cardinality of the composition is the upper bound of the
+component cardinalities.
+
+    signature(q)
+    #-> AbstractString -> AbstractString[0 .. ∞]
 
 
 ## API Reference
