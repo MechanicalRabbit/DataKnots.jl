@@ -565,7 +565,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.slice",
     "category": "function",
-    "text": "slice(rev::Bool=false) :: Query\n\nThis query takes a pair vector of blocks and integers, and returns the first column with blocks restricted by the second column.\n\n\n\n\n\n"
+    "text": "slice(N::Int, rev::Bool=false) :: Query\n\nThis query transforms a block vector by keeping the first N elements of each block.  If rev is true, the query drops the first N elements of each block.\n\n\n\n\n\n"
 },
 
 {
@@ -573,7 +573,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.slice",
     "category": "function",
-    "text": "slice(N::Int, rev::Bool=false) :: Query\n\nThis query transforms a block vector by keeping the first N elements of each block.  If rev is true, the query drops the first N elements of each block.\n\n\n\n\n\n"
+    "text": "slice(rev::Bool=false) :: Query\n\nThis query takes a pair vector of blocks and integers, and returns the first column with blocks restricted by the second column.\n\n\n\n\n\n"
 },
 
 {
@@ -709,7 +709,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Monadic Signature",
     "title": "Monadic Signature",
     "category": "section",
-    "text": "In DataKnots, the structure of vectorized data is described using shape objects.using DataKnots:\n    OPT,\n    PLU,\n    REG,\n    AnyShape,\n    Cardinality,\n    InputMode,\n    InputShape,\n    NativeShape,\n    NoneShape,\n    OutputMode,\n    OutputShape,\n    RecordShape,\n    Signature,\n    bound,\n    cardinality,\n    decorate,\n    domain,\n    fits,\n    ibound,\n    idomain,\n    imode,\n    ishape,\n    isoptional,\n    isplural,\n    isregular,\n    mode,\n    shape"
+    "text": ""
 },
 
 {
@@ -717,7 +717,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Monadic Signature",
     "title": "Overview",
     "category": "section",
-    "text": ""
+    "text": "In DataKnots, a query is called monadic if the format of the query input and output can be expressed using a monadic signature.  Monadic signatures are created using the following definitions.using DataKnots:\n    OPT,\n    PLU,\n    REG,\n    AnyShape,\n    Cardinality,\n    InputMode,\n    InputShape,\n    NativeShape,\n    NoneShape,\n    OutputMode,\n    OutputShape,\n    RecordShape,\n    Signature,\n    adapt_vector,\n    bound,\n    cardinality,\n    chain_of,\n    compose,\n    decorate,\n    designate,\n    domain,\n    fits,\n    ibound,\n    idomain,\n    imode,\n    ishape,\n    isoptional,\n    isplural,\n    isregular,\n    lift,\n    mode,\n    shape,\n    signature,\n    wrap"
+},
+
+{
+    "location": "shapes/#Monadic-queries-1",
+    "page": "Monadic Signature",
+    "title": "Monadic queries",
+    "category": "section",
+    "text": "In DataKnots, vectorized transformations are called queries.  The format of the query input and output is called the query signature.Among all queries, DataKnots distinguishes a special class of queries with monadic signature, or monadic queries.Consider, for example, the following query.q₁ = chain_of(lift(split), adapt_vector())\n#-> chain_of(lift(split), adapt_vector())This query transforms a vector of String values to a block vector with String elements by splitting each input string into a block of words.q₁([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree [SubString{String}] [[\"JEFFERY\", \"A\"], [\"JAMES\", \"A\"], [\"TERRY\", \"A\"]]This query has a monadic signature, which we can attach to the query object.q₁ = q₁ |> designate(InputShape(AbstractString), OutputShape(AbstractString, OPT|PLU))\n\nsignature(q₁)\n#-> AbstractString -> AbstractString[0 .. ∞]This signature indicates that the query takes String values and produces String values with optional and plural cardinality.idomain(q₁)         #-> NativeShape(AbstractString)\ndomain(q₁)          #-> NativeShape(AbstractString)\ncardinality(q₁)     #-> OPT_PLU::Cardinality = 3Let us make another query, which transforms each input string by applying titlecase and wrapping it in one-element block.Consider another query, which transforms a String vector by lifting titlecase and wrapping the output in one-element blocks.q₂ = chain_of(lift(titlecase), wrap())\n#-> chain_of(lift(titlecase), wrap())\n\nq₂([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree [String, REG] [\"Jeffery A\", \"James A\", \"Terry A\"]This is also a query with monadic signature.q₂ = q₂ |> designate(InputShape(AbstractString), OutputShape(AbstractString, REG))\n\nsignature(q₂)\n#-> AbstractString -> AbstractString[1 .. 1]\n\nidomain(q₂)         #-> NativeShape(AbstractString)\ndomain(q₂)          #-> NativeShape(AbstractString)\ncardinality(q₂)     #-> REG::Cardinality = 0Since the output domain of q₁ coincides with the input domain of q₂, we can form monadic composition of q₁ and q₂.q = compose(q₁, q₂)\n#=>\nchain_of(chain_of(lift(split), adapt_vector()),\n         with_elements(chain_of(lift(titlecase), wrap())),\n         flatten())\n=#This query combines the operations of q₁ and q₂.q([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree [String] [[\"Jeffery\", \"A\"], [\"James\", \"A\"], [\"Terry\", \"A\"]]The composition inherits the input and output domains from the first and the last components.  The cardinality of the composition is the upper bound of the component cardinalities.signature(q)\n#-> AbstractString -> AbstractString[0 .. ∞]"
 },
 
 {
