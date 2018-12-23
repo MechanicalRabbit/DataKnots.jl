@@ -57,31 +57,31 @@ Consider, for example, the following query.
     q₁ = chain_of(lift(split), adapt_vector())
     #-> chain_of(lift(split), adapt_vector())
 
-This query transforms a vector of `String` values to a block vector with `String`
-elements by splitting each input string into a block of words.
+This query transforms a vector of strings by splitting each string into a block
+of words.
 
     q₁(["JEFFERY A", "JAMES A", "TERRY A"])
     #-> @VectorTree [SubString{String}] [["JEFFERY", "A"], ["JAMES", "A"], ["TERRY", "A"]]
 
-This query has a monadic signature, which we can attach to the query object.
+This query has a monadic signature, which we indicate by attaching the signature to
+the query object.
 
-    q₁ = q₁ |> designate(InputShape(AbstractString), OutputShape(AbstractString, OPT|PLU))
+    q₁ = q₁ |> designate(InputShape(String), OutputShape(SubString{String}, OPT|PLU))
+
+The signature specifies the shapes of the query input and the query output.  In
+this case, the input is expected to be `String[ … ]` and the output
+`BlockVector( … , SubString{String}[ … ], OPT|PLU)`.
 
     signature(q₁)
-    #-> AbstractString -> AbstractString[0 .. ∞]
+    #-> String -> [SubString{String}]
+    ishape(q₁)
+    #-> InputShape(String)
+    shape(q₁)
+    #-> OutputShape(SubString{String}, OPT | PLU)
 
-This signature indicates that the query takes `String` values and produces
-`String` values with optional and plural cardinality.
-
-    idomain(q₁)         #-> NativeShape(AbstractString)
-    domain(q₁)          #-> NativeShape(AbstractString)
-    cardinality(q₁)     #-> OPT_PLU::Cardinality = 3
-
-Let us make another query, which transforms each input string by applying `titlecase`
-and wrapping it in one-element block.
-
-Consider another query, which transforms a `String` vector by lifting
-`titlecase` and wrapping the output in one-element blocks.
+Aside from directly assigning a monadic signature to a query, monadic queries
+could also be constructed using monadic query combinators: one of them is
+*monadic composition*.  To demonstrate it, let us make another monadic query.
 
     q₂ = chain_of(lift(titlecase), wrap())
     #-> chain_of(lift(titlecase), wrap())
@@ -89,19 +89,26 @@ Consider another query, which transforms a `String` vector by lifting
     q₂(["JEFFERY A", "JAMES A", "TERRY A"])
     #-> @VectorTree [String, REG] ["Jeffery A", "James A", "Terry A"]
 
-This is also a query with monadic signature.
-
-    q₂ = q₂ |> designate(InputShape(AbstractString), OutputShape(AbstractString, REG))
+    q₂ = q₂ |> designate(InputShape(SubString{String}), OutputShape(String, REG))
 
     signature(q₂)
-    #-> AbstractString -> AbstractString[1 .. 1]
+    #-> SubString{String} -> [String, REG]
+    ishape(q₂)
+    #-> InputShape(SubString{String})
+    shape(q₂)
+    #-> OutputShape(String)
 
-    idomain(q₂)         #-> NativeShape(AbstractString)
-    domain(q₂)          #-> NativeShape(AbstractString)
-    cardinality(q₂)     #-> REG::Cardinality = 0
+This query transforms `SubString{String}[ … ]` to `BlockVector( … , String[ … ], REG)`.
+Notice that the output shape of `q₁` does not match the input shape of `q₂`, which means
+that the queries could not be composed using `chain_of(q₁, q₂)`.  However, the output *domain*
+of `q₁` matches the input domain of `q₂`.
 
-Since the output domain of `q₁` coincides with the input domain of `q₂`, we can
-form monadic composition of `q₁` and `q₂`.
+    domain(q₁)
+    #-> NativeShape(SubString{String})
+    idomain(q₂)
+    #-> NativeShape(SubString{String})
+
+This permits us to make a monadic composition of `q₁` and `q₂`.
 
     q = compose(q₁, q₂)
     #=>
@@ -110,17 +117,18 @@ form monadic composition of `q₁` and `q₂`.
              flatten())
     =#
 
-This query combines the operations of `q₁` and `q₂`.
+This composition is again a monadic query, which combines the operations of `q₁` and `q₂`.
 
     q(["JEFFERY A", "JAMES A", "TERRY A"])
     #-> @VectorTree [String] [["Jeffery", "A"], ["James", "A"], ["Terry", "A"]]
 
-The composition inherits the input and output domains from the first and the
-last components.  The cardinality of the composition is the upper bound of the
-component cardinalities.
-
     signature(q)
-    #-> AbstractString -> AbstractString[0 .. ∞]
+    #-> String -> [String]
+    ishape(q)
+    #-> InputShape(String)
+    shape(q)
+    #-> OutputShape(String, OPT | PLU)
+
 
 
 ## API Reference
@@ -419,7 +427,7 @@ The signature of a query is a pair of an `InputShape` object and an
     sig = Signature(InputShape(UInt),
                     OutputShape(RecordShape(OutputShape(:name, String),
                                             OutputShape(:employee, UInt, OPT|PLU))))
-    #-> UInt -> (name => String[1 .. 1], employee => UInt[0 .. ∞])[1 .. 1]
+    #-> UInt -> [(name = [String, REG], employee = [UInt]), REG]
 
 Different components of the signature can be easily extracted.
 

@@ -98,14 +98,14 @@ abstract type AbstractShape end
 syntax(shp::AbstractShape) =
     Expr(:call, nameof(typeof(shp)), Symbol(" … "))
 
-syntax(p::Pair{<:Any,AbstractShape}) =
+syntax(p::Pair{Symbol,AbstractShape}) =
     Expr(:call, :(=>), p.first, syntax(p.second))
 
 sigsyntax(shp::AbstractShape) =
     nameof(typeof(shp))
 
-sigsyntax(p::Pair{<:Any,AbstractShape}) =
-    Expr(:call, :(=>), p.first, sigsyntax(p.second))
+sigsyntax(p::Pair{Symbol,AbstractShape}) =
+    Expr(:(=), p.first, sigsyntax(p.second))
 
 show(io::IO, shp::AbstractShape) =
     print_expr(io, syntax(shp))
@@ -233,12 +233,12 @@ function syntax(shp::OutputShape)
 end
 
 function sigsyntax(shp::OutputShape)
-    ex = Expr(:ref,
-              sigsyntax(shp.dom),
-              Expr(:call, :(..), fits(OPT, shp.md.card) ? 0 : 1,
-                                 fits(PLU, shp.md.card) ? :∞ : 1))
+    ex =
+        shp.md.card == OPT|PLU ?
+            Expr(:vect, sigsyntax(shp.dom)) :
+            Expr(:vect, sigsyntax(shp.dom), syntax(shp.md.card))
     if shp.dr.lbl !== nothing && shp.dr.lbl != Symbol("")
-        ex = Expr(:call, :(=>), shp.dr.lbl, ex)
+        ex = Expr(:(=), shp.dr.lbl, ex)
     end
     ex
 end
