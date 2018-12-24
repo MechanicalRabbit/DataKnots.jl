@@ -184,6 +184,17 @@ Any scalar function can be used as a combinator as follows:
     3 │        6 │
     =#
 
+Equivalently, this can be written:
+
+    run(Combinator(double)(Range(3)))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
+    =#
+
 DataKnots' automatic lifting also applies to built-in Julia operators.
 In this example, the expression `It .+ 1` is a pipeline component that
 increments each one of its input values.
