@@ -70,6 +70,13 @@ run(Range(3) &gt;&gt; ThenDouble)
 1 │        2 │
 2 │        4 │
 3 │        6 │
+=#</code></pre><p>Equivalently, this can be written:</p><pre><code class="language-julia">run(Combinator(double)(Range(3)))
+#=&gt;
+  │ DataKnot │
+──┼──────────┤
+1 │        2 │
+2 │        4 │
+3 │        6 │
 =#</code></pre><p>DataKnots&#39; automatic lifting also applies to built-in Julia operators. In this example, the expression <code>It .+ 1</code> is a pipeline component that increments each one of its input values.</p><pre><code class="language-julia">run(Range(3) &gt;&gt; It .+ 1)
 #=&gt;
   │ DataKnot │
