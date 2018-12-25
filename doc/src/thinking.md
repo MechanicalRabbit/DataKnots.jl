@@ -1,11 +1,12 @@
 # Thinking in Combinators
 
-DataKnots are a Julia library for building data processing pipelines.
-In DataKnots, pipelines are assembled algebraically: they either come
-from a set of atomic *primitives* or are built from other pipelines
-using *combinators*. In this tutorial, we show how to build pipelines
-starting from smaller components and then combining them algebraically
-to implement complex processing tasks.
+DataKnots are a Julia library for building data processing pipelines
+having path-like compositional semantics. In DataKnots, pipelines are
+assembled algebraically: they either come from a set of atomic
+*primitives* or are built from other pipelines using *combinators*.
+In this tutorial, we show how to build pipelines starting from smaller
+components and then combining them algebraically to implement complex
+processing tasks.
 
 To start working with DataKnots, we import the package:
 
@@ -49,9 +50,10 @@ The output of this knot can also be converted to native Julia.
 
     get(run(Range(3))) #-> [1, 2, 3]
 
-Observe that `Hello` pipeline produces a *singular* value, while the
-`Range(3)` pipeline is *plural*. In the output notation for plural
-knots, indices are in the first column with values in remaining columns.
+DataKnots track each pipeline's cardinality. Observe that the `Hello`
+pipeline produces a *singular* value, while the `Range(3)` pipeline is
+*plural*. In the output notation for plural knots, indices are in the
+first column with values in remaining columns.
 
 ### Composition & Identity
 
@@ -115,24 +117,27 @@ In DataKnots, pipelines are built algebraically, using pipeline
 composition, identity and other combinators. This lets us define
 sophisticated pipeline components and remix them in creative ways.
 
-### Lifting Julia Functions
+### Combinators from Julia Functions
 
-With DataKnots, any native Julia expression can be lifted to build a
-`Pipeline`. Consider the Julia function `double()` that, when applied
-to a `Number`, produces a `Number`:
+To use a native Julia function from within a pipeline expression, we
+must translate its inputs and outputs. That is, for any function `f`,
+an analogous *combinator* `F` is defined `F(x) = T⁻¹(f(T(x)))` where
+`T` is the translation pair that handles carnality, composition and
+other pipeline semantics.
+
+Consider a native Julia function `double()` that, when applied to a
+`Number`, produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
 
-What we want is an analogue to `double` that, instead of operating on
-numbers, operates on pipelines. Such functions are called pipeline
-combinators. We can convert any Julia function to a pipeline
-`Combinator` as follows:
+Since both the inputs and outputs of `double` are scalar values, its
+combinator analogue, `Double` could be written:
 
-    Double(X) = Combinator(double)(X)
+    Double(X) = FromScalar(double(ToScalar(X)))
 
-When given an argument, the combinator `Double` can then be used to
-build a pipeline that produces the doubled value.
+This combinator `Double` could then be used to build a pipeline
+`Double(21)` as follows:
 
     run(Double(21))
     #=>
@@ -141,28 +146,10 @@ build a pipeline that produces the doubled value.
     │       42 │
     =#
 
-If the argument to the combinator is plural, than the pipeline
-constructed is also plural. When `run()` the following pipeline first
-evaluates the argument, `Range(3)` to produce three input values.
-These values are then passed though the underlying function, `double`.
-The results are then collected and converted into a plural output knot.
+In combinator form, these translated functions become automatically
+aware of pipeline cardnality and composition semantics.
 
     run(Double(Range(3)))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
-Sometimes it's handy to use pipeline composition, rather than passing
-by combinator arguments. To build a pipeline component that doubles its
-input, the `Double` combinator could use `It` as its argument. This
-pipeline can then later be reused with various inputs.
-
-    ThenDouble = Double(It)
-    run(Range(3) >> ThenDouble)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -184,17 +171,6 @@ Any scalar function can be used as a combinator as follows:
     3 │        6 │
     =#
 
-Equivalently, this can be written:
-
-    run(Combinator(double)(Range(3)))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
 DataKnots' automatic lifting also applies to built-in Julia operators.
 In this example, the expression `It .+ 1` is a pipeline component that
 increments each one of its input values.
@@ -208,12 +184,27 @@ increments each one of its input values.
     3 │        4 │
     =#
 
-When a Julia function returns a vector, a lifted combinator creates
-pipelines having plural output. In fact, the `Range` combinator used in
-these examples could be created as follows:
+Sometimes it is handy to use pipeline composition, rather than passing
+by combinator arguments. To build a pipeline component that doubles its
+input, the `Double` combinator could use `It` as its argument. This
+pipeline can then later be reused with various inputs.
+
+    ThenDouble() = Double(It)
+    run(Range(3) >> ThenDouble())
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
+    =#
+
+When a Julia function returns a vector, the translation of the
+analogous combinator must be done respectively. In fact the `Range`
+combinator is defined as follows:
 
 ```julia
-Range(X) = Combinator(Range, x -> 1:x)(X)
+Range(X) = FromVector(Base.OneTo(ToScalar(X)))
 ```
 
 In DataKnots, pipeline combinators can be constructed directly from
@@ -223,10 +214,8 @@ statistical and data processing functions.
 ### Aggregates
 
 Some pipeline combinators transform a plural pipeline into a singular
-pipeline; we call them *aggregate* combinators. Consider the pipeline,
-`Count(Range(3))`. It is built by applying the `Count` combinator to
-the `Range(3)` pipeline. It outputs a singular value `3`, the number of
-entries produced by `Range(3)`.
+pipeline; we call them *aggregate* combinators. Consider the operation
+of the `Count` combinator by reviewing the `Count(Range(3))` pipeline.
 
     run(Count(Range(3)))
     #=>

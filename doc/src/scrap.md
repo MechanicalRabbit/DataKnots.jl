@@ -96,3 +96,6 @@ could be easily incorporated into a DataKnots' processing pipeline.
     =#
 
 
+run(Range(3) >> (Const("Item #") .* string.(It)))
+
+
