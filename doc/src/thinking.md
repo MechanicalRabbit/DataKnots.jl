@@ -120,9 +120,9 @@ sophisticated pipeline components and remix them in creative ways.
 ### Combinators from Julia Functions
 
 To use a native Julia function from within a pipeline expression, we
-must translate its inputs and outputs. That is, for any function `f`,
-an analogous *combinator* `F` is defined `F(x) = T⁻¹(f(T(x)))` where
-`T` is the translation pair that handles carnality, composition and
+must translate its inputs and outputs. For example, given a function
+`f(x)`, an analogous *combinator* `F` is defined `F(x) = T⁻¹(f(T(x)))`
+where `T` is a translation that handles carnality, composition and
 other pipeline semantics.
 
 Consider a native Julia function `double()` that, when applied to a
@@ -147,7 +147,7 @@ This combinator `Double` could then be used to build a pipeline
     =#
 
 In combinator form, these translated functions become automatically
-aware of pipeline cardnality and composition semantics.
+aware of pipeline cardinality.
 
     run(Double(Range(3)))
     #=>
@@ -158,9 +158,23 @@ aware of pipeline cardnality and composition semantics.
     3 │        6 │
     =#
 
-Since this lifting operation is common enough, Julia's *broadcast*
-syntax (using a period) is overloaded to make simple lifting easy.
-Any scalar function can be used as a combinator as follows:
+In combinator form, `Double` can be used within pipeline composition.
+To build a pipeline component that doubles its input, the `Double`
+combinator could have `It` as its argument.
+
+    run(Range(3) >> Double(It))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        4 │
+    3 │        6 │
+    =#
+
+Since this use of native Julia functions as combinators is common
+enough, Julia's *broadcast* syntax (using a period) is overloaded to
+make translation easy. Any scalar function, such as `double`, can be
+used as a combinator as follows:
 
     run(double.(Range(3)))
     #=>
@@ -169,6 +183,18 @@ Any scalar function can be used as a combinator as follows:
     1 │        2 │
     2 │        4 │
     3 │        6 │
+    =#
+
+This shortcut isn't foolproof. If the argument to the broadcast isn't a
+`Pipeline`, then the argument translation doesn't happen, resulting in
+rather odd or unexpected error messages. Wrapping an argument using
+`Const` will address the challenge.
+
+    run(double.(Const(21)))
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │       42 │
     =#
 
 DataKnots' automatic lifting also applies to built-in Julia operators.
@@ -182,21 +208,6 @@ increments each one of its input values.
     1 │        2 │
     2 │        3 │
     3 │        4 │
-    =#
-
-Sometimes it is handy to use pipeline composition, rather than passing
-by combinator arguments. To build a pipeline component that doubles its
-input, the `Double` combinator could use `It` as its argument. This
-pipeline can then later be reused with various inputs.
-
-    ThenDouble() = Double(It)
-    run(Range(3) >> ThenDouble())
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
     =#
 
 When a Julia function returns a vector, the translation of the
@@ -215,7 +226,7 @@ statistical and data processing functions.
 
 Some pipeline combinators transform a plural pipeline into a singular
 pipeline; we call them *aggregate* combinators. Consider the operation
-of the `Count` combinator by reviewing the `Count(Range(3))` pipeline.
+of the `Count` combinator.
 
     run(Count(Range(3)))
     #=>
@@ -224,7 +235,7 @@ of the `Count` combinator by reviewing the `Count(Range(3))` pipeline.
     │        3 │
     =#
 
-`Count` can also be used as a pipeline primitive.
+As a convenience, `Count` can also be used as a pipeline primitive.
 
     run(Range(3) >> Count)
     #=>
@@ -279,13 +290,11 @@ its input elementwise.
     3 │        6 │
     =#
 
-Like scalar functions, aggregates can be lifted to *Combinator* form
-with the `aggregate=true` keyword argument. This constructor produces
-an aggregate combinator that operates on an incoming pipeline. For
-example, the `Mean` aggregate combinator could be defined as:
+Aggregate combinators can be defined with native Julia functions by
+indicating that its argument should be a vector.
 
     using Statistics
-    Mean(X) = Combinator(Mean, mean, aggregate=true)(X)
+    Mean(X) = FromScalar(mean(ToVector(X)))
 
 Then, one could create a mean of sums as follows:
 
