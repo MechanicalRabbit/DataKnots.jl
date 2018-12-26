@@ -96,6 +96,10 @@ could be easily incorporated into a DataKnots' processing pipeline.
     =#
 
 
-run(Range(3) >> (Const("Item #") .* string.(It)))
+`run(Range(3) >> (Const("Item #") .* string.(It)))`
 
+
+For example, given a function `f(x)`, an analogous *combinator* `F` is
+defined `F(x) = T⁻¹(f(T(x)))` where `T` is a translation that handles
+carnality, composition and other pipeline semantics.
 

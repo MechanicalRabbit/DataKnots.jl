@@ -15,11 +15,11 @@ To start working with DataKnots, we import the package:
 ## Constructing Pipelines
 
 Consider a pipeline `Hello` that produces a string value, `"Hello
-World"`. It is built using the `Const` primitive, which converts a
-Julia value into a pipeline component. This pipeline can then be
-`run()` to produce its output.
+World"`. It is built using the `Lift` primitive, which converts a Julia
+value into a pipeline component. This pipeline can then be `run()` to
+produce its output.
 
-    Hello = Const("Hello World")
+    Hello = Lift("Hello World")
     run(Hello)
     #=>
     │ DataKnot    │
@@ -33,43 +33,58 @@ corresponding Julia value using `get()`.
 
     get(run(Hello)) #-> "Hello World"
 
-Consider another pipeline, `Range(3)`. It is built with the `Range`
-combinator. When `run()`, it emits a sequence of integers from `1`
-to `3`.
+Consider another pipeline created by applying `Lift` to `3:5`, a native
+`UnitRange` value. When `run()`, this pipeline emits a sequence of
+integers from `3` to `5`.
 
-    run(Range(3))
+    run(Lift(3:5))
     #=>
       │ DataKnot │
     ──┼──────────┤
-    1 │        1 │
-    2 │        2 │
-    3 │        3 │
+    1 │        3 │
+    2 │        4 │
+    3 │        5 │
     =#
 
-The output of this knot can also be converted to native Julia.
+The output of this knot can also be converted back to native Julia.
 
-    get(run(Range(3))) #-> [1, 2, 3]
+    get(run(Lift(3:5))) #-> [3, 4, 5]
 
 DataKnots track each pipeline's cardinality. Observe that the `Hello`
-pipeline produces a *singular* value, while the `Range(3)` pipeline is
+pipeline produces a *singular* value, while the `Lift(3:5)` pipeline is
 *plural*. In the output notation for plural knots, indices are in the
-first column with values in remaining columns.
+first column and values are in remaining columns.
 
 ### Composition & Identity
 
-In DataKnots, two pipelines could be connected sequentially using the
-composition combinator (`>>`). Consider the composition `Range(3) >>
-Hello`. Since `Range(3)` emits 3 values and `Hello` emits `"Hello
-World"` regardless of its input, their composition emits 3 copies of
-`"Hello World"`.
+Two pipelines can be connected sequentially using the composition
+combinator (`>>`). Consider the composition `Lift(1:3) >> Hello`. Since
+`Lift(1:3)` emits 3 values and `Hello` emits `"Hello World"` regardless
+of its input, their composition emits 3 copies of `"Hello World"`.
 
-    run(Range(3) >> Hello)
+    run(Lift(1:3) >> Hello)
     #=>
       │ DataKnot    │
     ──┼─────────────┤
     1 │ Hello World │
     2 │ Hello World │
     3 │ Hello World │
+    =#
+
+When pipelines that produce plural values are combined, the output is
+flattened into a single sequence. The following expression calculates
+`Range(7:9)` twice and then flattens the outputs.
+
+    run(Lift(1:2) >> Lift(7:9))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        7 │
+    2 │        8 │
+    3 │        9 │
+    4 │        7 │
+    5 │        8 │
+    6 │        9 │
     =#
 
 The *identity* with respect to pipeline composition is called `It`.
@@ -88,7 +103,7 @@ the output from previous processing. For example, one can define a
 pipeline `Increment` as `It .+ 1`.
 
     Increment = It .+ 1
-    run(Range(3) >> Increment)
+    run(Lift(1:3) >> Increment)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -97,47 +112,28 @@ pipeline `Increment` as `It .+ 1`.
     3 │        4 │
     =#
 
-When pipelines that produce plural values are combined, the output is
-flattened into a single sequence. The following expression calculates
-`Range(1)`, `Range(2)` and `Range(3)` and then merges the outputs.
-
-    run(Range(3) >> Range(It))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        1 │
-    2 │        1 │
-    3 │        2 │
-    4 │        1 │
-    5 │        2 │
-    6 │        3 │
-    =#
-
 In DataKnots, pipelines are built algebraically, using pipeline
 composition, identity and other combinators. This lets us define
 sophisticated pipeline components and remix them in creative ways.
 
-### Combinators from Julia Functions
+### Lifting Julia Functions
 
-To use a native Julia function from within a pipeline expression, we
-must translate its inputs and outputs. For example, given a function
-`f(x)`, an analogous *combinator* `F` is defined `F(x) = T⁻¹(f(T(x)))`
-where `T` is a translation that handles carnality, composition and
-other pipeline semantics.
-
-Consider a native Julia function `double()` that, when applied to a
-`Number`, produces a `Number`:
+With DataKnots, any native Julia expression can be *lifted* to build a
+`Pipeline`. Consider the Julia function `double()` that, when applied
+to a `Number`, produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
 
-Since both the inputs and outputs of `double` are scalar values, its
-combinator analogue, `Double` could be written:
+What we want is an analogue to `double` that, instead of operating on
+numbers, operates on pipelines. Such functions are called pipeline
+combinators. We can convert any Julia function to a pipeline combinator
+as follows:
 
-    Double(X) = FromScalar(double(ToScalar(X)))
+    Double(X) = Lift(double, (X,))
 
-This combinator `Double` could then be used to build a pipeline
-`Double(21)` as follows:
+When given an argument, the combinator `Double` can then be used to
+build a pipeline that produces a doubled value.
 
     run(Double(21))
     #=>
@@ -146,23 +142,11 @@ This combinator `Double` could then be used to build a pipeline
     │       42 │
     =#
 
-In combinator form, these translated functions become automatically
-aware of pipeline cardinality.
-
-    run(Double(Range(3)))
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        4 │
-    3 │        6 │
-    =#
-
 In combinator form, `Double` can be used within pipeline composition.
 To build a pipeline component that doubles its input, the `Double`
 combinator could have `It` as its argument.
 
-    run(Range(3) >> Double(It))
+    run(Lift(1:3) >> Double(It))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -176,7 +160,7 @@ enough, Julia's *broadcast* syntax (using a period) is overloaded to
 make translation easy. Any scalar function, such as `double`, can be
 used as a combinator as follows:
 
-    run(double.(Range(3)))
+    run(Lift(1:3) >> double.(It))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -185,23 +169,11 @@ used as a combinator as follows:
     3 │        6 │
     =#
 
-This shortcut isn't foolproof. If the argument to the broadcast isn't a
-`Pipeline`, then the argument translation doesn't happen, resulting in
-rather odd or unexpected error messages. Wrapping an argument using
-`Const` will address the challenge.
-
-    run(double.(Const(21)))
-    #=>
-    │ DataKnot │
-    ├──────────┤
-    │       42 │
-    =#
-
 DataKnots' automatic lifting also applies to built-in Julia operators.
 In this example, the expression `It .+ 1` is a pipeline component that
 increments each one of its input values.
 
-    run(Range(3) >> It .+ 1)
+    run(Lift(1:3) >> It .+ 1)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -209,14 +181,6 @@ increments each one of its input values.
     2 │        3 │
     3 │        4 │
     =#
-
-When a Julia function returns a vector, the translation of the
-analogous combinator must be done respectively. In fact the `Range`
-combinator is defined as follows:
-
-```julia
-Range(X) = FromVector(Base.OneTo(ToScalar(X)))
-```
 
 In DataKnots, pipeline combinators can be constructed directly from
 native Julia functions. This lets us take advantage of Julia's rich
@@ -228,7 +192,7 @@ Some pipeline combinators transform a plural pipeline into a singular
 pipeline; we call them *aggregate* combinators. Consider the operation
 of the `Count` combinator.
 
-    run(Count(Range(3)))
+    run(Count(Lift(1:3)))
     #=>
     │ DataKnot │
     ├──────────┤
@@ -237,7 +201,7 @@ of the `Count` combinator.
 
 As a convenience, `Count` can also be used as a pipeline primitive.
 
-    run(Range(3) >> Count)
+    run(Lift(1:3) >> Count)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -246,9 +210,9 @@ As a convenience, `Count` can also be used as a pipeline primitive.
 
 It's possible to use aggregates within a plural pipeline. In this
 example, as the outer `Range` goes from `1` to `3`, the `Sum` aggregate
-would calculate its output from `Range(1)`, `Range(2)` and `Range(3)`.
+would calculate its output from `Range(1)`, `Range(2)` and `Lift(1:3)`.
 
-    run(Range(3) >> Sum(Range(It)))
+    run(Lift(1:3) >> Sum(Range(It)))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -260,7 +224,7 @@ would calculate its output from `Range(1)`, `Range(2)` and `Range(3)`.
 However, if we rewrite the pipeline to use `Sum` as a pipeline
 primitive, we get a different result.
 
-    run(Range(3) >> Range(It) >> Sum)
+    run(Lift(1:3) >> Range(It) >> Sum)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -270,7 +234,7 @@ primitive, we get a different result.
 Since pipeline composition (`>>`) is associative, just adding
 parenthesis around `Range(It) >> Sum` would not change the result.
 
-    run(Range(3) >> (Range(It) >> Sum))
+    run(Lift(1:3) >> (Range(It) >> Sum))
     #=>
     │ DataKnot │
     ├──────────┤
@@ -281,7 +245,7 @@ Instead of using parenthesis, we need to wrap `Range(It) >> Sum` with
 the `Each` combinator. This combinator builds a pipeline that processes
 its input elementwise.
 
-    run(Range(3) >> Each(Range(It) >> Sum))
+    run(Lift(1:3) >> Each(Range(It) >> Sum))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -299,7 +263,7 @@ indicating that its argument should be a vector.
 Then, one could create a mean of sums as follows:
 
 ```julia
-run(Mean(Range(3) >> Sum(Range(It))))
+run(Mean(Lift(1:3) >> Sum(Range(It))))
 #=>
 │ DataKnot    │
 ├─────────────┤
@@ -320,7 +284,7 @@ convert(::Type{Pipeline}, ::typeof(Mean)) = Mean()
 Once these are done, one could take the sum of means as follows:
 
 ```julia
-run(Range(3) >> Sum(Range(It)) >> Mean)
+run(Lift(1:3) >> Sum(Range(It)) >> Mean)
 #=>
 │ DataKnot    │
 ├─────────────┤
@@ -407,7 +371,7 @@ The `TakeFirst` combinator is similar to `Take(1)`, only that it
 returns a singular, rather than plural knot.
 
 ```julia
-run(Range(3) >> TakeFirst())
+run(Lift(1:3) >> TakeFirst())
 #=>
 │ DataKnot │
 ├──────────┤
@@ -519,7 +483,7 @@ It is possible to provide a name to any expression with the `Label`
 combinator. Labeling doesn't affect the actual output, only the field
 name given to the expression and its display.
 
-    run(Const("Hello World") >> Label(:greeting))
+    run(Lift("Hello World") >> Label(:greeting))
     #=>
     │ greeting    │
     ├─────────────┤
@@ -529,7 +493,7 @@ name given to the expression and its display.
 Alternatively, Julia's pair constructor (`=>`) and and a `Symbol`
 denoted by a colon (`:`) can be used to label an expression.
 
-    Hello = :greeting => Const("Hello World")
+    Hello = :greeting => Lift("Hello World")
     run(Hello)
     #=>
     │ greeting    │
@@ -553,7 +517,7 @@ itself is also expressly labeled.
 Records can be plural. Here is a table of obvious statistics.
 
     Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)
-    run(Range(3) >> Stats)
+    run(Lift(1:3) >> Stats)
     #=>
       │ DataKnot   │
       │ n¹  n²  n³ │
@@ -565,7 +529,7 @@ Records can be plural. Here is a table of obvious statistics.
 
 Calculations could be run on record sets as follows:
 
-    run(Range(3) >> Stats >> (It.n² .+ It.n³))
+    run(Lift(1:3) >> Stats >> (It.n² .+ It.n³))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -580,7 +544,7 @@ plural values.
     run(:work_schedule =>
      Record(:staff => Record(:name => "Jim Rockford",
                              :phone => "555-2368"),
-            :workday => Const(["Su", "M","Tu", "F"])))
+            :workday => Lift(["Su", "M","Tu", "F"])))
     #=>
     │ work_schedule                        │
     │ staff                   workday      │
@@ -593,12 +557,12 @@ records, it is possible to represent complex, hierarchical data.
 
 ## Working With Data
 
-Arrays of named tuples can be wrapped with `Const` in order to provide
+Arrays of named tuples can be wrapped with `Lift` in order to provide
 a series of tuples. Since DataKnots works fluidly with Julia, any sort
 of Julia object may be used. In this case, `NamedTuple` has special
 support so that it prints well.
 
-    DATA = Const([(name = "GARRY M", salary = 260004),
+    DATA = Lift([(name = "GARRY M", salary = 260004),
                   (name = "ANTHONY R", salary = 185364),
                   (name = "DANA A", salary = 170112)])
 
@@ -661,3 +625,28 @@ These subordinate records can then be summarized.
     ├─────────────┤
     │ FIRE      2 │
     =#
+
+## Quirks
+
+By *quirks* we mean unexpected consequences of embedding DataKnots in
+Julia. They are not necessarily bugs, nor could they be easily fixed.
+
+Using the broadcast syntax to lift combinators is a clever shortcut,
+but it doesn't always work out. If an argument to the broadcast isn't a
+`Pipeline` then a regular broadcast will happen. For example,
+`rand.(1:3)` is an array of arrays containing random numbers. Wrapping
+an argument in `Lift` will address this challenge. The following will
+generate 3 random numbers from `1` to `3`.
+
+    using Random: seed!, rand
+    seed!(0)
+    run(Lift(1:3) >> rand.(Lift(7:9)))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        7 │
+    2 │        9 │
+    3 │        8 │
+    =#
+
+
