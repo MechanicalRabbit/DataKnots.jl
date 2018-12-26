@@ -73,7 +73,7 @@ of its input, their composition emits 3 copies of `"Hello World"`.
 
 When pipelines that produce plural values are combined, the output is
 flattened into a single sequence. The following expression calculates
-`Range(7:9)` twice and then flattens the outputs.
+`Lift(7:9)` twice and then flattens the outputs.
 
     run(Lift(1:2) >> Lift(7:9))
     #=>
@@ -169,8 +169,8 @@ used as a combinator as follows:
     3 │        6 │
     =#
 
-DataKnots' automatic lifting also applies to built-in Julia operators.
-In this example, the expression `It .+ 1` is a pipeline component that
+Automatic lifting also applies to built-in Julia operators. For
+example, the expression `It .+ 1` is a pipeline component that
 increments each one of its input values.
 
     run(Lift(1:3) >> It .+ 1)
@@ -180,6 +180,22 @@ increments each one of its input values.
     1 │        2 │
     2 │        3 │
     3 │        4 │
+    =#
+
+One can define combinators in terms of expressions.
+
+    OneTo(N) = UnitRange.(1, Lift(N))
+
+When a lifted function is vector-valued, the resulting pipeline is
+plural.
+
+    run(OneTo(3))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        1 │
+    2 │        2 │
+    3 │        3 │
     =#
 
 In DataKnots, pipeline combinators can be constructed directly from
@@ -192,7 +208,7 @@ Some pipeline combinators transform a plural pipeline into a singular
 pipeline; we call them *aggregate* combinators. Consider the operation
 of the `Count` combinator.
 
-    run(Count(Lift(1:3)))
+    run(Count(OneTo(3)))
     #=>
     │ DataKnot │
     ├──────────┤
@@ -201,7 +217,7 @@ of the `Count` combinator.
 
 As a convenience, `Count` can also be used as a pipeline primitive.
 
-    run(Lift(1:3) >> Count)
+    run(OneTo(3) >> Count)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -209,10 +225,10 @@ As a convenience, `Count` can also be used as a pipeline primitive.
     =#
 
 It's possible to use aggregates within a plural pipeline. In this
-example, as the outer `Range` goes from `1` to `3`, the `Sum` aggregate
-would calculate its output from `Range(1)`, `Range(2)` and `Lift(1:3)`.
+example, as the outer `OneTo` goes from `1` to `3`, the `Sum` aggregate
+would calculate its output from `OneTo(1)`, `OneTo(2)` and `OneTo(3)`.
 
-    run(Lift(1:3) >> Sum(Range(It)))
+    run(OneTo(3) >> Sum(OneTo(It)))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -224,7 +240,7 @@ would calculate its output from `Range(1)`, `Range(2)` and `Lift(1:3)`.
 However, if we rewrite the pipeline to use `Sum` as a pipeline
 primitive, we get a different result.
 
-    run(Lift(1:3) >> Range(It) >> Sum)
+    run(OneTo(3) >> OneTo(It) >> Sum)
     #=>
     │ DataKnot │
     ├──────────┤
@@ -232,20 +248,20 @@ primitive, we get a different result.
     =#
 
 Since pipeline composition (`>>`) is associative, just adding
-parenthesis around `Range(It) >> Sum` would not change the result.
+parenthesis around `OneTo(It) >> Sum` would not change the result.
 
-    run(Lift(1:3) >> (Range(It) >> Sum))
+    run(OneTo(3) >> (OneTo(It) >> Sum))
     #=>
     │ DataKnot │
     ├──────────┤
     │       10 │
     =#
 
-Instead of using parenthesis, we need to wrap `Range(It) >> Sum` with
+Instead of using parenthesis, we need to wrap `OneTo(It) >> Sum` with
 the `Each` combinator. This combinator builds a pipeline that processes
 its input elementwise.
 
-    run(Lift(1:3) >> Each(Range(It) >> Sum))
+    run(OneTo(3) >> Each(OneTo(It) >> Sum))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -254,43 +270,37 @@ its input elementwise.
     3 │        6 │
     =#
 
-Aggregate combinators can be defined with native Julia functions by
-indicating that its argument should be a vector.
+Aggregate combinators can also be lifted. Because of Julia's
+introspection capabilities, DataKnots can automatically convert a
+plural value into the required vector.
 
     using Statistics
-    Mean(X) = FromScalar(mean(ToVector(X)))
+    Mean(X) = Lift(mean, (X,))
 
-Then, one could create a mean of sums as follows:
+This could then be used as if it were any other combinator.
 
-```julia
-run(Mean(Lift(1:3) >> Sum(Range(It))))
-#=>
-│ DataKnot    │
-├─────────────┤
-│ 3.333333335 │
-=#
-```
+    run(Mean(OneTo(3) >> Sum(OneTo(It))))
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ 3.333333335 │
+    =#
 
-To use `Mean` as a pipeline primitive, there are two additional steps.
-First, a zero-argument version is required, `Mean()`. Second, an
-automatic conversion of the symbol `Mean` to a pipeline is required.
-The former is done by `Then`, the latter by Julia's built-in `convert`.
+To use `Mean` as a pipeline primitive like `Sum` above, two additional
+steps are required.  First, a zero-argument version of `Mean()` is
+required. Second, an automatic conversion of the function name `Mean`
+to a `Pipeline` is required.
 
-```julia
-Mean() = Then(Mean)
-convert(::Type{Pipeline}, ::typeof(Mean)) = Mean()
-```
+    Lift(::typeof(Mean)) = Then(Mean)
 
 Once these are done, one could take the sum of means as follows:
 
-```julia
-run(Lift(1:3) >> Sum(Range(It)) >> Mean)
-#=>
-│ DataKnot    │
-├─────────────┤
-│ 3.333333335 │
-=#
-```
+    run(Lift(1:3) >> Sum(OneTo(It)) >> Mean)
+    #=>
+    │ DataKnot    │
+    ├─────────────┤
+    │ 3.333333335 │
+    =#
 
 In DataKnots, aggregate operations are naturally expressed as pipeline
 combinators. Moreover, custom aggregates can be easily constructed as
@@ -302,7 +312,7 @@ DataKnots comes with combinators for rearranging data. Consider
 `Filter`, which takes one parameter, a predicate pipeline that for each
 input value decides if that value should be included in the output.
 
-    run(Range(6) >> Filter(It .> 3))
+    run(OneTo(6) >> Filter(It .> 3))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -320,7 +330,7 @@ returns a pipeline component, which could then be composed with
 any data generating pipeline.
 
     KeepEven = Filter(iseven.(It))
-    run(Range(6) >> KeepEven)
+    run(OneTo(6) >> KeepEven)
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -333,7 +343,7 @@ Similar to `Filter`, the `Take` and `Drop` combinators can be used to
 slice an input stream: `Drop` is used to skip over input, `Take`
 ignores output past a particular point.
 
-    run(Range(9) >> Drop(3) >> Take(3))
+    run(OneTo(9) >> Drop(3) >> Take(3))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -347,7 +357,7 @@ pipeline. This next example, `FirstHalf` is a combinator that builds a
 pipeline returning the first half of an input stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
-    run(FirstHalf(Range(6)))
+    run(FirstHalf(OneTo(6)))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -358,7 +368,7 @@ pipeline returning the first half of an input stream.
 
 Using `Then`, this combinator could be used with pipeline composition:
 
-    run(Range(6) >> Then(FirstHalf))
+    run(OneTo(6) >> Then(FirstHalf))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -409,7 +419,7 @@ To make `Lookup` convenient, `It` provides a shorthand syntax.
 Query parameters are available anywhere in the query. They could,
 for example be used within a filter.
 
-    query = Range(6) >> Filter(It .> It.START)
+    query = OneTo(6) >> Filter(It .> It.START)
     run(query, START=3)
     #=>
       │ DataKnot │
@@ -440,7 +450,7 @@ GreaterThanAverage(X) =
   Given(:AVG => Mean(X),
         X >> Filter(It .> Lookup(:AVG)))
 
-run(Range(6) >> Then(GreaterThanAverage))
+run(OneTo(6) >> Then(GreaterThanAverage))
 #=>
   │ DataKnot │
 ──┼──────────┤
