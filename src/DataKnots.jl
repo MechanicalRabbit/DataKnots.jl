@@ -6,7 +6,6 @@ module DataKnots
 
 export
     Combinator,
-    Const,
     Count,
     DataKnot,
     Drop,
@@ -20,7 +19,6 @@ export
     Lookup,
     Max,
     Min,
-    Range,
     Recall,
     Record,
     Sum,

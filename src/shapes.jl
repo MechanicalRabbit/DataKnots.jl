@@ -124,6 +124,8 @@ syntax(::AnyShape) =
 sigsyntax(::AnyShape) =
     :Any
 
+eltype(::AnyShape) = Any
+
 """
     NoneShape()
 
@@ -136,6 +138,8 @@ syntax(::NoneShape) = Expr(:call, nameof(NoneShape))
 
 sigsyntax(::NoneShape) =
     :None
+
+eltype(::NoneShape) = Union{}
 
 """
     Decoration(label::Union{Nothing,Symbol}=nothing)
@@ -242,6 +246,15 @@ function sigsyntax(shp::OutputShape)
     end
     ex
 end
+
+eltype(shp::OutputShape) =
+    let ty = eltype(shp.dom)
+        shp.md.card == REG ?
+            ty :
+        shp.md.card == OPT ?
+            Union{Missing,ty} :
+            Vector{ty}
+    end
 
 decoration(shp::OutputShape) = shp.dr
 
@@ -350,6 +363,17 @@ function sigsyntax(shp::InputShape)
     ex
 end
 
+eltype(shp::InputShape) =
+    let ty = eltype(shp.dom)
+        if shp.md.framed
+            ty = Tuple{ty,Int}
+        end
+        if shp.md.slots !== nothing && !isempty(shp.md.slots)
+            ty = Tuple{ty, Tuple{eltype.(last.(shp.md.slots))...}}
+        end
+        ty
+    end
+
 decoration(shp::InputShape) = shp.dr
 
 label(shp::InputShape) = label(shp.dr)
@@ -410,6 +434,11 @@ syntax(shp::RecordShape) =
 
 sigsyntax(shp::RecordShape) =
     Expr(:tuple, sigsyntax.(shp.flds)...)
+
+eltype(shp::RecordShape) =
+    let lbls = Symbol[let lbl = label(fld); lbl !== nothing ? lbl : Symbol("#$i") end for (i, fld) in enumerate(shp.flds)]
+        NamedTuple{(lbls...,),Tuple{eltype.(shp.flds)...}}
+    end
 
 getindex(shp::RecordShape, ::Colon) = shp.flds
 

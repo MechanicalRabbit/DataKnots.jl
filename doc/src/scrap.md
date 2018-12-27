@@ -85,7 +85,8 @@ could be easily incorporated into a DataKnots' processing pipeline.
     using DataKnots
     using Random: seed!, rand
     seed!(0)
-    YesOrNo = Lift(() -> rand(Bool) ? "yes" : "no")
+    Range(N) = Lift(:, (1, N))
+    YesOrNo = Lift(() -> rand(Bool) ? "yes" : "no", ())
     run(Range(3) >> YesOrNo)
     #=>
       │ DataKnot │

@@ -47,7 +47,7 @@ integers from `3` to `5`.
 
 The output of this knot can also be converted back to native Julia.
 
-    get(run(Lift(3:5))) #-> [3, 4, 5]
+    get(run(Lift(3:5))) #-> 3:5
 
 DataKnots track each pipeline's cardinality. Observe that the `Hello`
 pipeline produces a *singular* value, while the `Lift(3:5)` pipeline is
@@ -171,7 +171,7 @@ Automatic lifting also applies to built-in Julia operators. For
 example, the expression `It .+ 1` is a pipeline component that
 increments each one of its input values.
 
-    run(Lift(1:3) >> It .+ 1)
+    run(Lift(1:3) >> (It .+ 1))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -276,9 +276,9 @@ input vector required by the native aggregate.
     Mean(X) = Lift(mean, (X,))
     run(Mean(OneTo(3) >> Sum(OneTo(It))))
     #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ 3.333333335 │
+    │ DataKnot │
+    ├──────────┤
+    │  3.33333 │
     =#
 
 To use `Mean` as a pipeline primitive, there are two steps. First, we
@@ -286,15 +286,15 @@ use `Then` to build a pipeline that aggregates from its input. Second,
 we register a `Lift` to this pipeline when the combinator's name is
 mentioned in a pipeline expression.
 
-    Lift(::typeof(Mean)) = Then(Mean)
+    DataKnots.Lift(::typeof(Mean)) = Then(Mean)
 
 Once these are done, one could take an average of sums as follows:
 
     run(Lift(1:3) >> Sum(OneTo(It)) >> Mean)
     #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ 3.333333335 │
+    │ DataKnot │
+    ├──────────┤
+    │  3.33333 │
     =#
 
 In DataKnots, aggregate operations are naturally expressed as pipeline

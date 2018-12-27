@@ -59,11 +59,14 @@ show(io::IO, data::DataValue) = show(io, data.val)
 const PipelineLike = Union{DataKnot, DataValue, Pipeline, Navigation,
                            Pair{Symbol,<:Union{DataKnot, DataValue, Pipeline, Navigation}}}
 
-convert(::Type{PipelineLike}, val::Union{Number,String}) =
-    DataValue(val)
+convert(::Type{PipelineLike}, val) =
+    Lift(val)
+
+convert(::Type{PipelineLike}, X::PipelineLike) =
+    X
 
 convert(::Type{PipelineLike}, val::Base.RefValue) =
-    DataValue(val.x)
+    Lift(val.x)
 
 mutable struct Environment
     slots::Vector{Pair{Symbol,OutputShape}}
@@ -167,10 +170,6 @@ Each(X) = Pipeline(Each, X)
 
 Each(env::Environment, q::Query, X) =
     compose(q, combine(X, env, stub(q)))
-
-# Const.
-
-Const(val) = DataValue(val)
 
 # Composition combinator.
 
@@ -405,12 +404,17 @@ Base.broadcastable(X::PipelineLike) = X
 Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{BroadcastPipeline}) = bc
 
 Base.copy(bc::Broadcast.Broadcasted{BroadcastPipeline}) =
-    Lift(bc.f, bc.args...)
+    Lift(bc.f, (bc.args...,))
 
 convert(::Type{PipelineLike}, bc::Broadcast.Broadcasted{BroadcastPipeline}) =
-    Lift(bc.f, bc.args...)
+    Lift(bc.f, (bc.args...,))
 
-Lift(f, Xs...) =
+Lift(X::PipelineLike) = X
+
+Lift(val) =
+    DataValue(val)
+
+Lift(f, Xs) =
     Pipeline(Lift, f, collect(PipelineLike, Xs))
 
 syntax(::typeof(Lift), args::Vector{Any}) =
@@ -418,73 +422,48 @@ syntax(::typeof(Lift), args::Vector{Any}) =
 
 function Lift(env::Environment, q::Query, f, Xs)
     xs = combine.(Xs, Ref(env), Ref(stub(q)))
-    if length(xs) == 1
-        x = xs[1]
-        ity = eltype(domain(x))
-        oty = Core.Compiler.return_type(f, Tuple{ity})
-        if oty <: AbstractVector
-            ety = oty.parameters[1]
-            r = chain_of(
-                x,
-                with_elements(
-                  chain_of(
-                    lift(f),
-                    adapt_vector())),
-                flatten()
-            ) |> designate(ishape(x),
-                           OutputShape(NativeShape(ety), OPT|PLU))
-        else
-            r = chain_of(
-                x,
-                with_elements(lift(f))
-            ) |> designate(ishape(x),
-                           OutputShape(NativeShape(oty), mode(x)))
-        end
-        compose(q, r)
-    elseif isempty(xs)
-        oty = Core.Compiler.return_type(f, Tuple{})
-        ishp = ibound(InputShape)
-        dsx = tuple_of(Symbol[], Query[])
-        if oty <: AbstractVector
-            ety = oty.parameters[1]
-            r = chain_of(
-                    dsx,
-                    record_lift(f),
-                    with_elements(adapt_vector()),
-                    flatten()
-            ) |> designate(ishp,
-                           OutputShape(NativeShape(ety), OPT|PLU))
-        else
-            r = chain_of(
-                    dsx,
-                    record_lift(f)
-            ) |> designate(ishp,
-                           OutputShape(NativeShape(oty)))
-        end
-        compose(q, r)
-    else
-        ity = eltype.(domain.(xs))
-        oty = Core.Compiler.return_type(f, Tuple{ity...})
-        ishp = ibound(ishape.(xs))
-        dsx = tuple_of(Symbol[], [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs])
-        if oty <: AbstractVector
-            ety = oty.parameters[1]
-            r = chain_of(
-                    dsx,
-                    record_lift(f),
-                    with_elements(adapt_vector()),
-                    flatten()
-            ) |> designate(ishp,
-                           OutputShape(NativeShape(ety), OPT|PLU))
-        else
-            r = chain_of(
-                    dsx,
-                    record_lift(f)
-            ) |> designate(ishp,
-                           OutputShape(NativeShape(oty), bound(mode.(xs))))
-        end
-        compose(q, r)
+    ity = Tuple{eltype.(shape.(xs))...}
+    oty = Core.Compiler.return_type(f, ity)
+    oty != Union{} || error("cannot apply $f to $ity")
+    tail = wrap()
+    card = REG
+    if oty <: AbstractVector
+        oty = eltype(oty)
+        tail = adapt_vector()
+        card = OPT|PLU
+    elseif Missing <: oty
+        oty = Base.nonmissingtype(oty)
+        tail = adapt_missing()
+        card = OPT
     end
+    r = if length(xs) == 1
+            x = xs[1]
+            chain_of(
+                x,
+                lift(f),
+                tail
+            ) |> designate(ishape(x),
+                           OutputShape(NativeShape(oty), card))
+        elseif isempty(xs)
+            ishp = ibound(InputShape)
+            dsx = tuple_of(Symbol[], Query[])
+            chain_of(
+                dsx,
+                tuple_lift(f),
+                tail
+            ) |> designate(ishp,
+                           OutputShape(NativeShape(oty), card))
+        else
+            ishp = ibound(ishape.(xs))
+            dsx = tuple_of(Symbol[], [chain_of(project_input(mode(ishp), imode(x)), x) for x in xs])
+            chain_of(
+                dsx,
+                tuple_lift(f),
+                tail
+            ) |> designate(ishp,
+                           OutputShape(NativeShape(oty), card))
+        end
+    compose(q, r)
 end
 
 Combinator(f) =
@@ -583,7 +562,7 @@ end
 Count(X::PipelineLike) =
     Pipeline(Count, X)
 
-convert(::Type{PipelineLike}, ::typeof(Count)) =
+Lift(::typeof(Count)) =
     Then(Count)
 
 function Count(env::Environment, q::Query, X)
@@ -601,25 +580,25 @@ end
 Sum(X::PipelineLike) =
     Pipeline(Sum, X)
 
-convert(::Type{PipelineLike}, ::typeof(Sum)) =
+Lift(::typeof(Sum)) =
     Then(Sum)
 
 Max(X::PipelineLike) =
     Pipeline(Max, X)
 
-convert(::Type{PipelineLike}, ::typeof(Max)) =
+Lift(::typeof(Max)) =
     Then(Max)
 
 Min(X::PipelineLike) =
     Pipeline(Min, X)
 
-convert(::Type{PipelineLike}, ::typeof(Min)) =
+Lift(::typeof(Min)) =
     Then(Min)
 
 Mean(X::PipelineLike) =
     Pipeline(Mean, X)
 
-convert(::Type{PipelineLike}, ::typeof(Mean)) =
+Lift(::typeof(Mean)) =
     Then(Mean)
 
 function Sum(env::Environment, q::Query, X)
@@ -739,13 +718,3 @@ end
 Drop(env::Environment, q::Query, N) =
     Take(env, q, N, true)
 
-# Range.
-
-Range(N) =
-    Lift(n -> 1:n, N)
-
-Range(M, N) =
-    Lift(:, M, N)
-
-Range(M, S, N) =
-    Lift(:, M, S, N)
