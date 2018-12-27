@@ -19,17 +19,19 @@ prepare(DataKnot(3) &gt;&gt; F)
 #=&gt;
 chain_of(block_filler([3], REG),
          with_elements(chain_of(tuple_of(wrap(), block_filler([4], REG)),
-                                record_lift(+))),
+                                tuple_lift(+),
+                                wrap())),
          flatten(),
          with_elements(chain_of(tuple_of(wrap(), block_filler([6], REG)),
-                                record_lift(*))),
+                                tuple_lift(*),
+                                wrap())),
          flatten())
 =#
 
 using DataKnots: @VectorTree
 
 db = DataKnot(
-    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [
+    @VectorTree (name = [String, REG], employee = [(name = [String, REG], salary = [Int, REG])]) [
         &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
         &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
     ])
@@ -110,7 +112,7 @@ run(db &gt;&gt; It.employee &gt;&gt; Filter(It.salary .&gt; 200000))
 2 │ JOSE S   202728 │
 =#
 
-run(db &gt;&gt; Count(It.employee) .&gt; 2)
+run(db &gt;&gt; (Count(It.employee) .&gt; 2))
 #=&gt;
   │ DataKnot │
 ──┼──────────┤

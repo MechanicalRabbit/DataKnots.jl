@@ -28,7 +28,7 @@ run(db &gt;&gt; It.employee.name)
 5 │ CHARLES S │
 =#
 
-TitleCase = Lift(s -&gt; titlecase(s), It)
+TitleCase = Lift(titlecase, (It,))
 
 run(db &gt;&gt; It.employee.name &gt;&gt; TitleCase)
 #=&gt;
@@ -41,7 +41,7 @@ run(db &gt;&gt; It.employee.name &gt;&gt; TitleCase)
 5 │ Charles S │
 =#
 
-Split = Lift(s -&gt; split(s), It)
+Split = Lift(split, (It,))
 
 run(db &gt;&gt; It.employee.name &gt;&gt; Split)
 #=&gt;
@@ -75,7 +75,7 @@ run(db &gt;&gt; (
 5 │ CHARLES; S │
 =#
 
-Repeat(V,N) = Lift((v,n) -&gt; [v for i in 1:n], V, N)
+Repeat(V,N) = Lift(fill, (V, N))
 run(db &gt;&gt; Record(It.name, Repeat(&quot;Go!&quot;, 3)))
 #=&gt;
   │ DataKnot              │
