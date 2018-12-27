@@ -1,12 +1,11 @@
 # Thinking in Combinators
 
-DataKnots are a Julia library for building data processing pipelines
-having path-like compositional semantics. In DataKnots, pipelines are
-assembled algebraically: they either come from a set of atomic
-*primitives* or are built from other pipelines using *combinators*.
-In this tutorial, we show how to build pipelines starting from smaller
-components and then combining them algebraically to implement complex
-processing tasks.
+DataKnots are a Julia library for building data processing pipelines.
+In DataKnots, pipelines are assembled algebraically: they either come
+from a set of atomic *primitives* or are built from other pipelines
+using *combinators*. In this tutorial, we show how to build pipelines
+starting from smaller components and then combining them algebraically
+to implement complex processing tasks.
 
 To start working with DataKnots, we import the package:
 
@@ -99,8 +98,7 @@ pipeline's output.
     =#
 
 The identity, `It`, can be used to construct pipelines which rely upon
-the output from previous processing. For example, one can define a
-pipeline `Increment` as `It .+ 1`.
+the output from previous processing.
 
     Increment = It .+ 1
     run(Lift(1:3) >> Increment)
@@ -128,7 +126,7 @@ to a `Number`, produces a `Number`:
 What we want is an analogue to `double` that, instead of operating on
 numbers, operates on pipelines. Such functions are called pipeline
 combinators. We can convert any Julia function to a pipeline combinator
-as follows:
+by passing to `Lift` the function and its arguments.
 
     Double(X) = Lift(double, (X,))
 
@@ -157,8 +155,8 @@ combinator could have `It` as its argument.
 
 Since this use of native Julia functions as combinators is common
 enough, Julia's *broadcast* syntax (using a period) is overloaded to
-make translation easy. Any scalar function, such as `double`, can be
-used as a combinator as follows:
+make translation convenient. Any native Julia function, such as
+`double`, can be used as a combinator as follows:
 
     run(Lift(1:3) >> double.(It))
     #=>
@@ -186,8 +184,8 @@ One can define combinators in terms of expressions.
 
     OneTo(N) = UnitRange.(1, Lift(N))
 
-When a lifted function is vector-valued, the resulting pipeline is
-plural.
+When a lifted function is vector-valued, the resulting combinator
+builds plural pipelines.
 
     run(OneTo(3))
     #=>
@@ -247,8 +245,8 @@ primitive, we get a different result.
     │       10 │
     =#
 
-Since pipeline composition (`>>`) is associative, just adding
-parenthesis around `OneTo(It) >> Sum` would not change the result.
+Since pipeline composition (`>>`) is associative, adding parenthesis
+around `OneTo(It) >> Sum` will not change the result.
 
     run(OneTo(3) >> (OneTo(It) >> Sum))
     #=>
@@ -270,15 +268,12 @@ its input elementwise.
     3 │        6 │
     =#
 
-Aggregate combinators can also be lifted. Because of Julia's
-introspection capabilities, DataKnots can automatically convert a
-plural value into the required vector.
+Native Julia language aggregates, such as `sum`, can be automatically
+lifted. DataKnots automatically converts a plural pipeline into an
+input vector required by the native aggregate.
 
     using Statistics
     Mean(X) = Lift(mean, (X,))
-
-This could then be used as if it were any other combinator.
-
     run(Mean(OneTo(3) >> Sum(OneTo(It))))
     #=>
     │ DataKnot    │
@@ -286,14 +281,14 @@ This could then be used as if it were any other combinator.
     │ 3.333333335 │
     =#
 
-To use `Mean` as a pipeline primitive like `Sum` above, two additional
-steps are required.  First, a zero-argument version of `Mean()` is
-required. Second, an automatic conversion of the function name `Mean`
-to a `Pipeline` is required.
+To use `Mean` as a pipeline primitive, there are two steps. First, we
+use `Then` to build a pipeline that aggregates from its input. Second,
+we register a `Lift` to this pipeline when the combinator's name is
+mentioned in a pipeline expression.
 
     Lift(::typeof(Mean)) = Then(Mean)
 
-Once these are done, one could take the sum of means as follows:
+Once these are done, one could take an average of sums as follows:
 
     run(Lift(1:3) >> Sum(OneTo(It)) >> Mean)
     #=>
@@ -326,8 +321,8 @@ Contrast this with the built-in Julia function `filter()`.
     filter(x -> x > 3, 1:6) #-> [4, 5, 6]
 
 Where `filter()` returns a filtered dataset, the `Filter` combinator
-returns a pipeline component, which could then be composed with
-any data generating pipeline.
+returns a pipeline component, which could then be composed with any
+data generating pipeline.
 
     KeepEven = Filter(iseven.(It))
     run(OneTo(6) >> KeepEven)
