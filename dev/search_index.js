@@ -933,15 +933,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Tutorial: Simulated Data",
     "title": "Tutorial: Simulated Data",
     "category": "section",
-    "text": "In this tutorial we simulate a random patient population from a health clinic dealing with hypertension and type 2 diabetes. This tutorial assumes the reader has read \"Thinking in Combinators\".Let\'s start with some preliminary imports.using JSON, UUIDs, Plots, Dates\nusing DataKnots\nusing Distributions\nusing Random: seed!, rand\n\nseed!(0); # hide"
+    "text": "In this tutorial we simulate a random patient population from a health clinic dealing with hypertension and type 2 diabetes. This tutorial assumes the reader has read \"Thinking in Combinators\" and wishes to use DataKnots.using DataKnots"
 },
 
 {
-    "location": "generated/simulation/#Lifting-Generators-1",
+    "location": "generated/simulation/#Getting-Started-1",
     "page": "Tutorial: Simulated Data",
-    "title": "Lifting Generators",
+    "title": "Getting Started",
     "category": "section",
-    "text": "For this simulation, we would like a random number of patients. This can be done using the Range combinator. In this example, the argument, rand(3:5) is immediately evaluated, and converted into a constant Pipeline.run(Range(rand(3:5)))If we want a different random number for each pipeline input, we need to lift the rand function to a combinator.Rand(r::AbstractVector) = Combinator(() -> rand(r))()\nrun(Range(3) >> Rand(1:9))Suppose each patient is assigned a random 5-digit Medical Record Number (\"MRN\"). This concept could be defined and independently tested.RandMRN() =\n  :mrn => Rand(10000:99999)\nrun(RandMRN())For each of our simulated patients, we need to assign them a biological sex as well. In pure Julia, this could be done with a Sex and a rand_sex function.@enum Sex male=1 female=2\nrand_sex() = Sex(rand(Categorical([.492, .508])))\nRandSex() =\n  :sex => Combinator(rand_sex)()\nrun(RandSex())With these primitives, we could start building our sample data set. What\'s important already is that the definition of Patient can be seen to be independent of its components.RandPatient() =\n  :patient => Record(RandMRN(), RandSex())\nrun(Range(Rand(3:5)) >> RandPatient())"
+    "text": "For this simulation, we don\'t have a data source. To create rows for a data set, we define the OneTo combinator that wraps Julia\'s UnitRange. Let\'s then create a list of 3 patient rows.OneTo(N) = UnitRange.(1, Lift(N))\nrun(:patient => OneTo(3))Known data is boring in a simulation. What\'s more interesting is repeatable, pseudorandom data. To do this, we need to fix the seed. We can then lift the rand function to a combinator that takes anything that\'s a vector or a random distribution.using Random: seed!, rand\nseed!(1)\nRand(r::AbstractVector) = Lift(rand, (r,));Suppose each patient is assigned a random 5-digit Medical Record Number (\"MRN\"). Let\'s define and test this concept.RandMRN() =\n  :mrn => Rand(10000:99999)\nrun(RandMRN())Sometimes it\'s useful to use categorical distributions. We can also use distributions within our Rand combinator. Let\'s suppose that 49.2% of patients are male and 50.8% are female. Hence, we could randomly choose 1 = Male, or 2 = Female as follows.using Distributions\nRand(d::Distribution) = Lift(rand, (d,))\nrun(Rand(Categorical([.492, .508])))While this is nice, it makes it challenging to remember which is a male or a female. Julia has an enumerated type for this purpose and we can lift this as well.@enum Sex male=1 female=2\nRandSex() =\n  :sex => Lift(Sex, (Rand(Categorical([.492, .508])),))\nrun(RandSex())With these primitives, we could start building our sample data set. What\'s important already is that the definition of Patient can be seen to be independent of its components.RandPatient() =\n  :patient => Record(RandMRN(), RandSex())\nrun(OneTo(Rand(3:5)) >> RandPatient())"
 },
 
 ]}
