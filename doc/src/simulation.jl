@@ -16,10 +16,10 @@ using DataKnots
 OneTo(N) = UnitRange.(1, Lift(N))
 run(:patient => OneTo(3))
 
-# Known data is boring in a simulation. What's more interesting is
-# repeatable, pseudorandom data. To do this, we need to fix the `seed`.
-# We can then lift the `rand` function to a combinator that takes
-# anything that's a vector or a random distribution.
+# Known data is boring in a simulation. What's interesting is
+# pseudorandom data. To make that data repeatable, we need to fix the
+# `seed`. We can then lift the `rand` function to a combinator that
+# takes anything that's a vector.
 
 using Random: seed!, rand
 seed!(1)
@@ -38,8 +38,9 @@ run(RandMRN())
 # randomly choose 1 = Male, or 2 = Female as follows.
 
 using Distributions
+SexDist = Categorical([.492, .508])
 Rand(d::Distribution) = Lift(rand, (d,))
-run(Rand(Categorical([.492, .508])))
+run(Rand(SexDist))
 
 # While this is nice, it makes it challenging to remember which is a
 # male or a female. Julia has an enumerated type for this purpose and
@@ -47,7 +48,7 @@ run(Rand(Categorical([.492, .508])))
 
 @enum Sex male=1 female=2
 RandSex() = 
-  :sex => Lift(Sex, (Rand(Categorical([.492, .508])),))
+  :sex => Lift(Sex, (Rand(SexDist),))
 run(RandSex())
 
 # With these primitives, we could start building our sample
