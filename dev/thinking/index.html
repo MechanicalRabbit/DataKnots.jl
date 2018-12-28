@@ -159,11 +159,6 @@ run(FirstHalf(OneTo(6)))
 1 │        1 │
 2 │        2 │
 3 │        3 │
-=#</code></pre><p>The <code>TakeFirst</code> combinator is similar to <code>Take(1)</code>, only that it returns a singular, rather than plural knot.</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; TakeFirst())
-#=&gt;
-│ DataKnot │
-├──────────┤
-│        1 │
 =#</code></pre><p>In DataKnots, filtering and slicing are realized as pipeline components. They are attached to data processing pipelines using the composition combinator. This brings common data processing concepts into our pipeline algebra.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* Lookup(:WHO), WHO=&quot;World&quot;)
 #=&gt;
 │ DataKnot    │
