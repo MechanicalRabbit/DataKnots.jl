@@ -372,18 +372,6 @@ Using `Then`, this combinator could be used with pipeline composition:
     3 │        3 │
     =#
 
-The `TakeFirst` combinator is similar to `Take(1)`, only that it
-returns a singular, rather than plural knot.
-
-```julia
-run(Lift(1:3) >> TakeFirst())
-#=>
-│ DataKnot │
-├──────────┤
-│        1 │
-=#
-```
-
 In DataKnots, filtering and slicing are realized as pipeline
 components. They are attached to data processing pipelines using the
 composition combinator. This brings common data processing concepts
@@ -440,20 +428,18 @@ naming context where the defined parameters are available for reuse.
 Query parameters can be especially useful when managing aggregates, or
 with expressions that one may wish to repeat more than once.
 
-```julia
-GreaterThanAverage(X) =
-  Given(:AVG => Mean(X),
-        X >> Filter(It .> Lookup(:AVG)))
+    GreaterThanAverage(X) =
+      Given(:AVG => Mean(X),
+            X >> Filter(It .> Lookup(:AVG)))
 
-run(OneTo(6) >> Then(GreaterThanAverage))
-#=>
-  │ DataKnot │
-──┼──────────┤
-1 │        4 │
-2 │        5 │
-3 │        6 │
-=#
-```
+    run(OneTo(6) >> Then(GreaterThanAverage))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        4 │
+    2 │        5 │
+    3 │        6 │
+    =#
 
 In DataKnots, query parameters passed in to the `run` command permit
 external data to be used within query expressions. Parameters that are
