@@ -7,7 +7,7 @@
 
 using DataKnots
 
-# ## Preliminary Works
+# ## Getting Started
 #
 # For this simulation, we don't have a data source. To create rows for
 # a data set, we define the `OneTo` combinator that wraps Julia's
