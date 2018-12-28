@@ -13,7 +13,7 @@ using DataKnots
 # a data set, we define the `OneTo` combinator that wraps Julia's
 # `UnitRange`. Let's then create a list of 3 `patient` rows.
 
-OneTo(N) = UnitRange.(1, Lift(N))
+OneTo(N) = Lift(UnitRange, (1, N))
 run(:patient => OneTo(3))
 
 # Known data is boring in a simulation. What's interesting is
