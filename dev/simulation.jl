@@ -13,7 +13,7 @@ using DataKnots
 # a data set, we define the `OneTo` combinator that wraps Julia's
 # `UnitRange`. Let's then create a list of 3 `patient` rows.
 
-OneTo(N) = UnitRange.(1, Lift(N))
+OneTo(N) = Lift(UnitRange, (1, N))
 run(:patient => OneTo(3))
 
 # Known data is boring in a simulation. What's interesting is
@@ -28,9 +28,9 @@ Rand(r::AbstractVector) = Lift(rand, (r,));
 # Suppose each patient is assigned a random 5-digit Medical Record
 # Number ("MRN"). Let's define and test this concept.
 
-RandMRN() =
+RandMRN =
   :mrn => Rand(10000:99999)
-run(RandMRN())
+run(RandMRN)
 
 # Sometimes it's useful to use categorical distributions. We can also
 # use distributions within our `Rand` combinator. Let's suppose that
@@ -47,15 +47,15 @@ run(Rand(SexDist))
 # we can lift this as well.
 
 @enum Sex male=1 female=2
-RandSex() = 
+RandSex =
   :sex => Lift(Sex, (Rand(SexDist),))
-run(RandSex())
+run(RandSex)
 
 # With these primitives, we could start building our sample
 # data set. What's important already is that the definition
 # of Patient can be seen to be independent of its components.
 
-RandPatient() =
-  :patient => Record(RandMRN(), RandSex())
-run(OneTo(Rand(3:5)) >> RandPatient())
+RandPatient =
+  :patient => Record(RandMRN, RandSex)
+run(OneTo(Rand(3:5)) >> RandPatient)
 
