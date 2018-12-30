@@ -14,11 +14,11 @@ using DataKnots
 # with `OneTo` that wraps Julia's `UnitRange`.
 
 OneTo(N) = Lift(UnitRange, (1, N))
-make(X) = run(OneTo(Rand(2:5)) >> X)
-make(It)
+make2to5(X) = run(OneTo(Rand(2:5)) >> X)
+make2to5(It)
 
 # Known data is boring in a simulation. Instead we need pseudorandom
-# data. To make that data repeatable, let's fix the `seed`. We can then
+# data. To make2to5 that data repeatable, let's fix the `seed`. We can then
 # lift the `rand` function to a DataKnot combinator and use it to pick
 # a random number from 3 to 5.
 
@@ -28,7 +28,7 @@ Rand(r::AbstractVector) = Lift(rand, (r,))
 run(Rand(3:5))
 
 # Julia's `Distributions` has `Categorical` and `TruncatedNormal`
-# to make sure they work with DataKnots, we need another lift.
+# to make2to5 sure they work with DataKnots, we need another lift.
 
 using Distributions
 Rand(d::Distribution) = Lift(rand, (d,))
@@ -56,7 +56,7 @@ run(Switch(1, 1=>177, 2=>163))
 
 RandPatient =
    :patient => Record(:mrn => Rand(10000:99999))
-make(RandPatient)
+make2to5(RandPatient)
 
 # To assign an age to patients, we use Julia's truncated normal
 # distribution. Since we wish whole-numbered ages, we truncate to
@@ -64,7 +64,7 @@ make(RandPatient)
 
 RandPatient >>= Record(
   :age => Trunc(Rand(TruncatedNormal(60,20,18,104))))
-make(RandPatient)
+make2to5(RandPatient)
 
 # Let's assign each patient a random Sex. Here we use a categorical
 # distribution plus enumerated values for male/female.
@@ -72,7 +72,7 @@ make(RandPatient)
 @enum Sex male=1 female=2
 RandPatient >>= Record(
   :sex => Lift(Sex, (Rand(Categorical([.492, .508])),)))
-make(RandPatient)
+make2to5(RandPatient)
 
 # Next, let's define the patient's height based upon the U.S. average
 # of 177cm for males and 163cm for females with distribution of 7cm.
@@ -80,5 +80,5 @@ make(RandPatient)
 RandPatient >>= Record(
   :height => Trunc(Switch(It.sex, male => 177, female => 163)
                    .+ Rand(TruncatedNormal(0,7,-40,40))))
-make(RandPatient)
+make2to5(RandPatient)
 
