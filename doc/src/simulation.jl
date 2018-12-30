@@ -50,15 +50,27 @@ RandSex =
   :sex => Lift(Sex, (Rand(SexDist),))
 run(RandSex)
 
+# Patients should also be assigned an age. Given that our simulated
+# patients are adults, with average age of 60, we could use Julia's
+# tuncated normal distribution. Since we want whole-numbered ages,
+# we further truncate this result to an integer value.
+
+AgeDist = TruncatedNormal(60,20,18,104)
+RandAge =
+  :age => Integer.(trunc.(Rand(AgeDist)))
+
 # With these primitives, we could start building our sample data set.
 # Notice how `RandMRN` and `RandSex` are independently designed/tested
 # and then arranged subsequently to build a set of random patients.
 
 RandPatient =
-  :patient => Record(RandMRN, RandSex)
+  :patient => Record(RandMRN, RandSex, RandAge)
 run(OneTo(Rand(3:5)) >> RandPatient)
 
 #
-# ## Function Composition via Combinators
+# ## Context & Covariance
+#
+# For some synthetic attributes, such as `height`, depend upon others,
+# such as `sex`. This can be modeled using parameters.
 #
 
