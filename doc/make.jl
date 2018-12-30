@@ -6,8 +6,6 @@ haskey(Pkg.installed(), "Literate") || Pkg.add("Literate")
 haskey(Pkg.installed(), "Documenter") || Pkg.add("Documenter")
 haskey(Pkg.installed(), "Random") || Pkg.add("Random")
 haskey(Pkg.installed(), "Distributions") || Pkg.add("Distributions")
-haskey(Pkg.installed(), "Plots") || Pkg.add("Plots")
-haskey(Pkg.installed(), "GR") || Pkg.add("GR")
 
 using Documenter
 using DataKnots
