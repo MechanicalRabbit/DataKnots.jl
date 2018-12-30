@@ -17,7 +17,7 @@ OneTo(N) = Lift(UnitRange, (1, N))
 run(OneTo(3))
 
 # Known data is boring in a simulation. Instead we need pseudorandom
-# data. To make2to5 that data repeatable, let's fix the `seed`. We can
+# data. To make that data repeatable, let's fix the `seed`. We can
 # then lift the `rand` function to a DataKnot combinator and use it to
 # pick a random number from 3 to 5.
 
@@ -33,7 +33,7 @@ Several = OneTo(Rand(2:5))
 run(Several >> "Hello World")
 
 # Julia's `Distributions` has `Categorical` and `TruncatedNormal`
-# to make2to5 sure they work with DataKnots, we need another lift.
+# to make sure they work with DataKnots, we need another lift.
 
 using Distributions
 Rand(d::Distribution) = Lift(rand, (d,))
@@ -45,9 +45,8 @@ run(Rand(Categorical([.492, .508])))
 Trunc(X) = Int.(floor.(X))
 run(Trunc(Rand(TruncatedNormal(60,20,18,104))))
 
-# Translating a value, such as a sex code to an average height, is also
-# important to this domain. Here we define a `switch` function and then
-# lift it to a combinator.
+# Translating a value, such as an index to a reference height, is also
+# common. Here we define a `switch` function and then lift it.
 
 switch(x) = error();
 switch(x, p, qs...) = x == p.first ? p.second : switch(x, qs...)
@@ -64,8 +63,8 @@ RandPatient =
 run(Several >> RandPatient)
 
 # To assign an age to patients, we use Julia's truncated normal
-# distribution. Since we wish whole-numbered ages, we truncate to
-# the nearest integer value.
+# distribution. Since we wish whole-numbered ages, we truncate to the
+# nearest integer value.
 
 RandPatient >>= Record(It.mrn,
   :age => Trunc(Rand(TruncatedNormal(60,20,18,104))))
