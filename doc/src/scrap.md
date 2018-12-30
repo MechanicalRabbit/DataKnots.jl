@@ -104,3 +104,10 @@ For example, given a function `f(x)`, an analogous *combinator* `F` is
 defined `F(x) = T⁻¹(f(T(x)))` where `T` is a translation that handles
 carnality, composition and other pipeline semantics.
 
+This is a scalar function that converts plural to singular,
+it's an aggregate.
+
+    fst(v) = isempty(v) ? missing : v[1]
+    Fst(V) = Lift(fst, (V,))
+    run(Fst(Lift([1,2,3])))
+
