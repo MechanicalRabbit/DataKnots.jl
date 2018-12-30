@@ -7,7 +7,7 @@
 
 using DataKnots
 
-# ## Getting Started
+# ## Basic Patient Record
 #
 # For this simulation, we don't have a data source. To create rows for
 # a data set, we define the `OneTo` combinator that wraps Julia's
@@ -50,14 +50,14 @@ RandSex =
   :sex => Lift(Sex, (Rand(SexDist),))
 run(RandSex)
 
-# Patients should also be assigned an age. Given that our simulated
-# patients are adults, with average age of 60, we could use Julia's
-# tuncated normal distribution. Since we want whole-numbered ages,
-# we further truncate this result to an integer value.
+# To assign an age to patients, we use Julia's truncated normal
+# distribution. Since we wish whole-numbered ages, we truncate to
+# the nearest integer value.
 
 AgeDist = TruncatedNormal(60,20,18,104)
+Trunc(X) = Int.(floor.(X))
 RandAge =
-  :age => Integer.(trunc.(Rand(AgeDist)))
+  :age => Trunc((Rand(AgeDist)))
 
 # With these primitives, we could start building our sample data set.
 # Notice how `RandMRN` and `RandSex` are independently designed/tested
@@ -65,12 +65,47 @@ RandAge =
 
 RandPatient =
   :patient => Record(RandMRN, RandSex, RandAge)
-run(OneTo(Rand(3:5)) >> RandPatient)
+run(OneTo(Rand(2:5)) >> RandPatient)
 
 #
-# ## Context & Covariance
+# ## Parameters & Covariance
 #
-# For some synthetic attributes, such as `height`, depend upon others,
-# such as `sex`. This can be modeled using parameters.
+# Some synthetic attributes, such as `height`, depend upon others,
+# such as `sex`. The average U.S. height is 177cm or 163cm based upon
+# sex of the subject; the normal distribution is 7cm.
+#
+# The first thing we need to define is a way to decode male/female
+# into this base height. This can be done by defining a recursive
+# function `switch` and then lifting it into a combinator.
+#
+
+switch(x) = error();
+switch(x, p, qs...) = x == p.first ? p.second : switch(x, qs...)
+Switch(X, QS...) = Lift(switch, (X, QS...))
+BaseHeight(X) = Switch(X, male => 177, female => 163)
+run(BaseHeight(female))
+
+# Then, we need to define this height based upon the patient's given
+# `sex` and not a hard-coded value. This is done in two parts. The
+# `Given` combinator assigns a parameter, and the `It` primitive can be
+# used to obtain that parameter's value.
+
+RandHeight =
+  :height => Trunc(BaseHeight(It.sex)
+                   .+ Rand(TruncatedNormal(0,7,-40,40)))
+run(Given(:sex => female, RandHeight))
+
+# This pattern is common enough that we can define Patient using
+# the Given and then select it.
+
+GivenPatient(X) =
+  :patient => Given(RandMRN, RandSex, RandAge, RandHeight, X)
+
+RandPatient =
+   GivenPatient(Record(It.mrn, It.sex, It.age, It.height))
+run(OneTo(Rand(2:5)) >> RandPatient)
+
+#
+# Nested Values
 #
 
