@@ -68,7 +68,7 @@ RandPatient =
 run(OneTo(Rand(2:5)) >> RandPatient)
 
 #
-# ## Parameters & Covariance
+# ## Parameters & Dependent Variables
 #
 # Some synthetic attributes, such as `height`, depend upon others,
 # such as `sex`. The average U.S. height is 177cm or 163cm based upon
@@ -106,6 +106,5 @@ RandPatient =
 run(OneTo(Rand(2:5)) >> RandPatient)
 
 #
-# Nested Values
+# ## Dependent data sets
 #
-
