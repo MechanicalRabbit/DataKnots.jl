@@ -58,8 +58,7 @@ run(Switch(1, 1=>177, 2=>163))
 # Let's incrementally construct a set of patient records. Let's start
 # with assigning a random 5-digit Medical Record Number ("MRN").
 
-RandPatient =
-   :patient => Record(:mrn => Rand(10000:99999))
+RandPatient = Record(:mrn => Rand(10000:99999))
 run(Several >> RandPatient)
 
 # To assign an age to patients, we use Julia's truncated normal
