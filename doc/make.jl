@@ -13,11 +13,9 @@ using Literate
 using Plots
 
 # Convert Literate example code to markdown.
-INPUTS = joinpath(@__DIR__, "src/simulation.jl")
-OUTPUT = joinpath(@__DIR__, "src/generated")
-mkpath(OUTPUT)
-Literate.markdown(INPUTS, OUTPUT,
-  documenter=true, credit=false)
+INPUTS = joinpath(@__DIR__, "src", "simulation.jl")
+OUTPUT = joinpath(@__DIR__, "src")
+Literate.markdown(INPUTS, OUTPUT, documenter=true, credit=false)
 
 # Highlight indented code blocks as Julia code.
 using Markdown
@@ -33,7 +31,7 @@ makedocs(
         hide("implementation.md",
              ["vectors.md", "queries.md", "shapes.md", "lifting.md",
               "pipelines.md"]),
-        "generated/simulation.md",
+        "simulation.md",
     ],
     modules = [DataKnots])
 
