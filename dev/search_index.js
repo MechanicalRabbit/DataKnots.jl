@@ -921,7 +921,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "generated/simulation/#",
+    "location": "simulation/#",
     "page": "Tutorial: Simulated Data",
     "title": "Tutorial: Simulated Data",
     "category": "page",
@@ -929,7 +929,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "generated/simulation/#Tutorial:-Simulated-Data-1",
+    "location": "simulation/#Tutorial:-Simulated-Data-1",
     "page": "Tutorial: Simulated Data",
     "title": "Tutorial: Simulated Data",
     "category": "section",
@@ -937,7 +937,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "generated/simulation/#Lifted-Functions-1",
+    "location": "simulation/#Lifted-Functions-1",
     "page": "Tutorial: Simulated Data",
     "title": "Lifted Functions",
     "category": "section",
@@ -945,7 +945,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "generated/simulation/#Building-a-Patient-Record-1",
+    "location": "simulation/#Building-a-Patient-Record-1",
     "page": "Tutorial: Simulated Data",
     "title": "Building a Patient Record",
     "category": "section",
