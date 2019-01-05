@@ -3,11 +3,11 @@
 
 ## Overview
 
-In `DataKnots`, a query is called *monadic* if the format of the query input
-and output can be expressed using a *monadic signature*.  Monadic signatures
-are created using the following definitions.
+To describe data shapes and monadic signatures, we need the following
+definitions.
 
     using DataKnots:
+        @VectorTree,
         OPT,
         PLU,
         REG,
@@ -25,6 +25,7 @@ are created using the following definitions.
         bound,
         cardinality,
         chain_of,
+        column,
         compose,
         decorate,
         designate,
@@ -44,91 +45,165 @@ are created using the following definitions.
         wrap
 
 
-### Monadic queries
+### Data shapes
 
-In `DataKnots`, vectorized transformations are called *queries*.  The format of
-the query input and output is called the query *signature*.
+In `DataKnots`, the structure of composite data is represented using *shape*
+objects.
 
-Among all queries, `DataKnots` distinguishes a special class of queries with
-*monadic* signature, or monadic queries.
+Consider, for example, a collection of departments with associated employees.
 
-Consider, for example, the following query.
+    depts =
+        @VectorTree (name = [String, REG],
+                     employee = [(name = [String, REG],
+                                  position = [String, REG],
+                                  salary = [Int, OPT],
+                                  rate = [Float64, OPT]), PLU]) [
+            (name = "POLICE",
+             employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
+                         (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]),
+            (name = "FIRE",
+             employee = [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing),
+                         (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]),
+            (name = "OEMC",
+             employee = [(name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68),
+                         (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)])
+        ]
 
-    q₁ = chain_of(lift(split), adapt_vector())
-    #-> chain_of(lift(split), adapt_vector())
+In this collection, each department record has two attributes: *name* and
+*employee*.  Each employee record has four attributes: *name*, *position*,
+*salary*, and *rate*.  The *employee* attribute is plural; *salary* and *rate*
+are optional.
 
-This query transforms a vector of strings by splitting each string into a block
-of words.
+The structure of this collection can be described using `NativeShape`,
+`OutputShape`, and `RecordShape` objects.
 
-    q₁(["JEFFERY A", "JAMES A", "TERRY A"])
-    #-> @VectorTree [SubString{String}] [["JEFFERY", "A"], ["JAMES", "A"], ["TERRY", "A"]]
+`NativeShape` specifies the type of atomic Julia data.
 
-This query has a monadic signature, which we indicate by attaching the signature to
-the query object.
+    NativeShape(String)
+    #-> NativeShape(String)
 
-    q₁ = q₁ |> designate(InputShape(String), OutputShape(SubString{String}, OPT|PLU))
+`OutputShape` specifies the label, the domain, and the cardinality of a record
+attribute.
 
-The signature specifies the shapes of the query input and the query output.  In
-this case, the input is expected to be `String[ … ]` and the output
-`BlockVector( … , SubString{String}[ … ], OPT|PLU)`.
+    OutputShape(:position, NativeShape(String), REG)
+    #-> OutputShape(:position, String)
 
-    signature(q₁)
-    #-> String -> [SubString{String}]
-    ishape(q₁)
-    #-> InputShape(String)
-    shape(q₁)
-    #-> OutputShape(SubString{String}, OPT | PLU)
+`RecordShape` describes the structure of a record.
 
-Aside from directly assigning a monadic signature to a query, monadic queries
-could also be constructed using monadic query combinators: one of them is
-*monadic composition*.  To demonstrate it, let us make another monadic query.
+    emp_shp =
+        RecordShape(OutputShape(:name, String),
+                    OutputShape(:position, String),
+                    OutputShape(:salary, Int, OPT),
+                    OutputShape(:rate, Float64, OPT))
 
-    q₂ = chain_of(lift(titlecase), wrap())
-    #-> chain_of(lift(titlecase), wrap())
+Using nested shape objects, we can describe the structure of a nested
+collection.
 
-    q₂(["JEFFERY A", "JAMES A", "TERRY A"])
-    #-> @VectorTree [String, REG] ["Jeffery A", "James A", "Terry A"]
+    dept_shp =
+        RecordShape(OutputShape(:name, String),
+                    OutputShape(:employee, emp_shp, PLU))
 
-    q₂ = q₂ |> designate(InputShape(SubString{String}), OutputShape(String, REG))
 
-    signature(q₂)
-    #-> SubString{String} -> [String, REG]
-    ishape(q₂)
-    #-> InputShape(SubString{String})
-    shape(q₂)
-    #-> OutputShape(String)
+### Traversing nested data
 
-This query transforms `SubString{String}[ … ]` to `BlockVector( … , String[ … ], REG)`.
-Notice that the output shape of `q₁` does not match the input shape of `q₂`, which means
-that the queries could not be composed using `chain_of(q₁, q₂)`.  However, the output *domain*
-of `q₁` matches the input domain of `q₂`.
+A path in a nested collection can be seen as a specialized query.
 
-    domain(q₁)
-    #-> NativeShape(SubString{String})
-    idomain(q₂)
-    #-> NativeShape(SubString{String})
+For example, the attribute *employee* corresponds to a query which maps a
+collection of departments to associated employees.
 
-This permits us to make a monadic composition of `q₁` and `q₂`.
+    dept_employee = column(:employee)
 
-    q = compose(q₁, q₂)
+    dept_employee(depts) |> display
     #=>
-    chain_of(chain_of(lift(split), adapt_vector()),
-             with_elements(chain_of(lift(titlecase), wrap())),
-             flatten())
+    BlockVector of 3 × [(name = [String, REG], position = [String, REG], salary = [Int, OPT], rate = [Float64, OPT]), PLU]:
+     [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing), (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]
+     [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing), (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]
+     [(name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68), (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)]
     =#
 
-This composition is again a monadic query, which combines the operations of `q₁` and `q₂`.
+To indicate the role of this query, we assign it a *monadic signature*, which
+describes the shapes of the query input and output.
 
-    q(["JEFFERY A", "JAMES A", "TERRY A"])
-    #-> @VectorTree [String] [["Jeffery", "A"], ["James", "A"], ["Terry", "A"]]
+    dept_employee =
+        dept_employee |> designate(InputShape(dept_shp), OutputShape(emp_shp, PLU))
 
-    signature(q)
-    #-> String -> [String]
-    ishape(q)
-    #-> InputShape(String)
-    shape(q)
-    #-> OutputShape(String, OPT | PLU)
+    signature(dept_employee)
+    #=>
+    (name = [String, REG],
+     employee = [(name = [String, REG],
+                  position = [String, REG],
+                  salary = [Int, OPT],
+                  rate = [Float64, OPT]),
+                 PLU]) -> [(name = [String, REG],
+                            position = [String, REG],
+                            salary = [Int, OPT],
+                            rate = [Float64, OPT]),
+                           PLU]
+    =#
 
+Longer paths could be assembled by composing two compatible paths.  For
+example, consider a query that corresponds to the *rate* attribute.
+
+    emp_rate =
+        column(:rate) |> designate(InputShape(emp_shp), OutputShape(Float64, OPT))
+
+The output domain of the `dept_employee` coincides with the input domain of `emp_rate`.
+
+    domain(dept_employee)
+    #=>
+    RecordShape(OutputShape(:name, String),
+                OutputShape(:position, String),
+                OutputShape(:salary, Int, OPT),
+                OutputShape(:rate, Float64, OPT))
+    =#
+
+    idomain(emp_rate)
+    #=>
+    RecordShape(OutputShape(:name, String),
+                OutputShape(:position, String),
+                OutputShape(:salary, Int, OPT),
+                OutputShape(:rate, Float64, OPT))
+    =#
+
+This means we could *compose* these two queries.  Note that we cannot simply
+chain the queries using `chain_of(dept_employee, emp_rate)` because the output
+of `dept_employee` is not compatible with `emp_rate`.  Instead, we use the
+*monadic composition* combinator.
+
+    dept_employee_rate = compose(dept_employee, emp_rate)
+    #-> chain_of(column(:employee), with_elements(column(:rate)), flatten())
+
+    dept_employee_rate(depts)
+    #-> @VectorTree [Float64] [[], [], [17.68, 19.38]]
+
+This composition represents a path through *employee* and *rate* attributes and
+has a signature assigned to it.
+
+    signature(dept_employee_rate)
+    #=>
+    (name = [String, REG],
+     employee = [(name = [String, REG],
+                  position = [String, REG],
+                  salary = [Int, OPT],
+                  rate = [Float64, OPT]),
+                 PLU]) -> [Float64]
+    =#
+
+
+### Monadic queries
+
+Among all queries, `DataKnots` distinguishes a special class of path-like
+queries.  They are called *monadic*.  We indicate that a query is monadic by
+assigning it its monadic signature.
+
+    round_it = chain_of(lift(round), wrap())
+
+    round_it = round_it |> designate(InputShape(Float64), OutputShape(Float64))
+
+    dept_employee_round_rate = compose(dept_employee_rate, round_it)
+
+    dept_employee_round_rate(depts)
+    #-> @VectorTree [Float64] [[], [], [18.0, 19.0]]
 
 
 ## API Reference
