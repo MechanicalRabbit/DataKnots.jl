@@ -59,7 +59,7 @@ run(Switch(1, 1=>177, 2=>163))
 # with assigning a random 5-digit Medical Record Number ("MRN").
 
 RandPatient = Record(:mrn => Rand(10000:99999))
-run(Several >> RandPatient)
+run(:patient => Several >> RandPatient)
 
 # To assign an age to patients, we use Julia's truncated normal
 # distribution. Since we wish whole-numbered ages, we truncate to the
@@ -67,7 +67,7 @@ run(Several >> RandPatient)
 
 RandPatient >>= Record(It.mrn,
   :age => Trunc(Rand(TruncatedNormal(60,20,18,104))))
-run(Several >> RandPatient)
+run(:patient => Several >> RandPatient)
 
 # Let's assign each patient a random Sex. Here we use a categorical
 # distribution plus enumerated values for male/female.
@@ -75,7 +75,7 @@ run(Several >> RandPatient)
 @enum Sex male=1 female=2
 RandPatient >>= Record(It.mrn, It.age,
   :sex => Lift(Sex, (Rand(Categorical([.492, .508])),)))
-run(Several >> RandPatient)
+run(:patient => Several >> RandPatient)
 
 # Next, let's define the patient's height based upon the U.S. average
 # of 177cm for males and 163cm for females with distribution of 7cm.
@@ -83,5 +83,14 @@ run(Several >> RandPatient)
 RandPatient >>= Record(It.mrn, It.age, It.sex,
   :height => Trunc(Switch(It.sex, male => 177, female => 163)
                    .+ Rand(TruncatedNormal(0,7,-40,40))))
-run(Several >> RandPatient)
+run(:patient => Several >> RandPatient)
+
+# ## Lifted Functions
+#
+# Before we start generating data, there are a few combinators that are
+# specific to this application area we should define first. Let's start
+# with `OneTo` that wraps Julia's `UnitRange`.
+
+
+
 
