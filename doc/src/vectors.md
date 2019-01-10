@@ -25,7 +25,6 @@ We will need the following definitions:
         offsets,
         width
 
-
 ### Tabular data
 
 Structured data can often be represented in a tabular form.  For example,
@@ -70,6 +69,36 @@ objects.
                 :position => ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
                 :salary => [101442, 103350, 93354])
 
+### Plural values
+
+In the previous example, each field had exactly one value. What happens when
+there is more than one value? Let's assume we have a list of departments, and
+for each department, the corresponding employees.
+
+| name        | employees          |
+| ----------- | ------------------ |
+| POLICE      | JEFFERY A; NANCY A |
+| FIRE        | JAMES A; DANIEL A  |
+| OEMC        | LAKENYA A; DORIS A |
+
+The niave solution could store each position as a vector of vectors.
+
+    TupleVector(:name => ["POLICE", "FIRE", "OEMC"],
+                :employees => [["JEFFERY A", "NANCY A"],
+                               ["JAMES A", "DANIEL A"],
+                               ["LAKENYA A", "DORIS A"]])
+
+However, a vector-of-vectors isn't very convenient for most operations needed
+for DataKnots. Hence, we flatten nested vectors and store the grouping as an
+partition index into this vector. This is done with a `BlockVector` as follows.
+
+    BlockVector([1,3,5,7], ["JEFFERY A", "NANCY A",
+                            "JAMES A", "DANIEL A",
+                            "LAKENYA A", "DORIS A"])
+
+Here we have a `BlockVector` with 3 partitions.  The first group goes from
+`index[1]` though `index[2]-1` (in this case, `1` though `2`), the second group
+goes from `index[2]` though `index[3]-1` (`3` though `4`), and so on.
 
 ### Blank cells
 
