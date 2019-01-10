@@ -21,6 +21,7 @@ definitions.
         OutputShape,
         RecordShape,
         Signature,
+        TupleVector,
         adapt_vector,
         bound,
         cardinality,
@@ -42,6 +43,9 @@ definitions.
         mode,
         shape,
         signature,
+        slots,
+        tuple_lift,
+        tuple_of,
         wrap
 
 
@@ -50,7 +54,7 @@ definitions.
 In `DataKnots`, the structure of composite data is represented using *shape*
 objects.
 
-Consider, for example, a collection of departments with associated employees.
+For example, consider a collection of departments with associated employees.
 
     depts =
         @VectorTree (name = [String, REG],
@@ -69,26 +73,34 @@ Consider, for example, a collection of departments with associated employees.
                          (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)])
         ]
 
-In this collection, each department record has two attributes: *name* and
-*employee*.  Each employee record has four attributes: *name*, *position*,
-*salary*, and *rate*.  The *employee* attribute is plural; *salary* and *rate*
-are optional.
+In this collection, each department record has two fields: *name* and
+*employee*.  Each employee record has four fields: *name*, *position*,
+*salary*, and *rate*.  The *employee* field is plural; *salary* and *rate* are
+optional.
 
-The structure of this collection can be described using `NativeShape`,
-`OutputShape`, and `RecordShape` objects.
+Physically, this collection is stored as a tree of interleaving `TupleVector`
+and `BlockVector` objects with regular `Vector` objects as the tree leaves.
+The structure of this collection can be described by a congruent tree composed
+of `RecordShape`, `OutputShape`, and `NativeShape` objects.
 
-`NativeShape` specifies the type of atomic Julia data.
+`NativeShape` corresponds to regular Julia `Vector` objects and specifies the
+type of the vector elements.
 
     NativeShape(String)
     #-> NativeShape(String)
 
-`OutputShape` specifies the label, the domain, and the cardinality of a record
-attribute.
+`OutputShape` specifies the label, the domain and the cardinality of a record
+field.  The data of a record field is stored in a `BlockVector` object.
+Accordingly, the field domain is the shape of the `BlockVector` elements and
+the field cardinality is the cardinality of the `BlockVector`.  When the domain
+is represented by `NativeShape`, we could instead specify the respective Julia
+type.  The `REG` cardinality is assumed by default.
 
     OutputShape(:position, NativeShape(String), REG)
     #-> OutputShape(:position, String)
 
-`RecordShape` describes the structure of a record.
+`RecordShape` describes the structure of a record.  It contains a list of field
+shapes and corresponds to a `TupleVector` with `BlockVector` columns.
 
     emp_shp =
         RecordShape(OutputShape(:name, String),
@@ -106,10 +118,9 @@ collection.
 
 ### Traversing nested data
 
-A path in a nested collection can be seen as a specialized query.
-
-For example, the attribute *employee* corresponds to a query which maps a
-collection of departments to associated employees.
+A record field can be seen as a specialized query.  For example, the field
+*employee* corresponds to a query which maps a collection of departments to
+associated employees.
 
     dept_employee = column(:employee)
 
@@ -141,8 +152,8 @@ describes the shapes of the query input and output.
                            PLU]
     =#
 
-Longer paths could be assembled by composing two compatible paths.  For
-example, consider a query that corresponds to the *rate* attribute.
+A *path* could be assembled by composing two adjacent field queries.  For
+example, consider a query that corresponds to the *rate* field.
 
     emp_rate =
         column(:rate) |> designate(InputShape(emp_shp), OutputShape(Float64, OPT))
@@ -165,9 +176,9 @@ The output domain of the `dept_employee` coincides with the input domain of `emp
                 OutputShape(:rate, Float64, OPT))
     =#
 
-This means we could *compose* these two queries.  Note that we cannot simply
-chain the queries using `chain_of(dept_employee, emp_rate)` because the output
-of `dept_employee` is not compatible with `emp_rate`.  Instead, we use the
+This means the queries are composable.  Note that we cannot simply chain the
+queries using `chain_of(dept_employee, emp_rate)` because the output of
+`dept_employee` is not compatible with `emp_rate`.  Instead, we use the
 *monadic composition* combinator.
 
     dept_employee_rate = compose(dept_employee, emp_rate)
@@ -176,7 +187,7 @@ of `dept_employee` is not compatible with `emp_rate`.  Instead, we use the
     dept_employee_rate(depts)
     #-> @VectorTree [Float64] [[], [], [17.68, 19.38]]
 
-This composition represents a path through *employee* and *rate* attributes and
+This composition represents a path through the fields *employee* and *rate* and
 has a signature assigned to it.
 
     signature(dept_employee_rate)
@@ -193,17 +204,71 @@ has a signature assigned to it.
 ### Monadic queries
 
 Among all queries, `DataKnots` distinguishes a special class of path-like
-queries.  They are called *monadic*.  We indicate that a query is monadic by
+queries, which are called *monadic*.  We indicate that a query is monadic by
 assigning it its monadic signature.
 
-    round_it = chain_of(lift(round), wrap())
+The query signature describes the shapes of its input and output using
+`InputShape` and `OutputShape` objects.
 
-    round_it = round_it |> designate(InputShape(Float64), OutputShape(Float64))
+`OutputShape` specifies the label, the domain and the cardinality of the query
+output.  A monadic query always produces a `BlockVector` object.  Accordingly,
+the output domain and cardinality specify the `BlockVector` elements and its
+cardinality.
+
+`InputShape` specifies the label, the domain and the named slots of the query
+input.  The input of a monadic query is a `TupleVector` with two columns: the
+first column is the regular input data described by the input domain, while the
+second column is a record containing slot data.  When the query has no slots,
+the outer `TupleVector` is omitted.
+
+For example, consider a monadic query that wraps the `round` function with
+precision specified in a named slot.
+
+    round_digits(x, d) = round(x, digits=d)
+
+    round_it =
+        chain_of(
+            tuple_of(chain_of(column(1), wrap()),
+                     chain_of(column(2), column(:P))),
+            tuple_lift(round_digits),
+            wrap())
+
+    round_it(@VectorTree (Float64, (P = [Int, REG],)) [(17.68, (P = 1,)), (19.38, (P = 1,))])
+    #-> @VectorTree [Float64, REG] [17.7, 19.4]
+
+To indicate that the query is monadic, we assign it its monadic signature.
+
+    round_it =
+        round_it |> designate(InputShape(Float64, [:P => OutputShape(Float64)]),
+                              OutputShape(Float64))
+
+When two monadic queries have compatible intermediate domains, they could be composed.
+
+    domain(dept_employee_rate)
+    #-> NativeShape(Float64)
+
+    idomain(round_it)
+    #-> NativeShape(Float64)
 
     dept_employee_round_rate = compose(dept_employee_rate, round_it)
 
-    dept_employee_round_rate(depts)
-    #-> @VectorTree [Float64] [[], [], [18.0, 19.0]]
+The composition is again a monadic query.  Its signature is constructed from
+the signatures of the components.  In particular, the cardinality of the
+composition is the upper bound of the component cardinalities while its input
+slots are formed from the slots of the components.
+
+    print(cardinality(dept_employee_round_rate))
+    #-> OPT_PLU
+
+    slots(dept_employee_round_rate)
+    #-> Pair{Symbol,DataKnots.OutputShape}[:P=>OutputShape(Float64)]
+
+    slot_data = @VectorTree (P = [Int, REG],) [(P = 1,), (P = 1,), (P = 1,)]
+
+    input = TupleVector(:depts => depts, :slot_data => slot_data)
+
+    dept_employee_round_rate(input)
+    #-> @VectorTree [Float64] [[], [], [17.7, 19.4]]
 
 
 ## API Reference

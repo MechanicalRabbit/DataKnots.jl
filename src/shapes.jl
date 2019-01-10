@@ -304,6 +304,9 @@ let NO_SLOTS = Pair{Symbol,OutputShape}[]
         InputMode(NO_SLOTS, false)
 end
 
+convert(::Type{InputMode}, slots::Vector{Pair{Symbol,OutputShape}}) =
+    InputMode(slots)
+
 syntax(md::InputMode) =
     if md.slots !== nothing && isempty(md.slots) && !md.framed
         Expr(:call, nameof(InputMode))
@@ -339,7 +342,7 @@ InputShape(dom::Union{Type,AbstractShape}) = InputShape(Decoration(), dom, Input
 
 InputShape(dr::Decoration, dom::Union{Type,AbstractShape}) = InputShape(dr, dom, InputMode())
 
-InputShape(dom::Union{Type,AbstractShape}, md::InputMode) =
+InputShape(dom::Union{Type,AbstractShape}, md::Union{Vector{Pair{Symbol,OutputShape}},InputMode}) =
     InputShape(Decoration(), dom, md)
 
 function syntax(shp::InputShape)
