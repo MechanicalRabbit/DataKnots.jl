@@ -85,12 +85,34 @@ RandPatient >>= Record(It.mrn, It.age, It.sex,
                    .+ Rand(TruncatedNormal(0,7,-40,40))))
 run(:patient => Several >> RandPatient)
 
-# ## Lifted Functions
+# ## Implemention Comparison
 #
-# Before we start generating data, there are a few combinators that are
-# specific to this application area we should define first. Let's start
-# with `OneTo` that wraps Julia's `UnitRange`.
+# How could this patient sample be implemented directly in Julia?
 
+@enum Sex male=1 female=2
+function rand_patient()
+   sex = Sex(rand(Categorical([.492,.508])))
+   return (
+      mrn = rand(10000:99999), sex = sex, 
+      age = trunc(Int, rand(TruncatedNormal(60,20,18,104))),
+      height = trunc(Int, (sex == male ? 177 : 163)
+                          + rand(TruncatedNormal(0,7,-40,40))))
+end
+[rand_patient() for i in 1:rand(2:5)]
 
+# Omitting the boilerplate *lifting* of `Rand`, `Trunc`, and `Switch`,
+# the combinator variant can also be constructed succinctly.
 
+@enum Sex male=1 female=2
+RandPatient = Given(
+  :sex => Lift(Sex, (Rand(Categorical([.492, .508])),)),
+  Record(
+    :mrn => Rand(10000:99999), It.sex,
+    :age => Trunc(Rand(TruncatedNormal(60,20,18,104))),
+    :height => Trunc(Switch(It.sex, male => 177, female => 163)
+                     .+ Rand(TruncatedNormal(0,7,-40,40)))))
+run(:patient => OneTo(Rand(2:5)) >> RandPatient)
+
+# That said, as complexity builds, the more incremental approach as 
+# shown in the previous section may prove to be more desireable.
 
