@@ -25,16 +25,17 @@ We will need the following definitions:
         offsets,
         width
 
-### Tabular data
+
+### Tabular data and `TupleVector`
 
 Structured data can often be represented in a tabular form.  For example,
 information about city employees can be arranged in the following table.
 
-| name      | position          | salary    |
-| --------- | ----------------- | --------- |
-| JEFFERY A | SERGEANT          | 101442    |
-| JAMES A   | FIRE ENGINEER-EMT | 103350    |
-| TERRY A   | POLICE OFFICER    | 93354     |
+| name      | position          | salary  |
+| --------- | ----------------- | ------- |
+| JEFFERY A | SERGEANT          | 101442  |
+| JAMES A   | FIRE ENGINEER-EMT | 103350  |
+| TERRY A   | POLICE OFFICER    | 93354   |
 
 Internally, a database engine stores tabular data using composite data
 structures such as *tuples* and *vectors*.
@@ -69,38 +70,88 @@ objects.
                 :position => ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER"],
                 :salary => [101442, 103350, 93354])
 
-### Plural values
+Since creating `TupleVector` objects by hand is tedious and error prone,
+`DataKnots` provides a convenient macro `@VectorTree`, which lets you create
+column-oriented data using regular tuple and vector literals.
 
-In the previous example, each field had exactly one value. What happens when
-there is more than one value? Let's assume we have a list of departments, and
-for each department, the corresponding employees.
+    @VectorTree (name = String, position = String, salary = Int) [
+        (name = "JEFFERY A", position = "SERGEANT", salary = 101442),
+        (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350),
+        (name = "TERRY A", position = "POLICE OFFICER", salary = 93354),
+    ]
 
-| name        | employees          |
-| ----------- | ------------------ |
-| POLICE      | JEFFERY A; NANCY A |
-| FIRE        | JAMES A; DANIEL A  |
-| OEMC        | LAKENYA A; DORIS A |
 
-The niave solution could store each position as a vector of vectors.
+### Hierarchical data and `BlockVector`
 
-    TupleVector(:name => ["POLICE", "FIRE", "OEMC"],
-                :employees => [["JEFFERY A", "NANCY A"],
-                               ["JAMES A", "DANIEL A"],
-                               ["LAKENYA A", "DORIS A"]])
+Structured data could also be organized in hierarchical fashion.  For example,
+consider a collection of departments, where each department contains a list of
+associated employees.
 
-However, a vector-of-vectors isn't very convenient for most operations needed
-for DataKnots. Hence, we flatten nested vectors and store the grouping as an
-partition index into this vector. This is done with a `BlockVector` as follows.
+| name    | employee           |
+| ------- | ------------------ |
+| POLICE  | JEFFERY A; NANCY A |
+| FIRE    | JAMES A; DANIEL A  |
+| OEMC    | LAKENYA A; DORIS A |
 
-    BlockVector([1,3,5,7], ["JEFFERY A", "NANCY A",
-                            "JAMES A", "DANIEL A",
-                            "LAKENYA A", "DORIS A"])
+In the row-oriented format, this data is represented using nested vectors.
 
-Here we have a `BlockVector` with 3 partitions.  The first group goes from
-`index[1]` though `index[2]-1` (in this case, `1` though `2`), the second group
-goes from `index[2]` though `index[3]-1` (`3` though `4`), and so on.
+    [(name = "POLICE", employee = ["JEFFERY A", "NANCY A"]),
+     (name = "FIRE", employee = ["JAMES A", "DANIEL A"]),
+     (name = "OEMC", employee = ["LAKENYA A", "DORIS A"])]
 
-### Blank cells
+To represent this data in column-oriented format, we need to serialize *name* and
+*employee* as column vectors.  The *name* column is straightforward.
+
+    name_col = ["POLICE", "FIRE", "OEMC"]
+
+As for the *employee* column, naively, we could store it as a vector of
+vectors.
+
+    [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"], ["LAKENYA A", "DORIS A"]]
+
+However, this representation loses the advantages of the column-oriented format
+since the data is no longer serialized with a fixed number of vectors.
+Instead, we should keep the column data in a tightly-packed vector of
+*elements*.
+
+    employee_elts = ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]
+
+This vector could be partitioned into separate blocks by the vector of
+*offsets*.
+
+    employee_offs = [1, 3, 5, 7]
+
+Each pair of adjacent offsets corresponds a slice of the element vector.
+
+    employee_elts[employee_offs[1]:employee_offs[2]-1]
+    #-> ["JEFFERY A", "NANCY A"]
+    employee_elts[employee_offs[2]:employee_offs[3]-1]
+    #-> ["JAMES A", "DANIEL A"]
+    employee_elts[employee_offs[3]:employee_offs[4]-1]
+    #-> ["LAKENYA A", "DORIS A"]
+
+Together, elements and offsets faithfully reproduce the layout of the column.
+A pair of the offset and the element vectors is encapsulated with a
+`BlockVector` object, which represents a column-oriented encoding of a vector
+of variable-size blocks.
+
+    employee_col = BlockVector(employee_offs, employee_elts)
+
+Now we can wrap the columns using `TupleVector`.
+
+    TupleVector(:name => name_col, :employee => employee_col)
+
+`@VectorTree` provides a convenient way to create `BlockVector` objects from
+regular vector literals.
+
+    @VectorTree (name = String, employee = [String]) [
+        (name = "POLICE", employee = ["JEFFERY A", "NANCY A"]),
+        (name = "FIRE", employee = ["JAMES A", "DANIEL A"]),
+        (name = "OEMC", employee = ["LAKENYA A", "DORIS A"]),
+    ]
+
+
+### Optional values
 
 As we arrange data in a tabular form, we may need to leave some cells blank.
 
@@ -109,64 +160,63 @@ salary or with hourly pay.  To display the compensation data in a table, we add
 two columns: the annual salary and the hourly rate.  However, only one of the
 columns per each row is filled.
 
-| name      | position          | salary    | rate  |
-| --------- | ----------------- | --------- | ----- |
-| JEFFERY A | SERGEANT          | 101442    |       |
-| JAMES A   | FIRE ENGINEER-EMT | 103350    |       |
-| TERRY A   | POLICE OFFICER    | 93354     |       |
-| LAKENYA A | CROSSING GUARD    |           | 17.68 |
+| name      | position          | salary  | rate  |
+| --------- | ----------------- | ------- | ----- |
+| JEFFERY A | SERGEANT          | 101442  |       |
+| JAMES A   | FIRE ENGINEER-EMT | 103350  |       |
+| TERRY A   | POLICE OFFICER    | 93354   |       |
+| LAKENYA A | CROSSING GUARD    |         | 17.68 |
 
-How can this data be serialized in a column-oriented format?  To retain the
-advantages of the format, we'd like to keep the column data in tightly packed
-vectors of *elements*.
+As in the previous section, the cells in this table may contain a variable
+number of values.  Therefore, the table columns could be represented using
+`BlockVector` objects.  We start with packing the column data as element
+vectors.
 
     name_elts = ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"]
     position_elts = ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"]
     salary_elts = [101442, 103350, 93354]
     rate_elts = [17.68]
 
-These vectors are partitioned into table cells by the vectors of *offsets*.
+Element vectors are partitioned into table cells by offset vectors.
 
     name_offs = [1, 2, 3, 4, 5]
     position_offs = [1, 2, 3, 4, 5]
     salary_offs = [1, 2, 3, 4, 4]
     rate_offs = [1, 1, 1, 1, 2]
 
-Each pair of adjacent offsets maps a slice of the element vector to the
-corresponding column cell.  For example, here is how we fetch the 4-th row of
-the table:
-
-    (name_elts[name_offs[4]:name_offs[5]-1],
-     position_elts[position_offs[4]:position_offs[5]-1],
-     salary_elts[salary_offs[4]:salary_offs[5]-1],
-     rate_elts[rate_offs[4]:rate_offs[5]-1])
-    #-> (["LAKENYA A"], ["CROSSING GUARD"], Int[], [17.68])
-
-Together, elements and offsets faithfully reproduce the layout of the column.
-A pair of the offset and the element vectors is encapsulated with a
-`BlockVector` instance.
+The pairs of element of offset vectors are wrapped as `BlockVector` objects.
 
     name_col = BlockVector(name_offs, name_elts, REG)
     position_col = BlockVector(position_offs, position_elts, REG)
     salary_col = BlockVector(salary_offs, salary_elts, OPT)
     rate_col = BlockVector(rate_offs, rate_elts, OPT)
 
-`BlockVector` is a column-oriented encoding of a vector of variable-size
-blocks.  The last parameter of the `BlockVector` constructor is the
-*cardinality* constraint on the size of the blocks.  `REG` indicates that each
-block has exactly one element; `OPT` allows a block to be empty.  The
-constraint `PLU` is used to indicate that a block may contain more than one
-element.
+The last parameter of the `BlockVector` constructor is the *cardinality*
+constraint on the size of the blocks.  `REG` indicates that each block has
+exactly one element; `OPT` allows a block to be empty.  The constraint `PLU` is
+used to indicate that a block may contain more than one element.  No constraint
+means no restrictions on the block size.
 
-In this specific case, each block corresponds to a table cell: an empty block
-to a blank cell and a one-element block to a filled cell.  To represent the
-whole table, the columns should be wrapped with a `TupleVector`.
+To represent the whole table, the columns should be wrapped with a
+`TupleVector`.
 
     TupleVector(
         :name => name_col,
         :position => position_col,
         :salary => salary_col,
         :rate => rate_col)
+
+As usual, we could create this data from tuple and vector literals.
+
+    @VectorTree (name = [String, REG],
+                 position = [String, REG],
+                 salary = [Int, OPT],
+                 rate = [Float64, OPT]) [
+        (name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
+        (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing),
+        (name = "TERRY A", position = "POLICE OFFICER", salary = 93354, rate = missing),
+        (name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68),
+    ]
 
 
 ### Nested data
@@ -208,9 +258,8 @@ format.
         :name => BlockVector(:, ["POLICE", "FIRE", "OEMC"]),
         :employee => employee_col)
 
-Since writing offset vectors manually is tedious, `DataKnots` provides a
-convenient macro `@VectorTree`, which lets you specify column-oriented data
-using regular tuple and vector literals.
+Another way to assemble this data in column-oriented format is to use
+`@VectorTree`.
 
     @VectorTree (name = [String, REG],
                  employee = [(name = [String, REG],
