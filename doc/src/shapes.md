@@ -178,8 +178,9 @@ The output domain of the `dept_employee` coincides with the input domain of `emp
 
 This means the queries are composable.  Note that we cannot simply chain the
 queries using `chain_of(dept_employee, emp_rate)` because the output of
-`dept_employee` is not compatible with `emp_rate`.  Instead, we use the
-*monadic composition* combinator.
+`dept_employee` is not compatible with `emp_rate`.  Indeed, `dept_employee`
+produces a `BlockVector` while `emp_rate` expects a `TupleVector`.  So instead
+we use the *monadic composition* combinator.
 
     dept_employee_rate = compose(dept_employee, emp_rate)
     #-> chain_of(column(:employee), with_elements(column(:rate)), flatten())
@@ -284,46 +285,20 @@ Pages = ["shapes.jl"]
 
 ### Cardinality
 
-Enumerated type `Cardinality` is used to constrain the cardinality of a data
-block.  A block of data is called *regular* if it must contain exactly one
-element; *optional* if it may have no elements; and *plural* if it may have
-more than one element.  This gives us four different cardinality constraints.
-
-    display(Cardinality)
-    #=>
-    Enum Cardinality:
-    REG = 0x00
-    OPT = 0x01
-    PLU = 0x02
-    OPT_PLU = 0x03
-    =#
-
-Cardinality values support bitwise operations.
-
-    print(REG|OPT|PLU)          #-> OPT_PLU
-    print(PLU&~PLU)             #-> REG
-
-We can use predicates `isregular()`, `isoptional()`, `isplural()` to check
-cardinality values.
-
-    isregular(REG)              #-> true
-    isregular(OPT)              #-> false
-    isregular(PLU)              #-> false
-    isoptional(OPT)             #-> true
-    isoptional(PLU)             #-> false
-    isplural(PLU)               #-> true
-    isplural(OPT)               #-> false
-
-There is a partial ordering defined on `Cardinality` values.  We can determine
-the greatest and the least cardinality; the least upper bound and the greatest
-lower bound of a collection of `Cardinality` values; and, for two `Cardinality`
-values, determine whether one of the values is smaller than the other.
+`Cardinality` constraints are partially ordered.  In particular, there are the
+greatest and the least cardinalities.
 
     print(bound(Cardinality))   #-> REG
     print(ibound(Cardinality))  #-> OPT_PLU
 
+For a collection of cardinality constraints, we can determine their least upper
+bound and their greatest lower bound.
+
     print(bound(OPT, PLU))      #-> OPT_PLU
     print(ibound(PLU, OPT))     #-> REG
+
+For two `Cardinality` constraints, we can determine whether one is more strict
+than the other.
 
     fits(OPT, PLU)              #-> false
     fits(REG, OPT|PLU)          #-> true
@@ -341,8 +316,8 @@ The structure of composite data is specified with *shape* objects.
     eltype(str_shp)
     #-> String
 
-Two special shape types are used to indicate the value of any shape, and a value
-that cannot exist.
+Two special shape types indicate values with no constraints and with
+inconsistent constraints.
 
     any_shp = AnyShape()
     #-> AnyShape()
@@ -350,8 +325,8 @@ that cannot exist.
     none_shp = NoneShape()
     #-> NoneShape()
 
-`InputShape` and `OutputShape` describe the structure of the query input and
-the query output.
+`InputShape` and `OutputShape` describe the structure of the input and the
+output of a monadic query.
 
 To describe the query input, we specify the shape of the input elements, the
 shapes of the parameters, and whether or not the input is framed.
@@ -381,13 +356,13 @@ output elements.
     #-> OutputMode(OPT | PLU)
 
 It is possible to decorate `InputShape` and `OutputShape` objects to specify
-additional attributes.  Currently, we can specify the *label*.
+additional attributes.  Currently, we can only specify the *label*.
 
     o_shp |> decorate(label=:output)
     #-> OutputShape(:output, Int, OPT | PLU)
 
-RecordShape` specifies the shape of a record value where each field has a
-certain shape and cardinality.
+RecordShape` specifies the shape of a record value where each record field has
+a certain shape and cardinality.
 
     dept_shp = RecordShape(OutputShape(:name, String),
                            OutputShape(:employee, UInt, OPT|PLU))
@@ -436,10 +411,10 @@ data source.
 ### Shape ordering
 
 The same data can satisfy many different shape constraints.  For example, a
-vector `BlockVector([Chicago])` can be said to have, among others, the shape
-`OutputShape(String)`, the shape `OutputShape(String, OPT|PLU)` or the shape
-`AnyShape()`.  We can tell, for any two shapes, if one of them is more specific
-than the other.
+vector `BlockVector(:, [Chicago])` can be said to have, among others, the shape
+`OutputShape(String)`, the shape `OutputShape(AbstractString, OPT|PLU)` or the
+shape `AnyShape()`.  We can tell, for any two shapes, if one of them is more
+specific than the other.
 
     fits(NativeShape(Int), NativeShape(Number))     #-> true
     fits(NativeShape(Int), NativeShape(String))     #-> false
@@ -538,7 +513,7 @@ is more general than each of them.  We can also find their lower bound.
     RecordShape(OutputShape(Int), OutputShape(NoneShape(), OPT))
     =#
 
-For decorated shapes, incompatible labels are replaed with an empty label.
+For decorated shapes, incompatible labels are replaced with an empty label.
 
     bound(OutputShape(:name, String), OutputShape(:name, String))
     #-> OutputShape(:name, String)
@@ -559,9 +534,9 @@ For decorated shapes, incompatible labels are replaed with an empty label.
     #-> OutputShape(:salary, Int)
 
 
-### Query signature
+### Monadic signature
 
-The signature of a query is a pair of an `InputShape` object and an
+The signature of a monadic query is a pair of an `InputShape` object and an
 `OutputShape` object.
 
     sig = Signature(InputShape(UInt),

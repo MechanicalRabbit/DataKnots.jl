@@ -205,7 +205,7 @@ isplural(md::OutputMode) = isplural(md.card)
 """
     OutputShape(::Decoration, ::AbstractShape, ::OutputMode)
 
-The shape of the query output.
+The shape of the output of a monadic query.
 """
 struct OutputShape <: AbstractShape
     dr::Decoration
@@ -330,7 +330,7 @@ isfree(md::InputMode) = md.slots !== nothing && isempty(md.slots) && !md.framed
 """
     InputShape(::Decoration, ::AbstractShape, ::InputMode)
 
-The shape of the query input.
+The shape of the input of a monadic query.
 """
 struct InputShape <: AbstractShape
     dr::Decoration
@@ -397,7 +397,7 @@ isfree(shp::InputShape) = isfree(shp.md)
 """
     NativeShape(::Type)
 
-Regular Julia vector with the elements of the given type.
+Shape of an atomic Julia value.
 """
 
 struct NativeShape <: AbstractShape
@@ -423,7 +423,7 @@ eltype(shp::NativeShape) = shp.ty
 """
     RecordShape(flds::OutputShape...)
 
-Record vector with the given fields.
+Shape of a record with the given fields.
 """
 struct RecordShape <: AbstractShape
     flds::Vector{OutputShape}
@@ -666,7 +666,7 @@ ibound(shp1::RecordShape, shp2::RecordShape) =
 
 
 #
-# Signagure of a query.
+# Signature of a query.
 #
 
 """
