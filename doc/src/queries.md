@@ -236,7 +236,7 @@ It is also easy to create new query combinators.  Let us create a combinator
 `twice`, which applies the given query to the input two times.
 
     twice(q) = Query(twice, q)
-    twice(::Runtime, input, q) = q(q(input))
+    twice(rt::Runtime, input, q) = q(rt, q(rt, input))
 
     q = twice(double())
     q([260004, 185364, 170112])

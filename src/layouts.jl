@@ -124,7 +124,7 @@ function tile_expr(ex::Expr; precedence=0)
         op = string(ex.head)
         ilt = tile_expr(ex.args[1])
         olt = tile_expr(ex.args[2])
-        (ilt * PPrint.literal(" $op ") | ilt * PPrint.literal(" $op") / PPrint.indent(4)) * olt
+        (PPrint.nobreak(ilt) * PPrint.literal(" $op ") | ilt * PPrint.literal(" $op") / PPrint.indent(4)) * olt
     elseif ex.head == :(...) && length(ex.args) == 1
         tile_expr(ex.args[1]) * PPrint.literal("...")
     else

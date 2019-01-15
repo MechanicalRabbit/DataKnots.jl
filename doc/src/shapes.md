@@ -145,11 +145,12 @@ describes the shapes of the query input and output.
                   position = [String, REG],
                   salary = [Int, OPT],
                   rate = [Float64, OPT]),
-                 PLU]) -> [(name = [String, REG],
-                            position = [String, REG],
-                            salary = [Int, OPT],
-                            rate = [Float64, OPT]),
-                           PLU]
+                 PLU]) ->
+        [(name = [String, REG],
+          position = [String, REG],
+          salary = [Int, OPT],
+          rate = [Float64, OPT]),
+         PLU]
     =#
 
 A *path* could be assembled by composing two adjacent field queries.  For
@@ -198,7 +199,8 @@ has a signature assigned to it.
                   position = [String, REG],
                   salary = [Int, OPT],
                   rate = [Float64, OPT]),
-                 PLU]) -> [Float64]
+                 PLU]) ->
+        [Float64]
     =#
 
 
