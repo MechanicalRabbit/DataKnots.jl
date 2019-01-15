@@ -7,6 +7,9 @@ haskey(Pkg.installed(), "NarrativeTest") || Pkg.clone("https://github.com/rbt-la
 Base.show_datatype(io::IO, ::Type{Int}) = print(io, "Int")
 Base.show_datatype(io::IO, ::Type{UInt}) = print(io, "UInt")
 
+# Normalize printing of `Vector{Bool}`.
+Base.show(io::IO, b::Bool) = print(io, get(io, :typeinfo, Any) === Bool ? (b ? "1" : "0") : (b ? "true" : "false"))
+
 using DataKnots
 using NarrativeTest
 

@@ -70,7 +70,7 @@ predicate `>` gives rise to a query `tuple_lift(>)` that transforms a
 
     q = tuple_lift(>)
     q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
-    #-> Bool[true, false, false]
+    #-> Bool[1, 0, 0]
 
 In a similar manner, a function with a vector argument can be lifted by
 `block_lift` to make a query that expects a `BlockVector` input.  For example,
@@ -289,7 +289,7 @@ function of several arguments.
     #-> tuple_lift(>)
 
     q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
-    #-> Bool[true, false, false]
+    #-> Bool[1, 0, 0]
 
 The `record_lift` constructor is used when the input is in the *record* layout
 (a tuple vector with block vector columns); `record_lift(f)` is a shortcut for
@@ -299,13 +299,13 @@ The `record_lift` constructor is used when the input is in the *record* layout
     #-> record_lift(>)
 
     q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-    #-> @VectorTree [Bool] [[true, false, false], [], [true, true, false, false]]
+    #-> @VectorTree [Bool] [[1, 0, 0], [], [1, 1, 0, 0]]
 
 With `record_lift`, the cardinality of the output is the upper bound of the
 column block cardinalities.
 
     q(@VectorTree ([Int, PLU], [Int, REG]) [([260004, 185364, 170112], 200000)])
-    #-> @VectorTree [Bool, PLU] [[true, false, false]]
+    #-> @VectorTree [Bool, PLU] [[1, 0, 0]]
 
 
 ### Fillers
@@ -527,7 +527,7 @@ any `true` values.
     #-> block_any()
 
     q(@VectorTree [Bool] [missing, true, false, [true, false], [false, false], [false, true]])
-    #-> Bool[false, true, false, true, false, true]
+    #-> Bool[0, 1, 0, 1, 0, 1]
 
 
 ### Filtering
