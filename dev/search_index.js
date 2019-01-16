@@ -733,7 +733,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Monadic Signature",
     "title": "Overview",
     "category": "section",
-    "text": "To describe data shapes and monadic signatures, we need the following definitions.using DataKnots:\n    @VectorTree,\n    OPT,\n    PLU,\n    REG,\n    AnyShape,\n    Cardinality,\n    InputMode,\n    InputShape,\n    NativeShape,\n    NoneShape,\n    OutputMode,\n    OutputShape,\n    RecordShape,\n    Signature,\n    TupleVector,\n    adapt_vector,\n    bound,\n    cardinality,\n    chain_of,\n    column,\n    compose,\n    decorate,\n    designate,\n    domain,\n    fits,\n    ibound,\n    idomain,\n    imode,\n    ishape,\n    isoptional,\n    isplural,\n    isregular,\n    lift,\n    mode,\n    shape,\n    signature,\n    slots,\n    tuple_lift,\n    tuple_of,\n    wrap"
+    "text": "To describe data shapes and monadic signatures, we need the following definitions.using DataKnots:\n    @VectorTree,\n    OPT,\n    PLU,\n    REG,\n    AnyShape,\n    Cardinality,\n    InputMode,\n    InputShape,\n    NativeShape,\n    NoneShape,\n    OutputMode,\n    OutputShape,\n    RecordShape,\n    Signature,\n    TupleVector,\n    adapt_vector,\n    bound,\n    cardinality,\n    chain_of,\n    column,\n    compose,\n    decorate,\n    designate,\n    domain,\n    fits,\n    ibound,\n    idomain,\n    imode,\n    ishape,\n    isoptional,\n    isplural,\n    isregular,\n    lift,\n    mode,\n    shape,\n    shapeof,\n    signature,\n    slots,\n    tuple_lift,\n    tuple_of,\n    wrap"
 },
 
 {
@@ -910,6 +910,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Monadic signature",
     "category": "section",
     "text": "The signature of a monadic query is a pair of an InputShape object and an OutputShape object.sig = Signature(InputShape(UInt),\n                OutputShape(RecordShape(OutputShape(:name, String),\n                                        OutputShape(:employee, UInt, OPT|PLU))))\n#-> UInt -> [(name = [String, REG], employee = [UInt]), REG]Different components of the signature can be easily extracted.shape(sig)\n#=>\nOutputShape(RecordShape(OutputShape(:name, String),\n                        OutputShape(:employee, UInt, OPT | PLU)))\n=#\n\nishape(sig)\n#-> InputShape(UInt)\n\ndomain(sig)\n#=>\nRecordShape(OutputShape(:name, String),\n            OutputShape(:employee, UInt, OPT | PLU))\n=#\n\nmode(sig)\n#-> OutputMode()\n\nidomain(sig)\n#-> NativeShape(UInt)\n\nimode(sig)\n#-> InputMode()"
+},
+
+{
+    "location": "shapes/#Determining-the-vector-shape-1",
+    "page": "Monadic Signature",
+    "title": "Determining the vector shape",
+    "category": "section",
+    "text": "Function shapeof() determines the shape of a given vector.shapeof([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> NativeShape(String)In particular, it detects the record layout.shapeof(\n    @VectorTree ([String, REG],\n                 [(name = [String, REG],\n                   position = [String, REG],\n                   salary = [Int, OPT],\n                   rate = [Float64, OPT]), PLU]) [])\n#=>\nRecordShape(OutputShape(String),\n            OutputShape(RecordShape(OutputShape(:name, String),\n                                    OutputShape(:position, String),\n                                    OutputShape(:salary, Int, OPT),\n                                    OutputShape(:rate, Float64, OPT)),\n                        PLU))\n=#TupleVector and BlockVector objects that are not in the record layout are treated as regular vectors.shapeof(@VectorTree (String, [String]) [])\n#-> NativeShape(Tuple{String,Array{String,1}})\n\nshapeof(@VectorTree (name = String, employee = [String]) [])\n#-> NativeShape(NamedTuple{(:name, :employee),Tuple{String,Array{String,1}}})"
 },
 
 {
