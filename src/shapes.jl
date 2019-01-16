@@ -731,3 +731,28 @@ isregular(sig::Signature) = isregular(sig.shp)
 isoptional(sig::Signature) = isoptional(sig.shp)
 
 isplural(sig::Signature) = isplural(sig.shp)
+
+
+#
+# Guessing the shape of a vector.
+#
+
+shapeof(v::AbstractVector) =
+    NativeShape(eltype(v))
+
+function shapeof(tv::TupleVector)
+    cols = columns(tv)
+    if !all(col -> col isa BlockVector, cols)
+        return NativeShape(eltype(tv))
+    end
+    lbls = labels(tv)
+    fields = OutputShape[]
+    for (j, col) in enumerate(cols)
+        lbl = !isempty(lbls) ? lbls[j] : nothing
+        dom = shapeof(elements(col))
+        card = cardinality(col)
+        shp = OutputShape(Decoration(label=lbl), dom, card)
+        push!(fields, shp)
+    end
+    return RecordShape(fields)
+end

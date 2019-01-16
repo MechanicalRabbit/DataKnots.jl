@@ -20,7 +20,7 @@ convert(::Type{DataKnot}, knot::DataKnot) = knot
 
 convert(::Type{DataKnot}, elts::AbstractVector) =
     DataKnot(
-        OutputShape(guessshape(elts),
+        OutputShape(shapeof(elts),
                     (length(elts) < 1 ? OPT : REG) | (length(elts) > 1 ? PLU : REG)),
         elts)
 
@@ -48,28 +48,6 @@ domain(knot::DataKnot) = domain(knot.shp)
 mode(knot::DataKnot) = mode(knot.shp)
 
 cardinality(knot::DataKnot) = cardinality(knot.shp)
-
-# Guessing the shape of a vector.
-
-guessshape(v::AbstractVector) =
-    NativeShape(eltype(v))
-
-function guessshape(tv::TupleVector)
-    cols = columns(tv)
-    if !all(col -> col isa BlockVector, cols)
-        return AnyShape()
-    end
-    lbls = labels(tv)
-    fields = OutputShape[]
-    for (j, col) in enumerate(cols)
-        lbl = !isempty(lbls) ? lbls[j] : nothing
-        dom = guessshape(elements(col))
-        card = cardinality(col)
-        shp = OutputShape(Decoration(label=lbl), dom, card)
-        push!(fields, shp)
-    end
-    return RecordShape(fields)
-end
 
 # Rendering.
 
@@ -180,7 +158,7 @@ function data_parts(::NativeShape, vals::AbstractVector{<:NamedTuple})
     cols = AbstractVector[BlockVector(:, collect(coltys[j], map(t -> t[j], vals)))
                           for j = eachindex(coltys)]
     vals′ = TupleVector(lbls, length(vals), cols)
-    data_parts(guessshape(vals′), vals′)
+    data_parts(shapeof(vals′), vals′)
 end
 
 struct TableCell

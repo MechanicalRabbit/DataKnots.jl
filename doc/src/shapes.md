@@ -42,6 +42,7 @@ definitions.
         lift,
         mode,
         shape,
+        shapeof,
         signature,
         slots,
         tuple_lift,
@@ -572,3 +573,36 @@ Different components of the signature can be easily extracted.
     imode(sig)
     #-> InputMode()
 
+
+### Determining the vector shape
+
+Function `shapeof()` determines the shape of a given vector.
+
+    shapeof(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> NativeShape(String)
+
+In particular, it detects the record layout.
+
+    shapeof(
+        @VectorTree ([String, REG],
+                     [(name = [String, REG],
+                       position = [String, REG],
+                       salary = [Int, OPT],
+                       rate = [Float64, OPT]), PLU]) [])
+    #=>
+    RecordShape(OutputShape(String),
+                OutputShape(RecordShape(OutputShape(:name, String),
+                                        OutputShape(:position, String),
+                                        OutputShape(:salary, Int, OPT),
+                                        OutputShape(:rate, Float64, OPT)),
+                            PLU))
+    =#
+
+`TupleVector` and `BlockVector` objects that are not in the record layout are
+treated as regular vectors.
+
+    shapeof(@VectorTree (String, [String]) [])
+    #-> NativeShape(Tuple{String,Array{String,1}})
+
+    shapeof(@VectorTree (name = String, employee = [String]) [])
+    #-> NativeShape(NamedTuple{(:name, :employee),Tuple{String,Array{String,1}}})
