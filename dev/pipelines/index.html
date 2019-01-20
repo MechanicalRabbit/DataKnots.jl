@@ -43,7 +43,7 @@ db = DataKnot(
 2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
 =#
 
-run(db &gt;&gt; Field(:name))
+run(db &gt;&gt; Lookup(:name))
 #=&gt;
   │ name   │
 ──┼────────┤
@@ -59,7 +59,7 @@ run(db &gt;&gt; It.name)
 2 │ FIRE   │
 =#
 
-run(db &gt;&gt; Field(:employee) &gt;&gt; Field(:salary))
+run(db &gt;&gt; Lookup(:employee) &gt;&gt; Lookup(:salary))
 #=&gt;
   │ salary │
 ──┼────────┤
