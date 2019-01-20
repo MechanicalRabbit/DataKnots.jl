@@ -7,16 +7,27 @@ import Base:
     get,
     show
 
-# Definition.
 
-struct DataKnot
+#
+# Definition.
+#
+
+abstract type AbstractPipeline end
+
+"""
+    DataKnot(::OutputShape, ::AbstractVector)
+
+Encapsulates data in column-oriented format.
+"""
+struct DataKnot <: AbstractPipeline
     shp::OutputShape
     elts::AbstractVector
 end
 
-DataKnot(elts) = convert(DataKnot, elts)
+DataKnot(elts) =
+    convert(DataKnot, elts)
 
-convert(::Type{DataKnot}, knot::DataKnot) = knot
+convert(::Type{DataKnot}, db::DataKnot) = db
 
 convert(::Type{DataKnot}, elts::AbstractVector) =
     DataKnot(
@@ -30,37 +41,43 @@ convert(::Type{DataKnot}, elt::T) where {T} =
 convert(::Type{DataKnot}, ::Missing) =
     DataKnot(OutputShape(NoneShape(), OPT), Union{}[])
 
-elements(knot::DataKnot) = knot.elts
+convert(::Type{DataKnot}, ref::Base.RefValue{T}) where {T} =
+    DataKnot(OutputShape(NativeShape(T)), T[ref.x])
 
-syntax(knot::DataKnot) =
-    Symbol("DataKnot( … )")
-
-get(knot::DataKnot) =
-    let card = cardinality(knot.shp)
-        card == REG || card == OPT && !isempty(knot.elts) ? knot.elts[1] :
-        card == OPT ? missing : knot.elts
+get(db::DataKnot) =
+    let card = cardinality(db.shp)
+        card == REG || card == OPT && !isempty(db.elts) ? db.elts[1] :
+        card == OPT ? missing : db.elts
     end
 
-shape(knot::DataKnot) = knot.shp
+shape(db::DataKnot) = db.shp
 
-domain(knot::DataKnot) = domain(knot.shp)
+elements(db::DataKnot) = db.elts
 
-mode(knot::DataKnot) = mode(knot.shp)
+domain(db::DataKnot) = domain(db.shp)
 
-cardinality(knot::DataKnot) = cardinality(knot.shp)
+mode(db::DataKnot) = mode(db.shp)
 
+cardinality(db::DataKnot) = cardinality(db.shp)
+
+syntax(db::DataKnot) =
+    Symbol("DataKnot( … )")
+
+
+#
 # Rendering.
+#
 
-function show(io::IO, knot::DataKnot)
+function show(io::IO, db::DataKnot)
     maxy, maxx = displaysize(io)
-    lines = render_dataknot(maxx, maxy, knot)
+    lines = render_dataknot(maxx, maxy, db)
     for line in lines
         println(io, line)
     end
 end
 
-function render_dataknot(maxx::Int, maxy::Int, knot::DataKnot)
-    d = table_data(knot, maxy)
+function render_dataknot(maxx::Int, maxy::Int, db::DataKnot)
+    d = table_data(db, maxy)
     l = table_layout(d, maxx)
     c = table_draw(l, maxx)
     return lines!(c)
@@ -77,12 +94,12 @@ end
 TableData(head, body, doms) =
     TableData(head, body, doms, 1:0, 0)
 
-function table_data(knot::DataKnot, maxy::Int)
-    elts = elements(knot)
-    dom = domain(knot)
-    card = cardinality(knot)
+function table_data(db::DataKnot, maxy::Int)
+    elts = elements(db)
+    dom = domain(db)
+    card = cardinality(db)
     title =
-        let lbl = label(shape(knot))
+        let lbl = label(shape(db))
             if lbl === nothing
                 lbl = :DataKnot
             end

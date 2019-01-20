@@ -44,7 +44,7 @@
     2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
     =#
 
-    run(db >> Field(:name))
+    run(db >> Lookup(:name))
     #=>
       │ name   │
     ──┼────────┤
@@ -60,7 +60,7 @@
     2 │ FIRE   │
     =#
 
-    run(db >> Field(:employee) >> Field(:salary))
+    run(db >> Lookup(:employee) >> Lookup(:salary))
     #=>
       │ salary │
     ──┼────────┤

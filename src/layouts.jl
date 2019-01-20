@@ -10,6 +10,9 @@ print_expr(io::IO, ex) =
 syntax(obj) =
     obj
 
+syntax(ref::Base.RefValue) =
+    syntax(ref.x)
+
 syntax(s::Symbol) =
     QuoteNode(s)
 

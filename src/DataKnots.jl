@@ -10,7 +10,6 @@ export
     DataKnot,
     Drop,
     Each,
-    Field,
     Filter,
     Given,
     It,
@@ -19,9 +18,9 @@ export
     Lookup,
     Max,
     Min,
-    Recall,
     Record,
     Sum,
+    Tag,
     Take,
     Then
 
