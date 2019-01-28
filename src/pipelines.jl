@@ -86,14 +86,13 @@ const It = Navigation(())
 Runs the pipeline with the given parameters.
 """
 run(F::AbstractPipeline; params...) =
-    run(DataKnot(nothing), F; params...)
+    execute(F, sort(collect(Pair{Symbol,DataKnot}, params), by=first))
 
 run(F::Pair{Symbol,<:AbstractPipeline}; params...) =
     run(Lift(F); params...)
 
 run(db::DataKnot, F; params...) =
-    execute(db >> Each(F),
-            sort(collect(Pair{Symbol,DataKnot}, params), by=first))
+    run(db >> Each(F); params...)
 
 function execute(F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     q = prepare(F, params)
@@ -181,6 +180,9 @@ stub(dr::Decoration, shp::AbstractShape) =
 stub() =
     stub(Decoration(), NativeShape(Nothing))
 
+stub(db::DataKnot) =
+    stub(decoration(db), domain(db))
+
 stub(q::Query) =
     stub(decoration(q), domain(q))
 
@@ -198,9 +200,9 @@ function compose(q1::Query, q2::Query)
     md = bound(mode(q1), mode(q2))
     chain_of(
         duplicate_input(imd),
-        with_input(imd, chain_of(downgrade_input(imd, imode(q1)), q1)),
+        within_input(imd, chain_of(narrow_input(imd, imode(q1)), q1)),
         distribute(imd, mode(q1)),
-        with_output(mode(q1), chain_of(downgrade_input(imd, imode(q2)), q2)),
+        within_output(mode(q1), chain_of(narrow_input(imd, imode(q2)), q2)),
         flatten_output(mode(q1), mode(q2)),
     ) |> designate(InputShape(idecoration(q1), idomain(q1), imd),
                    OutputShape(decoration(q2), domain(q2), md))
@@ -213,7 +215,7 @@ duplicate_input(md::InputMode) =
         tuple_of(pass(), column(2))
     end
 
-with_input(md::InputMode, q::Query) =
+within_input(md::InputMode, q::Query) =
     if isfree(md)
         q
     else
@@ -227,10 +229,10 @@ distribute(imd::InputMode, md::OutputMode) =
         distribute(1)
     end
 
-with_output(md::OutputMode, q::Query) =
+within_output(md::OutputMode, q::Query) =
     with_elements(q)
 
-function downgrade_input(md1::InputMode, md2::InputMode)
+function narrow_input(md1::InputMode, md2::InputMode)
     if isfree(md1) && isfree(md2) || slots(md1) == slots(md2) && isframed(md1) == isframed(md2)
         pass()
     elseif isfree(md2)
@@ -253,6 +255,9 @@ function downgrade_input(md1::InputMode, md2::InputMode)
                 tuple_of([column(i) for i in idxs]...)))
     end
 end
+
+narrow_input(md::InputMode) =
+    narrow_input(md, InputMode())
 
 flatten_output(md1::OutputMode, md2::OutputMode) =
     flatten()
@@ -278,17 +283,15 @@ end
 # Record combinator.
 #
 
-record(xs::Query...) =
-    record(collect(Query, xs))
-
-function record(xs::Vector{Query})
+function monadic_record(q::Query, xs::Vector{Query})
     ishp = ibound(ishape.(xs))
-    shp = OutputShape(RecordShape(shape.(xs)))
+    shp = OutputShape(decoration(q), RecordShape(shape.(xs)))
     lbls = Symbol[let lbl = label(shape(x)); lbl !== nothing ? lbl : Symbol("#$i") end for (i, x) in enumerate(xs)]
-    chain_of(
-        tuple_of(lbls, [chain_of(downgrade_input(mode(ishp), imode(x)), x) for x in xs]),
+    r = chain_of(
+        tuple_of(lbls, [chain_of(narrow_input(mode(ishp), imode(x)), x) for x in xs]),
         wrap(),
     ) |> designate(ishp, shp)
+    compose(q, r)
 end
 
 """
@@ -301,7 +304,7 @@ Record(Xs...) =
 
 function Record(env::Environment, q::Query, Xs...)
     xs = apply.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
-    compose(q, record(xs))
+    monadic_record(q, xs)
 end
 
 
@@ -330,7 +333,7 @@ function monadic_lift(f, xs::Vector{Query})
             chain_of(xs[1], lift(f), tail)
         else
             chain_of(
-                tuple_of(Symbol[], [chain_of(downgrade_input(mode(ishp), imode(x)), x) for x in xs]),
+                tuple_of(Symbol[], [chain_of(narrow_input(mode(ishp), imode(x)), x) for x in xs]),
                 tuple_lift(f),
                 tail)
         end
@@ -572,7 +575,7 @@ function monadic_given(p::Query, q::Query)
     end
     for slot in slots(q)
         if slot.first == name
-            push!(cs, chain_of(downgrade_input(imd, imode(p)), p))
+            push!(cs, chain_of(narrow_input(imd, imode(p)), p))
         else
             idx = searchsortedfirst(slots(imd), slot, by=first)
             push!(cs, chain_of(column(2), column(idx + isframed(imd))))
@@ -580,7 +583,7 @@ function monadic_given(p::Query, q::Query)
     end
     chain_of(
         tuple_of(
-            downgrade_input(imd, InputMode()),
+            narrow_input(imd),
             tuple_of(cs...)),
         q,
     ) |> designate(InputShape(ibound(idomain(q), idomain(p)), imd), shape(q))
@@ -742,7 +745,7 @@ function monadic_filter(q::Query, p::Query)
     fits(domain(p), NativeShape(Bool)) || error("expected a predicate")
     r = chain_of(
         tuple_of(
-            downgrade_input(imode(p), InputMode()),
+            narrow_input(imode(p)),
             chain_of(p, block_any())),
         sieve(),
     ) |> designate(ishape(p), OutputShape(decoration(q), domain(q), OPT))
@@ -778,8 +781,8 @@ function monadic_take(q::Query, n::Query, rev::Bool)
     ishp = ibound(ishape(q), ishape(n))
     chain_of(
         tuple_of(
-            chain_of(downgrade_input(mode(ishp), imode(q)), q),
-            chain_of(downgrade_input(mode(ishp), imode(n)),
+            chain_of(narrow_input(mode(ishp), imode(q)), q),
+            chain_of(narrow_input(mode(ishp), imode(n)),
                      n,
                      fits(OPT, cardinality(n)) ?
                         block_lift(first, missing) :

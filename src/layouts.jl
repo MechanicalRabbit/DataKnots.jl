@@ -105,7 +105,7 @@ function tile_expr(ex::Expr; precedence=0)
             key_lt, val_lt = arg_lts
             PPrint.pair_layout(key_lt, val_lt)
         elseif precedence′ > 0
-            sep = (" $func ", "$func ", "")
+            sep = (" $func ", "", " $func")
             par =
                 if precedence′ < precedence
                     ("(", ")")

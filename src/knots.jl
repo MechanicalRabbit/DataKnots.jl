@@ -54,6 +54,8 @@ shape(db::DataKnot) = db.shp
 
 elements(db::DataKnot) = db.elts
 
+decoration(db::DataKnot) = decoration(db.shp)
+
 domain(db::DataKnot) = domain(db.shp)
 
 mode(db::DataKnot) = mode(db.shp)
