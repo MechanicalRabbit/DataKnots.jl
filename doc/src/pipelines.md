@@ -64,8 +64,8 @@ employee records.
     =#
 
 To demonstrate how to query this dataset, let us find all employees with the
-salary greater than $100k.  We answer this question by constructing and running
-an appropriate query pipeline.
+salary greater than \$100k.  We answer this question by constructing and
+running an appropriate query pipeline.
 
 This pipeline can be constructed incrementally.  We start with obtaining
 the collection of all employees.
@@ -94,7 +94,7 @@ We *run* the pipeline to obtain the actual data.
     =#
 
 Now we need to find the records that satisfy the condition that the salary is
-greater than $100k.  This condition is evaluated by the following pipeline
+greater than \$100k.  This condition is evaluated by the following pipeline
 component.
 
     Condition = Lookup(:salary) .> 100000
