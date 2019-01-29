@@ -938,18 +938,210 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "pipelines/#",
-    "page": "Query Algebra",
-    "title": "Query Algebra",
+    "page": "Pipeline Algebra",
+    "title": "Pipeline Algebra",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "pipelines/#Query-Algebra-1",
-    "page": "Query Algebra",
-    "title": "Query Algebra",
+    "location": "pipelines/#Pipeline-Algebra-1",
+    "page": "Pipeline Algebra",
+    "title": "Pipeline Algebra",
     "category": "section",
-    "text": "using DataKnots\n\ndb = DataKnot(3)\n\nF = (It .+ 4) >> (It .* 6)\n#-> (It .+ 4) >> It .* 6\n\nrun(db >> F)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#\n\nusing DataKnots: prepare\n\nprepare(DataKnot(3) >> F)\n#=>\nchain_of(block_filler([3], REG),\n         with_elements(chain_of(tuple_of(wrap(), block_filler([4], REG)),\n                                tuple_lift(+),\n                                wrap())),\n         flatten(),\n         with_elements(chain_of(tuple_of(wrap(), block_filler([6], REG)),\n                                tuple_lift(*),\n                                wrap())),\n         flatten())\n=#\n\nusing DataKnots: @VectorTree\n\ndb = DataKnot(\n    @VectorTree (name = [String, REG], employee = [(name = [String, REG], salary = [Int, REG])]) [\n        \"POLICE\"    [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]\n        \"FIRE\"      [\"JOSE S\" 202728; \"CHARLES S\" 197736]\n    ])\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │\n=#\n\nrun(db >> Lookup(:name))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nrun(db >> It.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#\n\nrun(db >> Lookup(:employee) >> Lookup(:salary))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nrun(db >> It.employee.salary)\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n4 │ 202728 │\n5 │ 197736 │\n=#\n\nrun(db >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        3 │\n2 │        2 │\n=#\n\nrun(db >> Count)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#\n\nrun(db >> Count(It.employee) >> Max)\n#=>\n│ DataKnot │\n├──────────┤\n│        3 │\n=#\n\nrun(db >> It.employee >> Filter(It.salary .> 200000))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(db >> (Count(It.employee) .> 2))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │     true │\n2 │    false │\n=#\n\nrun(db >> Filter(Count(It.employee) .> 2))\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n=#\n\nrun(db >> Filter(Count(It.employee) .> 2) >> Count)\n#=>\n│ DataKnot │\n├──────────┤\n│        1 │\n=#\n\nrun(db >> Record(It.name, :size => Count(It.employee)))\n#=>\n  │ DataKnot     │\n  │ name    size │\n──┼──────────────┤\n1 │ POLICE     3 │\n2 │ FIRE       2 │\n=#\n\nrun(db >> It.employee >> Filter(It.salary .> It.S),\n      S=200000)\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(\n    db >> Given(:S => Max(It.employee.salary),\n                It.employee >> Filter(It.salary .== It.S)))\n#=>\n  │ employee        │\n  │ name     salary │\n──┼─────────────────┤\n1 │ GARRY M  260004 │\n2 │ JOSE S   202728 │\n=#\n\nrun(db >> It.employee.salary >> Take(3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n3 │ 170112 │\n=#\n\nrun(db >> It.employee.salary >> Drop(3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 202728 │\n2 │ 197736 │\n=#\n\nrun(db >> It.employee.salary >> Take(-3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n=#\n\nrun(db >> It.employee.salary >> Drop(-3))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 170112 │\n2 │ 202728 │\n3 │ 197736 │\n=#\n\nrun(db >> It.employee.salary >> Take(Count(db >> It.employee) .÷ 2))\n#=>\n  │ salary │\n──┼────────┤\n1 │ 260004 │\n2 │ 185364 │\n=#"
+    "text": ""
+},
+
+{
+    "location": "pipelines/#Overview-1",
+    "page": "Pipeline Algebra",
+    "title": "Overview",
+    "category": "section",
+    "text": "In this section, we describe the usage and semantics of query pipelines.  We will need the following definitions.using DataKnots:\n    @VectorTree,\n    OPT,\n    REG,\n    Count,\n    DataKnot,\n    Drop,\n    Environment,\n    Filter,\n    Given,\n    It,\n    Lift,\n    Lookup,\n    Max,\n    Min,\n    Record,\n    Take,\n    apply,\n    elements,\n    optimize,\n    stub"
+},
+
+{
+    "location": "pipelines/#Building-and-running-pipelines-1",
+    "page": "Pipeline Algebra",
+    "title": "Building and running pipelines",
+    "category": "section",
+    "text": "In DataKnots, we query data by assembling and running query pipelines.For example, consider the following dataset of departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.db = DataKnot(\n    @VectorTree (department = [(name = [String, REG],\n                                employee = [(name = [String, REG],\n                                             position = [String, REG],\n                                             salary = [Int, OPT],\n                                             rate = [Float64, OPT])])],) [\n        (department = [\n            (name = \"POLICE\",\n             employee = [(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing),\n                         (name = \"NANCY A\", position = \"POLICE OFFICER\", salary = 80016, rate = missing)]),\n            (name = \"FIRE\",\n             employee = [(name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing),\n                         (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", salary = 95484, rate = missing)]),\n            (name = \"OEMC\",\n             employee = [(name = \"LAKENYA A\", position = \"CROSSING GUARD\", salary = missing, rate = 17.68),\n                         (name = \"DORIS A\", position = \"CROSSING GUARD\", salary = missing, rate = 19.38)])],)\n    ]\n)\n#=>\n│ DataKnot                                                                     …\n│ department                                                                   …\n├──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…\n=#To demonstrate how to query this dataset, let us find all employees with the salary greater than $100k.  We answer this question by constructing and running an appropriate query pipeline.This pipeline can be constructed incrementally.  We start with obtaining the collection of all employees.P = Lookup(:department) >> Lookup(:employee)\n#-> Lookup(:department) >> Lookup(:employee)The pipeline P traverses the dataset through attributes department and employee.  It is assembled from two primitive pipelines Lookup(:department) and Lookup(:employee) connected using the pipeline composition combinator >>.We run the pipeline to obtain the actual data.run(db, P)\n#=>\n  │ employee                                    │\n  │ name       position           salary  rate  │\n──┼─────────────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT           101442        │\n2 │ NANCY A    POLICE OFFICER      80016        │\n3 │ JAMES A    FIRE ENGINEER-EMT  103350        │\n4 │ DANIEL A   FIRE FIGHTER-EMT    95484        │\n5 │ LAKENYA A  CROSSING GUARD             17.68 │\n6 │ DORIS A    CROSSING GUARD             19.38 │\n=#Now we need to find the records that satisfy the condition that the salary is greater than $100k.  This condition is evaluated by the following pipeline component.Condition = Lookup(:salary) .> 100000\n#-> Lookup(:salary) .> 100000In this expression, broadcasting syntax is used to lift the predicate function > to a pipeline combinator.To show how this condition is evaluated, lets us display its result together with the corresponding salary.  For this purpose, we can use the Record combinator.run(db, P >> Record(Lookup(:salary), :condition => Condition))\n#=>\n  │ employee          │\n  │ salary  condition │\n──┼───────────────────┤\n1 │ 101442       true │\n2 │  80016      false │\n3 │ 103350       true │\n4 │  95484      false │\n5 │                   │\n6 │                   │\n=#To actually filter data by this condition, we can use the Filter combinator. Specifically, we need to augment the pipeline P with a pipeline component Filter(Condition).P = P >> Filter(Condition)\n#-> Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)Running this pipeline gives us the answer to the original question.run(db, P)\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#"
+},
+
+{
+    "location": "pipelines/#Principal-queries-1",
+    "page": "Pipeline Algebra",
+    "title": "Principal queries",
+    "category": "section",
+    "text": "In DataKnots, running a pipeline is a two-stage process.  On the first stage, the pipeline is used to build the principal query.  On the second stage, the principal query is used to transform the input data to the output data.In general, a pipeline is a transformation of monadic queries.  That is, we can apply a pipeline to a monadic query and get a new monadic query as the result. The principal query of a pipeline is obtained when we apply the pipeline to a trivial monadic query.To demonstrate how the principal query is constructed, let us use the pipeline P from the previous section.P\n#-> Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)The pipeline P is constructed using a composition combinator.  A composition transforms a query by sequentially applying its components.  Therefore, to find the principal query of P, we need to start with a trivial query and sequentially tranfrorm it with the pipelines Lookup(:department), Lookup(:employee) and Filter(Condition).The trivial query is a monadic identity on the input dataset.q0 = stub(db)\n#-> wrap()To apply a pipeline to a query, we need to create application environment. Then we use the function apply().env = Environment()\n\nq1 = apply(Lookup(:department), env, q0)\n#-> chain_of(wrap(), with_elements(column(:department)), flatten())Here, the query q1 is a monadic composition of q0 with column(:department).  Since q0 is a monadic identity, this query is actually equivalent to column(:department).In general, Lookup(name) maps a query to its monadic composition with column(name).  For example, when we apply Lookup(:employee) to q1, we get compose(q1, column(:employee)).q2 = apply(Lookup(:employee), env, q1)\n#=>\nchain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),\n         with_elements(column(:employee)),\n         flatten())\n=#We conclude assembling the principal query of P by applying Filter(Condition) to q2.  Filter acts on the input query as follows. First, it finds the principal query of the condition pipeline.  For that, we need a trivial monadic query on the output of q2.qc0 = stub(q2)\n#-> wrap()Passing qc0 through Condition gives us a query that generates the result of the condition.qc1 = apply(Condition, env, qc0)\n#=>\nchain_of(wrap(),\n         with_elements(chain_of(tuple_of(\n                                    chain_of(wrap(),\n                                             with_elements(column(:salary)),\n                                             flatten()),\n                                    chain_of(wrap(),\n                                             with_elements(\n                                                 block_filler([100000], REG)),\n                                             flatten())),\n                                tuple_lift(>),\n                                adapt_missing())),\n         flatten())\n=#Filter(Condition) then combines the outputs of q2 and qc1 using sieve().q3 = apply(Filter(Condition), env, q2)\n#=>\nchain_of(\n    chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),\n             with_elements(column(:employee)),\n             flatten()),\n    with_elements(\n        chain_of(\n            tuple_of(\n                pass(),\n                chain_of(\n                    chain_of(\n                        wrap(),\n                        with_elements(\n                            chain_of(\n                                tuple_of(\n                                    chain_of(wrap(),\n                                             with_elements(column(:salary)),\n                                             flatten()),\n                                    chain_of(wrap(),\n                                             with_elements(\n                                                 block_filler([100000], REG)),\n                                             flatten())),\n                                tuple_lift(>),\n                                adapt_missing())),\n                        flatten()),\n                    block_any())),\n            sieve())),\n    flatten())\n=#The resulting query could be compacted by simplifying the query expression.q = optimize(q3)\n#=>\nchain_of(column(:department),\n         with_elements(column(:employee)),\n         flatten(),\n         with_elements(\n             chain_of(tuple_of(pass(),\n                               chain_of(tuple_of(column(:salary),\n                                                 block_filler([100000], REG)),\n                                        tuple_lift(>),\n                                        adapt_missing(),\n                                        block_any())),\n                      sieve())),\n         flatten())\n=#Applying the principal query to the input data gives us the output of the pipeline.input = elements(db)\noutput = q(input)\n\ndisplay(elements(output))\n#=>\nTupleVector of 2 × (name = [String, REG], position = [String, REG], salary = [Int, OPT], rate = [Float64, OPT]):\n (name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing)\n (name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing)\n=#"
+},
+
+{
+    "location": "pipelines/#DataKnots.Count-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Count",
+    "category": "method",
+    "text": "Count(X)\nX >> Count\n\nCounts the number of elements produced by X.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Drop-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Drop",
+    "category": "method",
+    "text": "Drop(N)\n\nDrops the first N elements.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Each-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Each",
+    "category": "method",
+    "text": "Each(X)\n\nMakes X process its input elementwise.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Filter-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Filter",
+    "category": "method",
+    "text": "Filter(X)\n\nFilters the input by condition.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Given-Tuple{Any,Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Given",
+    "category": "method",
+    "text": "Given(P, X)\n\nSpecifies the parameter.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Label-Tuple{Symbol}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Label",
+    "category": "method",
+    "text": "Label(lbl::Symbol)\n\nAssigns a label.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Lift-Tuple{Any,Tuple}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Lift",
+    "category": "method",
+    "text": "Lift(f, Xs)\n\nConverts a Julia function to a pipeline combinator.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Lift-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Lift",
+    "category": "method",
+    "text": "Lift(val)\n\nConverts a Julia value to a pipeline primitive.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Lookup-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Lookup",
+    "category": "method",
+    "text": "Lookup(name)\n\nFinds an attribute or a parameter.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Max-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Max",
+    "category": "method",
+    "text": "Max(X)\nX >> Max\n\nFinds the maximum.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Min-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Min",
+    "category": "method",
+    "text": "Min(X)\nX >> Min\n\nFinds the minimum.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Record-Tuple",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Record",
+    "category": "method",
+    "text": "Record(Xs...)\n\nCreates a pipeline component for building a record.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Sum-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Sum",
+    "category": "method",
+    "text": "Sum(X)\nX >> Sum\n\nSums the elements produced by X.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Tag-Tuple{Symbol,Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Tag",
+    "category": "method",
+    "text": "Tag(name::Symbol, X)\n\nAssigns a name to a pipeline.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Take-Tuple{Any}",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Take",
+    "category": "method",
+    "text": "Take(N)\n\nTakes the first N elements.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Environment",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Environment",
+    "category": "type",
+    "text": "Environment()\n\nPipeline execution state.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Navigation",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Navigation",
+    "category": "type",
+    "text": "It\n\nIdentity pipeline with respect to pipeline composition.\n\nIt.a.b.c\n\nEquivalent to Lookup(:a) >> Lookup(:b) >> Lookup(:c).\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#DataKnots.Pipeline",
+    "page": "Pipeline Algebra",
+    "title": "DataKnots.Pipeline",
+    "category": "type",
+    "text": "Pipeline(op, args...)\n\nA pipeline is a transformation of monadic queries.\n\nParameter op is a function that performs the transformation; args are extra arguments passed to the function.\n\nThe pipeline transforms an input monadic query q by invoking op with the following arguments:\n\nop(env::Environment, q::Query, args...)\n\nThe result of op must again be a monadic query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#Base.run-Tuple{DataKnots.AbstractPipeline}",
+    "page": "Pipeline Algebra",
+    "title": "Base.run",
+    "category": "method",
+    "text": "run(F::AbstractPipeline; params...)\n\nRuns the pipeline with the given parameters.\n\n\n\n\n\n"
+},
+
+{
+    "location": "pipelines/#API-Reference-1",
+    "page": "Pipeline Algebra",
+    "title": "API Reference",
+    "category": "section",
+    "text": "Modules = [DataKnots]\nPages = [\"pipelines.jl\"]"
+},
+
+{
+    "location": "pipelines/#Test-Suite-1",
+    "page": "Pipeline Algebra",
+    "title": "Test Suite",
+    "category": "section",
+    "text": ""
 },
 
 {

@@ -1,208 +1,157 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../usage/">Usage Guide</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Query Algebra</a><ul class="internal"></ul></li></ul></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/pipelines.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><pre><code class="language-julia">using DataKnots
-
-db = DataKnot(3)
-
-F = (It .+ 4) &gt;&gt; (It .* 6)
-#-&gt; (It .+ 4) &gt;&gt; It .* 6
-
-run(db &gt;&gt; F)
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Pipeline Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../usage/">Usage Guide</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Pipeline Algebra</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li></ul></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Pipeline Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/pipelines.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Pipeline Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Pipeline-Algebra-1" href="#Pipeline-Algebra-1">Pipeline Algebra</a></h1><h2><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h2><p>In this section, we describe the usage and semantics of query pipelines.  We will need the following definitions.</p><pre><code class="language-julia">using DataKnots:
+    @VectorTree,
+    OPT,
+    REG,
+    Count,
+    DataKnot,
+    Drop,
+    Environment,
+    Filter,
+    Given,
+    It,
+    Lift,
+    Lookup,
+    Max,
+    Min,
+    Record,
+    Take,
+    apply,
+    elements,
+    optimize,
+    stub</code></pre><h3><a class="nav-anchor" id="Building-and-running-pipelines-1" href="#Building-and-running-pipelines-1">Building and running pipelines</a></h3><p>In DataKnots, we query data by assembling and running query <em>pipelines</em>.</p><p>For example, consider the following dataset of departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.</p><pre><code class="language-julia">db = DataKnot(
+    @VectorTree (department = [(name = [String, REG],
+                                employee = [(name = [String, REG],
+                                             position = [String, REG],
+                                             salary = [Int, OPT],
+                                             rate = [Float64, OPT])])],) [
+        (department = [
+            (name = &quot;POLICE&quot;,
+             employee = [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442, rate = missing),
+                         (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016, rate = missing)]),
+            (name = &quot;FIRE&quot;,
+             employee = [(name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350, rate = missing),
+                         (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484, rate = missing)]),
+            (name = &quot;OEMC&quot;,
+             employee = [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68),
+                         (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)])],)
+    ]
+)
 #=&gt;
-│ DataKnot │
-├──────────┤
-│       42 │
-=#
-
-using DataKnots: prepare
-
-prepare(DataKnot(3) &gt;&gt; F)
+│ DataKnot                                                                     …
+│ department                                                                   …
+├──────────────────────────────────────────────────────────────────────────────…
+│ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…
+=#</code></pre><p>To demonstrate how to query this dataset, let us find all employees with the salary greater than $100k.  We answer this question by constructing and running an appropriate query pipeline.</p><p>This pipeline can be constructed incrementally.  We start with obtaining the collection of all employees.</p><pre><code class="language-julia">P = Lookup(:department) &gt;&gt; Lookup(:employee)
+#-&gt; Lookup(:department) &gt;&gt; Lookup(:employee)</code></pre><p>The pipeline <code>P</code> traverses the dataset through attributes <em>department</em> and <em>employee</em>.  It is assembled from two primitive pipelines <code>Lookup(:department)</code> and <code>Lookup(:employee)</code> connected using the pipeline composition combinator <code>&gt;&gt;</code>.</p><p>We <em>run</em> the pipeline to obtain the actual data.</p><pre><code class="language-julia">run(db, P)
 #=&gt;
-chain_of(block_filler([3], REG),
-         with_elements(chain_of(tuple_of(wrap(), block_filler([4], REG)),
-                                tuple_lift(+),
-                                wrap())),
-         flatten(),
-         with_elements(chain_of(tuple_of(wrap(), block_filler([6], REG)),
-                                tuple_lift(*),
-                                wrap())),
+  │ employee                                    │
+  │ name       position           salary  rate  │
+──┼─────────────────────────────────────────────┤
+1 │ JEFFERY A  SERGEANT           101442        │
+2 │ NANCY A    POLICE OFFICER      80016        │
+3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+4 │ DANIEL A   FIRE FIGHTER-EMT    95484        │
+5 │ LAKENYA A  CROSSING GUARD             17.68 │
+6 │ DORIS A    CROSSING GUARD             19.38 │
+=#</code></pre><p>Now we need to find the records that satisfy the condition that the salary is greater than $100k.  This condition is evaluated by the following pipeline component.</p><pre><code class="language-julia">Condition = Lookup(:salary) .&gt; 100000
+#-&gt; Lookup(:salary) .&gt; 100000</code></pre><p>In this expression, broadcasting syntax is used to <em>lift</em> the predicate function <code>&gt;</code> to a pipeline combinator.</p><p>To show how this condition is evaluated, lets us display its result together with the corresponding salary.  For this purpose, we can use the <code>Record</code> combinator.</p><pre><code class="language-julia">run(db, P &gt;&gt; Record(Lookup(:salary), :condition =&gt; Condition))
+#=&gt;
+  │ employee          │
+  │ salary  condition │
+──┼───────────────────┤
+1 │ 101442       true │
+2 │  80016      false │
+3 │ 103350       true │
+4 │  95484      false │
+5 │                   │
+6 │                   │
+=#</code></pre><p>To actually filter data by this condition, we can use the <code>Filter</code> combinator. Specifically, we need to augment the pipeline <code>P</code> with a pipeline component <code>Filter(Condition)</code>.</p><pre><code class="language-julia">P = P &gt;&gt; Filter(Condition)
+#-&gt; Lookup(:department) &gt;&gt; Lookup(:employee) &gt;&gt; Filter(Lookup(:salary) .&gt; 100000)</code></pre><p>Running this pipeline gives us the answer to the original question.</p><pre><code class="language-julia">run(db, P)
+#=&gt;
+  │ employee                                   │
+  │ name       position           salary  rate │
+──┼────────────────────────────────────────────┤
+1 │ JEFFERY A  SERGEANT           101442       │
+2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+=#</code></pre><h3><a class="nav-anchor" id="Principal-queries-1" href="#Principal-queries-1">Principal queries</a></h3><p>In DataKnots, running a pipeline is a two-stage process.  On the first stage, the pipeline is used to build the <em>principal</em> query.  On the second stage, the principal query is used to transform the input data to the output data.</p><p>In general, a pipeline is a transformation of monadic queries.  That is, we can apply a pipeline to a monadic query and get a new monadic query as the result. The principal query of a pipeline is obtained when we apply the pipeline to a <em>trivial</em> monadic query.</p><p>To demonstrate how the principal query is constructed, let us use the pipeline <code>P</code> from the previous section.</p><pre><code class="language-julia">P
+#-&gt; Lookup(:department) &gt;&gt; Lookup(:employee) &gt;&gt; Filter(Lookup(:salary) .&gt; 100000)</code></pre><p>The pipeline <code>P</code> is constructed using a composition combinator.  A composition transforms a query by sequentially applying its components.  Therefore, to find the principal query of <code>P</code>, we need to start with a trivial query and sequentially tranfrorm it with the pipelines <code>Lookup(:department)</code>, <code>Lookup(:employee)</code> and <code>Filter(Condition)</code>.</p><p>The trivial query is a monadic identity on the input dataset.</p><pre><code class="language-julia">q0 = stub(db)
+#-&gt; wrap()</code></pre><p>To apply a pipeline to a query, we need to create application <em>environment</em>. Then we use the function <code>apply()</code>.</p><pre><code class="language-julia">env = Environment()
+
+q1 = apply(Lookup(:department), env, q0)
+#-&gt; chain_of(wrap(), with_elements(column(:department)), flatten())</code></pre><p>Here, the query <code>q1</code> is a monadic composition of <code>q0</code> with <code>column(:department)</code>.  Since <code>q0</code> is a monadic identity, this query is actually equivalent to <code>column(:department)</code>.</p><p>In general, <code>Lookup(name)</code> maps a query to its monadic composition with <code>column(name)</code>.  For example, when we apply <code>Lookup(:employee)</code> to <code>q1</code>, we get <code>compose(q1, column(:employee))</code>.</p><pre><code class="language-julia">q2 = apply(Lookup(:employee), env, q1)
+#=&gt;
+chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
+         with_elements(column(:employee)),
          flatten())
-=#
-
-using DataKnots: @VectorTree
-
-db = DataKnot(
-    @VectorTree (name = [String, REG], employee = [(name = [String, REG], salary = [Int, REG])]) [
-        &quot;POLICE&quot;    [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]
-        &quot;FIRE&quot;      [&quot;JOSE S&quot; 202728; &quot;CHARLES S&quot; 197736]
-    ])
+=#</code></pre><p>We conclude assembling the principal query of <code>P</code> by applying <code>Filter(Condition)</code> to <code>q2</code>.  <code>Filter</code> acts on the input query as follows. First, it finds the principal query of the condition pipeline.  For that, we need a trivial monadic query on the output of <code>q2</code>.</p><pre><code class="language-julia">qc0 = stub(q2)
+#-&gt; wrap()</code></pre><p>Passing <code>qc0</code> through <code>Condition</code> gives us a query that generates the result of the condition.</p><pre><code class="language-julia">qc1 = apply(Condition, env, qc0)
 #=&gt;
-  │ DataKnot                                                   │
-  │ name    employee                                           │
-──┼────────────────────────────────────────────────────────────┤
-1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
-2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │
-=#
-
-run(db &gt;&gt; Lookup(:name))
+chain_of(wrap(),
+         with_elements(chain_of(tuple_of(
+                                    chain_of(wrap(),
+                                             with_elements(column(:salary)),
+                                             flatten()),
+                                    chain_of(wrap(),
+                                             with_elements(
+                                                 block_filler([100000], REG)),
+                                             flatten())),
+                                tuple_lift(&gt;),
+                                adapt_missing())),
+         flatten())
+=#</code></pre><p><code>Filter(Condition)</code> then combines the outputs of <code>q2</code> and <code>qc1</code> using <code>sieve()</code>.</p><pre><code class="language-julia">q3 = apply(Filter(Condition), env, q2)
 #=&gt;
-  │ name   │
-──┼────────┤
-1 │ POLICE │
-2 │ FIRE   │
-=#
-
-run(db &gt;&gt; It.name)
+chain_of(
+    chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
+             with_elements(column(:employee)),
+             flatten()),
+    with_elements(
+        chain_of(
+            tuple_of(
+                pass(),
+                chain_of(
+                    chain_of(
+                        wrap(),
+                        with_elements(
+                            chain_of(
+                                tuple_of(
+                                    chain_of(wrap(),
+                                             with_elements(column(:salary)),
+                                             flatten()),
+                                    chain_of(wrap(),
+                                             with_elements(
+                                                 block_filler([100000], REG)),
+                                             flatten())),
+                                tuple_lift(&gt;),
+                                adapt_missing())),
+                        flatten()),
+                    block_any())),
+            sieve())),
+    flatten())
+=#</code></pre><p>The resulting query could be compacted by simplifying the query expression.</p><pre><code class="language-julia">q = optimize(q3)
 #=&gt;
-  │ name   │
-──┼────────┤
-1 │ POLICE │
-2 │ FIRE   │
-=#
+chain_of(column(:department),
+         with_elements(column(:employee)),
+         flatten(),
+         with_elements(
+             chain_of(tuple_of(pass(),
+                               chain_of(tuple_of(column(:salary),
+                                                 block_filler([100000], REG)),
+                                        tuple_lift(&gt;),
+                                        adapt_missing(),
+                                        block_any())),
+                      sieve())),
+         flatten())
+=#</code></pre><p>Applying the principal query to the input data gives us the output of the pipeline.</p><pre><code class="language-julia">input = elements(db)
+output = q(input)
 
-run(db &gt;&gt; Lookup(:employee) &gt;&gt; Lookup(:salary))
+display(elements(output))
 #=&gt;
-  │ salary │
-──┼────────┤
-1 │ 260004 │
-2 │ 185364 │
-3 │ 170112 │
-4 │ 202728 │
-5 │ 197736 │
-=#
-
-run(db &gt;&gt; It.employee.salary)
-#=&gt;
-  │ salary │
-──┼────────┤
-1 │ 260004 │
-2 │ 185364 │
-3 │ 170112 │
-4 │ 202728 │
-5 │ 197736 │
-=#
-
-run(db &gt;&gt; Count(It.employee))
-#=&gt;
-  │ DataKnot │
-──┼──────────┤
-1 │        3 │
-2 │        2 │
-=#
-
-run(db &gt;&gt; Count)
-#=&gt;
-│ DataKnot │
-├──────────┤
-│        2 │
-=#
-
-run(db &gt;&gt; Count(It.employee) &gt;&gt; Max)
-#=&gt;
-│ DataKnot │
-├──────────┤
-│        3 │
-=#
-
-run(db &gt;&gt; It.employee &gt;&gt; Filter(It.salary .&gt; 200000))
-#=&gt;
-  │ employee        │
-  │ name     salary │
-──┼─────────────────┤
-1 │ GARRY M  260004 │
-2 │ JOSE S   202728 │
-=#
-
-run(db &gt;&gt; (Count(It.employee) .&gt; 2))
-#=&gt;
-  │ DataKnot │
-──┼──────────┤
-1 │     true │
-2 │    false │
-=#
-
-run(db &gt;&gt; Filter(Count(It.employee) .&gt; 2))
-#=&gt;
-  │ DataKnot                                                   │
-  │ name    employee                                           │
-──┼────────────────────────────────────────────────────────────┤
-1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │
-=#
-
-run(db &gt;&gt; Filter(Count(It.employee) .&gt; 2) &gt;&gt; Count)
-#=&gt;
-│ DataKnot │
-├──────────┤
-│        1 │
-=#
-
-run(db &gt;&gt; Record(It.name, :size =&gt; Count(It.employee)))
-#=&gt;
-  │ DataKnot     │
-  │ name    size │
-──┼──────────────┤
-1 │ POLICE     3 │
-2 │ FIRE       2 │
-=#
-
-run(db &gt;&gt; It.employee &gt;&gt; Filter(It.salary .&gt; It.S),
-      S=200000)
-#=&gt;
-  │ employee        │
-  │ name     salary │
-──┼─────────────────┤
-1 │ GARRY M  260004 │
-2 │ JOSE S   202728 │
-=#
-
-run(
-    db &gt;&gt; Given(:S =&gt; Max(It.employee.salary),
-                It.employee &gt;&gt; Filter(It.salary .== It.S)))
-#=&gt;
-  │ employee        │
-  │ name     salary │
-──┼─────────────────┤
-1 │ GARRY M  260004 │
-2 │ JOSE S   202728 │
-=#
-
-run(db &gt;&gt; It.employee.salary &gt;&gt; Take(3))
-#=&gt;
-  │ salary │
-──┼────────┤
-1 │ 260004 │
-2 │ 185364 │
-3 │ 170112 │
-=#
-
-run(db &gt;&gt; It.employee.salary &gt;&gt; Drop(3))
-#=&gt;
-  │ salary │
-──┼────────┤
-1 │ 202728 │
-2 │ 197736 │
-=#
-
-run(db &gt;&gt; It.employee.salary &gt;&gt; Take(-3))
-#=&gt;
-  │ salary │
-──┼────────┤
-1 │ 260004 │
-2 │ 185364 │
-=#
-
-run(db &gt;&gt; It.employee.salary &gt;&gt; Drop(-3))
-#=&gt;
-  │ salary │
-──┼────────┤
-1 │ 170112 │
-2 │ 202728 │
-3 │ 197736 │
-=#
-
-run(db &gt;&gt; It.employee.salary &gt;&gt; Take(Count(db &gt;&gt; It.employee) .÷ 2))
-#=&gt;
-  │ salary │
-──┼────────┤
-1 │ 260004 │
-2 │ 185364 │
-=#</code></pre><footer><hr/><a class="previous" href="../lifting/"><span class="direction">Previous</span><span class="title">Lifting Scalar Functions to Combinators</span></a><a class="next" href="../simulation/"><span class="direction">Next</span><span class="title">Tutorial: Simulated Data</span></a></footer></article></body></html>
+TupleVector of 2 × (name = [String, REG], position = [String, REG], salary = [Int, OPT], rate = [Float64, OPT]):
+ (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442, rate = missing)
+ (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350, rate = missing)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Count-Tuple{Any}" href="#DataKnots.Count-Tuple{Any}"><code>DataKnots.Count</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Count(X)
+X &gt;&gt; Count</code></pre><p>Counts the number of elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L655-L660">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Drop-Tuple{Any}" href="#DataKnots.Drop-Tuple{Any}"><code>DataKnots.Drop</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Drop(N)</code></pre><p>Drops the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L804-L808">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Each-Tuple{Any}" href="#DataKnots.Each-Tuple{Any}"><code>DataKnots.Each</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Each(X)</code></pre><p>Makes <code>X</code> process its input elementwise.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L415-L419">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Filter-Tuple{Any}" href="#DataKnots.Filter-Tuple{Any}"><code>DataKnots.Filter</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Filter(X)</code></pre><p>Filters the input by condition.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L758-L762">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Given-Tuple{Any,Any}" href="#DataKnots.Given-Tuple{Any,Any}"><code>DataKnots.Given</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Given(P, X)</code></pre><p>Specifies the parameter.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L595-L599">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Label-Tuple{Symbol}" href="#DataKnots.Label-Tuple{Symbol}"><code>DataKnots.Label</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Label(lbl::Symbol)</code></pre><p>Assigns a label.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L430-L434">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any,Tuple}" href="#DataKnots.Lift-Tuple{Any,Tuple}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(f, Xs)</code></pre><p>Converts a Julia function to a pipeline combinator.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L356-L360">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any}" href="#DataKnots.Lift-Tuple{Any}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(val)</code></pre><p>Converts a Julia value to a pipeline primitive.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L348-L352">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lookup-Tuple{Any}" href="#DataKnots.Lookup-Tuple{Any}"><code>DataKnots.Lookup</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lookup(name)</code></pre><p>Finds an attribute or a parameter.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L483-L487">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Max-Tuple{Any}" href="#DataKnots.Max-Tuple{Any}"><code>DataKnots.Max</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Max(X)
+X &gt;&gt; Max</code></pre><p>Finds the maximum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L703-L708">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Min-Tuple{Any}" href="#DataKnots.Min-Tuple{Any}"><code>DataKnots.Min</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Min(X)
+X &gt;&gt; Min</code></pre><p>Finds the minimum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L715-L720">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Record-Tuple" href="#DataKnots.Record-Tuple"><code>DataKnots.Record</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Record(Xs...)</code></pre><p>Creates a pipeline component for building a record.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L300-L304">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Sum-Tuple{Any}" href="#DataKnots.Sum-Tuple{Any}"><code>DataKnots.Sum</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Sum(X)
+X &gt;&gt; Sum</code></pre><p>Sums the elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L691-L696">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Tag-Tuple{Symbol,Any}" href="#DataKnots.Tag-Tuple{Symbol,Any}"><code>DataKnots.Tag</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Tag(name::Symbol, X)</code></pre><p>Assigns a name to a pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L449-L453">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Take-Tuple{Any}" href="#DataKnots.Take-Tuple{Any}"><code>DataKnots.Take</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Take(N)</code></pre><p>Takes the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L796-L800">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Pipeline execution state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L143-L147">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Navigation" href="#DataKnots.Navigation"><code>DataKnots.Navigation</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">It</code></pre><p>Identity pipeline with respect to pipeline composition.</p><pre><code class="language-julia">It.a.b.c</code></pre><p>Equivalent to <code>Lookup(:a) &gt;&gt; Lookup(:b) &gt;&gt; Lookup(:c)</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L53-L61">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Pipeline" href="#DataKnots.Pipeline"><code>DataKnots.Pipeline</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Pipeline(op, args...)</code></pre><p>A pipeline is a transformation of monadic queries.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The pipeline transforms an input monadic query <code>q</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Query, args...)</code></pre><p>The result of <code>op</code> must again be a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L16-L30">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.run-Tuple{DataKnots.AbstractPipeline}" href="#Base.run-Tuple{DataKnots.AbstractPipeline}"><code>Base.run</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">run(F::AbstractPipeline; params...)</code></pre><p>Runs the pipeline with the given parameters.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c0b0dc95f700ca9821bc883bfb0d97f4ce94cb4b/src/pipelines.jl#L83-L87">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><footer><hr/><a class="previous" href="../lifting/"><span class="direction">Previous</span><span class="title">Lifting Scalar Functions to Combinators</span></a><a class="next" href="../simulation/"><span class="direction">Next</span><span class="title">Tutorial: Simulated Data</span></a></footer></article></body></html>
