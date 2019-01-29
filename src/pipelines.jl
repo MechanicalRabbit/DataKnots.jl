@@ -200,9 +200,9 @@ function compose(q1::Query, q2::Query)
     md = bound(mode(q1), mode(q2))
     chain_of(
         duplicate_input(imd),
-        within_input(imd, chain_of(narrow_input(imd, imode(q1)), q1)),
+        within_input(imd, narrow_input(imd, q1)),
         distribute(imd, mode(q1)),
-        within_output(mode(q1), chain_of(narrow_input(imd, imode(q2)), q2)),
+        within_output(mode(q1), narrow_input(imd, q2)),
         flatten_output(mode(q1), mode(q2)),
     ) |> designate(InputShape(idecoration(q1), idomain(q1), imd),
                    OutputShape(decoration(q2), domain(q2), md))
@@ -259,6 +259,9 @@ end
 narrow_input(md::InputMode) =
     narrow_input(md, InputMode())
 
+narrow_input(md::InputMode, q::Query) =
+    chain_of(narrow_input(md, imode(q)), q)
+
 flatten_output(md1::OutputMode, md2::OutputMode) =
     flatten()
 
@@ -288,7 +291,7 @@ function monadic_record(q::Query, xs::Vector{Query})
     shp = OutputShape(decoration(q), RecordShape(shape.(xs)))
     lbls = Symbol[let lbl = label(shape(x)); lbl !== nothing ? lbl : Symbol("#$i") end for (i, x) in enumerate(xs)]
     r = chain_of(
-        tuple_of(lbls, [chain_of(narrow_input(mode(ishp), imode(x)), x) for x in xs]),
+        tuple_of(lbls, [narrow_input(mode(ishp), x) for x in xs]),
         wrap(),
     ) |> designate(ishp, shp)
     compose(q, r)
@@ -333,7 +336,7 @@ function monadic_lift(f, xs::Vector{Query})
             chain_of(xs[1], lift(f), tail)
         else
             chain_of(
-                tuple_of(Symbol[], [chain_of(narrow_input(mode(ishp), imode(x)), x) for x in xs]),
+                tuple_of(Symbol[], [narrow_input(mode(ishp), x) for x in xs]),
                 tuple_lift(f),
                 tail)
         end
@@ -575,7 +578,7 @@ function monadic_given(p::Query, q::Query)
     end
     for slot in slots(q)
         if slot.first == name
-            push!(cs, chain_of(narrow_input(imd, imode(p)), p))
+            push!(cs, narrow_input(imd, p))
         else
             idx = searchsortedfirst(slots(imd), slot, by=first)
             push!(cs, chain_of(column(2), column(idx + isframed(imd))))
@@ -781,9 +784,8 @@ function monadic_take(q::Query, n::Query, rev::Bool)
     ishp = ibound(ishape(q), ishape(n))
     chain_of(
         tuple_of(
-            chain_of(narrow_input(mode(ishp), imode(q)), q),
-            chain_of(narrow_input(mode(ishp), imode(n)),
-                     n,
+            narrow_input(mode(ishp), q),
+            chain_of(narrow_input(mode(ishp), n),
                      fits(OPT, cardinality(n)) ?
                         block_lift(first, missing) :
                         block_lift(first))),
