@@ -3,8 +3,8 @@
 
 ## Overview
 
-In this section, we describe the usage and semantics of query pipelines.  We
-will need the following definitions.
+In this section, we describe the design and implementation of the pipeline
+algebra.  We will need the following definitions.
 
     using DataKnots:
         @VectorTree,
@@ -28,32 +28,28 @@ will need the following definitions.
         optimize,
         stub
 
-
-### Building and running pipelines
-
-In DataKnots, we query data by assembling and running query *pipelines*.
-
-For example, consider the following dataset of departments with associated
-employees.  This dataset is serialized as a nested structure with a singleton
-root record, which holds all department records, each of which holds associated
-employee records.
+As a running example, we will use the following dataset of city departments
+with associated employees.  This dataset is serialized as a nested structure
+with a singleton root record, which holds all department records, each of which
+holds associated employee records.
 
     db = DataKnot(
-        @VectorTree (department = [(name = [String, REG],
-                                    employee = [(name = [String, REG],
+        @VectorTree (department = [(name     = [String, REG],
+                                    employee = [(name     = [String, REG],
                                                  position = [String, REG],
-                                                 salary = [Int, OPT],
-                                                 rate = [Float64, OPT])])],) [
+                                                 salary   = [Int, OPT],
+                                                 rate     = [Float64, OPT])])],) [
             (department = [
-                (name = "POLICE",
-                 employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
-                             (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]),
-                (name = "FIRE",
-                 employee = [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing),
-                             (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]),
-                (name = "OEMC",
-                 employee = [(name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68),
-                             (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)])],)
+                (name     = "POLICE",
+                 employee = ["JEFFERY A"  "SERGEANT"           101442   missing
+                             "NANCY A"    "POLICE OFFICER"     80016    missing]),
+                (name     = "FIRE",
+                 employee = ["JAMES A"    "FIRE ENGINEER-EMT"  103350   missing
+                             "DANIEL A"   "FIRE FIGHTER-EMT"   95484    missing]),
+                (name     = "OEMC",
+                 employee = ["LAKENYA A"  "CROSSING GUARD"     missing  17.68
+                             "DORIS A"    "CROSSING GUARD"     missing  19.38])],
+            )
         ]
     )
     #=>
@@ -63,24 +59,32 @@ employee records.
     │ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…
     =#
 
-To demonstrate how to query this dataset, let us find all employees with the
-salary greater than \$100k.  We answer this question by constructing and
-running an appropriate query pipeline.
 
-This pipeline can be constructed incrementally.  We start with obtaining
-the collection of all employees.
+### Assembling pipelines
 
-    P = Lookup(:department) >> Lookup(:employee)
+In DataKnots, we query data by assembling and running query *pipelines*.
+Pipeline are assembled algebraically: they either come a set of atomic
+*primitive* pipelines, or are built from other pipelines using pipeline
+*combinators*.
+
+For example, consider the pipeline:
+
+    Employees = Lookup(:department) >> Lookup(:employee)
     #-> Lookup(:department) >> Lookup(:employee)
 
-The pipeline `P` traverses the dataset through attributes *department* and
-*employee*.  It is assembled from two primitive pipelines `Lookup(:department)`
-and `Lookup(:employee)` connected using the pipeline composition combinator
-`>>`.
+This pipeline traverses the dataset through fields *department* and *employee*.
+It is assembled from two primitive pipelines `Lookup(:department)` and
+`Lookup(:employee)` connected using the pipeline composition combinator `>>`.
 
-We *run* the pipeline to obtain the actual data.
+Since attribute traversal is very common, DataKnots provides a shorthand notation.
 
-    run(db, P)
+    Employees = It.department.employee
+    #-> It.department.employee
+
+To get the data from a pipeline, we use function `run()`.  This function takes
+the input dataset and a pipeline object, and produces the output dataset.
+
+    run(db, Employees)
     #=>
       │ employee                                    │
       │ name       position           salary  rate  │
@@ -93,43 +97,74 @@ We *run* the pipeline to obtain the actual data.
     6 │ DORIS A    CROSSING GUARD             19.38 │
     =#
 
-Now we need to find the records that satisfy the condition that the salary is
-greater than \$100k.  This condition is evaluated by the following pipeline
-component.
+Regular Julia values and functions could be used to create pipeline components.
+Specifically, any Julia value could be converted to a pipeline primitive, and
+any Julia function could be converted to a pipeline combinator.
 
-    Condition = Lookup(:salary) .> 100000
-    #-> Lookup(:salary) .> 100000
+For example, let us find find employees whose salary is greater than \$100k.
+For this purpose, we need to construct a predicate pipeline that compares the
+*salary* field with a specific number.
 
-In this expression, broadcasting syntax is used to *lift* the predicate
-function `>` to a pipeline combinator.
+If we were constructing an ordinary predicate function, we would write:
 
-To show how this condition is evaluated, lets us display its result together
-with the corresponding salary.  For this purpose, we can use the `Record`
-combinator.
+    emp -> emp.salary > 100000
 
-    run(db, P >> Record(Lookup(:salary), :condition => Condition))
+An equivalent pipeline is constructed as follows:
+
+    SalaryOver100K = Lift(>, (Lookup(:salary), Lift(100000)))
+    #-> Lift(>, (Lookup(:salary), Lift(100000)))
+
+This pipeline expression is assembled from two primitive components:
+`Lookup(:salary)` and `Lift(100000)`, which serve as parameters of the
+`Lift(>)` combinator.  Here, `Lift` is used twice.  `Lift` applied to a regular
+Julia value converts it to a *constant* pipeline primitive while `Lift` applied
+to a function *lifts* it to a pipeline combinator.
+
+As a shorthand notation for lifting functions and operators, DataKnots supports
+broadcasting syntax:
+
+    SalaryOver100K = It.salary .> 100000
+    #-> It.salary .> 100000
+
+To test this pipeline, we can append it to the `Employee` pipeline using the
+composition combinator.
+
+    run(db, Employees >> SalaryOver100K)
     #=>
-      │ employee          │
-      │ salary  condition │
-    ──┼───────────────────┤
-    1 │ 101442       true │
-    2 │  80016      false │
-    3 │ 103350       true │
-    4 │  95484      false │
-    5 │                   │
-    6 │                   │
+      │ DataKnot │
+    ──┼──────────┤
+    1 │     true │
+    2 │    false │
+    3 │     true │
+    4 │    false │
     =#
 
-To actually filter data by this condition, we can use the `Filter` combinator.
-Specifically, we need to augment the pipeline `P` with a pipeline component
-`Filter(Condition)`.
+However, this only gives us a list of bare Boolean values disconnected from the
+respective employees.  To improve this output, we can use the `Record`
+combinator.
 
-    P = P >> Filter(Condition)
-    #-> Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)
+    run(db, Employees >> Record(It.name,
+                                It.salary,
+                                :salary_over_100k => SalaryOver100K))
+    #=>
+      │ employee                            │
+      │ name       salary  salary_over_100k │
+    ──┼─────────────────────────────────────┤
+    1 │ JEFFERY A  101442              true │
+    2 │ NANCY A     80016             false │
+    3 │ JAMES A    103350              true │
+    4 │ DANIEL A    95484             false │
+    5 │ LAKENYA A                           │
+    6 │ DORIS A                             │
+    =#
 
-Running this pipeline gives us the answer to the original question.
+To actually filter the data using this predicate pipeline, we need to use the
+`Filter` combinator.
 
-    run(db, P)
+    EmployeesWithSalaryOver100K = Employees >> Filter(SalaryOver100K)
+    #-> It.department.employee >> Filter(It.salary .> 100000)
+
+    run(db, EmployeesWithSalaryOver100K)
     #=>
       │ employee                                   │
       │ name       position           salary  rate │
@@ -138,12 +173,28 @@ Running this pipeline gives us the answer to the original question.
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
     =#
 
+DataKnots provides a number of useful pipeline constructors.  For example, to
+find the number of items produced by a pipeline, we can use the `Count`
+combinator.
+
+    run(db, Count(EmployeesWithSalaryOver100K))
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        2 │
+    =#
+
+In general, pipeline algebra forms an XPath-like domain-specific language.  It
+is designed to let the user construct pipelines incrementally, with each step
+being individually crafted and tested.  It also encourages the user to create
+reusable pipeline components and remix them in creative ways.
+
 
 ### Principal queries
 
-In DataKnots, running a pipeline is a two-stage process.  On the first stage,
-the pipeline is used to build the *principal* query.  On the second stage, the
-principal query is used to transform the input data to the output data.
+In DataKnots, running a pipeline is a two-phase process.  First, the pipeline
+is used to build the *principal* query.  Second, the principal query is used to
+transform the input data to the output data.
 
 In general, a pipeline is a transformation of monadic queries.  That is, we can
 apply a pipeline to a monadic query and get a new monadic query as the result.
@@ -151,16 +202,17 @@ The principal query of a pipeline is obtained when we apply the pipeline to a
 *trivial* monadic query.
 
 To demonstrate how the principal query is constructed, let us use the pipeline
-`P` from the previous section.
+`EmployeesWithSalaryOver100K` from the previous section.  Recall that it could
+be represented as follows:
 
-    P
+    Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)
     #-> Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)
 
 The pipeline `P` is constructed using a composition combinator.  A composition
 transforms a query by sequentially applying its components.  Therefore, to find
 the principal query of `P`, we need to start with a trivial query and
 sequentially tranfrorm it with the pipelines `Lookup(:department)`,
-`Lookup(:employee)` and `Filter(Condition)`.
+`Lookup(:employee)` and `Filter(SalaryOver100K)`.
 
 The trivial query is a monadic identity on the input dataset.
 
@@ -190,18 +242,18 @@ In general, `Lookup(name)` maps a query to its monadic composition with
              flatten())
     =#
 
-We conclude assembling the principal query of `P` by applying
-`Filter(Condition)` to `q2`.  `Filter` acts on the input query as follows.
-First, it finds the principal query of the condition pipeline.  For that,
-we need a trivial monadic query on the output of `q2`.
+We conclude assembling the principal query by applying
+`Filter(SalaryOver100K)` to `q2`.  `Filter` acts on the input query as follows.
+First, it finds the principal query of the condition pipeline.  For that, we
+need a trivial monadic query on the output of `q2`.
 
     qc0 = stub(q2)
     #-> wrap()
 
-Passing `qc0` through `Condition` gives us a query that generates
+Passing `qc0` through `SalaryOver100K` gives us a query that generates
 the result of the condition.
 
-    qc1 = apply(Condition, env, qc0)
+    qc1 = apply(SalaryOver100K, env, qc0)
     #=>
     chain_of(wrap(),
              with_elements(chain_of(tuple_of(
@@ -217,10 +269,10 @@ the result of the condition.
              flatten())
     =#
 
-`Filter(Condition)` then combines the outputs of `q2` and `qc1` using
+`Filter(SalaryOver100K)` then combines the outputs of `q2` and `qc1` using
 `sieve()`.
 
-    q3 = apply(Filter(Condition), env, q2)
+    q3 = apply(Filter(SalaryOver100K), env, q2)
     #=>
     chain_of(
         chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
