@@ -126,7 +126,7 @@ broadcasting syntax:
     SalaryOver100K = It.salary .> 100000
     #-> It.salary .> 100000
 
-To test this pipeline, we can append it to the `Employee` pipeline using the
+To test this pipeline, we can append it to the `Employees` pipeline using the
 composition combinator.
 
     run(db, Employees >> SalaryOver100K)
@@ -193,13 +193,17 @@ reusable pipeline components and remix them in creative ways.
 ### Principal queries
 
 In DataKnots, running a pipeline is a two-phase process.  First, the pipeline
-is used to build the *principal* query.  Second, the principal query is used to
-transform the input data to the output data.
+generates its *principal* query.  Second, the principal query transforms the
+input data to the output data.
 
-In general, a pipeline is a transformation of monadic queries.  That is, we can
-apply a pipeline to a monadic query and get a new monadic query as the result.
-The principal query of a pipeline is obtained when we apply the pipeline to a
-*trivial* monadic query.
+Let us elaborate on the role of queries and pipelines.  In DataKnots, queries
+are used to transform data, and pipelines are used to transform monadic
+queries.  That is, just as a query can be applied to some dataset to produce a
+new dataset, a pipeline can be applied to a monadic query to produce a new
+monadic query.
+
+Among all queries produced by a pipeline, we distinguish its principal query,
+which is obtained when the pipeline is applied to a *trivial* monadic query.
 
 To demonstrate how the principal query is constructed, let us use the pipeline
 `EmployeesWithSalaryOver100K` from the previous section.  Recall that it could
