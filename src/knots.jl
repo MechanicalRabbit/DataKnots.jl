@@ -20,29 +20,25 @@ abstract type AbstractPipeline end
 Encapsulates data in column-oriented format.
 """
 struct DataKnot <: AbstractPipeline
-    shp::OutputShape
     elts::AbstractVector
+    shp::OutputShape
 end
 
-DataKnot(elts) =
-    convert(DataKnot, elts)
+DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU) =
+    DataKnot(elts, OutputShape(shapeof(elts), card))
+
+DataKnot(elt::T, card::Cardinality=REG) where {T} =
+    DataKnot(T[elt], OutputShape(NativeShape(T), card))
+
+DataKnot(::Missing, card::Cardinality=OPT) =
+    DataKnot(Union{}[], OutputShape(NoneShape(), card))
+
+DataKnot(ref::Base.RefValue{T}, card::Cardinality=REG) where {T} =
+    DataKnot(T[ref.x], OutputShape(NativeShape(T), card))
 
 convert(::Type{DataKnot}, db::DataKnot) = db
 
-convert(::Type{DataKnot}, elts::AbstractVector) =
-    DataKnot(
-        OutputShape(shapeof(elts),
-                    (length(elts) < 1 ? OPT : REG) | (length(elts) > 1 ? PLU : REG)),
-        elts)
-
-convert(::Type{DataKnot}, elt::T) where {T} =
-    DataKnot(OutputShape(NativeShape(T)), T[elt])
-
-convert(::Type{DataKnot}, ::Missing) =
-    DataKnot(OutputShape(NoneShape(), OPT), Union{}[])
-
-convert(::Type{DataKnot}, ref::Base.RefValue{T}) where {T} =
-    DataKnot(OutputShape(NativeShape(T)), T[ref.x])
+convert(::Type{DataKnot}, val) = DataKnot(val)
 
 get(db::DataKnot) =
     let card = cardinality(db.shp)
@@ -50,9 +46,9 @@ get(db::DataKnot) =
         card == OPT ? missing : db.elts
     end
 
-shape(db::DataKnot) = db.shp
-
 elements(db::DataKnot) = db.elts
+
+shape(db::DataKnot) = db.shp
 
 decoration(db::DataKnot) = decoration(db.shp)
 

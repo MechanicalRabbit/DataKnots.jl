@@ -33,7 +33,7 @@ with associated employees.  This dataset is serialized as a nested structure
 with a singleton root record, which holds all department records, each of which
 holds associated employee records.
 
-    db = DataKnot(
+    elts =
         @VectorTree (department = [(name     = [String, REG],
                                     employee = [(name     = [String, REG],
                                                  position = [String, REG],
@@ -51,7 +51,8 @@ holds associated employee records.
                              "DORIS A"    "CROSSING GUARD"     missing  19.38])],
             )
         ]
-    )
+
+    db = DataKnot(elts, REG)
     #=>
     │ DataKnot                                                                     …
     │ department                                                                   …

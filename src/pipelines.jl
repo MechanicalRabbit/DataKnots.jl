@@ -133,7 +133,7 @@ function pack(q, params)
 end
 
 unpack(q, output) =
-    DataKnot(shape(q), elements(output))
+    DataKnot(elements(output), shape(q))
 
 
 #
