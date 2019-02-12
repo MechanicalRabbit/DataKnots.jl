@@ -2,7 +2,7 @@
 
 DataKnots are a Julia library for building data processing
 pipelines. In this library, each `Pipeline` represents a data
-transformation and a specific input/output is a `DataKnot`.
+transformation; a specific input/output is a `DataKnot`.
 With the exception of a few overloaded base functions such as
 `run`, `get`, the bulk of this reference focuses on pipeline
 constructors.
@@ -18,63 +18,67 @@ hierarchical and self-referential data. The top-level entry in
 each `DataKnot` is a single data block, which can be plural or
 singular, optional or mandatory. 
 
-### Constructing and Extracting a DataKnot
+### Working with DataKnots
 
-The constructor, `DataKnot()`, takes a native Julia object,
-typically a scalar value or an array. The `get()` function can be
-used to retrieve the DataKnot's native Julia value. When passed a
-scalar Julia value, such as a `String`, the DataKnot is singular.
+The constructor `DataKnot()` takes a native Julia object,
+typically a vector or scalar value. The `get()` function can be
+used to retrieve the DataKnot's native Julia value. Like most
+libraries, `show()` will produce a suitable display.
 
-    knot = DataKnot("Hello World")
+#### `DataKnots.DataKnot`
+
+```julia
+    DataKnot(elts::AbstractVector)
+```
+
+In the common case, a `DataKnot` can be constructed from any
+`AbstractVector` to produce a *plural* `DataKnot`.
+
+```julia
+    DataKnot(elt::T) where {T}
+```
+
+The general case accepts any Julia value to produce a *singular*
+`DataKnot`. Plural DataKnots are shown with an index, while
+singular knots are shown without an index.
+
+    DataKnot("GARRY M")
     #=>
-    │ DataKnot    │
-    ├─────────────┤
-    │ Hello World │
+    │ DataKnot │
+    ├──────────┤
+    │ GARRY M  │
     =#
 
-    get(knot)
+    DataKnot(["GARRY M", "ANTHONY R", "DANA A"])
     #=>
-    "Hello World"
+      │ DataKnot  │
+    ──┼───────────┤
+    1 │ GARRY M   │
+    2 │ ANTHONY R │
+    3 │ DANA A    │
     =#
 
-When passed an array, the result is plural.
+Only the top-most vector is treated as a plural sequence. Nested
+vectors are not treated specially.
 
-    knot = DataKnot(["Hello", "World"])
+    DataKnot([[260004, 185364], [170112]])
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │ Hello    │
-    2 │ World    │
+      │ DataKnot         │
+    ──┼──────────────────┤
+    1 │ [260004, 185364] │
+    2 │ [170112]         │
     =#
 
-    get(knot)
-    #=>
-    ["Hello", "World"]
-    =#
+#### `show`
 
-This conversion into plural knots only works on top-level arrays,
-nested arrays are treated as native values. DataKnots don't know
-about multi-dimensional arrays, tables or other structures. In
-this way, conversion to/from a DataKnot preserves structure.
+```julia
+    show(data::DataKnot)
+```
 
-    knot = DataKnot([[1, 2], [3, 4]])
-    #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │ [1, 2]   │
-    2 │ [3, 4]   │
-    =#
+Besides displaying plural and singular knots differently, the
+`show` method has special treatment for `Tuple` and `NamedTuple`.
 
-    get(knot)
-    #=>
-    Array{Int,1}[[1, 2], [3, 4]]
-    =#
-
-For DataKnots, `show` provides a convenient display. This display
-has special treatment when a value is a `NamedTuple`. Even so,
-the value is still a scalar.
-
-    knot = DataKnot((name = "GARRY M", salary = 260004))
+    DataKnot((name = "GARRY M", salary = 260004))
     #=>
     │ DataKnot        │
     │ name     salary │
@@ -82,14 +86,7 @@ the value is still a scalar.
     │ GARRY M  260004 │
     =#
 
-    get(knot)
-    #=>
-    (name = "GARRY M", salary = 260004)
-    =#
-
-This treatment of `NamedTuple` permits convenient representation
-and display of arrays of tuples. While shown as a table, the value
-retrieved by `get` round-trips as an array of named tuples.
+This permits a vector-of-tuples to be displayed as tabular data.
 
     DataKnot([(name = "GARRY M", salary = 260004),
               (name = "ANTHONY R", salary = 185364),
@@ -101,6 +98,38 @@ retrieved by `get` round-trips as an array of named tuples.
     1 │ GARRY M    260004 │
     2 │ ANTHONY R  185364 │
     3 │ DANA A     170112 │
+    =#
+
+#### `get`
+
+```julia
+    get(data::DataKnot)
+```
+
+A DataKnot can be converted into native Julia values using `get`.
+Plural knots return a top-level vector.
+
+    get(DataKnot("GARRY M"))
+    #=>
+    "GARRY M"
+    =#
+  
+    get(DataKnot(["GARRY M", "ANTHONY R", "DANA A"]))
+    #=>
+    ["GARRY M", "ANTHONY R", "DANA A"]
+    =#
+
+Nested vectors and other data, such as a `TupleVector`, round-trip
+though the conversion to a `DataKnot` and back using `get`.
+
+    get(DataKnot([[260004, 185364], [170112]]))
+    #=>
+    Array{Int,1}[[260004, 185364], [170112]]
+    =#
+
+    get(DataKnot((name = "GARRY M", salary = 260004)))
+    #=>
+    (name = "GARRY M", salary = 260004)
     =#
 
 The Implementation Guide provides for lower level details as to
