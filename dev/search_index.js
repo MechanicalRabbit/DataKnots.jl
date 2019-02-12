@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "Reference",
     "category": "section",
-    "text": "DataKnots are a Julia library for building data processing pipelines. In this library, each Pipeline represents a data transformation and a specific input/output is a DataKnot. With the exception of a few overloaded base functions such as run, get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
+    "text": "DataKnots are a Julia library for building data processing pipelines. In this library, each Pipeline represents a data transformation; a specific input/output is a DataKnot. With the exception of a few overloaded base functions such as run, get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
 },
 
 {
@@ -161,11 +161,35 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "reference/#Constructing-and-Extracting-a-DataKnot-1",
+    "location": "reference/#Working-with-DataKnots-1",
     "page": "Reference",
-    "title": "Constructing and Extracting a DataKnot",
+    "title": "Working with DataKnots",
     "category": "section",
-    "text": "The constructor, DataKnot(), takes a native Julia object, typically a scalar value or an array. The get() function can be used to retrieve the DataKnot\'s native Julia value. When passed a scalar Julia value, such as a String, the DataKnot is singular.knot = DataKnot(\"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nget(knot)\n#=>\n\"Hello World\"\n=#When passed an array, the result is plural.knot = DataKnot([\"Hello\", \"World\"])\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │ Hello    │\n2 │ World    │\n=#\n\nget(knot)\n#=>\n[\"Hello\", \"World\"]\n=#This conversion into plural knots only works on top-level arrays, nested arrays are treated as native values. DataKnots don\'t know about multi-dimensional arrays, tables or other structures. In this way, conversion to/from a DataKnot preserves structure.knot = DataKnot([[1, 2], [3, 4]])\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │ [1, 2]   │\n2 │ [3, 4]   │\n=#\n\nget(knot)\n#=>\nArray{Int,1}[[1, 2], [3, 4]]\n=#For DataKnots, show provides a convenient display. This display has special treatment when a value is a NamedTuple. Even so, the value is still a scalar.knot = DataKnot((name = \"GARRY M\", salary = 260004))\n#=>\n│ DataKnot        │\n│ name     salary │\n├─────────────────┤\n│ GARRY M  260004 │\n=#\n\nget(knot)\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#This treatment of NamedTuple permits convenient representation and display of arrays of tuples. While shown as a table, the value retrieved by get round-trips as an array of named tuples.DataKnot([(name = \"GARRY M\", salary = 260004),\n          (name = \"ANTHONY R\", salary = 185364),\n          (name = \"DANA A\", salary = 170112)])\n#=>\n  │ DataKnot          │\n  │ name       salary │\n──┼───────────────────┤\n1 │ GARRY M    260004 │\n2 │ ANTHONY R  185364 │\n3 │ DANA A     170112 │\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot and ways they could be constructed by other means."
+    "text": "The constructor DataKnot() takes a native Julia object, typically a vector or scalar value. The get() function can be used to retrieve the DataKnot\'s native Julia value. Like most libraries, show() will produce a suitable display."
+},
+
+{
+    "location": "reference/#DataKnots.DataKnot-1",
+    "page": "Reference",
+    "title": "DataKnots.DataKnot",
+    "category": "section",
+    "text": "    DataKnot(elts::AbstractVector)In the common case, a DataKnot can be constructed from any AbstractVector to produce a plural DataKnot.    DataKnot(elt::T) where {T}The general case accepts any Julia value to produce a singular DataKnot. Plural DataKnots are shown with an index, while singular knots are shown without an index.DataKnot(\"GARRY M\")\n#=>\n│ DataKnot │\n├──────────┤\n│ GARRY M  │\n=#\n\nDataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#=>\n  │ DataKnot  │\n──┼───────────┤\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n=#Only the top-most vector is treated as a plural sequence. Nested vectors are not treated specially.DataKnot([[260004, 185364], [170112]])\n#=>\n  │ DataKnot         │\n──┼──────────────────┤\n1 │ [260004, 185364] │\n2 │ [170112]         │\n=#"
+},
+
+{
+    "location": "reference/#show-1",
+    "page": "Reference",
+    "title": "show",
+    "category": "section",
+    "text": "    show(data::DataKnot)Besides displaying plural and singular knots differently, the show method has special treatment for Tuple and NamedTuple.DataKnot((name = \"GARRY M\", salary = 260004))\n#=>\n│ DataKnot        │\n│ name     salary │\n├─────────────────┤\n│ GARRY M  260004 │\n=#This permits a vector-of-tuples to be displayed as tabular data.DataKnot([(name = \"GARRY M\", salary = 260004),\n          (name = \"ANTHONY R\", salary = 185364),\n          (name = \"DANA A\", salary = 170112)])\n#=>\n  │ DataKnot          │\n  │ name       salary │\n──┼───────────────────┤\n1 │ GARRY M    260004 │\n2 │ ANTHONY R  185364 │\n3 │ DANA A     170112 │\n=#"
+},
+
+{
+    "location": "reference/#get-1",
+    "page": "Reference",
+    "title": "get",
+    "category": "section",
+    "text": "    get(data::DataKnot)A DataKnot can be converted into native Julia values using get. Plural knots return a top-level vector.get(DataKnot(\"GARRY M\"))\n#=>\n\"GARRY M\"\n=#\n\nget(DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]))\n#=>\n[\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n=#Nested vectors and other data, such as a TupleVector, round-trip though the conversion to a DataKnot and back using get.get(DataKnot([[260004, 185364], [170112]]))\n#=>\nArray{Int,1}[[260004, 185364], [170112]]\n=#\n\nget(DataKnot((name = \"GARRY M\", salary = 260004)))\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot and ways they could be constructed by other means."
 },
 
 {

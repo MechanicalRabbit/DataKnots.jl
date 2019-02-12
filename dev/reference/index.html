@@ -1,48 +1,31 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Reference · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li class="current"><a class="toctext" href>Reference</a><ul class="internal"><li><a class="toctext" href="#DataKnots-and-Running-Pipelines-1">DataKnots &amp; Running Pipelines</a></li><li><a class="toctext" href="#Constructing-Pipelines-1">Constructing Pipelines</a></li></ul></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Reference</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/reference.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Reference</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Reference-1" href="#Reference-1">Reference</a></h1><p>DataKnots are a Julia library for building data processing pipelines. In this library, each <code>Pipeline</code> represents a data transformation and a specific input/output is a <code>DataKnot</code>. With the exception of a few overloaded base functions such as <code>run</code>, <code>get</code>, the bulk of this reference focuses on pipeline constructors.</p><p>To exercise our reference examples, we import the package:</p><pre><code class="language-julia">using DataKnots</code></pre><h2><a class="nav-anchor" id="DataKnots-and-Running-Pipelines-1" href="#DataKnots-and-Running-Pipelines-1">DataKnots &amp; Running Pipelines</a></h2><p>A <code>DataKnot</code> is a column-oriented data store supporting hierarchical and self-referential data. The top-level entry in each <code>DataKnot</code> is a single data block, which can be plural or singular, optional or mandatory. </p><h3><a class="nav-anchor" id="Constructing-and-Extracting-a-DataKnot-1" href="#Constructing-and-Extracting-a-DataKnot-1">Constructing and Extracting a DataKnot</a></h3><p>The constructor, <code>DataKnot()</code>, takes a native Julia object, typically a scalar value or an array. The <code>get()</code> function can be used to retrieve the DataKnot&#39;s native Julia value. When passed a scalar Julia value, such as a <code>String</code>, the DataKnot is singular.</p><pre><code class="language-julia">knot = DataKnot(&quot;Hello World&quot;)
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Reference · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../install/">Installation Instructions</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li class="current"><a class="toctext" href>Reference</a><ul class="internal"><li><a class="toctext" href="#DataKnots-and-Running-Pipelines-1">DataKnots &amp; Running Pipelines</a></li><li><a class="toctext" href="#Constructing-Pipelines-1">Constructing Pipelines</a></li></ul></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Reference</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/reference.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Reference</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Reference-1" href="#Reference-1">Reference</a></h1><p>DataKnots are a Julia library for building data processing pipelines. In this library, each <code>Pipeline</code> represents a data transformation; a specific input/output is a <code>DataKnot</code>. With the exception of a few overloaded base functions such as <code>run</code>, <code>get</code>, the bulk of this reference focuses on pipeline constructors.</p><p>To exercise our reference examples, we import the package:</p><pre><code class="language-julia">using DataKnots</code></pre><h2><a class="nav-anchor" id="DataKnots-and-Running-Pipelines-1" href="#DataKnots-and-Running-Pipelines-1">DataKnots &amp; Running Pipelines</a></h2><p>A <code>DataKnot</code> is a column-oriented data store supporting hierarchical and self-referential data. The top-level entry in each <code>DataKnot</code> is a single data block, which can be plural or singular, optional or mandatory. </p><h3><a class="nav-anchor" id="Working-with-DataKnots-1" href="#Working-with-DataKnots-1">Working with DataKnots</a></h3><p>The constructor <code>DataKnot()</code> takes a native Julia object, typically a vector or scalar value. The <code>get()</code> function can be used to retrieve the DataKnot&#39;s native Julia value. Like most libraries, <code>show()</code> will produce a suitable display.</p><h4><a class="nav-anchor" id="DataKnots.DataKnot-1" href="#DataKnots.DataKnot-1"><code>DataKnots.DataKnot</code></a></h4><pre><code class="language-julia">    DataKnot(elts::AbstractVector)</code></pre><p>In the common case, a <code>DataKnot</code> can be constructed from any <code>AbstractVector</code> to produce a <em>plural</em> <code>DataKnot</code>.</p><pre><code class="language-julia">    DataKnot(elt::T) where {T}</code></pre><p>The general case accepts any Julia value to produce a <em>singular</em> <code>DataKnot</code>. Plural DataKnots are shown with an index, while singular knots are shown without an index.</p><pre><code class="language-julia">DataKnot(&quot;GARRY M&quot;)
 #=&gt;
-│ DataKnot    │
-├─────────────┤
-│ Hello World │
+│ DataKnot │
+├──────────┤
+│ GARRY M  │
 =#
 
-get(knot)
+DataKnot([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
 #=&gt;
-&quot;Hello World&quot;
-=#</code></pre><p>When passed an array, the result is plural.</p><pre><code class="language-julia">knot = DataKnot([&quot;Hello&quot;, &quot;World&quot;])
+  │ DataKnot  │
+──┼───────────┤
+1 │ GARRY M   │
+2 │ ANTHONY R │
+3 │ DANA A    │
+=#</code></pre><p>Only the top-most vector is treated as a plural sequence. Nested vectors are not treated specially.</p><pre><code class="language-julia">DataKnot([[260004, 185364], [170112]])
 #=&gt;
-  │ DataKnot │
-──┼──────────┤
-1 │ Hello    │
-2 │ World    │
-=#
-
-get(knot)
-#=&gt;
-[&quot;Hello&quot;, &quot;World&quot;]
-=#</code></pre><p>This conversion into plural knots only works on top-level arrays, nested arrays are treated as native values. DataKnots don&#39;t know about multi-dimensional arrays, tables or other structures. In this way, conversion to/from a DataKnot preserves structure.</p><pre><code class="language-julia">knot = DataKnot([[1, 2], [3, 4]])
-#=&gt;
-  │ DataKnot │
-──┼──────────┤
-1 │ [1, 2]   │
-2 │ [3, 4]   │
-=#
-
-get(knot)
-#=&gt;
-Array{Int,1}[[1, 2], [3, 4]]
-=#</code></pre><p>For DataKnots, <code>show</code> provides a convenient display. This display has special treatment when a value is a <code>NamedTuple</code>. Even so, the value is still a scalar.</p><pre><code class="language-julia">knot = DataKnot((name = &quot;GARRY M&quot;, salary = 260004))
+  │ DataKnot         │
+──┼──────────────────┤
+1 │ [260004, 185364] │
+2 │ [170112]         │
+=#</code></pre><h4><a class="nav-anchor" id="show-1" href="#show-1"><code>show</code></a></h4><pre><code class="language-julia">    show(data::DataKnot)</code></pre><p>Besides displaying plural and singular knots differently, the <code>show</code> method has special treatment for <code>Tuple</code> and <code>NamedTuple</code>.</p><pre><code class="language-julia">DataKnot((name = &quot;GARRY M&quot;, salary = 260004))
 #=&gt;
 │ DataKnot        │
 │ name     salary │
 ├─────────────────┤
 │ GARRY M  260004 │
-=#
-
-get(knot)
-#=&gt;
-(name = &quot;GARRY M&quot;, salary = 260004)
-=#</code></pre><p>This treatment of <code>NamedTuple</code> permits convenient representation and display of arrays of tuples. While shown as a table, the value retrieved by <code>get</code> round-trips as an array of named tuples.</p><pre><code class="language-julia">DataKnot([(name = &quot;GARRY M&quot;, salary = 260004),
+=#</code></pre><p>This permits a vector-of-tuples to be displayed as tabular data.</p><pre><code class="language-julia">DataKnot([(name = &quot;GARRY M&quot;, salary = 260004),
           (name = &quot;ANTHONY R&quot;, salary = 185364),
           (name = &quot;DANA A&quot;, salary = 170112)])
 #=&gt;
@@ -52,6 +35,22 @@ get(knot)
 1 │ GARRY M    260004 │
 2 │ ANTHONY R  185364 │
 3 │ DANA A     170112 │
+=#</code></pre><h4><a class="nav-anchor" id="get-1" href="#get-1"><code>get</code></a></h4><pre><code class="language-julia">    get(data::DataKnot)</code></pre><p>A DataKnot can be converted into native Julia values using <code>get</code>. Plural knots return a top-level vector.</p><pre><code class="language-julia">get(DataKnot(&quot;GARRY M&quot;))
+#=&gt;
+&quot;GARRY M&quot;
+=#
+
+get(DataKnot([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]))
+#=&gt;
+[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
+=#</code></pre><p>Nested vectors and other data, such as a <code>TupleVector</code>, round-trip though the conversion to a <code>DataKnot</code> and back using <code>get</code>.</p><pre><code class="language-julia">get(DataKnot([[260004, 185364], [170112]]))
+#=&gt;
+Array{Int,1}[[260004, 185364], [170112]]
+=#
+
+get(DataKnot((name = &quot;GARRY M&quot;, salary = 260004)))
+#=&gt;
+(name = &quot;GARRY M&quot;, salary = 260004)
 =#</code></pre><p>The Implementation Guide provides for lower level details as to the internal representation of a <code>DataKnot</code> and ways they could be constructed by other means.</p><h3><a class="nav-anchor" id="Running-Pipelines-and-Parameters-1" href="#Running-Pipelines-and-Parameters-1">Running Pipelines &amp; Parameters</a></h3><p>Once a DataKnot is constructed, it could be executed against a pipeline using <code>run()</code> to produce an output. Since every <code>DataKnot</code> is a primitive pipeline that reproduces itself, we could write:</p><pre><code class="language-julia">run(DataKnot(&quot;Hello World&quot;))
 #=&gt;
 │ DataKnot    │
