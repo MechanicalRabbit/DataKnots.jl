@@ -23,6 +23,13 @@ export
     Take,
     Then
 
+export
+    Cardinality,
+    REG,
+    OPT,
+    PLU,
+    OPT_PLU
+
 include("layouts.jl")
 include("vectors.jl")
 include("shapes.jl")
