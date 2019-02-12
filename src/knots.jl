@@ -36,6 +36,8 @@ DataKnot(::Missing, card::Cardinality=OPT) =
 DataKnot(ref::Base.RefValue{T}, card::Cardinality=REG) where {T} =
     DataKnot(T[ref.x], OutputShape(NativeShape(T), card))
 
+DataKnot() = DataKnot(nothing)
+
 convert(::Type{DataKnot}, db::DataKnot) = db
 
 convert(::Type{DataKnot}, val) = DataKnot(val)
