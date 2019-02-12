@@ -5,7 +5,6 @@
 module DataKnots
 
 export
-    Combinator,
     Count,
     DataKnot,
     Drop,

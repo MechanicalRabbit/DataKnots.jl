@@ -27,7 +27,7 @@ makedocs(
         "Home" => "index.md",
         "install.md",
         "thinking.md",
-        "usage.md",
+        "reference.md",
         hide("implementation.md",
              ["vectors.md", "queries.md", "shapes.md", "lifting.md",
               "pipelines.md"]),
