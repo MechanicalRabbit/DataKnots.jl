@@ -157,13 +157,21 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots & Running Pipelines",
     "category": "section",
-    "text": "A DataKnot is a column-oriented data store supporting hierarchical and self-referential data. The top-level entry in each DataKnot is a single data block, which can be plural or singular, optional or mandatory. "
+    "text": "A DataKnot is a column-oriented data store supporting hierarchical and self-referential data. A DataKnot is produced when a Pipeline is run."
 },
 
 {
-    "location": "reference/#Working-with-DataKnots-1",
+    "location": "reference/#DataKnots.Cardinality-1",
     "page": "Reference",
-    "title": "Working with DataKnots",
+    "title": "DataKnots.Cardinality",
+    "category": "section",
+    "text": "In DataKnots, the elementary unit is a collection of values, or data block. Besides the Julia datatype for its values, an additional property of each data block is its cardinality.Cardinality is a constraint on the number of values in a block. A block is called mandatory if it must contain at least one value; optional otherwise. Similarly, a block is called singular if it must contain at most one value; plural otherwise.    REG::Cardinality = 0      # singular and mandatory\n    OPT::Cardinality = 1      # optional, but singular\n    PLU::Cardinality = 2      # plural, but mandatory\n    OPT_PLU::Cardinality = 3  # optional and pluralTo express the block cardinality constraint we use the OPT, PLU and REG flags of the type DataKnots.Cardinality. The OPT and PLU flags express relaxations of the mandatory and singular constraint, respectively. A REG block which is both mandatory and singular is called regular and it must contain exactly one value. Conversely, a block with both OPT|PLU flags is unconstrained and may have any number of elements.If a block contains data of Julia type T, then an unconstrained block of T would correspond to Vector{T} and an optional block would correspond to Union{Missing, T}. A regular block can be represented as a single Julia value of type T. There is no direct representation for mandatory, plural blocks; however, Vector{T} could be used with the convention that it always has at least one element."
+},
+
+{
+    "location": "reference/#Creating-and-Extracting-DataKnots-1",
+    "page": "Reference",
+    "title": "Creating & Extracting DataKnots",
     "category": "section",
     "text": "The constructor DataKnot() takes a native Julia object, typically a vector or scalar value. The get() function can be used to retrieve the DataKnot\'s native Julia value. Like most libraries, show() will produce a suitable display."
 },
@@ -173,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.DataKnot",
     "category": "section",
-    "text": "    DataKnot(elts::AbstractVector)In the common case, a DataKnot can be constructed from any AbstractVector to produce a plural DataKnot.    DataKnot(elt::T) where {T}The general case accepts any Julia value to produce a singular DataKnot. Plural DataKnots are shown with an index, while singular knots are shown without an index.DataKnot(\"GARRY M\")\n#=>\n│ DataKnot │\n├──────────┤\n│ GARRY M  │\n=#\n\nDataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#=>\n  │ DataKnot  │\n──┼───────────┤\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n=#Only the top-most vector is treated as a plural sequence. Nested vectors are not treated specially.DataKnot([[260004, 185364], [170112]])\n#=>\n  │ DataKnot         │\n──┼──────────────────┤\n1 │ [260004, 185364] │\n2 │ [170112]         │\n=#"
+    "text": "    DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU)In the general case, a DataKnot can be constructed from an AbstractVector to produce a DataKnot with a given cardinality. By default, the card of the collection is unconstrained.    DataKnot(elt, card::Cardinality=REG)As a convenience, a non-vector constructor is also defined, it marks the collection as being both singular and mandatory.    DataKnot(::Missing, card::Cardinality=OPT)Finally, there is an edge-case constructor for the creation of an optional singular value that happens to be Missing.DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#=>\n  │ DataKnot  │\n──┼───────────┤\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n=#\n\nDataKnot(\"GARRY M\")\n#=>\n│ DataKnot │\n├──────────┤\n│ GARRY M  │\n=#\n\nDataKnot(missing)\n#=>\n│ DataKnot │\n=#Note that plural DataKnots are shown with an index, while singular knots are shown without an index."
 },
 
 {
@@ -189,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "get",
     "category": "section",
-    "text": "    get(data::DataKnot)A DataKnot can be converted into native Julia values using get. Plural knots return a top-level vector.get(DataKnot(\"GARRY M\"))\n#=>\n\"GARRY M\"\n=#\n\nget(DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]))\n#=>\n[\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n=#Nested vectors and other data, such as a TupleVector, round-trip though the conversion to a DataKnot and back using get.get(DataKnot([[260004, 185364], [170112]]))\n#=>\nArray{Int,1}[[260004, 185364], [170112]]\n=#\n\nget(DataKnot((name = \"GARRY M\", salary = 260004)))\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot and ways they could be constructed by other means."
+    "text": "    get(data::DataKnot)A DataKnot can be converted into native Julia values using get. Regular values are returned as native Julia. Plural values are returned as a vector.get(DataKnot(\"GARRY M\"))\n#=>\n\"GARRY M\"\n=#\n\nget(DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]))\n#=>\n[\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n=#Nested vectors and other data, such as a TupleVector, round-trip though the conversion to a DataKnot and back using get.get(DataKnot([[260004, 185364], [170112]]))\n#=>\nArray{Int,1}[[260004, 185364], [170112]]\n=#\n\nget(DataKnot((name = \"GARRY M\", salary = 260004)))\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot. Other modules built with this internal API may provide more convenient ways to construct knots and get data."
 },
 
 {
@@ -281,19 +289,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "vectors/#DataKnots.BlockVector",
-    "page": "Column Store",
-    "title": "DataKnots.BlockVector",
-    "category": "type",
-    "text": "BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=OPT|PLU)\nBlockVector(:, elts::AbstractVector, card::Cardinality=REG)\n\nVector of vectors (blocks) stored as a vector of elements partitioned by a vector of offsets.\n\nelts is a continuous vector of block elements.\noffs is a vector of indexes that subdivide elts into separate blocks. Should be monotonous with offs[1] == 1 and offs[end] == length(elts)+1.\ncard is the expected cardinality of the blocks.\n\nThe second constructor creates a BlockVector of one-element blocks.\n\n\n\n\n\n"
-},
-
-{
     "location": "vectors/#DataKnots.Cardinality",
     "page": "Column Store",
     "title": "DataKnots.Cardinality",
     "category": "type",
     "text": "REG::Cardinality\nOPT::Cardinality\nPLU::Cardinality\nOPT|PLU::Cardinality\n\nCardinality constraints on a block of values.  REG stands for 1…1, OPT for 0…1, PLU for 1…∞, OPT|PLU for 0…∞.\n\n\n\n\n\n"
+},
+
+{
+    "location": "vectors/#DataKnots.BlockVector",
+    "page": "Column Store",
+    "title": "DataKnots.BlockVector",
+    "category": "type",
+    "text": "BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=OPT|PLU)\nBlockVector(:, elts::AbstractVector, card::Cardinality=REG)\n\nVector of vectors (blocks) stored as a vector of elements partitioned by a vector of offsets.\n\nelts is a continuous vector of block elements.\noffs is a vector of indexes that subdivide elts into separate blocks. Should be monotonous with offs[1] == 1 and offs[end] == length(elts)+1.\ncard is the expected cardinality of the blocks.\n\nThe second constructor creates a BlockVector of one-element blocks.\n\n\n\n\n\n"
 },
 
 {
