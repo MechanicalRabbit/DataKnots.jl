@@ -137,35 +137,51 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "usage/#",
-    "page": "Usage Guide",
-    "title": "Usage Guide",
+    "location": "reference/#",
+    "page": "Reference",
+    "title": "Reference",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "usage/#Usage-Guide-1",
-    "page": "Usage Guide",
-    "title": "Usage Guide",
+    "location": "reference/#Reference-1",
+    "page": "Reference",
+    "title": "Reference",
     "category": "section",
-    "text": ""
+    "text": "DataKnots are a Julia library for building data processing pipelines. In this library, each Pipeline represents a data transformation and a specific input/output is a DataKnot. With the exception of a few overloaded base functions such as run, get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
 },
 
 {
-    "location": "usage/#What-is-a-DataKnot?-1",
-    "page": "Usage Guide",
-    "title": "What is a DataKnot?",
+    "location": "reference/#DataKnots-and-Running-Pipelines-1",
+    "page": "Reference",
+    "title": "DataKnots & Running Pipelines",
     "category": "section",
-    "text": "A DataKnot is an in-memory column store.  It may contain tabular data, a collection of interrelated tables, or hierarchical data such as JSON or XML. It can also serve as an interface to external data sources such as SQL databases.To start working with DataKnots, we import the package:using DataKnots"
+    "text": "A DataKnot is a column-oriented data store supporting hierarchical and self-referential data. The top-level entry in each DataKnot is a single data block, which can be plural or singular, optional or mandatory. "
 },
 
 {
-    "location": "usage/#Querying-tabular-data-1",
-    "page": "Usage Guide",
-    "title": "Querying tabular data",
+    "location": "reference/#Constructing-and-Extracting-a-DataKnot-1",
+    "page": "Reference",
+    "title": "Constructing and Extracting a DataKnot",
     "category": "section",
-    "text": "In this section, we demonstrate how to use DataKnots.jl to query tabular data.First, we load some sample data from a CSV file.  We use the (???) data set, which is packaged as a part of DataKnots.jl.# Path to ???.csv.\nDATA = joinpath(Base.find_package(\"DataKnots\"),\n                \"test/data/???.csv\")\n\nusedb!(data = LoadCSV(DATA))This command loads tabular data from ???.csv and adds it to the current database under the name data.  We can now query it.Show the whole dataset.@query data\n#=>\n...\n=#Show all the salaries.@query data.salary\n#=>\n...\n=#Show the number of rows in the dataset.@query count(data)\n#=>\n...\n=#Show the mean salary.@query mean(data.salary)\n#=>\n...\n=#Show all employees with annual salary higher than 100000.@query data.filter(salary>100000)\n#=>\n...\n=#Show the number of employees with annual salary higher than 100000.@query count(data.filter(salary>100000))\n#=>\n...\n=#Show the top ten employees ordered by salary.@query data.sort(salary.desc()).select(name, salary).take(10)\n#=>\n...\n=#A long query could be split into several lines.@query begin\n    data\n    sort(salary.desc())\n    select(name, salary)\n    take(10)\nend\n#=>\n...\n=#DataKnots.jl implements an algebra of query combinators.  In this algebra, its elements are queries, which represents relationships among classes and data types.  This algebra\'s operations are combinators, which are applied to construct query expressions."
+    "text": "The constructor, DataKnot(), takes a native Julia object, typically a scalar value or an array. The get() function can be used to retrieve the DataKnot\'s native Julia value. When passed a scalar Julia value, such as a String, the DataKnot is singular.knot = DataKnot(\"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nget(knot)\n#=>\n\"Hello World\"\n=#When passed an array, the result is plural.knot = DataKnot([\"Hello\", \"World\"])\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │ Hello    │\n2 │ World    │\n=#\n\nget(knot)\n#=>\n[\"Hello\", \"World\"]\n=#This conversion into plural knots only works on top-level arrays, nested arrays are treated as native values. DataKnots don\'t know about multi-dimensional arrays, tables or other structures. In this way, conversion to/from a DataKnot preserves structure.knot = DataKnot([[1, 2], [3, 4]])\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │ [1, 2]   │\n2 │ [3, 4]   │\n=#\n\nget(knot)\n#=>\nArray{Int,1}[[1, 2], [3, 4]]\n=#For DataKnots, show provides a convenient display. This display has special treatment when a value is a NamedTuple. Even so, the value is still a scalar.knot = DataKnot((name = \"GARRY M\", salary = 260004))\n#=>\n│ DataKnot        │\n│ name     salary │\n├─────────────────┤\n│ GARRY M  260004 │\n=#\n\nget(knot)\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#This treatment of NamedTuple permits convenient representation and display of arrays of tuples. While shown as a table, the value retrieved by get round-trips as an array of named tuples.DataKnot([(name = \"GARRY M\", salary = 260004),\n          (name = \"ANTHONY R\", salary = 185364),\n          (name = \"DANA A\", salary = 170112)])\n#=>\n  │ DataKnot          │\n  │ name       salary │\n──┼───────────────────┤\n1 │ GARRY M    260004 │\n2 │ ANTHONY R  185364 │\n3 │ DANA A     170112 │\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot and ways they could be constructed by other means."
+},
+
+{
+    "location": "reference/#Running-Pipelines-and-Parameters-1",
+    "page": "Reference",
+    "title": "Running Pipelines & Parameters",
+    "category": "section",
+    "text": "Once a DataKnot is constructed, it could be executed against a pipeline using run() to produce an output. Since every DataKnot is a primitive pipeline that reproduces itself, we could write:run(DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#The run() function has a two argument form where the 1st argument is a DataKnot and the 2nd argument is a Pipeline expression. Since It is the identity pipeline that reproduces its input, we can also write:run(DataKnot(\"Hello World\"), It)\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Named arguments to run() become additional fields that are accessible via It. Those arguments are converted into a DataKnot if they are not already.run(It.hello, hello=DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(It.hello, hello=\"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Once a pipeline is run() the resulting DataKnot value can be retrieved via get().get(run(DataKnot(1) .+ 1))\n#=> 2 =#"
+},
+
+{
+    "location": "reference/#Constructing-Pipelines-1",
+    "page": "Reference",
+    "title": "Constructing Pipelines",
+    "category": "section",
+    "text": "..."
 },
 
 {
