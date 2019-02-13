@@ -167,7 +167,7 @@ returned as a vector.
     #=>
     "GARRY M"
     =#
-  
+
     get(DataKnot(["GARRY M", "ANTHONY R", "DANA A"]))
     #=>
     ["GARRY M", "ANTHONY R", "DANA A"]
@@ -205,7 +205,7 @@ construct knots and get data.
 
 Pipelines can be evaluated against an input `DataKnot` using
 `run()` to produce an output `DataKnot`. If an input is not
-specified, the default *unit* knot, `DataKnot()`, is used. 
+specified, the default *unit* knot, `DataKnot()`, is used.
 
 #### `DataKnots.AbstractPipeline`
 
@@ -224,7 +224,7 @@ each input value it receives.
 
 Path based navigation is also a pipeline. The identity pipeline,
 `It`, simply reproduces its input. Further, when a parameter `x`
-is provided via `run()` it is available for lookup with `It`.`x`.  
+is provided via `run()` it is available for lookup with `It`.`x`.
 
 ```julia
     struct Pipeline <: AbstractPipeline ... end
@@ -243,17 +243,17 @@ objects from other pipelines.
 In its general form, `run` takes a pipeline and a set of named
 parameters and evaluates the pipeline with the unit knot as input.
 The parameters are each converted to a `DataKnot` before being
-made available within the pipline's evaluation.
+made available within the pipeline's evaluation.
 
 ```julia
-    run(F::Pair{Symbol,<:AbstractPipeline}; params...) 
+    run(F::Pair{Symbol,<:AbstractPipeline}; params...)
 ```
 
 With Julia's `Pair` syntax, this `run` method provides a
 convenient way to label an output `DataKnot`.
 
 ```julia
-    run(db::DataKnot, F; params...) 
+    run(db::DataKnot, F; params...)
 ```
 This convenience method permits easy use of a specific input data
 source. Since the 1st argument a `DataKnot`, the second argument
@@ -268,7 +268,7 @@ Therefore, we can write the following examples.
     ├─────────────┤
     │ Hello World │
     =#
-    
+
     run(:greeting => DataKnot("Hello World"))
     #=>
     │ greeting    │
@@ -304,12 +304,12 @@ accessible via `It`. Those arguments are converted into a
 Once a pipeline is `run()` the resulting `DataKnot` value can be
 retrieved via `get()`.
 
-    get(run(DataKnot(1) .+ 1))
-    #=> 
-    2 
+    get(run(DataKnot(1), It .+ 1))
+    #=>
+    2
     =#
 
 Like `get` and `show`, the `run` function comes Julia's base, and
 hence the methods defined here are only chosen if an argument
-matches the signature dispatch. Hence, 
+matches the signature dispatch. Hence,
 
