@@ -33,7 +33,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "install/#",
+    "location": "start/#",
     "page": "Installation Instructions",
     "title": "Installation Instructions",
     "category": "page",
@@ -41,7 +41,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "install/#Installation-Instructions-1",
+    "location": "start/#Installation-Instructions-1",
     "page": "Installation Instructions",
     "title": "Installation Instructions",
     "category": "section",
@@ -149,7 +149,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "Reference",
     "category": "section",
-    "text": "DataKnots are a Julia library for building data processing pipelines. In this library, each Pipeline represents a data transformation; a specific input/output is a DataKnot. With the exception of a few overloaded base functions such as run, get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
+    "text": "DataKnots are a Julia library for building and evaluating data processing pipelines. In this library, each Pipeline represents a data transformation; a pipeline\'s input and output is represented by a DataKnot. With the exception of a few overloaded Base functions, such as run and get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
 },
 
 {
@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Cardinality",
     "category": "section",
-    "text": "In DataKnots, the elementary unit is a collection of values, or data block. Besides the Julia datatype for its values, an additional property of each data block is its cardinality.Cardinality is a constraint on the number of values in a block. A block is called mandatory if it must contain at least one value; optional otherwise. Similarly, a block is called singular if it must contain at most one value; plural otherwise.    REG::Cardinality = 0      # singular and mandatory\n    OPT::Cardinality = 1      # optional, but singular\n    PLU::Cardinality = 2      # plural, but mandatory\n    OPT_PLU::Cardinality = 3  # optional and pluralTo express the block cardinality constraint we use the OPT, PLU and REG flags of the type DataKnots.Cardinality. The OPT and PLU flags express relaxations of the mandatory and singular constraint, respectively. A REG block which is both mandatory and singular is called regular and it must contain exactly one value. Conversely, a block with both OPT|PLU flags is unconstrained and may have any number of elements.If a block contains data of Julia type T, then an unconstrained block of T would correspond to Vector{T} and an optional block would correspond to Union{Missing, T}. A regular block can be represented as a single Julia value of type T. There is no direct representation for mandatory, plural blocks; however, Vector{T} could be used with the convention that it always has at least one element."
+    "text": "In DataKnots, the elementary unit is a collection of values, we call a data block. Besides the Julia datatype for a block\'s values, each data block also has a cardinality. The bookkeeping of cardinality is an essential aspect of pipeline evaluation.Cardinality is a constraint on the number of values in a block. A block is called mandatory if it must contain at least one value; optional otherwise. Similarly, a block is called singular if it must contain at most one value; plural otherwise.    REG::Cardinality = 0      # singular and mandatory\n    OPT::Cardinality = 1      # optional, but singular\n    PLU::Cardinality = 2      # plural, but mandatory\n    OPT_PLU::Cardinality = 3  # optional and pluralTo record the block cardinality constraint we use the OPT, PLU and REG flags of the type DataKnots.Cardinality. The OPT and PLU flags express relaxations of the mandatory and singular constraint, respectively. A REG block, which is both mandatory and singular, is called regular and it must contain exactly one value. Conversely, a block with both OPT|PLU flags has unconstrained cardinality and may contain any number of values.For any block with values of Julia type T, the block\'s cardinality has a correspondence to native Julia types: A regular block corresponds to a single Julia value of type T.  An unconstrained block corresponds to Vector{T}. An optional block corresponds to Union{Missing, T}. There is no correspondence for mandatory yet plural blocks; however, Vector{T} could be used with the convention that it always has at least one element."
 },
 
 {
@@ -181,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.DataKnot",
     "category": "section",
-    "text": "    DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU)In the general case, a DataKnot can be constructed from an AbstractVector to produce a DataKnot with a given cardinality. By default, the card of the collection is unconstrained.    DataKnot(elt, card::Cardinality=REG)As a convenience, a non-vector constructor is also defined, it marks the collection as being both singular and mandatory.    DataKnot(::Missing, card::Cardinality=OPT)There is an edge-case constructor for the creation of a a singular but empty collection.    DataKnot()Finally, there is the unit knot, with a single value nothing; this is the default, implicit DataKnot used when run is evaluated without an input data source.DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#=>\n  │ DataKnot  │\n──┼───────────┤\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n=#\n\nDataKnot(\"GARRY M\")\n#=>\n│ DataKnot │\n├──────────┤\n│ GARRY M  │\n=#\n\nDataKnot(missing)\n#=>\n│ DataKnot │\n=#\n\nDataKnot()\n#=>\n│ DataKnot │\n├──────────┤\n│          │\n=#Note that plural DataKnots are shown with an index, while singular knots are shown without an index. Further note that the missing knot doesn\'t have a value in its data block, unlike the unit knot which has a value of nothing (shown as a blank)."
+    "text": "    DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU)In the general case, a DataKnot can be constructed from an AbstractVector to produce a DataKnot with a given cardinality. By default, the card of the collection is unconstrained.    DataKnot(elt, card::Cardinality=REG)As a convenience, a non-vector constructor is also defined, it marks the collection as being both singular and mandatory.    DataKnot(::Missing, card::Cardinality=OPT)There is an edge-case constructor for the creation of a singular but empty collection.    DataKnot()Finally, there is the unit knot, with a single value nothing; this is the default, implicit DataKnot used when run is evaluated without an input data source.DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#=>\n  │ DataKnot  │\n──┼───────────┤\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n=#\n\nDataKnot(\"GARRY M\")\n#=>\n│ DataKnot │\n├──────────┤\n│ GARRY M  │\n=#\n\nDataKnot(missing)\n#=>\n│ DataKnot │\n=#\n\nDataKnot()\n#=>\n│ DataKnot │\n├──────────┤\n│          │\n=#Note that plural DataKnots are shown with an index, while singular knots are shown without. Further note that the missing knot doesn\'t have a value in its data block, unlike the unit knot which has a value of nothing. When showing a DataKnot, we follow Julia\'s command line behavior of rendering nothing as a blank since we wish to display short string values unquoted."
 },
 
 {
@@ -197,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "get",
     "category": "section",
-    "text": "    get(data::DataKnot)A DataKnot can be converted into native Julia values using get. Regular values are returned as native Julia. Plural values are returned as a vector.get(DataKnot(\"GARRY M\"))\n#=>\n\"GARRY M\"\n=#\n\nget(DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]))\n#=>\n[\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n=#\n\nget(DataKnot(missing))\n#=>\nmissing\n=#\n\nshow(get(DataKnot()))\n#=>\nnothing\n=#Nested vectors and other data, such as a TupleVector, round-trip though the conversion to a DataKnot and back using get.get(DataKnot([[260004, 185364], [170112]]))\n#=>\nArray{Int,1}[[260004, 185364], [170112]]\n=#\n\nget(DataKnot((name = \"GARRY M\", salary = 260004)))\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot. Other modules built with this internal API may provide more convenient ways to construct knots and get data."
+    "text": "    get(data::DataKnot)A DataKnot can be converted into native Julia values using get. Regular values are returned as native Julia. Plural values are returned as a vector.get(DataKnot(\"GARRY M\"))\n#=>\n\"GARRY M\"\n=#\n\nget(DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]))\n#=>\n[\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n=#\n\nget(DataKnot(missing))\n#=>\nmissing\n=#\n\nshow(get(DataKnot()))\n#=>\nnothing\n=#Nested vectors and other data, such as a TupleVector, round-trip though the conversion to a DataKnot and back using get.get(DataKnot([[260004, 185364], [170112]]))\n#=>\nArray{Int,1}[[260004, 185364], [170112]]\n=#\n\nget(DataKnot((name = \"GARRY M\", salary = 260004)))\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot. Libraries built with this internal API may provide more convenient ways to construct knots and retrieve values."
 },
 
 {
@@ -205,7 +205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "Running Pipelines & Parameters",
     "category": "section",
-    "text": "Pipelines can be evaluated against an input DataKnot using run() to produce an output DataKnot. If an input is not specified, the default unit knot, DataKnot(), is used."
+    "text": "Pipelines can be evaluated against an input DataKnot using run() to produce an output DataKnot. If an input is not specified, the default unit knot, DataKnot(), is used. There are several sorts of pipelines that could be evaluated."
 },
 
 {
@@ -213,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.AbstractPipeline",
     "category": "section",
-    "text": "There are several sorts of pipelines that could be evaluated.    struct DataKnot <: AbstractPipeline ... endA DataKnot is a pipeline that produces its entire data block for each input value it receives.    struct Navigation <: AbstractPipeline ... endPath based navigation is also a pipeline. The identity pipeline, It, simply reproduces its input. Further, when a parameter x is provided via run() it is available for lookup with It.x.    struct Pipeline <: AbstractPipeline ... endBesides the primitives identified above, the remainder of this reference is dedicated to various ways of constructing Pipeline objects from other pipelines."
+    "text": "    struct DataKnot <: AbstractPipeline ... endA DataKnot is viewed as a pipeline that produces its entire data block for each input value it receives.    struct Navigation <: AbstractPipeline ... endFor convenience, path-based navigation is also seen as a pipeline. The identity pipeline, It, simply reproduces its input. Further, when a parameter x is provided via run() it is available for lookup with It.x.    struct Pipeline <: AbstractPipeline ... endBesides the primitives identified above, the remainder of this reference is dedicated to various ways of constructing Pipeline instances from other pipelines."
 },
 
 {
@@ -221,7 +221,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "run",
     "category": "section",
-    "text": "    run(F::AbstractPipeline; params...)In its general form, run takes a pipeline and a set of named parameters and evaluates the pipeline with the unit knot as input. The parameters are each converted to a DataKnot before being made available within the pipeline\'s evaluation.    run(F::Pair{Symbol,<:AbstractPipeline}; params...)With Julia\'s Pair syntax, this run method provides a convenient way to label an output DataKnot.    run(db::DataKnot, F; params...)This convenience method permits easy use of a specific input data source. Since the 1st argument a DataKnot, the second argument to the method will be automatically converted to a Pipeline using Lift.Therefore, we can write the following examples.run(DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(:greeting => DataKnot(\"Hello World\"))\n#=>\n│ greeting    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(\"Hello World\"), It)\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Named arguments to run() become additional values that are accessible via It. Those arguments are converted into a DataKnot if they are not already.run(It.hello, hello=DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(It.hello, hello=\"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Once a pipeline is run() the resulting DataKnot value can be retrieved via get().get(run(DataKnot(1), It .+ 1))\n#=>\n2\n=#Like get and show, the run function comes Julia\'s base, and hence the methods defined here are only chosen if an argument matches the signature dispatch. Hence,"
+    "text": "    run(F::AbstractPipeline; params...)In its simplest form, run takes a pipeline with a set of named parameters and evaluates the pipeline with the unit knot as input. The parameters are each converted to a DataKnot before being made available within the pipeline\'s evaluation.    run(F::Pair{Symbol,<:AbstractPipeline}; params...)Using Julia\'s Pair syntax, this run method provides a convenient way to label an output DataKnot.    run(db::DataKnot, F; params...)The general case run permits easy use of a specific input data source. Since the 1st argument is a DataKnot and dispatch is unambiguous, the second argument to the method can be automatically converted to a Pipeline using Lift.Therefore, we can write the following examples.run(DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(:greeting => DataKnot(\"Hello World\"))\n#=>\n│ greeting    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(\"Hello World\"), It)\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(), \"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Named arguments to run() become additional values that are accessible via It. Those arguments are converted into a DataKnot if they are not already.run(It.hello, hello=DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(It.a .* (It.b .+ It.c), a=7, b=7, c=-1)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#Once a pipeline is run() the resulting DataKnot value can be retrieved via get().get(run(DataKnot(1), It .+ 1))\n#=>\n2\n=#Like get and show, the run function comes Julia\'s Base, and hence the methods defined here are only chosen if an argument matches the signature dispatch."
 },
 
 {
