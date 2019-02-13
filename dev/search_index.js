@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Contents",
     "category": "section",
-    "text": "Pages = [\n    \"install.md\",\n    \"thinking.md\",\n    \"usage.md\",\n    \"implementation.md\",\n]"
+    "text": "Pages = [\n    \"start.md\",\n    \"thinking.md\",\n    \"usage.md\",\n    \"implementation.md\",\n]\nDepth=2"
 },
 
 {
@@ -34,15 +34,23 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "start/#",
-    "page": "Installation Instructions",
-    "title": "Installation Instructions",
+    "page": "Getting Started",
+    "title": "Getting Started",
     "category": "page",
     "text": ""
 },
 
 {
+    "location": "start/#Getting-Started-1",
+    "page": "Getting Started",
+    "title": "Getting Started",
+    "category": "section",
+    "text": ""
+},
+
+{
     "location": "start/#Installation-Instructions-1",
-    "page": "Installation Instructions",
+    "page": "Getting Started",
     "title": "Installation Instructions",
     "category": "section",
     "text": "DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager.  To install it, run in the package shell (enter with ] from the Julia shell):pkg> add https://github.com/rbt-lang/DataKnots.jlDataKnots.jl requires Julia 0.7 or higher.If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:pkg> dev https://github.com/rbt-lang/DataKnots.jl"
@@ -149,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "Reference",
     "category": "section",
-    "text": "DataKnots are a Julia library for building and evaluating data processing pipelines. In this library, each Pipeline represents a data transformation; a pipeline\'s input and output is represented by a DataKnot. With the exception of a few overloaded Base functions, such as run and get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
+    "text": "DataKnots are a Julia library for building and evaluating data processing pipelines. Informally, each Pipeline represents a data transformation; a pipeline\'s input and output is represented by a DataKnot. With the exception of a few overloaded Base functions, such as run and get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
 },
 
 {
@@ -237,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Implementation Guide",
     "title": "Implementation Guide",
     "category": "section",
-    "text": "Pages = [\n    \"vectors.md\",\n    \"queries.md\",\n    \"shapes.md\",\n    \"pipelines.md\",\n    \"lifting.md\",\n]\nDepth = 3"
+    "text": "Pages = [\n    \"vectors.md\",\n    \"queries.md\",\n    \"shapes.md\",\n    \"pipelines.md\",\n]\nDepth = 3"
 },
 
 {
@@ -974,22 +982,6 @@ var documenterSearchIndex = {"docs": [
     "title": "Determining the vector shape",
     "category": "section",
     "text": "Function shapeof() determines the shape of a given vector.shapeof([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> NativeShape(String)In particular, it detects the record layout.shapeof(\n    @VectorTree ([String, REG],\n                 [(name = [String, REG],\n                   position = [String, REG],\n                   salary = [Int, OPT],\n                   rate = [Float64, OPT]), PLU]) [])\n#=>\nRecordShape(OutputShape(String),\n            OutputShape(RecordShape(OutputShape(:name, String),\n                                    OutputShape(:position, String),\n                                    OutputShape(:salary, Int, OPT),\n                                    OutputShape(:rate, Float64, OPT)),\n                        PLU))\n=#TupleVector and BlockVector objects that are not in the record layout are treated as regular vectors.shapeof(@VectorTree (String, [String]) [])\n#-> NativeShape(Tuple{String,Array{String,1}})\n\nshapeof(@VectorTree (name = String, employee = [String]) [])\n#-> NativeShape(NamedTuple{(:name, :employee),Tuple{String,Array{String,1}}})"
-},
-
-{
-    "location": "lifting/#",
-    "page": "Lifting Scalar Functions to Combinators",
-    "title": "Lifting Scalar Functions to Combinators",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "lifting/#Lifting-Scalar-Functions-to-Combinators-1",
-    "page": "Lifting Scalar Functions to Combinators",
-    "title": "Lifting Scalar Functions to Combinators",
-    "category": "section",
-    "text": "using DataKnots\n\nusing DataKnots:\n    @VectorTree\n\ndb = DataKnot(\n    @VectorTree (name = [String], employee = [(name = [String], salary = [Int])]) [\n        \"POLICE\"    [\"GARRY M\" 260004; \"ANTHONY R\" 185364; \"DANA A\" 170112]\n        \"FIRE\"      [\"JOSE S\" 202728; \"CHARLES S\" 197736]\n    ])\n#=>\n  │ DataKnot                                                   │\n  │ name    employee                                           │\n──┼────────────────────────────────────────────────────────────┤\n1 │ POLICE  GARRY M, 260004; ANTHONY R, 185364; DANA A, 170112 │\n2 │ FIRE    JOSE S, 202728; CHARLES S, 197736                  │\n=#\n\nrun(db >> It.employee.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n4 │ JOSE S    │\n5 │ CHARLES S │\n=#\n\nTitleCase = Lift(titlecase, (It,))\n\nrun(db >> It.employee.name >> TitleCase)\n#=>\n  │ DataKnot  │\n──┼───────────┤\n1 │ Garry M   │\n2 │ Anthony R │\n3 │ Dana A    │\n4 │ Jose S    │\n5 │ Charles S │\n=#\n\nSplit = Lift(split, (It,))\n\nrun(db >> It.employee.name >> Split)\n#=>\n   │ DataKnot │\n───┼──────────┤\n 1 │ GARRY    │\n 2 │ M        │\n 3 │ ANTHONY  │\n 4 │ R        │\n 5 │ DANA     │\n 6 │ A        │\n 7 │ JOSE     │\n 8 │ S        │\n 9 │ CHARLES  │\n10 │ S        │\n=#\n\nrun(db >> (\n    :employee =>\n      It.employee >>\n        Record(:name =>\n          It.name >> Split)))\n#=>\n  │ employee   │\n  │ name       │\n──┼────────────┤\n1 │ GARRY; M   │\n2 │ ANTHONY; R │\n3 │ DANA; A    │\n4 │ JOSE; S    │\n5 │ CHARLES; S │\n=#\n\nRepeat(V,N) = Lift(fill, (V, N))\nrun(db >> Record(It.name, Repeat(\"Go!\", 3)))\n#=>\n  │ DataKnot              │\n  │ name    #2            │\n──┼───────────────────────┤\n1 │ POLICE  Go!; Go!; Go! │\n2 │ FIRE    Go!; Go!; Go! │\n=#"
 },
 
 {
