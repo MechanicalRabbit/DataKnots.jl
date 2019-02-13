@@ -540,19 +540,20 @@ function lookup(ity::Type{<:NamedTuple}, name::Symbol)
     end
     oty = ity.parameters[2].parameters[j]
     f = t -> t[j]
+    tail = wrap()
+    card = REG
     if oty <: AbstractVector
-        ety = oty.parameters[1]
-        r = chain_of(
-            lift(f),
-            adapt_vector(),
-        ) |> designate(InputShape(ity),
-                       OutputShape(name, ety, OPT|PLU))
-    else
-        r = chain_of(
-            lift(f),
-            wrap()
-        ) |> designate(InputShape(ity), OutputShape(name, oty))
+        oty = eltype(oty)
+        tail = adapt_vector()
+        card = OPT|PLU
+    elseif Missing <: oty
+        oty = Base.nonmissingtype(oty)
+        tail = adapt_missing()
+        card = OPT
     end
+    ishp = InputShape(ity)
+    shp = OutputShape(name, NativeShape(oty), card)
+    r = chain_of(lift(f), tail) |> designate(ishp, shp)
     r
 end
 
