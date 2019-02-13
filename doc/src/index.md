@@ -10,13 +10,13 @@ coherent algebra of query combinators.*
 
 ```@contents
 Pages = [
-    "install.md",
+    "start.md",
     "thinking.md",
     "usage.md",
     "implementation.md",
 ]
+Depth=2
 ```
-
 
 ## Index
 

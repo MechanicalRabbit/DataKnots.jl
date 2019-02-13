@@ -1,4 +1,6 @@
-# Installation Instructions
+# Getting Started
+
+## Installation Instructions
 
 DataKnots.jl is a Julia library, but it is not yet registered with the Julia
 package manager.  To install it, run in the package shell (enter with `]` from

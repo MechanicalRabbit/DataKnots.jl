@@ -6,7 +6,6 @@ Pages = [
     "queries.md",
     "shapes.md",
     "pipelines.md",
-    "lifting.md",
 ]
 Depth = 3
 ```

@@ -1,7 +1,7 @@
 # Reference
 
 DataKnots are a Julia library for building and evaluating data
-processing pipelines. In this library, each `Pipeline` represents
+processing pipelines. Informally, each `Pipeline` represents
 a data transformation; a pipeline's input and output is
 represented by a `DataKnot`. With the exception of a few
 overloaded `Base` functions, such as `run` and `get`, the bulk of

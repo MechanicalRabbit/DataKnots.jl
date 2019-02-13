@@ -29,7 +29,7 @@ makedocs(
         "thinking.md",
         "reference.md",
         hide("implementation.md",
-             ["vectors.md", "queries.md", "shapes.md", "lifting.md",
+             ["vectors.md", "queries.md", "shapes.md", 
               "pipelines.md"]),
         "simulation.md",
     ],
