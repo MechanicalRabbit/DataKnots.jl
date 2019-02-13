@@ -78,8 +78,16 @@ marks the collection as being both singular and mandatory.
     DataKnot(::Missing, card::Cardinality=OPT)
 ```
 
-Finally, there is an edge-case constructor for the creation
-of an optional singular value that happens to be `Missing`.
+There is an edge-case constructor for the creation of a
+a singular but empty collection.
+
+```julia
+    DataKnot()
+```
+
+Finally, there is the *unit* knot, with a single value `nothing`;
+this is the default, implicit DataKnot used when `run` is
+evaluated without an input data source.
 
     DataKnot(["GARRY M", "ANTHONY R", "DANA A"])
     #=>
@@ -102,8 +110,17 @@ of an optional singular value that happens to be `Missing`.
     │ DataKnot │
     =#
 
+    DataKnot()
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │          │
+    =#
+
 Note that plural DataKnots are shown with an index, while singular
-knots are shown without an index.
+knots are shown without an index. Further note that the `missing`
+knot doesn't have a value in its data block, unlike the unit knot
+which has a value of `nothing` (shown as a blank).
 
 #### `show`
 
@@ -156,6 +173,16 @@ returned as a vector.
     ["GARRY M", "ANTHONY R", "DANA A"]
     =#
 
+    get(DataKnot(missing))
+    #=>
+    missing
+    =#
+
+    show(get(DataKnot()))
+    #=>
+    nothing
+    =#
+
 Nested vectors and other data, such as a `TupleVector`, round-trip
 though the conversion to a `DataKnot` and back using `get`.
 
@@ -176,10 +203,64 @@ construct knots and get data.
 
 ### Running Pipelines & Parameters
 
-Once a DataKnot is constructed, it could be executed against a
-pipeline using `run()` to produce an output. Since every
-`DataKnot` is a primitive pipeline that reproduces itself, we
-could write:
+Pipelines can be evaluated against an input `DataKnot` using
+`run()` to produce an output `DataKnot`. If an input is not
+specified, the default *unit* knot, `DataKnot()`, is used. 
+
+#### `DataKnots.AbstractPipeline`
+
+There are several sorts of pipelines that could be evaluated.
+
+```julia
+    struct DataKnot <: AbstractPipeline ... end
+```
+
+A `DataKnot` is a pipeline that produces its entire data block for
+each input value it receives.
+
+```julia
+    struct Navigation <: AbstractPipeline ... end
+```
+
+Path based navigation is also a pipeline. The identity pipeline,
+`It`, simply reproduces its input. Further, when a parameter `x`
+is provided via `run()` it is available for lookup with `It`.`x`.  
+
+```julia
+    struct Pipeline <: AbstractPipeline ... end
+```
+
+Besides the primitives identified above, the remainder of this
+reference is dedicated to various ways of constructing `Pipeline`
+objects from other pipelines.
+
+#### `run`
+
+```julia
+    run(F::AbstractPipeline; params...)
+```
+
+In its general form, `run` takes a pipeline and a set of named
+parameters and evaluates the pipeline with the unit knot as input.
+The parameters are each converted to a `DataKnot` before being
+made available within the pipline's evaluation.
+
+```julia
+    run(F::Pair{Symbol,<:AbstractPipeline}; params...) 
+```
+
+With Julia's `Pair` syntax, this `run` method provides a
+convenient way to label an output `DataKnot`.
+
+```julia
+    run(db::DataKnot, F; params...) 
+```
+This convenience method permits easy use of a specific input data
+source. Since the 1st argument a `DataKnot`, the second argument
+to the method will be automatically converted to a `Pipeline`
+using `Lift`.
+
+Therefore, we can write the following examples.
 
     run(DataKnot("Hello World"))
     #=>
@@ -187,11 +268,13 @@ could write:
     ├─────────────┤
     │ Hello World │
     =#
-
-The `run()` function has a two argument form where the 1st
-argument is a `DataKnot` and the 2nd argument is a `Pipeline`
-expression. Since `It` is the identity pipeline that reproduces
-its input, we can also write:
+    
+    run(:greeting => DataKnot("Hello World"))
+    #=>
+    │ greeting    │
+    ├─────────────┤
+    │ Hello World │
+    =#
 
     run(DataKnot("Hello World"), It)
     #=>
@@ -200,7 +283,7 @@ its input, we can also write:
     │ Hello World │
     =#
 
-Named arguments to `run()` become additional fields that are
+Named arguments to `run()` become additional values that are
 accessible via `It`. Those arguments are converted into a
 `DataKnot` if they are not already.
 
@@ -222,9 +305,11 @@ Once a pipeline is `run()` the resulting `DataKnot` value can be
 retrieved via `get()`.
 
     get(run(DataKnot(1) .+ 1))
-    #=> 2 =#
+    #=> 
+    2 
+    =#
 
-## Constructing Pipelines
+Like `get` and `show`, the `run` function comes Julia's base, and
+hence the methods defined here are only chosen if an argument
+matches the signature dispatch. Hence, 
 
-
-...
