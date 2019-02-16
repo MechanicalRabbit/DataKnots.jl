@@ -856,7 +856,7 @@ function slice(rt::Runtime, input::AbstractVector, rev::Bool)
         sz += r - l + 1
     end
     if sz == length(elts)
-        return val_col
+        return vals
     end
     offs′ = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
