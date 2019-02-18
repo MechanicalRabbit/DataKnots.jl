@@ -279,7 +279,7 @@ summary(io::IO, bv::BlockVector) =
     print(io, "BlockVector of $(length(bv)) × $(sigsyntax(bv))")
 
 sigsyntax(bv::BlockVector{PLU,OPT}) where {PLU,OPT} =
-    Expr(:call, :×, PLU && OPT ? :* : PLU ? :+ : OPT ? :- : 1, sigsyntax(bv.elts))
+    Expr(:call, :×, PLU && OPT ? :(0:N) : PLU ? :(1:N) : OPT ? :(0:1) : :(1:1), sigsyntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
     show_columnar(io, bv)
@@ -521,6 +521,13 @@ macro VectorTree(sig, vec)
     return esc(ex)
 end
 
+const CARD_MAP = Dict(:(0:N) => (true, true),
+                      :(0:n) => (true, true),
+                      :(1:N) => (true, false),
+                      :(1:n) => (true, false),
+                      :(0:1) => (false, true),
+                      :(1:1) => (false, false))
+
 function sig2mk(sig)
     if sig isa Expr && sig.head == :tuple
         lbls = Symbol[]
@@ -538,10 +545,9 @@ function sig2mk(sig)
         elts_mk = sig2mk(sig.args[1])
         return MakeBlockVector(elts_mk, true, true)
     elseif sig isa Expr && sig.head == :call && length(sig.args) == 3 &&
-           sig.args[1] in (:×, :*) && sig.args[2] in (:*, :+, :-, 1)
+           sig.args[1] in (:×, :*) && sig.args[2] in keys(CARD_MAP)
         elts_mk = sig2mk(sig.args[3])
-        plu = sig.args[2] in (:*, :+)
-        opt = sig.args[2] in (:*, :-)
+        (plu, opt) = CARD_MAP[sig.args[2]]
         return MakeBlockVector(elts_mk, plu, opt)
     else
         ty = sig

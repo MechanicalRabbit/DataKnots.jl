@@ -138,7 +138,7 @@ Now we can wrap the columns using `TupleVector`.
 `@VectorTree` provides a convenient way to create `BlockVector` objects from
 regular vector literals.
 
-    @VectorTree (name = String, employee = (*)String) [
+    @VectorTree (name = String, employee = (0:N)String) [
         (name = "POLICE", employee = ["JEFFERY A", "NANCY A"]),
         (name = "FIRE", employee = ["JAMES A", "DANIEL A"]),
         (name = "OEMC", employee = ["LAKENYA A", "DORIS A"]),
@@ -202,10 +202,10 @@ To represent the whole table, the columns should be wrapped with a
 
 As usual, we could create this data from tuple and vector literals.
 
-    @VectorTree (name = (1)String,
-                 position = (1)String,
-                 salary = (-)Int,
-                 rate = (-)Float64) [
+    @VectorTree (name = (1:1)String,
+                 position = (1:1)String,
+                 salary = (0:1)Int,
+                 rate = (0:1)Float64) [
         (name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
         (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing),
         (name = "TERRY A", position = "POLICE OFFICER", salary = 93354, rate = missing),
@@ -258,8 +258,8 @@ Another way to assemble this data in column-oriented format is to use
     @VectorTree (name = String,
                  employee = [(name = String,
                               position = String,
-                              salary = (-)Int,
-                              rate = (-)Float64)]) [
+                              salary = (0:1)Int,
+                              rate = (0:1)Float64)]) [
         (name = "POLICE",
          employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
                      (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]),
@@ -359,11 +359,11 @@ Updated column vectors are generated on demand.
 elements partitioned into individual blocks by a vector of offsets.
 
     bv = BlockVector([1, 3, 5, 7], ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"])
-    #-> @VectorTree (*) × String [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"], ["LAKENYA A", "DORIS A"]]
+    #-> @VectorTree (0:N) × String [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"], ["LAKENYA A", "DORIS A"]]
 
     display(bv)
     #=>
-    BlockVector of 3 × (*) × String:
+    BlockVector of 3 × (0:N) × String:
      ["JEFFERY A", "NANCY A"]
      ["JAMES A", "DANIEL A"]
      ["LAKENYA A", "DORIS A"]
@@ -373,16 +373,16 @@ We can indicate that each block should contain at most one element or at least
 one element.
 
     BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], plural=false)
-    #-> @VectorTree (-) × Float64 [missing, missing, missing, missing, 17.68, 19.38]
+    #-> @VectorTree (0:1) × Float64 [missing, missing, missing, missing, 17.68, 19.38]
 
     BlockVector([1, 3, 5, 7], ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"], optional=false)
-    #-> @VectorTree (+) × String [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"], ["LAKENYA A", "DORIS A"]]
+    #-> @VectorTree (1:N) × String [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"], ["LAKENYA A", "DORIS A"]]
 
 If each block contains exactly one element, we could use `:` in place of the
 offset vector.
 
     BlockVector(:, ["POLICE", "FIRE", "OEMC"])
-    #-> @VectorTree 1 × String ["POLICE", "FIRE", "OEMC"]
+    #-> @VectorTree (1:1) × String ["POLICE", "FIRE", "OEMC"]
 
 The `BlockVector` constructor verifies that the offset vector is well-formed.
 
@@ -431,31 +431,31 @@ When indexed by a vector of indexes, an instance of `BlockVector` is returned.
     elts = ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
     reg_bv = BlockVector(:, elts)
-    #-> @VectorTree 1 × String ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
+    #-> @VectorTree (1:1) × String ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
     opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts, plural=false)
-    #-> @VectorTree (-) × String ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
+    #-> @VectorTree (0:1) × String ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
     plu_bv = BlockVector([1, 1, 1, 2, 2, 4, 4, 6, 7], elts)
-    #-> @VectorTree (*) × String [[], [], ["POLICE"], [], ["FIRE", "HEALTH"], [], ["AVIATION", "WATER MGMNT"], ["FINANCE"]]
+    #-> @VectorTree (0:N) × String [[], [], ["POLICE"], [], ["FIRE", "HEALTH"], [], ["AVIATION", "WATER MGMNT"], ["FINANCE"]]
 
     reg_bv[[1,3,5,3]]
-    #-> @VectorTree 1 × String ["POLICE", "HEALTH", "WATER MGMNT", "HEALTH"]
+    #-> @VectorTree (1:1) × String ["POLICE", "HEALTH", "WATER MGMNT", "HEALTH"]
 
     plu_bv[[1,3,5,3]]
-    #-> @VectorTree (*) × String [[], ["POLICE"], ["FIRE", "HEALTH"], ["POLICE"]]
+    #-> @VectorTree (0:N) × String [[], ["POLICE"], ["FIRE", "HEALTH"], ["POLICE"]]
 
     reg_bv[Base.OneTo(4)]
-    #-> @VectorTree 1 × String ["POLICE", "FIRE", "HEALTH", "AVIATION"]
+    #-> @VectorTree (1:1) × String ["POLICE", "FIRE", "HEALTH", "AVIATION"]
 
     reg_bv[Base.OneTo(6)]
-    #-> @VectorTree 1 × String ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
+    #-> @VectorTree (1:1) × String ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
     plu_bv[Base.OneTo(6)]
-    #-> @VectorTree (*) × String [[], [], ["POLICE"], [], ["FIRE", "HEALTH"], []]
+    #-> @VectorTree (0:N) × String [[], [], ["POLICE"], [], ["FIRE", "HEALTH"], []]
 
     opt_bv[Base.OneTo(10)]
-    #-> @VectorTree (-) × String ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
+    #-> @VectorTree (0:1) × String ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
 
 ### `@VectorTree`
@@ -500,7 +500,7 @@ block could be represented by the element itself; an empty block by `missing`.
         missing,
         ["POLICE", "FIRE"],
     ]
-    #-> @VectorTree (*) × String [["HEALTH"], ["FINANCE", "HUMAN RESOURCES"], [], ["POLICE", "FIRE"]]
+    #-> @VectorTree (0:N) × String [["HEALTH"], ["FINANCE", "HUMAN RESOURCES"], [], ["POLICE", "FIRE"]]
 
 Ill-formed `@VectorTree` contructors are rejected.
 
@@ -536,13 +536,13 @@ Ill-formed `@VectorTree` contructors are rejected.
 
 Using `@VectorTree`, we can easily construct hierarchical data.
 
-    hier_data = @VectorTree (name = String, employee = [(name = String, salary = (-)Int)]) [
+    hier_data = @VectorTree (name = String, employee = [(name = String, salary = (0:1)Int)]) [
         "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
         "FIRE"      ["JOSE S" 202728; "CHARLES S" 197736]
     ]
     display(hier_data)
     #=>
-    TupleVector of 2 × (name = String, employee = (*) × (name = String, salary = (-) × Int)):
+    TupleVector of 2 × (name = String, employee = (0:N) × (name = String, salary = (0:1) × Int)):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
     =#
