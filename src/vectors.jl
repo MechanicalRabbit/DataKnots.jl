@@ -533,7 +533,7 @@ function sig2mk(sig)
         lbls = Symbol[]
         col_mks = MakeAbstractVector[]
         for arg in sig.args
-            if arg isa Expr && arg.head == :(=) && length(arg.args) == 2 && arg.args[1] isa Union{Symbol,String}
+            if arg isa Expr && arg.head in (:(=), :kw) && length(arg.args) == 2 && arg.args[1] isa Union{Symbol,String}
                 push!(lbls, Symbol(arg.args[1]))
                 push!(col_mks, sig2mk(arg.args[2]))
             else
@@ -548,6 +548,10 @@ function sig2mk(sig)
            sig.args[1] in (:×, :*) && sig.args[2] in keys(CARD_MAP)
         elts_mk = sig2mk(sig.args[3])
         (plu, opt) = CARD_MAP[sig.args[2]]
+        return MakeBlockVector(elts_mk, plu, opt)
+    elseif sig isa Expr && sig.head == :call && length(sig.args) >= 1 && sig.args[1] in keys(CARD_MAP)
+        elts_mk = sig2mk(Expr(:tuple, sig.args[2:end]...))
+        (plu, opt) = CARD_MAP[sig.args[1]]
         return MakeBlockVector(elts_mk, plu, opt)
     else
         ty = sig
