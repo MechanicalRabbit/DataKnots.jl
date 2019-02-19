@@ -10,6 +10,7 @@ export
     Drop,
     Each,
     Filter,
+    Given,
     It,
     Label,
     Lift,
@@ -17,13 +18,23 @@ export
     Max,
     Min,
     Record,
-    Remember,
     Sum,
     Tag,
     Take,
     Then
 
+export
+    Cardinality,
+    REG,
+    OPT,
+    PLU,
+    OPT_PLU
+
 include("layouts.jl")
 include("vectors.jl")
+include("shapes.jl")
+include("knots.jl")
+include("queries.jl")
+include("pipelines.jl")
 
 end
