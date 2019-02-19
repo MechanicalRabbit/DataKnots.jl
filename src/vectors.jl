@@ -302,7 +302,7 @@ show(io::IO, ::MIME"text/plain", bv::BlockVector) =
 IndexStyle(::Type{<:BlockVector}) = IndexLinear()
 
 eltype(bv::BlockVector{true}) =
-    AbstractVector{eltype(bv.elts)}
+    Vector{eltype(bv.elts)} # TODO: clarify
 
 eltype(bv::BlockVector{false,true}) =
     Union{eltype(bv.elts),Missing}
@@ -413,10 +413,10 @@ mutable struct BlockCursor{T,O<:AbstractVector{Int},E<:AbstractVector{T}} <: Abs
     end
 end
 
-BlockCursor(bv::BlockVector{O,E}) where {T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
+BlockCursor(bv::BlockVector{PLU,OPT,O,E}) where {PLU,OPT,T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
     BlockCursor{T,O,E}(bv)
 
-BlockCursor(pos, l, r, bv::BlockVector{O,E}) where {T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
+BlockCursor(pos, l, r, bv::BlockVector{PLU,OPT,O,E}) where {PLU,OPT,T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
     BlockCursor{T,V}(pos, l, r, bv)
 
 # Cursor interface for block vector.

@@ -58,11 +58,11 @@ objects.
 For example, consider a collection of departments with associated employees.
 
     depts =
-        @VectorTree (name = [String, REG],
-                     employee = [(name = [String, REG],
-                                  position = [String, REG],
-                                  salary = [Int, OPT],
-                                  rate = [Float64, OPT]), PLU]) [
+        @VectorTree (name = (1:1)String,
+                     employee = (1:N)(name = (1:1)String,
+                                      position = (1:1)String,
+                                      salary = (0:1)Int,
+                                      rate = (0:1)Float64)) [
             (name = "POLICE",
              employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
                          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]),
@@ -127,7 +127,10 @@ associated employees.
 
     dept_employee(depts) |> display
     #=>
-    BlockVector of 3 × [(name = [String, REG], position = [String, REG], salary = [Int, OPT], rate = [Float64, OPT]), PLU]:
+    @VectorTree of 3 × (1:N) × (name = (1:1) × String,
+                                position = (1:1) × String,
+                                salary = (0:1) × Int,
+                                rate = (0:1) × Float64):
      [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing), (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]
      [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing), (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]
      [(name = "LAKENYA A", position = "CROSSING GUARD", salary = missing, rate = 17.68), (name = "DORIS A", position = "CROSSING GUARD", salary = missing, rate = 19.38)]
@@ -188,7 +191,7 @@ we use the *monadic composition* combinator.
     #-> chain_of(column(:employee), with_elements(column(:rate)), flatten())
 
     dept_employee_rate(depts)
-    #-> @VectorTree [Float64] [[], [], [17.68, 19.38]]
+    #-> @VectorTree (0:N) × Float64 [[], [], [17.68, 19.38]]
 
 This composition represents a path through the fields *employee* and *rate* and
 has a signature assigned to it.
@@ -237,8 +240,8 @@ precision specified in a named slot.
             tuple_lift(round_digits),
             wrap())
 
-    round_it(@VectorTree (Float64, (P = [Int, REG],)) [(17.68, (P = 1,)), (19.38, (P = 1,))])
-    #-> @VectorTree [Float64, REG] [17.7, 19.4]
+    round_it(@VectorTree (Float64, (P = (1:1)Int,)) [(17.68, (P = 1,)), (19.38, (P = 1,))])
+    #-> @VectorTree (1:1) × Float64 [17.7, 19.4]
 
 To indicate that the query is monadic, we assign it its monadic signature.
 
@@ -267,12 +270,12 @@ slots are formed from the slots of the components.
     slots(dept_employee_round_rate)
     #-> Pair{Symbol,DataKnots.OutputShape}[:P=>OutputShape(Float64)]
 
-    slot_data = @VectorTree (P = [Int, REG],) [(P = 1,), (P = 1,), (P = 1,)]
+    slot_data = @VectorTree (P = (1:1)Int,) [(P = 1,), (P = 1,), (P = 1,)]
 
     input = TupleVector(:depts => depts, :slot_data => slot_data)
 
     dept_employee_round_rate(input)
-    #-> @VectorTree [Float64] [[], [], [17.7, 19.4]]
+    #-> @VectorTree (0:N) × Float64 [[], [], [17.7, 19.4]]
 
 
 ## API Reference
@@ -584,11 +587,11 @@ Function `shapeof()` determines the shape of a given vector.
 In particular, it detects the record layout.
 
     shapeof(
-        @VectorTree ([String, REG],
-                     [(name = [String, REG],
-                       position = [String, REG],
-                       salary = [Int, OPT],
-                       rate = [Float64, OPT]), PLU]) [])
+        @VectorTree ((1:1)String,
+                     (1:N)(name = (1:1)String,
+                           position = (1:1)String,
+                           salary = (0:1)Int,
+                           rate = (0:1)Float64)) [])
     #=>
     RecordShape(OutputShape(String),
                 OutputShape(RecordShape(OutputShape(:name, String),

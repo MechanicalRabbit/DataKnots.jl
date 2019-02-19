@@ -95,14 +95,14 @@ produces a `BlockVector` filled with the given vector.
 
     q = block_filler(["POLICE", "FIRE"])
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [String] [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
+    #-> @VectorTree (0:N) × String [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
 
 A variant of `block_filler` called `null_filler` makes a query that produces a
 `BlockVector` filled with empty blocks.
 
     q = null_filler()
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [Union{}, OPT] [missing, missing, missing]
+    #-> @VectorTree (0:1) × Union{} [missing, missing, missing]
 
 
 ### Chaining queries
@@ -162,14 +162,14 @@ query `wrap()`, which wraps the vector elements into one-element blocks.
 
     q = wrap()
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [String, REG] ["GARRY M", "ANTHONY R", "DANA A"]
+    #-> @VectorTree (1:1) × String ["GARRY M", "ANTHONY R", "DANA A"]
 
 Dual to `wrap()` is the query `flatten()`, which transforms a nested
 `BlockVector` by flattening its nested blocks.
 
     q = flatten()
     q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [[], ["JOSE S"], ["CHARLES S"]]])
-    #-> @VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
+    #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
 
 The `distribute` constructor makes a query that rearranges a `TupleVector` with
 a `BlockVector` column.  Specifically, it takes each tuple, which should
@@ -181,7 +181,7 @@ the block value over the tuple.
         "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
         "FIRE"      ["JOSE S", "CHARLES S"]]) |> display
     #=>
-    BlockVector of 2 × [(department = String, employee = String)]:
+    @VectorTree of 2 × (0:N) × (department = String, employee = String):
      [(department = "POLICE", employee = "GARRY M"), (department = "POLICE", employee = "ANTHONY R"), (department = "POLICE", employee = "DANA A")]
      [(department = "FIRE", employee = "JOSE S"), (department = "FIRE", employee = "CHARLES S")]
     =#
@@ -197,7 +197,7 @@ elements of a `BlockVector`.
         "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
         "FIRE"      ["JOSE S", "CHARLES S"]]) |> display
     #=>
-    TupleVector of 2 × (department = String, employee = [String]):
+    @VectorTree of 2 × (department = String, employee = (0:N) × String):
      (department = "POLICE", employee = ["Garry M", "Anthony R", "Dana A"])
      (department = "FIRE", employee = ["Jose S", "Charles S"])
     =#
@@ -216,7 +216,7 @@ it is mapped to a one-element block containing the data value.
 
     q = sieve()
     q(@VectorTree (String, Bool) [("JEFFERY A", true), ("JAMES A", true), ("TERRY A", false)])
-    #->  @VectorTree [String, OPT] ["JEFFERY A", "JAMES A", missing]
+    #-> @VectorTree (0:1) × String ["JEFFERY A", "JAMES A", missing]
 
 If `DataKnots` does not provide a specific transformation, it is easy to
 create a new one.  For example, let us create a query constructor `double`
@@ -299,13 +299,13 @@ The `record_lift` constructor is used when the input is in the *record* layout
     #-> record_lift(>)
 
     q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-    #-> @VectorTree [Bool] [[1, 0, 0], [], [1, 1, 0, 0]]
+    #-> @VectorTree (0:N) × Bool [[1, 0, 0], [], [1, 1, 0, 0]]
 
 With `record_lift`, the cardinality of the output is the upper bound of the
 column block cardinalities.
 
-    q(@VectorTree ([Int, PLU], [Int, REG]) [([260004, 185364, 170112], 200000)])
-    #-> @VectorTree [Bool, PLU] [[1, 0, 0]]
+    q(@VectorTree ((1:N)Int, (1:1)Int) [([260004, 185364, 170112], 200000)])
+    #-> @VectorTree (1:N) × Bool [[1, 0, 0]]
 
 
 ### Fillers
@@ -326,7 +326,7 @@ given block.
     #-> block_filler(["POLICE", "FIRE"], PLU)
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [String, PLU] [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
+    #-> @VectorTree (1:N) × String [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
 
 The query `null_filler()` produces a block vector with empty blocks.
 
@@ -334,7 +334,7 @@ The query `null_filler()` produces a block vector with empty blocks.
     #-> null_filler()
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [Union{}, OPT] [missing, missing, missing]
+    #-> @VectorTree (0:1) × Union{} [missing, missing, missing]
 
 
 ### Adapting row-oriented data
@@ -347,7 +347,7 @@ wrapped in 1-element block.
     #-> adapt_missing()
 
     q([260004, 185364, 170112, missing, 202728, 197736])
-    #-> @VectorTree [Int, OPT] [260004, 185364, 170112, missing, 202728, 197736]
+    #-> @VectorTree (0:1) × Int [260004, 185364, 170112, missing, 202728, 197736]
 
 The query `adapt_vector()` transforms a vector of vectors to a block vector.
 
@@ -355,7 +355,7 @@ The query `adapt_vector()` transforms a vector of vectors to a block vector.
     #-> adapt_vector()
 
     q([[260004, 185364, 170112], Int[], [202728, 197736]])
-    #-> @VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]]
+    #-> @VectorTree (0:N) × Int [[260004, 185364, 170112], [], [202728, 197736]]
 
 The query `adapt_tuple()` transforms a vector of tuples to a tuple vector.
 
@@ -364,7 +364,7 @@ The query `adapt_tuple()` transforms a vector of tuples to a tuple vector.
 
     q([("GARRY M", 260004), ("ANTHONY R", 185364), ("DANA A", 170112)]) |> display
     #=>
-    TupleVector of 3 × (String, Int):
+    @VectorTree of 3 × (String, Int):
      ("GARRY M", 260004)
      ("ANTHONY R", 185364)
      ("DANA A", 170112)
@@ -374,7 +374,7 @@ Vectors of named tuples are also supported.
 
     q([(name="GARRY M", salary=260004), (name="ANTHONY R", salary=185364), (name="DANA A", salary=170112)]) |> display
     #=>
-    TupleVector of 3 × (name = String, salary = Int):
+    @VectorTree of 3 × (name = String, salary = Int):
      (name = "GARRY M", salary = 260004)
      (name = "ANTHONY R", salary = 185364)
      (name = "DANA A", salary = 170112)
@@ -410,7 +410,7 @@ generated by applying `q₁`, `q₂` … `qₙ` to the input vector.
 
     q(["GARRY M", "ANTHONY R", "DANA A"]) |> display
     #=>
-    TupleVector of 3 × (title = String, last = Char):
+    @VectorTree of 3 × (title = String, last = Char):
      (title = "Garry M", last = 'M')
      (title = "Anthony R", last = 'R')
      (title = "Dana A", last = 'A')
@@ -439,7 +439,7 @@ of a tuple vector.
 
     q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]) |> display
     #=>
-    TupleVector of 3 × (name = String, salary = Int):
+    @VectorTree of 3 × (name = String, salary = Int):
      (name = "Garry M", salary = 260004)
      (name = "Anthony R", salary = 185364)
      (name = "Dana A", salary = 170112)
@@ -454,7 +454,7 @@ The query `wrap()` wraps the elements of the input vector to one-element blocks.
     #-> wrap()
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree [String, REG] ["GARRY M", "ANTHONY R", "DANA A"]
+    @VectorTree (1:1) × String ["GARRY M", "ANTHONY R", "DANA A"]
 
 The query `flatten()` flattens a nested block vector.
 
@@ -462,7 +462,7 @@ The query `flatten()` flattens a nested block vector.
     #-> flatten()
 
     q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [missing, ["JOSE S"], ["CHARLES S"]]])
-    #-> @VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
+    @VectorTree (0:N) × String [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
 
 The `with_elements` combinator lets us apply the given query to transform the
 elements of a block vector.
@@ -471,7 +471,7 @@ elements of a block vector.
     #-> with_elements(lift(titlecase))
 
     q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
-    #-> @VectorTree [String] [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
+    @VectorTree (0:N) × String [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
 
 The query `distribute(lbl)` transforms a tuple vector with a block column to a
 block vector of tuples by distributing the block elements over the tuple.
@@ -485,7 +485,7 @@ block vector of tuples by distributing the block elements over the tuple.
         [202728, 197736]            [200000, 200000]]
     ) |> display
     #=>
-    BlockVector of 3 × [(Int, [Int])]:
+    @VectorTree of 3 × (0:N) × (Int, (0:N) × Int):
      [(260004, [200000]), (185364, [200000]), (170112, [200000])]
      []
      [(202728, [200000, 200000]), (197736, [200000, 200000])]
@@ -503,7 +503,7 @@ distribute all of the block columns.
         [202728, 197736]            [200000, 200000]]
     ) |> display
     #=>
-    BlockVector of 3 × [(Int, Int)]:
+    @VectorTree of 3 × (0:N) × (Int, Int):
      [(260004, 200000), (185364, 200000), (170112, 200000)]
      []
      [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
@@ -538,7 +538,7 @@ The query `sieve()` filters a vector of pairs by the second column.
     #-> sieve()
 
     q(@VectorTree (Int, Bool) [260004 true; 185364 false; 170112 false])
-    #-> @VectorTree [Int, OPT] [260004, missing, missing]
+    #-> @VectorTree (0:1) × Int [260004, missing, missing]
 
 
 ### Slicing
@@ -550,14 +550,14 @@ elements of each block.
     #-> slice(2, false)
 
     q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
-    #-> @VectorTree [String] [["GARRY M", "ANTHONY R"], ["JOSE S", "CHARLES S"], []]
+    #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S", "CHARLES S"], []]
 
 When `N` is negative, `slice(N)` drops the last `N` elements of each block.
 
     q = slice(-1)
 
     q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
-    #-> @VectorTree [String] [["GARRY M", "ANTHONY R"], ["JOSE S"], []]
+    #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S"], []]
 
 The query `slice(N, true)` drops the first `N` elements (or keeps the last `N`
 elements if `N` is negative).
@@ -565,12 +565,12 @@ elements if `N` is negative).
     q = slice(2, true)
 
     q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
-    #-> @VectorTree [String] [["DANA A"], [], []]
+    #-> @VectorTree (0:N) × String [["DANA A"], [], []]
 
     q = slice(-1, true)
 
     q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
-    #-> @VectorTree [String] [["DANA A"], ["CHARLES S"], []]
+    #-> @VectorTree (0:N) × String [["DANA A"], ["CHARLES S"], []]
 
 A variant of this query `slice()` expects a tuple vector with two columns: the
 first column containing the blocks and the second column with the number of
@@ -580,4 +580,4 @@ elements to keep.
     #-> slice(false)
 
     q(@VectorTree ([String], Int) [(["GARRY M", "ANTHONY R", "DANA A"], 1), (["JOSE S", "CHARLES S"], -1), (missing, 0)])
-    #-> @VectorTree [String] [["GARRY M"], ["JOSE S"], []]
+    #-> @VectorTree (0:N) × String [["GARRY M"], ["JOSE S"], []]

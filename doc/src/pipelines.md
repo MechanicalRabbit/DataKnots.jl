@@ -34,11 +34,11 @@ with a singleton root record, which holds all department records, each of which
 holds associated employee records.
 
     elts =
-        @VectorTree (department = [(name     = [String, REG],
-                                    employee = [(name     = [String, REG],
-                                                 position = [String, REG],
-                                                 salary   = [Int, OPT],
-                                                 rate     = [Float64, OPT])])],) [
+        @VectorTree (department = [(name     = (1:1)String,
+                                    employee = [(name     = (1:1)String,
+                                                 position = (1:1)String,
+                                                 salary   = (0:1)Int,
+                                                 rate     = (0:1)Float64)])],) [
             (department = [
                 (name     = "POLICE",
                  employee = ["JEFFERY A"  "SERGEANT"           101442   missing
@@ -334,7 +334,10 @@ pipeline.
 
     display(elements(output))
     #=>
-    TupleVector of 2 × (name = [String, REG], position = [String, REG], salary = [Int, OPT], rate = [Float64, OPT]):
+    @VectorTree of 2 × (name = (1:1) × String,
+                        position = (1:1) × String,
+                        salary = (0:1) × Int,
+                        rate = (0:1) × Float64):
      (name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing)
      (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing)
     =#

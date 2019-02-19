@@ -545,7 +545,6 @@ Using `@VectorTree`, we can easily construct hierarchical data.
     @VectorTree of 2 × (name = (1:1) × String,
                         employee = (0:N) × (name = (1:1) × String,
                                             salary = (0:1) × Int)):
-    TupleVector of 2 × (name = (1:1) × String, employee = (0:N) × (name = (1:1) × String, salary = (0:1) × Int)):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
     =#
