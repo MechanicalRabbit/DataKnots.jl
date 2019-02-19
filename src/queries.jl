@@ -243,12 +243,12 @@ end
 
 @generated function _record_lift(f, len::Int, cols::BlockVector...)
     D = length(cols)
+    CARD = |(REG, cardinality.(cols)...)
     return quote
-        card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa Base.OneTo{Int})
-            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), card)
+            return BlockVector{$CARD}(:, _tuple_lift(f, len, (@ntuple $D elts)...))
         end
         len′ = 0
         regular = true
@@ -258,7 +258,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), card)
+            return BlockVector{$CARD}(:, _tuple_lift(f, len, (@ntuple $D elts)...))
         end
         I = Tuple{eltype.(@ntuple $D elts)...}
         O = Core.Compiler.return_type(f, I)
@@ -272,7 +272,7 @@ end
             end
             offs′[k+1] = top
         end
-        return BlockVector(offs′, elts′, card)
+        return BlockVector{$CARD}(offs′, elts′)
     end
 end
 
@@ -647,12 +647,12 @@ end
 
 @generated function _distribute_all(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
     D = length(cols)
+    CARD = |(REG, cardinality.(cols)...)
     return quote
-        card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa OneTo{Int})
-            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]), card)
+            return BlockVector{$CARD}(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
         end
         len′ = 0
         regular = true
@@ -662,7 +662,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]), card)
+            return BlockVector{$CARD}(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
         end
         offs′ = Vector{Int}(undef, len+1)
         @nextract $D perm (d -> Vector{Int}(undef, len′))
@@ -675,7 +675,7 @@ end
             offs′[k+1] = top
         end
         cols′ = @nref $D AbstractVector (d -> elts_d[perm_d])
-        return BlockVector(offs′, TupleVector(lbls, len′, cols′), card)
+        return BlockVector{$CARD}(offs′, TupleVector(lbls, len′, cols′))
     end
 end
 
