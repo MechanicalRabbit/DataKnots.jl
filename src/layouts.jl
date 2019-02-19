@@ -130,10 +130,9 @@ function tile_expr(ex::Expr; precedence=0)
     elseif ex.head == :ref && length(ex.args) >= 1
         tile_expr(ex.args[1]) * PPrint.list_layout(PPrint.Layout[tile_expr(arg) for arg in ex.args[2:end]], par=("[", "]"))
     elseif (ex.head == :(=) || ex.head == :(->) || ex.head == :(<:)) && length(ex.args) == 2
-        op = string(ex.head)
         ilt = tile_expr(ex.args[1])
         olt = tile_expr(ex.args[2])
-        (PPrint.nobreak(ilt) * PPrint.literal(" $op ") | ilt * PPrint.literal(" $op") / PPrint.indent(4)) * olt
+        PPrint.pair_layout(ilt, olt, sep=(ex.head == :(<:) ? "$(ex.head)" : " $(ex.head) "))
     elseif ex.head == :(...) && length(ex.args) == 1
         tile_expr(ex.args[1]) * PPrint.literal("...")
     else
