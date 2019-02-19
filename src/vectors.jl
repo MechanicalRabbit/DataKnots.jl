@@ -114,9 +114,6 @@ end
 
 # Printing.
 
-summary(io::IO, tv::TupleVector) =
-    print(io, "TupleVector of $(length(tv)) × $(sigsyntax(tv))")
-
 siglabel(lbl::Symbol) =
     Base.isidentifier(lbl) ? lbl : string(lbl)
 
@@ -274,9 +271,6 @@ function _checkblock(len::Int, offs::AbstractVector{Int}, plu::Bool, opt::Bool)
 end
 
 # Printing.
-
-summary(io::IO, bv::BlockVector) =
-    print(io, "BlockVector of $(length(bv)) × $(sigsyntax(bv))")
 
 sigsyntax(bv::BlockVector{PLU,OPT}) where {PLU,OPT} =
     Expr(:call, :×, PLU && OPT ? :(0:N) : PLU ? :(1:N) : OPT ? :(0:1) : :(1:1), sigsyntax(bv.elts))
@@ -463,6 +457,11 @@ end
 #
 # Printing columnar vectors.
 #
+
+summary(io::IO, v::Union{TupleVector,BlockVector}) =
+    pprint(io, PPrint.pair_layout(PPrint.literal("@VectorTree"),
+                                  tile_expr(Expr(:call, :×, length(v), sigsyntax(v))),
+                                  sep=" of "))
 
 sigsyntax(v::AbstractVector) = eltype(v)
 

@@ -105,14 +105,20 @@ function tile_expr(ex::Expr; precedence=0)
             key_lt, val_lt = arg_lts
             PPrint.pair_layout(key_lt, val_lt)
         elseif precedence′ > 0
-            sep = " $func "
+            sep = func == :(:) ? "$func" : " $func "
             par =
                 if precedence′ < precedence
                     ("(", ")")
                 else
                     ("", "")
                 end
-            PPrint.list_layout(arg_lts, par=par, sep=sep)
+            if length(arg_lts) == 2
+                PPrint.literal(par[1]) *
+                PPrint.pair_layout(arg_lts..., sep=sep, tab=0) *
+                PPrint.literal(par[2])
+            else
+                PPrint.list_layout(arg_lts, par=par, sep=sep)
+            end
         else
             par = ("$func(", ")")
             PPrint.list_layout(arg_lts, par=par)

@@ -293,7 +293,7 @@ Pages = ["vectors.jl"]
 
     display(tv)
     #=>
-    TupleVector of 3 × (name = String, salary = Int):
+    @VectorTree of 3 × (name = String, salary = Int):
      (name = "GARRY M", salary = 260004)
      (name = "ANTHONY R", salary = 185364)
      (name = "DANA A", salary = 170112)
@@ -341,7 +341,7 @@ When indexed by another vector, we get a new instance of `TupleVector`.
     tv′ = tv[[3,1]]
     display(tv′)
     #=>
-    TupleVector of 2 × (name = String, salary = Int):
+    @VectorTree of 2 × (name = String, salary = Int):
      (name = "DANA A", salary = 170112)
      (name = "GARRY M", salary = 260004)
     =#
@@ -363,7 +363,7 @@ elements partitioned into individual blocks by a vector of offsets.
 
     display(bv)
     #=>
-    BlockVector of 3 × (0:N) × String:
+    @VectorTree of 3 × (0:N) × String:
      ["JEFFERY A", "NANCY A"]
      ["JAMES A", "DANIEL A"]
      ["LAKENYA A", "DORIS A"]
@@ -542,6 +542,9 @@ Using `@VectorTree`, we can easily construct hierarchical data.
     ]
     display(hier_data)
     #=>
+    @VectorTree of 2 × (name = (1:1) × String,
+                        employee = (0:N) × (name = (1:1) × String,
+                                            salary = (0:1) × Int)):
     TupleVector of 2 × (name = (1:1) × String, employee = (0:N) × (name = (1:1) × String, salary = (0:1) × Int)):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
