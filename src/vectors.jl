@@ -208,63 +208,105 @@ end
 
 
 #
-# Vector of vectors in a columnar form.
+# Cardinality of a data block.
+#
+
+"""
+    REG::Cardinality
+    OPT::Cardinality
+    PLU::Cardinality
+    OPT|PLU::Cardinality
+
+Cardinality constraints on a block of data.  `REG` stands for *1…1*, `OPT`
+for *0…1*, `PLU` for *1…∞*, `OPT|PLU` for *0…∞*.
+"""
+Cardinality
+
+@enum Cardinality::UInt8 REG OPT PLU OPT_PLU
+
+syntax(c::Cardinality) =
+    c == REG ? :REG :
+    c == OPT ? :OPT :
+    c == PLU ? :PLU : Expr(:call, :(|), :OPT, :PLU)
+
+# Bitwise operations.
+
+(~)(c::Cardinality) =
+    Base.bitcast(Cardinality, (~UInt8(c))&UInt8(OPT|PLU))
+
+(|)(c1::Cardinality, c2::Cardinality) =
+    Base.bitcast(Cardinality, UInt8(c1)|UInt8(c2))
+
+(&)(c1::Cardinality, c2::Cardinality) =
+    Base.bitcast(Cardinality, UInt8(c1)&UInt8(c2))
+
+# Predicates.
+
+isregular(c::Cardinality) =
+    c == REG
+
+isoptional(c::Cardinality) =
+    c & OPT == OPT
+
+isplural(c::Cardinality) =
+    c & PLU == PLU
+
+
+#
+# Vector of data blocks in a columnar form.
 #
 
 # Constructors.
 
 """
-    BlockVector(offs::AbstractVector{Int}, elts::AbstractVector; plural=true, optional=true)
-    BlockVector(:, elts::AbstractVector; plural=false, optional=false)
+    BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=OPT|PLU)
+    BlockVector(:, elts::AbstractVector, card::Cardinality=REG)
 
-Vector of vectors (blocks) stored as a vector of elements partitioned by a
+Vector of data blocks stored as a vector of elements partitioned by a
 vector of offsets.
 
 - `elts` is a continuous vector of block elements.
 - `offs` is a vector of indexes that subdivide `elts` into separate blocks.
   Should be monotonous with `offs[1] == 1` and `offs[end] == length(elts)+1`.
   Use `:` if the offset vector is a unit range.
-- `plural` is `false` if each block should contain at most 1 element
-  (`offs[i+1] <= offs[i]+1` for all `i`); `true` otherwise.
-- `optional` is `false` if each block should contain at least 1 element
-  (`offs[i+1] >= offs[i]+1` for all `i`); `true` otherwise.
+- `card` is the cardinality constraint on the blocks.
 """
-struct BlockVector{PLU,OPT,O<:AbstractVector{Int},E<:AbstractVector} <: AbstractVector{Any}
+struct BlockVector{CARD,O<:AbstractVector{Int},E<:AbstractVector} <: AbstractVector{Any}
     offs::O
     elts::E
 
-    @inline function BlockVector{PLU,OPT,O,E}(offs::O, elts::E) where {PLU,OPT,O<:AbstractVector{Int},E<:AbstractVector}
-        @boundscheck _checkblock(length(elts), offs, PLU, OPT)
-        new{PLU,OPT,O,E}(offs, elts)
+    @inline function BlockVector{CARD,O,E}(offs::O, elts::E) where {CARD,O<:AbstractVector{Int},E<:AbstractVector}
+        @boundscheck _checkblock(length(elts), offs, CARD)
+        new{CARD,O,E}(offs, elts)
     end
 end
 
-@inline BlockVector{PLU,OPT}(offs::O, elts::E) where {PLU,OPT,O<:AbstractVector{Int},E<:AbstractVector} =
-    BlockVector{PLU,OPT,O,E}(offs, elts)
+@inline BlockVector{CARD}(offs::O, elts::E) where {CARD,O<:AbstractVector{Int},E<:AbstractVector} =
+    BlockVector{CARD,O,E}(offs, elts)
 
-@inline BlockVector{PLU,OPT}(::Colon, elts::AbstractVector) where {PLU,OPT} =
-    BlockVector{PLU,OPT}(OneTo{Int}(length(elts)+1), elts)
+@inline BlockVector{CARD}(::Colon, elts::AbstractVector) where {CARD} =
+    BlockVector{CARD}(OneTo{Int}(length(elts)+1), elts)
 
-@inline BlockVector(offs::AbstractVector{Int}, elts::AbstractVector; plural=true, optional=true) =
-    BlockVector{plural,optional}(offs, elts)
+@inline BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=PLU|OPT) =
+    BlockVector{card}(offs, elts)
 
-@inline BlockVector(::Colon, elts::AbstractVector; plural=false, optional=false) =
-    BlockVector{plural,optional}(:, elts)
+@inline BlockVector(::Colon, elts::AbstractVector, card::Cardinality=REG) =
+    BlockVector{card}(:, elts)
 
-function _checkblock(len::Int, offs::OneTo{Int}, ::Bool, ::Bool)
+function _checkblock(len::Int, offs::OneTo{Int}, ::Cardinality)
     !isempty(offs) || error("partition must be non-empty")
     offs[end] == len+1 || error("partition must enclose the elements")
 end
 
-function _checkblock(len::Int, offs::AbstractVector{Int}, plu::Bool, opt::Bool)
+function _checkblock(len::Int, offs::AbstractVector{Int}, card::Cardinality)
     !isempty(offs) || error("partition must be non-empty")
     @inbounds off = offs[1]
     off == 1 || error("partition must start with 1")
     for k = 2:lastindex(offs)
         @inbounds off′ = offs[k]
         off′ >= off || error("partition must be monotone")
-        plu || off′ <= off+1 || error("singular blocks must have at most one element")
-        opt || off′ >= off+1 || error("mandatory blocks must have at least one element")
+        isplural(card) || off′ <= off+1 || error("singular blocks must have at most one element")
+        isoptional(card) || off′ >= off+1 || error("mandatory blocks must have at least one element")
         off = off′
     end
     off == len+1 || error("partition must enclose the elements")
@@ -272,8 +314,8 @@ end
 
 # Printing.
 
-sigsyntax(bv::BlockVector{PLU,OPT}) where {PLU,OPT} =
-    Expr(:call, :×, PLU && OPT ? :(0:N) : PLU ? :(1:N) : OPT ? :(0:1) : :(1:1), sigsyntax(bv.elts))
+sigsyntax(bv::BlockVector{CARD}) where {CARD} =
+    Expr(:call, :×, CARD == OPT|PLU ? :(0:N) : CARD == PLU ? :(1:N) : CARD == OPT ? :(0:1) : :(1:1), sigsyntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
     show_columnar(io, bv)
@@ -287,13 +329,21 @@ show(io::IO, ::MIME"text/plain", bv::BlockVector) =
 
 @inline elements(bv::BlockVector) = bv.elts
 
-@inline isplural(bv::BlockVector{PLU}) where {PLU} = PLU
+@inline cardinality(bv::BlockVector{CARD}) where {CARD} = CARD
 
-@inline isplural(::Type{<:BlockVector{PLU}}) where {PLU} = PLU
+@inline cardinality(::Type{<:BlockVector{CARD}}) where {CARD} = CARD
 
-@inline isoptional(bv::BlockVector{PLU,OPT}) where {PLU,OPT} = OPT
+@inline isregular(bv::BlockVector{CARD}) where {CARD} = isregular(CARD)
 
-@inline isoptional(::Type{<:BlockVector{PLU,OPT}}) where {PLU,OPT} = OPT
+@inline isregular(::Type{<:BlockVector{CARD}}) where {CARD} = isregular(CARD)
+
+@inline isplural(bv::BlockVector{CARD}) where {CARD} = isplural(CARD)
+
+@inline isplural(::Type{<:BlockVector{CARD}}) where {CARD} = isplural(CARD)
+
+@inline isoptional(bv::BlockVector{CARD}) where {CARD} = isoptional(CARD)
+
+@inline isoptional(::Type{<:BlockVector{CARD}}) where {CARD} = isoptional(CARD)
 
 # Vector interface.
 
@@ -301,30 +351,30 @@ show(io::IO, ::MIME"text/plain", bv::BlockVector) =
 
 IndexStyle(::Type{<:BlockVector}) = IndexLinear()
 
-eltype(bv::BlockVector{true}) =
+eltype(bv::BlockVector) =
     Vector{eltype(bv.elts)} # TODO: clarify
 
-eltype(bv::BlockVector{false,true}) =
+eltype(bv::BlockVector{OPT}) =
     Union{eltype(bv.elts),Missing}
 
-eltype(bv::BlockVector{false,false}) =
+eltype(bv::BlockVector{REG}) =
     eltype(bv.elts)
 
-@inline function getindex(bv::BlockVector{true}, k::Int)
+@inline function getindex(bv::BlockVector, k::Int)
     @boundscheck checkbounds(bv, k)
     @inbounds rng = bv.offs[k]:bv.offs[k+1]-1
     @inbounds elt = bv.elts[rng]
     elt
 end
 
-@inline function getindex(bv::BlockVector{false,true}, k::Int)
+@inline function getindex(bv::BlockVector{OPT}, k::Int)
     @boundscheck checkbounds(bv, k)
     @inbounds rng = bv.offs[k]:bv.offs[k+1]-1
     @inbounds elt = !isempty(rng) ? bv.elts[rng.start] : missing
     elt
 end
 
-@inline function getindex(bv::BlockVector{false,false}, k::Int)
+@inline function getindex(bv::BlockVector{REG}, k::Int)
     @boundscheck checkbounds(bv, k)
     @inbounds elt = bv.elts[k]
     elt
@@ -341,7 +391,7 @@ Returns a new `BlockVector` with a selection of blocks specified by indexes
     _getindex(bv, ks)
 end
 
-function _getindex(bv::BlockVector{PLU,OPT}, ks::AbstractVector) where {PLU,OPT}
+function _getindex(bv::BlockVector{CARD}, ks::AbstractVector) where {CARD}
     offs′ = Vector{Int}(undef, length(ks)+1)
     @inbounds offs′[1] = top = 1
     i = 1
@@ -360,18 +410,18 @@ function _getindex(bv::BlockVector{PLU,OPT}, ks::AbstractVector) where {PLU,OPT}
         j += r - l
     end
     @inbounds elts′ = bv.elts[perm]
-    @inbounds bv′ = BlockVector{PLU,OPT}(offs′, elts′)
+    @inbounds bv′ = BlockVector{CARD}(offs′, elts′)
     bv′
 end
 
-function _getindex(bv::BlockVector{PLU,OPT,OneTo{Int}}, ks::AbstractVector) where {PLU,OPT}
+function _getindex(bv::BlockVector{CARD,OneTo{Int}}, ks::AbstractVector) where {CARD}
     offs′ = OneTo(length(ks)+1)
     @inbounds elts′ = bv.elts[ks]
-    @inbounds bv′ = BlockVector{PLU,OPT}(offs′, elts′)
+    @inbounds bv′ = BlockVector{CARD}(offs′, elts′)
     bv′
 end
 
-function _getindex(bv::BlockVector{PLU,OPT}, ks::OneTo) where {PLU,OPT}
+function _getindex(bv::BlockVector{CARD}, ks::OneTo) where {CARD}
     len = length(ks)
     if len == length(bv.offs)-1
         return bv
@@ -379,18 +429,18 @@ function _getindex(bv::BlockVector{PLU,OPT}, ks::OneTo) where {PLU,OPT}
     @inbounds offs′ = bv.offs[OneTo(len+1)]
     @inbounds top = bv.offs[len+1]
     @inbounds elts′ = bv.elts[OneTo(top-1)]
-    @inbounds bv′ = BlockVector{PLU,OPT}(offs′, elts′)
+    @inbounds bv′ = BlockVector{CARD}(offs′, elts′)
     bv′
 end
 
-function _getindex(bv::BlockVector{PLU,OPT,OneTo{Int}}, ks::OneTo) where {PLU,OPT}
+function _getindex(bv::BlockVector{CARD,OneTo{Int}}, ks::OneTo) where {CARD}
     len = length(ks)
     if len == length(bv.offs)-1
         return bv
     end
     offs′ = OneTo(len+1)
     @inbounds elts′ = bv.elts[ks]
-    @inbounds bv′ = BlockVector{PLU,OPT}(offs′, elts′)
+    @inbounds bv′ = BlockVector{CARD}(offs′, elts′)
     bv′
 end
 
@@ -413,10 +463,10 @@ mutable struct BlockCursor{T,O<:AbstractVector{Int},E<:AbstractVector{T}} <: Abs
     end
 end
 
-BlockCursor(bv::BlockVector{PLU,OPT,O,E}) where {PLU,OPT,T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
+BlockCursor(bv::BlockVector{CARD,O,E}) where {CARD,T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
     BlockCursor{T,O,E}(bv)
 
-BlockCursor(pos, l, r, bv::BlockVector{PLU,OPT,O,E}) where {PLU,OPT,T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
+BlockCursor(pos, l, r, bv::BlockVector{CARD,O,E}) where {CARD,T,O<:AbstractVector{Int},E<:AbstractVector{T}} =
     BlockCursor{T,V}(pos, l, r, bv)
 
 # Cursor interface for block vector.
@@ -520,12 +570,12 @@ macro VectorTree(sig, vec)
     return esc(ex)
 end
 
-const CARD_MAP = Dict(:(0:N) => (true, true),
-                      :(0:n) => (true, true),
-                      :(1:N) => (true, false),
-                      :(1:n) => (true, false),
-                      :(0:1) => (false, true),
-                      :(1:1) => (false, false))
+const CARD_MAP = Dict(:(0:N) => OPT|PLU,
+                      :(0:n) => OPT|PLU,
+                      :(1:N) => PLU,
+                      :(1:n) => PLU,
+                      :(0:1) => OPT,
+                      :(1:1) => REG)
 
 function sig2mk(sig)
     if sig isa Expr && sig.head == :tuple
@@ -542,16 +592,16 @@ function sig2mk(sig)
         return MakeTupleVector(lbls, col_mks)
     elseif sig isa Expr && sig.head == :vect && length(sig.args) == 1
         elts_mk = sig2mk(sig.args[1])
-        return MakeBlockVector(elts_mk, true, true)
+        return MakeBlockVector(elts_mk, OPT|PLU)
     elseif sig isa Expr && sig.head == :call && length(sig.args) == 3 &&
            sig.args[1] in (:×, :*) && sig.args[2] in keys(CARD_MAP)
         elts_mk = sig2mk(sig.args[3])
-        (plu, opt) = CARD_MAP[sig.args[2]]
-        return MakeBlockVector(elts_mk, plu, opt)
+        card = CARD_MAP[sig.args[2]]
+        return MakeBlockVector(elts_mk, card)
     elseif sig isa Expr && sig.head == :call && length(sig.args) >= 1 && sig.args[1] in keys(CARD_MAP)
         elts_mk = sig2mk(Expr(:tuple, sig.args[2:end]...))
-        (plu, opt) = CARD_MAP[sig.args[1]]
-        return MakeBlockVector(elts_mk, plu, opt)
+        card = CARD_MAP[sig.args[1]]
+        return MakeBlockVector(elts_mk, card)
     else
         ty = sig
         return MakeVector(ty)
@@ -571,11 +621,10 @@ end
 mutable struct MakeBlockVector <: MakeAbstractVector
     elts_mk::MakeAbstractVector
     offs::Vector{Int}
-    plu::Bool
-    opt::Bool
+    card::Cardinality
     top::Int
 
-    MakeBlockVector(elts_mk, plu, opt) = new(elts_mk, [1], plu, opt, 1)
+    MakeBlockVector(elts_mk, card) = new(elts_mk, [1], card, 1)
 end
 
 mutable struct MakeVector <: MakeAbstractVector
@@ -647,7 +696,7 @@ _reconstruct(mk::MakeTupleVector) =
                 Expr(:ref, AbstractVector, _reconstruct.(mk.col_mks)...))
 
 _reconstruct(mk::MakeBlockVector) =
-    Expr(:call, Expr(:curly, BlockVector, mk.plu, mk.opt),
+    Expr(:call, Expr(:curly, BlockVector, mk.card),
                 mk.offs == (1:length(mk.offs)) ? :(:) : mk.offs,
                 _reconstruct(mk.elts_mk))
 

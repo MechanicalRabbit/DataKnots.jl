@@ -8,13 +8,18 @@ We will need the following definitions:
 
     using DataKnots:
         @VectorTree,
+        OPT,
+        PLU,
+        REG,
         BlockVector,
+        Cardinality,
         TupleVector,
         column,
         columns,
         elements,
         isoptional,
         isplural,
+        isregular,
         labels,
         offsets,
         width
@@ -176,17 +181,18 @@ Element vectors are partitioned into table cells by offset vectors.
 
 The pairs of element of offset vectors are wrapped as `BlockVector` objects.
 
-    salary_col = BlockVector(salary_offs, salary_elts, plural=false)
-    rate_col = BlockVector(rate_offs, rate_elts, plural=false)
+    salary_col = BlockVector(salary_offs, salary_elts, OPT)
+    rate_col = BlockVector(rate_offs, rate_elts, OPT)
 
-Here, the parameter `plural=false` of the `BlockVector` constructor specifies
-that each block should contain no more than one element.
+Here, the last parameter of the `BlockVector` constructor is the cardinality
+constraint on the size of the blocks.  The constraint `OPT` indicates that each
+block should contain from 0 to 1 elements.
 
 The first two columns of the table do not contain empty cells, and therefore
 could be represented by regular vectors.  If we choose to wrap these columns
-with `BlockVector`, we should indicate that each block must contain exactly one
-element by specifying the parameters `plural=false` and `optional=false`.
-Alternatively, `BlockVector` provides the following shorthand notation.
+with `BlockVector`, we should use the constraint `REG` to indicate that each
+block must contain exactly one element.  Alternatively, `BlockVector` provides
+the following shorthand notation.
 
     name_col = BlockVector(:, ["JEFFERY A", "JAMES A", "TERRY A", "LAKENYA A"])
     position_col = BlockVector(:, ["SERGEANT", "FIRE ENGINEER-EMT", "POLICE OFFICER", "CROSSING GUARD"])
@@ -238,8 +244,8 @@ data.
         TupleVector(
             :name => ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"],
             :position => ["SERGEANT", "POLICE OFFICER", "FIRE ENGINEER-EMT", "FIRE FIGHTER-EMT", "CROSSING GUARD", "CROSSING GUARD"],
-            :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484], plural=false),
-            :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], plural=false))
+            :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484], OPT),
+            :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], OPT))
 
 Then we partition employee data by departments:
 
@@ -353,6 +359,38 @@ Updated column vectors are generated on demand.
     #-> [170112, 260004]
 
 
+### `Cardinality`
+
+Enumerated type `Cardinality` is used to constrain the cardinality of a data
+block.  There are four different cardinality constraints: `(1:1)`, `(0:1)`,
+`(1:N)`, and `(0:N)`.
+
+    display(Cardinality)
+    #=>
+    Enum Cardinality:
+    REG = 0x00
+    OPT = 0x01
+    PLU = 0x02
+    OPT_PLU = 0x03
+    =#
+
+Cardinality values support bitwise operations.
+
+    print(REG|OPT|PLU)      #-> OPT_PLU
+    print(PLU&~PLU)         #-> REG
+
+We can use predicates `isregular()`, `isoptional()`, `isplural()` to check
+cardinality values.
+
+    isregular(REG)          #-> true
+    isregular(OPT)          #-> false
+    isregular(PLU)          #-> false
+    isoptional(OPT)         #-> true
+    isoptional(PLU)         #-> false
+    isplural(PLU)           #-> true
+    isplural(OPT)           #-> false
+
+
 ### `BlockVector`
 
 `BlockVector` is a vector of homogeneous vectors (blocks) stored as a vector of
@@ -372,10 +410,10 @@ elements partitioned into individual blocks by a vector of offsets.
 We can indicate that each block should contain at most one element or at least
 one element.
 
-    BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], plural=false)
+    BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], OPT)
     #-> @VectorTree (0:1) × Float64 [missing, missing, missing, missing, 17.68, 19.38]
 
-    BlockVector([1, 3, 5, 7], ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"], optional=false)
+    BlockVector([1, 3, 5, 7], ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"], PLU)
     #-> @VectorTree (1:N) × String [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"], ["LAKENYA A", "DORIS A"]]
 
 If each block contains exactly one element, we could use `:` in place of the
@@ -406,10 +444,10 @@ The `BlockVector` constructor verifies that the offset vector is well-formed.
 
 The constructor also validates the cardinality constraint.
 
-    BlockVector([1, 3, 5, 7], ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"], plural=false)
+    BlockVector([1, 3, 5, 7], ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"], OPT)
     #-> ERROR: singular blocks must have at most one element
 
-    BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], optional=false)
+    BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], PLU)
     #-> ERROR: mandatory blocks must have at least one element
 
 We can access individual components of the vector.
@@ -433,7 +471,7 @@ When indexed by a vector of indexes, an instance of `BlockVector` is returned.
     reg_bv = BlockVector(:, elts)
     #-> @VectorTree (1:1) × String ["POLICE", "FIRE", "HEALTH", "AVIATION", "WATER MGMNT", "FINANCE"]
 
-    opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts, plural=false)
+    opt_bv = BlockVector([1, 2, 3, 3, 4, 4, 5, 6, 6, 6, 7], elts, OPT)
     #-> @VectorTree (0:1) × String ["POLICE", "FIRE", missing, "HEALTH", missing, "AVIATION", "WATER MGMNT", missing, missing, "FINANCE"]
 
     plu_bv = BlockVector([1, 1, 1, 2, 2, 4, 4, 6, 7], elts)
