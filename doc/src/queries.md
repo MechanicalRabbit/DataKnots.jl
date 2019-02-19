@@ -319,11 +319,11 @@ The query `filler(val)` ignores its input and produces a vector filled with
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> [200000, 200000, 200000]
 
-The query `block_filler(blk, plural, optional)` produces a block vector filled
-with the given block.
+The query `block_filler(blk, card)` produces a block vector filled with the
+given block.
 
-    q = block_filler(["POLICE", "FIRE"], true, false)
-    #-> block_filler(["POLICE", "FIRE"], true, false)
+    q = block_filler(["POLICE", "FIRE"], PLU)
+    #-> block_filler(["POLICE", "FIRE"], PLU)
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> @VectorTree (1:N) × String [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]

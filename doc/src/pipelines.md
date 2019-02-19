@@ -260,18 +260,18 @@ the result of the condition.
 
     qc1 = apply(SalaryOver100K, env, qc0)
     #=>
-    chain_of(
-        wrap(),
-        with_elements(
-            chain_of(
-                tuple_of(
-                    chain_of(wrap(), with_elements(column(:salary)), flatten()),
-                    chain_of(wrap(),
-                             with_elements(block_filler([100000], false, false)),
-                             flatten())),
-                tuple_lift(>),
-                adapt_missing())),
-        flatten())
+    chain_of(wrap(),
+             with_elements(chain_of(tuple_of(
+                                        chain_of(wrap(),
+                                                 with_elements(column(:salary)),
+                                                 flatten()),
+                                        chain_of(wrap(),
+                                                 with_elements(
+                                                     block_filler([100000], REG)),
+                                                 flatten())),
+                                    tuple_lift(>),
+                                    adapt_missing())),
+             flatten())
     =#
 
 `Filter(SalaryOver100K)` then combines the outputs of `q2` and `qc1` using
@@ -284,29 +284,27 @@ the result of the condition.
                  with_elements(column(:employee)),
                  flatten()),
         with_elements(
-            chain_of(tuple_of(pass(),
-                              chain_of(chain_of(
-                                           wrap(),
-                                           with_elements(
-                                               chain_of(
-                                                   tuple_of(
-                                                       chain_of(wrap(),
-                                                                with_elements(
-                                                                    column(
-                                                                        :salary)),
-                                                                flatten()),
-                                                       chain_of(wrap(),
-                                                                with_elements(
-                                                                    block_filler(
-                                                                        [100000],
-                                                                        false,
-                                                                        false)),
-                                                                flatten())),
-                                                   tuple_lift(>),
-                                                   adapt_missing())),
-                                           flatten()),
-                                       block_any())),
-                     sieve())),
+            chain_of(
+                tuple_of(
+                    pass(),
+                    chain_of(
+                        chain_of(
+                            wrap(),
+                            with_elements(
+                                chain_of(
+                                    tuple_of(
+                                        chain_of(wrap(),
+                                                 with_elements(column(:salary)),
+                                                 flatten()),
+                                        chain_of(wrap(),
+                                                 with_elements(
+                                                     block_filler([100000], REG)),
+                                                 flatten())),
+                                    tuple_lift(>),
+                                    adapt_missing())),
+                            flatten()),
+                        block_any())),
+                sieve())),
         flatten())
     =#
 
@@ -317,16 +315,14 @@ The resulting query could be compacted by simplifying the query expression.
     chain_of(column(:department),
              with_elements(column(:employee)),
              flatten(),
-             with_elements(chain_of(tuple_of(pass(),
-                                             chain_of(tuple_of(column(:salary),
-                                                               block_filler(
-                                                                   [100000],
-                                                                   false,
-                                                                   false)),
-                                                      tuple_lift(>),
-                                                      adapt_missing(),
-                                                      block_any())),
-                                    sieve())),
+             with_elements(
+                 chain_of(tuple_of(pass(),
+                                   chain_of(tuple_of(column(:salary),
+                                                     block_filler([100000], REG)),
+                                            tuple_lift(>),
+                                            adapt_missing(),
+                                            block_any())),
+                          sieve())),
              flatten())
     =#
 

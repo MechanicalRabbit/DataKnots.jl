@@ -94,6 +94,9 @@ syntax(c::Cardinality) =
 cardinality(bv::BlockVector{P,O}) where {P,O} =
     (P ? PLU : REG) | (O ? OPT : REG)
 
+BlockVector(offs, elts, card::Cardinality) =
+    BlockVector{isplural(card),isoptional(card)}(offs, elts)
+
 # Bitwise operations.
 
 (~)(c::Cardinality) =

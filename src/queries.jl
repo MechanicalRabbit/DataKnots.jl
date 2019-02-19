@@ -244,12 +244,11 @@ end
 @generated function _record_lift(f, len::Int, cols::BlockVector...)
     D = length(cols)
     return quote
-        plural = any(isplural, cols)
-        optional = any(isoptional, cols)
+        card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa Base.OneTo{Int})
-            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), plural=plural, optional=optional)
+            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), card)
         end
         len′ = 0
         regular = true
@@ -259,7 +258,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), plural=plural, optional=optional)
+            return BlockVector(:, _tuple_lift(f, len, (@ntuple $D elts)...), card)
         end
         I = Tuple{eltype.(@ntuple $D elts)...}
         O = Core.Compiler.return_type(f, I)
@@ -273,7 +272,7 @@ end
             end
             offs′[k+1] = top
         end
-        return BlockVector(offs′, elts′, plural=plural, optional=optional)
+        return BlockVector(offs′, elts′, card)
     end
 end
 
@@ -295,20 +294,20 @@ This query produces a block vector with empty blocks.
 null_filler() = Query(null_filler)
 
 null_filler(rt::Runtime, input::AbstractVector) =
-    BlockVector(fill(1, length(input)+1), Union{}[], plural=false)
+    BlockVector(fill(1, length(input)+1), Union{}[], OPT)
 
 """
-    block_filler(block::AbstractVector, plural::Bool, optional::Bool) :: Query
+    block_filler(block::AbstractVector, card::Cardinality) :: Query
 
 This query produces a block vector filled with the given block.
 """
-block_filler(block, plural=true, optional=true) = Query(block_filler, block, plural, optional)
+block_filler(block, card::Cardinality=OPT|PLU) = Query(block_filler, block, card)
 
-function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector, plural, optional)
+function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector, card::Cardinality)
     if isempty(input)
-        return BlockVector(:, block[[]], plural=plural, optional=optional)
+        return BlockVector(:, block[[]], card)
     elseif length(input) == 1
-        return BlockVector([1, length(block)+1], block, plural=plural, optional=optional)
+        return BlockVector([1, length(block)+1], block, card)
     else
         len = length(input)
         sz = length(block)
@@ -316,7 +315,7 @@ function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector,
         for k in eachindex(input)
             copyto!(perm, 1 + sz * (k - 1), 1:sz)
         end
-        return BlockVector(1:sz:(len*sz+1), block[perm], plural=plural, optional=optional)
+        return BlockVector(1:sz:(len*sz+1), block[perm], card)
     end
 end
 
@@ -335,7 +334,7 @@ adapt_missing() = Query(adapt_missing)
 
 function adapt_missing(rt::Runtime, input::AbstractVector)
     if !(Missing <: eltype(input))
-        return BlockVector(:, input, optional=true)
+        return BlockVector(:, input, OPT)
     end
     sz = 0
     for elt in input
@@ -345,7 +344,7 @@ function adapt_missing(rt::Runtime, input::AbstractVector)
     end
     O = Base.nonmissingtype(eltype(input))
     if sz == length(input)
-        return BlockVector(:, collect(O, input), optional=true)
+        return BlockVector(:, collect(O, input), OPT)
     end
     offs = Vector{Int}(undef, length(input)+1)
     elts = Vector{O}(undef, sz)
@@ -358,7 +357,7 @@ function adapt_missing(rt::Runtime, input::AbstractVector)
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, elts, plural=false)
+    return BlockVector(offs, elts, OPT)
 end
 
 """
@@ -384,7 +383,7 @@ function adapt_vector(rt::Runtime, input::AbstractVector)
         top += length(v)
         offs[k+1] = top
     end
-    return BlockVector(offs, elts)
+    return BlockVector(offs, elts, OPT|PLU)
 end
 
 """
@@ -547,7 +546,7 @@ of the input vector.
 wrap() = Query(wrap)
 
 wrap(rt::Runtime, input::AbstractVector) =
-    BlockVector(:, input)
+    BlockVector(:, input, REG)
 
 
 """
@@ -559,7 +558,7 @@ with_elements(q) = Query(with_elements, q)
 
 function with_elements(rt::Runtime, input::AbstractVector, q)
     @assert input isa BlockVector
-    BlockVector(offsets(input), q(rt, elements(input)), plural=isplural(input), optional=isoptional(input))
+    BlockVector(offsets(input), q(rt, elements(input)), cardinality(input))
 end
 
 """
@@ -575,9 +574,8 @@ function flatten(rt::Runtime, input::AbstractVector)
     nested = elements(input)
     nested_offs = offsets(nested)
     elts = elements(nested)
-    plural = isplural(input) || isplural(nested)
-    optional = isoptional(input) || isoptional(nested)
-    BlockVector(_flatten(offs, nested_offs), elts, plural=plural, optional=optional)
+    card = cardinality(input)|cardinality(nested)
+    BlockVector(_flatten(offs, nested_offs), elts, card)
 end
 
 _flatten(offs1::AbstractVector{Int}, offs2::AbstractVector{Int}) =
@@ -604,14 +602,13 @@ function distribute(rt::Runtime, input::AbstractVector, lbl)
     lbls = labels(input)
     cols = columns(input)
     col = cols[j]
-    plural = isplural(col)
-    optional = isoptional(col)
+    card = cardinality(col)
     offs = offsets(col)
     col′ = elements(col)
     cols′ = copy(cols)
     if offs isa OneTo{Int}
         cols′[j] = col′
-        return BlockVector(offs, TupleVector(lbls, len, cols′), plural=plural, optional=optional)
+        return BlockVector(offs, TupleVector(lbls, len, cols′), card)
     end
     len′ = length(col′)
     perm = Vector{Int}(undef, len′)
@@ -631,7 +628,7 @@ function distribute(rt::Runtime, input::AbstractVector, lbl)
                 cols′[i][perm]
             end
     end
-    return BlockVector(offs, TupleVector(lbls, len′, cols′), plural=plural, optional=optional)
+    return BlockVector(offs, TupleVector(lbls, len′, cols′), card)
 end
 
 """
@@ -651,13 +648,11 @@ end
 @generated function _distribute_all(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
     D = length(cols)
     return quote
-        plural = any(isplural, cols)
-        optional = any(isoptional, cols)
+        card = foldl(|, cardinality.(cols), init=REG)
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
         if @nall $D (d -> offs_d isa OneTo{Int})
-            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]),
-                               plural=plural, optional=optional)
+            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]), card)
         end
         len′ = 0
         regular = true
@@ -667,8 +662,7 @@ end
             regular = regular && sz == 1
         end
         if regular
-            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]),
-                               plural=plural, optional=optional)
+            return BlockVector(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]), card)
         end
         offs′ = Vector{Int}(undef, len+1)
         @nextract $D perm (d -> Vector{Int}(undef, len′))
@@ -681,7 +675,7 @@ end
             offs′[k+1] = top
         end
         cols′ = @nref $D AbstractVector (d -> elts_d[perm_d])
-        return BlockVector(offs′, TupleVector(lbls, len′, cols′), plural=plural, optional=optional)
+        return BlockVector(offs′, TupleVector(lbls, len′, cols′), card)
     end
 end
 
@@ -762,9 +756,9 @@ function sieve(rt::Runtime, input::AbstractVector)
     val_col, pred_col = columns(input)
     sz = count(pred_col)
     if sz == len
-        return BlockVector(:, val_col, optional=true)
+        return BlockVector(:, val_col, OPT)
     elseif sz == 0
-        return BlockVector(fill(1, len+1), val_col[[]], plural=false)
+        return BlockVector(fill(1, len+1), val_col[[]], OPT)
     end
     offs = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
@@ -776,7 +770,7 @@ function sieve(rt::Runtime, input::AbstractVector)
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, val_col[perm], plural=false)
+    return BlockVector(offs, val_col[perm], OPT)
 end
 
 
@@ -829,7 +823,8 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    return BlockVector(offs′, elts′, plural=isplural(input))
+    card = cardinality(input)|OPT
+    return BlockVector(offs′, elts′, card)
 end
 
 """
@@ -879,7 +874,8 @@ function slice(rt::Runtime, input::AbstractVector, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    return BlockVector(offs′, elts′, plural=isplural(vals))
+    card = cardinality(vals)|OPT
+    return BlockVector(offs′, elts′, card)
 end
 
 @inline _take_range(n::Int, l::Int, rev::Bool) =
