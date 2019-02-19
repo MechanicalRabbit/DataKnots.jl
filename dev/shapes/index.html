@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Monadic Signature · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../start/">Getting Started</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Monadic Signature</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li></ul></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Monadic Signature</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/shapes.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Monadic Signature</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Monadic-Signature-1" href="#Monadic-Signature-1">Monadic Signature</a></h1><h2><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h2><p>To describe data shapes and monadic signatures, we need the following definitions.</p><pre><code class="language-julia">using DataKnots:
     @VectorTree,
-    OPT,
-    PLU,
-    REG,
     AnyShape,
     Cardinality,
     InputMode,
@@ -40,7 +37,11 @@
     slots,
     tuple_lift,
     tuple_of,
-    wrap</code></pre><h3><a class="nav-anchor" id="Data-shapes-1" href="#Data-shapes-1">Data shapes</a></h3><p>In <code>DataKnots</code>, the structure of composite data is represented using <em>shape</em> objects.</p><p>For example, consider a collection of departments with associated employees.</p><pre><code class="language-julia">depts =
+    wrap,
+    x0to1,
+    x0toN,
+    x1to1,
+    x1toN</code></pre><h3><a class="nav-anchor" id="Data-shapes-1" href="#Data-shapes-1">Data shapes</a></h3><p>In <code>DataKnots</code>, the structure of composite data is represented using <em>shape</em> objects.</p><p>For example, consider a collection of departments with associated employees.</p><pre><code class="language-julia">depts =
     @VectorTree (name = (1:1)String,
                  employee = (1:N)(name = (1:1)String,
                                   position = (1:1)String,
@@ -56,14 +57,14 @@
          employee = [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68),
                      (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)])
     ]</code></pre><p>In this collection, each department record has two fields: <em>name</em> and <em>employee</em>.  Each employee record has four fields: <em>name</em>, <em>position</em>, <em>salary</em>, and <em>rate</em>.  The <em>employee</em> field is plural; <em>salary</em> and <em>rate</em> are optional.</p><p>Physically, this collection is stored as a tree of interleaving <code>TupleVector</code> and <code>BlockVector</code> objects with regular <code>Vector</code> objects as the tree leaves. The structure of this collection can be described by a congruent tree composed of <code>RecordShape</code>, <code>OutputShape</code>, and <code>NativeShape</code> objects.</p><p><code>NativeShape</code> corresponds to regular Julia <code>Vector</code> objects and specifies the type of the vector elements.</p><pre><code class="language-julia">NativeShape(String)
-#-&gt; NativeShape(String)</code></pre><p><code>OutputShape</code> specifies the label, the domain and the cardinality of a record field.  The data of a record field is stored in a <code>BlockVector</code> object. Accordingly, the field domain is the shape of the <code>BlockVector</code> elements and the field cardinality is the cardinality of the <code>BlockVector</code>.  When the domain is represented by <code>NativeShape</code>, we could instead specify the respective Julia type.  The <code>REG</code> cardinality is assumed by default.</p><pre><code class="language-julia">OutputShape(:position, NativeShape(String), REG)
+#-&gt; NativeShape(String)</code></pre><p><code>OutputShape</code> specifies the label, the domain and the cardinality of a record field.  The data of a record field is stored in a <code>BlockVector</code> object. Accordingly, the field domain is the shape of the <code>BlockVector</code> elements and the field cardinality is the cardinality of the <code>BlockVector</code>.  When the domain is represented by <code>NativeShape</code>, we could instead specify the respective Julia type.  The <code>x1to1</code> cardinality is assumed by default.</p><pre><code class="language-julia">OutputShape(:position, NativeShape(String), x1to1)
 #-&gt; OutputShape(:position, String)</code></pre><p><code>RecordShape</code> describes the structure of a record.  It contains a list of field shapes and corresponds to a <code>TupleVector</code> with <code>BlockVector</code> columns.</p><pre><code class="language-julia">emp_shp =
     RecordShape(OutputShape(:name, String),
                 OutputShape(:position, String),
-                OutputShape(:salary, Int, OPT),
-                OutputShape(:rate, Float64, OPT))</code></pre><p>Using nested shape objects, we can describe the structure of a nested collection.</p><pre><code class="language-julia">dept_shp =
+                OutputShape(:salary, Int, x0to1),
+                OutputShape(:rate, Float64, x0to1))</code></pre><p>Using nested shape objects, we can describe the structure of a nested collection.</p><pre><code class="language-julia">dept_shp =
     RecordShape(OutputShape(:name, String),
-                OutputShape(:employee, emp_shp, PLU))</code></pre><h3><a class="nav-anchor" id="Traversing-nested-data-1" href="#Traversing-nested-data-1">Traversing nested data</a></h3><p>A record field can be seen as a specialized query.  For example, the field <em>employee</em> corresponds to a query which maps a collection of departments to associated employees.</p><pre><code class="language-julia">dept_employee = column(:employee)
+                OutputShape(:employee, emp_shp, x1toN))</code></pre><h3><a class="nav-anchor" id="Traversing-nested-data-1" href="#Traversing-nested-data-1">Traversing nested data</a></h3><p>A record field can be seen as a specialized query.  For example, the field <em>employee</em> corresponds to a query which maps a collection of departments to associated employees.</p><pre><code class="language-julia">dept_employee = column(:employee)
 
 dept_employee(depts) |&gt; display
 #=&gt;
@@ -75,48 +76,48 @@ dept_employee(depts) |&gt; display
  [(name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350, rate = missing), (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484, rate = missing)]
  [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68), (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)]
 =#</code></pre><p>To indicate the role of this query, we assign it a <em>monadic signature</em>, which describes the shapes of the query input and output.</p><pre><code class="language-julia">dept_employee =
-    dept_employee |&gt; designate(InputShape(dept_shp), OutputShape(emp_shp, PLU))
+    dept_employee |&gt; designate(InputShape(dept_shp), OutputShape(emp_shp, x1toN))
 
 signature(dept_employee)
 #=&gt;
-(name = [String, REG],
- employee = [(name = [String, REG],
-              position = [String, REG],
-              salary = [Int, OPT],
-              rate = [Float64, OPT]),
-             PLU]) -&gt;
-    [(name = [String, REG],
-      position = [String, REG],
-      salary = [Int, OPT],
-      rate = [Float64, OPT]),
-     PLU]
+(name = [String, x1to1],
+ employee = [(name = [String, x1to1],
+              position = [String, x1to1],
+              salary = [Int, x0to1],
+              rate = [Float64, x0to1]),
+             x1toN]) -&gt;
+    [(name = [String, x1to1],
+      position = [String, x1to1],
+      salary = [Int, x0to1],
+      rate = [Float64, x0to1]),
+     x1toN]
 =#</code></pre><p>A <em>path</em> could be assembled by composing two adjacent field queries.  For example, consider a query that corresponds to the <em>rate</em> field.</p><pre><code class="language-julia">emp_rate =
-    column(:rate) |&gt; designate(InputShape(emp_shp), OutputShape(Float64, OPT))</code></pre><p>The output domain of the <code>dept_employee</code> coincides with the input domain of <code>emp_rate</code>.</p><pre><code class="language-julia">domain(dept_employee)
+    column(:rate) |&gt; designate(InputShape(emp_shp), OutputShape(Float64, x0to1))</code></pre><p>The output domain of the <code>dept_employee</code> coincides with the input domain of <code>emp_rate</code>.</p><pre><code class="language-julia">domain(dept_employee)
 #=&gt;
 RecordShape(OutputShape(:name, String),
             OutputShape(:position, String),
-            OutputShape(:salary, Int, OPT),
-            OutputShape(:rate, Float64, OPT))
+            OutputShape(:salary, Int, x0to1),
+            OutputShape(:rate, Float64, x0to1))
 =#
 
 idomain(emp_rate)
 #=&gt;
 RecordShape(OutputShape(:name, String),
             OutputShape(:position, String),
-            OutputShape(:salary, Int, OPT),
-            OutputShape(:rate, Float64, OPT))
+            OutputShape(:salary, Int, x0to1),
+            OutputShape(:rate, Float64, x0to1))
 =#</code></pre><p>This means the queries are composable.  Note that we cannot simply chain the queries using <code>chain_of(dept_employee, emp_rate)</code> because the output of <code>dept_employee</code> is not compatible with <code>emp_rate</code>.  Indeed, <code>dept_employee</code> produces a <code>BlockVector</code> while <code>emp_rate</code> expects a <code>TupleVector</code>.  So instead we use the <em>monadic composition</em> combinator.</p><pre><code class="language-julia">dept_employee_rate = compose(dept_employee, emp_rate)
 #-&gt; chain_of(column(:employee), with_elements(column(:rate)), flatten())
 
 dept_employee_rate(depts)
 #-&gt; @VectorTree (0:N) × Float64 [[], [], [17.68, 19.38]]</code></pre><p>This composition represents a path through the fields <em>employee</em> and <em>rate</em> and has a signature assigned to it.</p><pre><code class="language-julia">signature(dept_employee_rate)
 #=&gt;
-(name = [String, REG],
- employee = [(name = [String, REG],
-              position = [String, REG],
-              salary = [Int, OPT],
-              rate = [Float64, OPT]),
-             PLU]) -&gt;
+(name = [String, x1to1],
+ employee = [(name = [String, x1to1],
+              position = [String, x1to1],
+              salary = [Int, x0to1],
+              rate = [Float64, x0to1]),
+             x1toN]) -&gt;
     [Float64]
 =#</code></pre><h3><a class="nav-anchor" id="Monadic-queries-1" href="#Monadic-queries-1">Monadic queries</a></h3><p>Among all queries, <code>DataKnots</code> distinguishes a special class of path-like queries, which are called <em>monadic</em>.  We indicate that a query is monadic by assigning it its monadic signature.</p><p>The query signature describes the shapes of its input and output using <code>InputShape</code> and <code>OutputShape</code> objects.</p><p><code>OutputShape</code> specifies the label, the domain and the cardinality of the query output.  A monadic query always produces a <code>BlockVector</code> object.  Accordingly, the output domain and cardinality specify the <code>BlockVector</code> elements and its cardinality.</p><p><code>InputShape</code> specifies the label, the domain and the named slots of the query input.  The input of a monadic query is a <code>TupleVector</code> with two columns: the first column is the regular input data described by the input domain, while the second column is a record containing slot data.  When the query has no slots, the outer <code>TupleVector</code> is omitted.</p><p>For example, consider a monadic query that wraps the <code>round</code> function with precision specified in a named slot.</p><pre><code class="language-julia">round_digits(x, d) = round(x, digits=d)
 
@@ -137,7 +138,7 @@ idomain(round_it)
 #-&gt; NativeShape(Float64)
 
 dept_employee_round_rate = compose(dept_employee_rate, round_it)</code></pre><p>The composition is again a monadic query.  Its signature is constructed from the signatures of the components.  In particular, the cardinality of the composition is the upper bound of the component cardinalities while its input slots are formed from the slots of the components.</p><pre><code class="language-julia">print(cardinality(dept_employee_round_rate))
-#-&gt; OPT_PLU
+#-&gt; x0toN
 
 slots(dept_employee_round_rate)
 #-&gt; Pair{Symbol,DataKnots.OutputShape}[:P=&gt;OutputShape(Float64)]
@@ -147,16 +148,13 @@ slot_data = @VectorTree (P = (1:1)Int,) [(P = 1,), (P = 1,), (P = 1,)]
 input = TupleVector(:depts =&gt; depts, :slot_data =&gt; slot_data)
 
 dept_employee_round_rate(input)
-#-&gt; @VectorTree (0:N) × Float64 [[], [], [17.7, 19.4]]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Cardinality" href="#DataKnots.Cardinality"><code>DataKnots.Cardinality</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">REG::Cardinality
-OPT::Cardinality
-PLU::Cardinality
-OPT|PLU::Cardinality</code></pre><p>Cardinality constraints on a block of values.  <code>REG</code> stands for <em>1…1</em>, <code>OPT</code> for <em>0…1</em>, <code>PLU</code> for <em>1…∞</em>, <code>OPT|PLU</code> for <em>0…∞</em>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L76-L84">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.AbstractShape" href="#DataKnots.AbstractShape"><code>DataKnots.AbstractShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">AbstractShape</code></pre><p>Represents the shape of column-oriented data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L139-L143">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.AnyShape" href="#DataKnots.AnyShape"><code>DataKnots.AnyShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">AnyShape()</code></pre><p>No constraints on the data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L161-L165">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Decoration" href="#DataKnots.Decoration"><code>DataKnots.Decoration</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Decoration(label::Union{Nothing,Symbol}=nothing)</code></pre><p>Annotations on the query input and output.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L192-L196">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.InputMode" href="#DataKnots.InputMode"><code>DataKnots.InputMode</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">InputMode(slots::Union{Nothing,Vector{Pair{Symbol,OutputShape}}},
-          framed::Bool)</code></pre><p>Comonadic constraints on the query input.</p><p>Parameter <code>slots</code> is a list of named query parameters and their shapes.</p><p>Parameter <code>framed</code> indicates if the query input is partitioned into frames.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L326-L335">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.InputShape" href="#DataKnots.InputShape"><code>DataKnots.InputShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">InputShape(::Decoration, ::AbstractShape, ::InputMode)</code></pre><p>The shape of the input of a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L378-L382">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.NoneShape" href="#DataKnots.NoneShape"><code>DataKnots.NoneShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">NoneShape()</code></pre><p>Inconsistent constraints on the data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L177-L181">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.OutputMode" href="#DataKnots.OutputMode"><code>DataKnots.OutputMode</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">OutputMode(card::Cardinality=REG)</code></pre><p>Monadic constraints on the query output.</p><p>Parameter <code>card</code> is the cardinality of the query output.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L221-L227">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.OutputShape" href="#DataKnots.OutputShape"><code>DataKnots.OutputShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">OutputShape(::Decoration, ::AbstractShape, ::OutputMode)</code></pre><p>The shape of the output of a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L253-L257">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.RecordShape" href="#DataKnots.RecordShape"><code>DataKnots.RecordShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">RecordShape(flds::OutputShape...)</code></pre><p>Shape of a record with the given fields.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L471-L475">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Signature" href="#DataKnots.Signature"><code>DataKnots.Signature</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Signature(::InputShape, ::OutputShape)</code></pre><p>Signature of a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L720-L724">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.bound" href="#DataKnots.bound"><code>DataKnots.bound</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">bound(::Type{T}) :: T</code></pre><p>The most specific constraint of the type <code>T</code>.</p><pre><code class="language-julia">bound(xs::T...) :: T
-bound(xs::Vector{T}) :: T</code></pre><p>The tight upper bound of the given sequence of constraints.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L19-L28">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.fits" href="#DataKnots.fits"><code>DataKnots.fits</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">fits(x::T, y::T) :: Bool</code></pre><p>Checks if constraint <code>x</code> implies constraint <code>y</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L64-L68">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.ibound" href="#DataKnots.ibound"><code>DataKnots.ibound</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">ibound(::Type{T}) :: T</code></pre><p>The least specific constraint of the type <code>T</code>.</p><pre><code class="language-julia">ibound(xs::T...) :: T
-ibound(xs::Vector{T}) :: T</code></pre><p>The tight lower bound of the given sequence of constraints.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f3daa8ee314f7b6bdcd0d561a0d164a839b82eb5/src/shapes.jl#L42-L51">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Cardinality-1" href="#Cardinality-1">Cardinality</a></h3><p><code>Cardinality</code> constraints are partially ordered.  In particular, there are the greatest and the least cardinalities.</p><pre><code class="language-julia">print(bound(Cardinality))   #-&gt; REG
-print(ibound(Cardinality))  #-&gt; OPT_PLU</code></pre><p>For a collection of cardinality constraints, we can determine their least upper bound and their greatest lower bound.</p><pre><code class="language-julia">print(bound(OPT, PLU))      #-&gt; OPT_PLU
-print(ibound(PLU, OPT))     #-&gt; REG</code></pre><p>For two <code>Cardinality</code> constraints, we can determine whether one is more strict than the other.</p><pre><code class="language-julia">fits(OPT, PLU)              #-&gt; false
-fits(REG, OPT|PLU)          #-&gt; true</code></pre><h3><a class="nav-anchor" id="Data-shapes-2" href="#Data-shapes-2">Data shapes</a></h3><p>The structure of composite data is specified with <em>shape</em> objects.</p><p><code>NativeShape</code> indicates a regular Julia value of a specific type.</p><pre><code class="language-julia">str_shp = NativeShape(String)
+#-&gt; @VectorTree (0:N) × Float64 [[], [], [17.7, 19.4]]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.AbstractShape" href="#DataKnots.AbstractShape"><code>DataKnots.AbstractShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">AbstractShape</code></pre><p>Represents the shape of column-oriented data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L91-L95">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.AnyShape" href="#DataKnots.AnyShape"><code>DataKnots.AnyShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">AnyShape()</code></pre><p>No constraints on the data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L113-L117">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Decoration" href="#DataKnots.Decoration"><code>DataKnots.Decoration</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Decoration(label::Union{Nothing,Symbol}=nothing)</code></pre><p>Annotations on the query input and output.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L144-L148">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.InputMode" href="#DataKnots.InputMode"><code>DataKnots.InputMode</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">InputMode(slots::Union{Nothing,Vector{Pair{Symbol,OutputShape}}},
+          framed::Bool)</code></pre><p>Comonadic constraints on the query input.</p><p>Parameter <code>slots</code> is a list of named query parameters and their shapes.</p><p>Parameter <code>framed</code> indicates if the query input is partitioned into frames.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L278-L287">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.InputShape" href="#DataKnots.InputShape"><code>DataKnots.InputShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">InputShape(::Decoration, ::AbstractShape, ::InputMode)</code></pre><p>The shape of the input of a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L330-L334">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.NoneShape" href="#DataKnots.NoneShape"><code>DataKnots.NoneShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">NoneShape()</code></pre><p>Inconsistent constraints on the data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L129-L133">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.OutputMode" href="#DataKnots.OutputMode"><code>DataKnots.OutputMode</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">OutputMode(card::Cardinality=x1to1)</code></pre><p>Monadic constraints on the query output.</p><p>Parameter <code>card</code> is the cardinality of the query output.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L173-L179">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.OutputShape" href="#DataKnots.OutputShape"><code>DataKnots.OutputShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">OutputShape(::Decoration, ::AbstractShape, ::OutputMode)</code></pre><p>The shape of the output of a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L205-L209">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.RecordShape" href="#DataKnots.RecordShape"><code>DataKnots.RecordShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">RecordShape(flds::OutputShape...)</code></pre><p>Shape of a record with the given fields.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L423-L427">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Signature" href="#DataKnots.Signature"><code>DataKnots.Signature</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Signature(::InputShape, ::OutputShape)</code></pre><p>Signature of a monadic query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L672-L676">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.bound" href="#DataKnots.bound"><code>DataKnots.bound</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">bound(::Type{T}) :: T</code></pre><p>The most specific constraint of the type <code>T</code>.</p><pre><code class="language-julia">bound(xs::T...) :: T
+bound(xs::Vector{T}) :: T</code></pre><p>The tight upper bound of the given sequence of constraints.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L19-L28">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.fits" href="#DataKnots.fits"><code>DataKnots.fits</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">fits(x::T, y::T) :: Bool</code></pre><p>Checks if constraint <code>x</code> implies constraint <code>y</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L64-L68">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.ibound" href="#DataKnots.ibound"><code>DataKnots.ibound</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">ibound(::Type{T}) :: T</code></pre><p>The least specific constraint of the type <code>T</code>.</p><pre><code class="language-julia">ibound(xs::T...) :: T
+ibound(xs::Vector{T}) :: T</code></pre><p>The tight lower bound of the given sequence of constraints.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/940c5ef348e10a6a4353f26ad4d80bc63f110d14/src/shapes.jl#L42-L51">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Cardinality-1" href="#Cardinality-1">Cardinality</a></h3><p><code>Cardinality</code> constraints are partially ordered.  In particular, there are the greatest and the least cardinalities.</p><pre><code class="language-julia">print(bound(Cardinality))   #-&gt; x1to1
+print(ibound(Cardinality))  #-&gt; x0toN</code></pre><p>For a collection of cardinality constraints, we can determine their least upper bound and their greatest lower bound.</p><pre><code class="language-julia">print(bound(x0to1, x1toN))      #-&gt; x0toN
+print(ibound(x1toN, x0to1))     #-&gt; x1to1</code></pre><p>For two <code>Cardinality</code> constraints, we can determine whether one is more strict than the other.</p><pre><code class="language-julia">fits(x0to1, x1toN)              #-&gt; false
+fits(x1to1, x0toN)          #-&gt; true</code></pre><h3><a class="nav-anchor" id="Data-shapes-2" href="#Data-shapes-2">Data shapes</a></h3><p>The structure of composite data is specified with <em>shape</em> objects.</p><p><code>NativeShape</code> indicates a regular Julia value of a specific type.</p><pre><code class="language-julia">str_shp = NativeShape(String)
 #-&gt; NativeShape(String)
 
 eltype(str_shp)
@@ -171,54 +169,52 @@ domain(i_shp)
 #-&gt; NativeShape(UInt)
 
 mode(i_shp)
-#-&gt; InputMode([:D =&gt; OutputShape(String)], true)</code></pre><p>To describe the query output, we specify the shape and the cardinality of the output elements.</p><pre><code class="language-julia">o_shp = OutputShape(Int, OPT|PLU)
-#-&gt; OutputShape(Int, OPT | PLU)
+#-&gt; InputMode([:D =&gt; OutputShape(String)], true)</code></pre><p>To describe the query output, we specify the shape and the cardinality of the output elements.</p><pre><code class="language-julia">o_shp = OutputShape(Int, x0toN)
+#-&gt; OutputShape(Int, x0toN)
 
 print(cardinality(o_shp))
-#-&gt; OPT_PLU
+#-&gt; x0toN
 
 domain(o_shp)
 #-&gt; NativeShape(Int)
 
 mode(o_shp)
-#-&gt; OutputMode(OPT | PLU)</code></pre><p>It is possible to decorate <code>InputShape</code> and <code>OutputShape</code> objects to specify additional attributes.  Currently, we can only specify the <em>label</em>.</p><pre><code class="language-julia">o_shp |&gt; decorate(label=:output)
-#-&gt; OutputShape(:output, Int, OPT | PLU)</code></pre><p>RecordShape` specifies the shape of a record value where each record field has a certain shape and cardinality.</p><pre><code class="language-julia">dept_shp = RecordShape(OutputShape(:name, String),
-                       OutputShape(:employee, UInt, OPT|PLU))
+#-&gt; OutputMode(x0toN)</code></pre><p>It is possible to decorate <code>InputShape</code> and <code>OutputShape</code> objects to specify additional attributes.  Currently, we can only specify the <em>label</em>.</p><pre><code class="language-julia">o_shp |&gt; decorate(label=:output)
+#-&gt; OutputShape(:output, Int, x0toN)</code></pre><p>RecordShape` specifies the shape of a record value where each record field has a certain shape and cardinality.</p><pre><code class="language-julia">dept_shp = RecordShape(OutputShape(:name, String),
+                       OutputShape(:employee, UInt, x0toN))
 #=&gt;
-RecordShape(OutputShape(:name, String),
-            OutputShape(:employee, UInt, OPT | PLU))
+RecordShape(OutputShape(:name, String), OutputShape(:employee, UInt, x0toN))
 =#
 
 emp_shp = RecordShape(OutputShape(:name, String),
                       OutputShape(:department, UInt),
                       OutputShape(:position, String),
                       OutputShape(:salary, Int),
-                      OutputShape(:manager, UInt, OPT),
-                      OutputShape(:subordinate, UInt, OPT|PLU))
+                      OutputShape(:manager, UInt, x0to1),
+                      OutputShape(:subordinate, UInt, x0toN))
 #=&gt;
 RecordShape(OutputShape(:name, String),
             OutputShape(:department, UInt),
             OutputShape(:position, String),
             OutputShape(:salary, Int),
-            OutputShape(:manager, UInt, OPT),
-            OutputShape(:subordinate, UInt, OPT | PLU))
-=#</code></pre><p>Using the combination of different shapes we can describe the structure of any data source.</p><pre><code class="language-julia">db_shp = RecordShape(OutputShape(:department, dept_shp, OPT|PLU),
-                     OutputShape(:employee, emp_shp, OPT|PLU))
+            OutputShape(:manager, UInt, x0to1),
+            OutputShape(:subordinate, UInt, x0toN))
+=#</code></pre><p>Using the combination of different shapes we can describe the structure of any data source.</p><pre><code class="language-julia">db_shp = RecordShape(OutputShape(:department, dept_shp, x0toN),
+                     OutputShape(:employee, emp_shp, x0toN))
 #=&gt;
 RecordShape(OutputShape(:department,
                         RecordShape(OutputShape(:name, String),
-                                    OutputShape(:employee, UInt, OPT | PLU)),
-                        OPT | PLU),
+                                    OutputShape(:employee, UInt, x0toN)),
+                        x0toN),
             OutputShape(:employee,
-                        RecordShape(
-                            OutputShape(:name, String),
-                            OutputShape(:department, UInt),
-                            OutputShape(:position, String),
-                            OutputShape(:salary, Int),
-                            OutputShape(:manager, UInt, OPT),
-                            OutputShape(:subordinate, UInt, OPT | PLU)),
-                        OPT | PLU))
-=#</code></pre><h3><a class="nav-anchor" id="Shape-ordering-1" href="#Shape-ordering-1">Shape ordering</a></h3><p>The same data can satisfy many different shape constraints.  For example, a vector <code>BlockVector(:, [Chicago])</code> can be said to have, among others, the shape <code>OutputShape(String)</code>, the shape <code>OutputShape(AbstractString, OPT|PLU)</code> or the shape <code>AnyShape()</code>.  We can tell, for any two shapes, if one of them is more specific than the other.</p><pre><code class="language-julia">fits(NativeShape(Int), NativeShape(Number))     #-&gt; true
+                        RecordShape(OutputShape(:name, String),
+                                    OutputShape(:department, UInt),
+                                    OutputShape(:position, String),
+                                    OutputShape(:salary, Int),
+                                    OutputShape(:manager, UInt, x0to1),
+                                    OutputShape(:subordinate, UInt, x0toN)),
+                        x0toN))
+=#</code></pre><h3><a class="nav-anchor" id="Shape-ordering-1" href="#Shape-ordering-1">Shape ordering</a></h3><p>The same data can satisfy many different shape constraints.  For example, a vector <code>BlockVector(:, [Chicago])</code> can be said to have, among others, the shape <code>OutputShape(String)</code>, the shape <code>OutputShape(AbstractString, x0toN)</code> or the shape <code>AnyShape()</code>.  We can tell, for any two shapes, if one of them is more specific than the other.</p><pre><code class="language-julia">fits(NativeShape(Int), NativeShape(Number))     #-&gt; true
 fits(NativeShape(Int), NativeShape(String))     #-&gt; false
 
 fits(InputShape(Int,
@@ -226,35 +222,35 @@ fits(InputShape(Int,
                            :Y =&gt; OutputShape(String)],
                           true)),
      InputShape(Number,
-                InputMode([:X =&gt; OutputShape(Int, OPT)])))
+                InputMode([:X =&gt; OutputShape(Int, x0to1)])))
 #-&gt; true
 fits(InputShape(Int),
      InputShape(Number, InputMode(true)))
 #-&gt; false
 fits(InputShape(Int,
-                InputMode([:X =&gt; OutputShape(Int, OPT)])),
+                InputMode([:X =&gt; OutputShape(Int, x0to1)])),
      InputShape(Number,
                 InputMode([:X =&gt; OutputShape(Int)])))
 #-&gt; false
 
 fits(OutputShape(Int),
-     OutputShape(Number, OPT))                  #-&gt; true
-fits(OutputShape(Int, PLU),
-     OutputShape(Number, OPT))                  #-&gt; false
+     OutputShape(Number, x0to1))                  #-&gt; true
+fits(OutputShape(Int, x1toN),
+     OutputShape(Number, x0to1))                  #-&gt; false
 fits(OutputShape(Int),
-     OutputShape(String, OPT))                  #-&gt; false
+     OutputShape(String, x0to1))                  #-&gt; false
 
 fits(RecordShape(OutputShape(Int),
-                 OutputShape(String, OPT)),
+                 OutputShape(String, x0to1)),
      RecordShape(OutputShape(Number),
-                 OutputShape(String, OPT|PLU)))     #-&gt; true
-fits(RecordShape(OutputShape(Int, OPT),
+                 OutputShape(String, x0toN)))     #-&gt; true
+fits(RecordShape(OutputShape(Int, x0to1),
                  OutputShape(String)),
      RecordShape(OutputShape(Number),
-                 OutputShape(String, OPT|PLU)))     #-&gt; false
+                 OutputShape(String, x0toN)))     #-&gt; false
 fits(RecordShape(OutputShape(Int)),
      RecordShape(OutputShape(Number),
-                 OutputShape(String, OPT|PLU)))     #-&gt; false</code></pre><p>Shapes of different kinds are typically not compatible with each other.  The exceptions are <code>AnyShape</code> and <code>NullShape</code>.</p><pre><code class="language-julia">fits(NativeShape(Int), OutputShape(Int))    #-&gt; false
+                 OutputShape(String, x0toN)))     #-&gt; false</code></pre><p>Shapes of different kinds are typically not compatible with each other.  The exceptions are <code>AnyShape</code> and <code>NullShape</code>.</p><pre><code class="language-julia">fits(NativeShape(Int), OutputShape(Int))    #-&gt; false
 fits(NativeShape(Int), AnyShape())          #-&gt; true
 fits(NoneShape(), NativeShape(Int))         #-&gt; true</code></pre><p>Shape decorations are treated as additional shape constraints.</p><pre><code class="language-julia">fits(OutputShape(:name, String),
      OutputShape(:name, String))                            #-&gt; true
@@ -268,12 +264,12 @@ fits(OutputShape(:position, String),
 ibound(NativeShape(Int), NativeShape(Number))
 #-&gt; NativeShape(Int)
 
-bound(InputShape(Int, InputMode([:X =&gt; OutputShape(Int, OPT), :Y =&gt; OutputShape(String)], true)),
+bound(InputShape(Int, InputMode([:X =&gt; OutputShape(Int, x0to1), :Y =&gt; OutputShape(String)], true)),
       InputShape(Number, InputMode([:X =&gt; OutputShape(Int)])))
 #=&gt;
-InputShape(Number, InputMode([:X =&gt; OutputShape(Int, OPT)]))
+InputShape(Number, InputMode([:X =&gt; OutputShape(Int, x0to1)]))
 =#
-ibound(InputShape(Int, InputMode([:X =&gt; OutputShape(Int, OPT), :Y =&gt; OutputShape(String)], true)),
+ibound(InputShape(Int, InputMode([:X =&gt; OutputShape(Int, x0to1), :Y =&gt; OutputShape(String)], true)),
        InputShape(Number, InputMode([:X =&gt; OutputShape(Int)])))
 #=&gt;
 InputShape(Int,
@@ -281,24 +277,24 @@ InputShape(Int,
                      true))
 =#
 
-bound(OutputShape(String, OPT), OutputShape(String, PLU))
-#-&gt; OutputShape(String, OPT | PLU)
-ibound(OutputShape(String, OPT), OutputShape(String, PLU))
+bound(OutputShape(String, x0to1), OutputShape(String, x1toN))
+#-&gt; OutputShape(String, x0toN)
+ibound(OutputShape(String, x0to1), OutputShape(String, x1toN))
 #-&gt; OutputShape(String)
 
-bound(RecordShape(OutputShape(Int, PLU),
-                  OutputShape(String, OPT)),
+bound(RecordShape(OutputShape(Int, x1toN),
+                  OutputShape(String, x0to1)),
       RecordShape(OutputShape(Number),
-                  OutputShape(UInt, OPT|PLU)))
+                  OutputShape(UInt, x0toN)))
 #=&gt;
-RecordShape(OutputShape(Number, PLU), OutputShape(AnyShape(), OPT | PLU))
+RecordShape(OutputShape(Number, x1toN), OutputShape(AnyShape(), x0toN))
 =#
-ibound(RecordShape(OutputShape(Int, PLU),
-                   OutputShape(String, OPT)),
+ibound(RecordShape(OutputShape(Int, x1toN),
+                   OutputShape(String, x0to1)),
        RecordShape(OutputShape(Number),
-                   OutputShape(UInt, OPT|PLU)))
+                   OutputShape(UInt, x0toN)))
 #=&gt;
-RecordShape(OutputShape(Int), OutputShape(NoneShape(), OPT))
+RecordShape(OutputShape(Int), OutputShape(NoneShape(), x0to1))
 =#</code></pre><p>For decorated shapes, incompatible labels are replaced with an empty label.</p><pre><code class="language-julia">bound(OutputShape(:name, String), OutputShape(:name, String))
 #-&gt; OutputShape(:name, String)
 
@@ -317,11 +313,11 @@ bound(OutputShape(Int), OutputShape(:salary, Number))
 ibound(OutputShape(Int), OutputShape(:salary, Number))
 #-&gt; OutputShape(:salary, Int)</code></pre><h3><a class="nav-anchor" id="Monadic-signature-1" href="#Monadic-signature-1">Monadic signature</a></h3><p>The signature of a monadic query is a pair of an <code>InputShape</code> object and an <code>OutputShape</code> object.</p><pre><code class="language-julia">sig = Signature(InputShape(UInt),
                 OutputShape(RecordShape(OutputShape(:name, String),
-                                        OutputShape(:employee, UInt, OPT|PLU))))
-#-&gt; UInt -&gt; [(name = [String, REG], employee = [UInt]), REG]</code></pre><p>Different components of the signature can be easily extracted.</p><pre><code class="language-julia">shape(sig)
+                                        OutputShape(:employee, UInt, x0toN))))
+#-&gt; UInt -&gt; [(name = [String, x1to1], employee = [UInt]), x1to1]</code></pre><p>Different components of the signature can be easily extracted.</p><pre><code class="language-julia">shape(sig)
 #=&gt;
 OutputShape(RecordShape(OutputShape(:name, String),
-                        OutputShape(:employee, UInt, OPT | PLU)))
+                        OutputShape(:employee, UInt, x0toN)))
 =#
 
 ishape(sig)
@@ -329,8 +325,7 @@ ishape(sig)
 
 domain(sig)
 #=&gt;
-RecordShape(OutputShape(:name, String),
-            OutputShape(:employee, UInt, OPT | PLU))
+RecordShape(OutputShape(:name, String), OutputShape(:employee, UInt, x0toN))
 =#
 
 mode(sig)
@@ -351,9 +346,9 @@ imode(sig)
 RecordShape(OutputShape(String),
             OutputShape(RecordShape(OutputShape(:name, String),
                                     OutputShape(:position, String),
-                                    OutputShape(:salary, Int, OPT),
-                                    OutputShape(:rate, Float64, OPT)),
-                        PLU))
+                                    OutputShape(:salary, Int, x0to1),
+                                    OutputShape(:rate, Float64, x0to1)),
+                        x1toN))
 =#</code></pre><p><code>TupleVector</code> and <code>BlockVector</code> objects that are not in the record layout are treated as regular vectors.</p><pre><code class="language-julia">shapeof(@VectorTree (String, [String]) [])
 #-&gt; NativeShape(Tuple{String,Array{String,1}})
 
