@@ -8,8 +8,6 @@ algebra.  We will need the following definitions.
 
     using DataKnots:
         @VectorTree,
-        OPT,
-        REG,
         Count,
         DataKnot,
         Drop,
@@ -26,7 +24,8 @@ algebra.  We will need the following definitions.
         apply,
         elements,
         optimize,
-        stub
+        stub,
+        x1to1
 
 As a running example, we will use the following dataset of city departments
 with associated employees.  This dataset is serialized as a nested structure
@@ -52,7 +51,7 @@ holds associated employee records.
             )
         ]
 
-    db = DataKnot(elts, REG)
+    db = DataKnot(elts, x1to1)
     #=>
     │ DataKnot                                                                     …
     │ department                                                                   …
@@ -261,16 +260,16 @@ the result of the condition.
     qc1 = apply(SalaryOver100K, env, qc0)
     #=>
     chain_of(wrap(),
-             with_elements(chain_of(tuple_of(
-                                        chain_of(wrap(),
-                                                 with_elements(column(:salary)),
-                                                 flatten()),
-                                        chain_of(wrap(),
-                                                 with_elements(
-                                                     block_filler([100000], REG)),
-                                                 flatten())),
-                                    tuple_lift(>),
-                                    adapt_missing())),
+             with_elements(
+                 chain_of(tuple_of(chain_of(wrap(),
+                                            with_elements(column(:salary)),
+                                            flatten()),
+                                   chain_of(wrap(),
+                                            with_elements(block_filler([100000],
+                                                                       x1to1)),
+                                            flatten())),
+                          tuple_lift(>),
+                          adapt_missing())),
              flatten())
     =#
 
@@ -284,27 +283,28 @@ the result of the condition.
                  with_elements(column(:employee)),
                  flatten()),
         with_elements(
-            chain_of(
-                tuple_of(
-                    pass(),
-                    chain_of(
-                        chain_of(
-                            wrap(),
-                            with_elements(
-                                chain_of(
-                                    tuple_of(
-                                        chain_of(wrap(),
-                                                 with_elements(column(:salary)),
-                                                 flatten()),
-                                        chain_of(wrap(),
-                                                 with_elements(
-                                                     block_filler([100000], REG)),
-                                                 flatten())),
-                                    tuple_lift(>),
-                                    adapt_missing())),
-                            flatten()),
-                        block_any())),
-                sieve())),
+            chain_of(tuple_of(pass(),
+                              chain_of(chain_of(
+                                           wrap(),
+                                           with_elements(
+                                               chain_of(
+                                                   tuple_of(
+                                                       chain_of(wrap(),
+                                                                with_elements(
+                                                                    column(
+                                                                        :salary)),
+                                                                flatten()),
+                                                       chain_of(wrap(),
+                                                                with_elements(
+                                                                    block_filler(
+                                                                        [100000],
+                                                                        x1to1)),
+                                                                flatten())),
+                                                   tuple_lift(>),
+                                                   adapt_missing())),
+                                           flatten()),
+                                       block_any())),
+                     sieve())),
         flatten())
     =#
 
@@ -315,14 +315,15 @@ The resulting query could be compacted by simplifying the query expression.
     chain_of(column(:department),
              with_elements(column(:employee)),
              flatten(),
-             with_elements(
-                 chain_of(tuple_of(pass(),
-                                   chain_of(tuple_of(column(:salary),
-                                                     block_filler([100000], REG)),
-                                            tuple_lift(>),
-                                            adapt_missing(),
-                                            block_any())),
-                          sieve())),
+             with_elements(chain_of(tuple_of(pass(),
+                                             chain_of(tuple_of(column(:salary),
+                                                               block_filler(
+                                                                   [100000],
+                                                                   x1to1)),
+                                                      tuple_lift(>),
+                                                      adapt_missing(),
+                                                      block_any())),
+                                    sieve())),
              flatten())
     =#
 

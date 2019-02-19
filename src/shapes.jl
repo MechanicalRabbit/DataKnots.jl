@@ -73,11 +73,11 @@ function fits end
 # Order on cardinalities.
 #
 
-bound(::Type{Cardinality}) = REG
+bound(::Type{Cardinality}) = x1to1
 
 bound(c1::Cardinality, c2::Cardinality) = c1 | c2
 
-ibound(::Type{Cardinality}) = OPT|PLU
+ibound(::Type{Cardinality}) = x0toN
 
 ibound(c1::Cardinality, c2::Cardinality) = c1 & c2
 
@@ -171,7 +171,7 @@ decorate(; label::Union{Missing,Nothing,Symbol}=missing) =
     dr -> decorate(dr; label=label)
 
 """
-    OutputMode(card::Cardinality=REG)
+    OutputMode(card::Cardinality=x1to1)
 
 Monadic constraints on the query output.
 
@@ -181,13 +181,13 @@ struct OutputMode
     card::Cardinality
 end
 
-OutputMode() = OutputMode(REG)
+OutputMode() = OutputMode(x1to1)
 
 convert(::Type{OutputMode}, card::Cardinality) =
     OutputMode(card)
 
 syntax(md::OutputMode) =
-    md.card == REG ?
+    md.card == x1to1 ?
         Expr(:call, nameof(OutputMode)) :
         Expr(:call, nameof(OutputMode), syntax(md.card))
 
@@ -214,13 +214,13 @@ struct OutputShape <: AbstractShape
 end
 
 OutputShape(dom::Union{Type,AbstractShape}) =
-    OutputShape(Decoration(), dom, REG)
+    OutputShape(Decoration(), dom, x1to1)
 
 OutputShape(lbl::Symbol, dom::Union{Type,AbstractShape}) =
-    OutputShape(Decoration(label=lbl), dom, REG)
+    OutputShape(Decoration(label=lbl), dom, x1to1)
 
 OutputShape(dr::Decoration, dom::Union{Type,AbstractShape}) =
-    OutputShape(dr, dom, REG)
+    OutputShape(dr, dom, x1to1)
 
 OutputShape(dom::Union{Type,AbstractShape}, md::Union{Cardinality,OutputMode}) =
     OutputShape(Decoration(), dom, md)
@@ -232,13 +232,13 @@ function syntax(shp::OutputShape)
     args = []
     shp.dr.lbl == nothing || push!(args, QuoteNode(shp.dr.lbl))
     push!(args, shp.dom isa NativeShape ? shp.dom.ty : syntax(shp.dom))
-    shp.md.card == REG || push!(args, syntax(shp.md.card))
+    shp.md.card == x1to1 || push!(args, syntax(shp.md.card))
     Expr(:call, nameof(OutputShape), args...)
 end
 
 function sigsyntax(shp::OutputShape)
     ex =
-        shp.md.card == OPT|PLU ?
+        shp.md.card == x0toN ?
             Expr(:vect, sigsyntax(shp.dom)) :
             Expr(:vect, sigsyntax(shp.dom), syntax(shp.md.card))
     if shp.dr.lbl !== nothing && shp.dr.lbl != Symbol("")
@@ -249,9 +249,9 @@ end
 
 eltype(shp::OutputShape) =
     let ty = eltype(shp.dom)
-        shp.md.card == REG ?
+        shp.md.card == x1to1 ?
             ty :
-        shp.md.card == OPT ?
+        shp.md.card == x0to1 ?
             Union{Missing,ty} :
             Vector{ty}
     end

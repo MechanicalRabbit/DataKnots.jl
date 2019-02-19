@@ -8,9 +8,6 @@ definitions.
 
     using DataKnots:
         @VectorTree,
-        OPT,
-        PLU,
-        REG,
         AnyShape,
         Cardinality,
         InputMode,
@@ -47,7 +44,11 @@ definitions.
         slots,
         tuple_lift,
         tuple_of,
-        wrap
+        wrap,
+        x0to1,
+        x0toN,
+        x1to1,
+        x1toN
 
 
 ### Data shapes
@@ -95,9 +96,9 @@ field.  The data of a record field is stored in a `BlockVector` object.
 Accordingly, the field domain is the shape of the `BlockVector` elements and
 the field cardinality is the cardinality of the `BlockVector`.  When the domain
 is represented by `NativeShape`, we could instead specify the respective Julia
-type.  The `REG` cardinality is assumed by default.
+type.  The `x1to1` cardinality is assumed by default.
 
-    OutputShape(:position, NativeShape(String), REG)
+    OutputShape(:position, NativeShape(String), x1to1)
     #-> OutputShape(:position, String)
 
 `RecordShape` describes the structure of a record.  It contains a list of field
@@ -106,15 +107,15 @@ shapes and corresponds to a `TupleVector` with `BlockVector` columns.
     emp_shp =
         RecordShape(OutputShape(:name, String),
                     OutputShape(:position, String),
-                    OutputShape(:salary, Int, OPT),
-                    OutputShape(:rate, Float64, OPT))
+                    OutputShape(:salary, Int, x0to1),
+                    OutputShape(:rate, Float64, x0to1))
 
 Using nested shape objects, we can describe the structure of a nested
 collection.
 
     dept_shp =
         RecordShape(OutputShape(:name, String),
-                    OutputShape(:employee, emp_shp, PLU))
+                    OutputShape(:employee, emp_shp, x1toN))
 
 
 ### Traversing nested data
@@ -140,28 +141,28 @@ To indicate the role of this query, we assign it a *monadic signature*, which
 describes the shapes of the query input and output.
 
     dept_employee =
-        dept_employee |> designate(InputShape(dept_shp), OutputShape(emp_shp, PLU))
+        dept_employee |> designate(InputShape(dept_shp), OutputShape(emp_shp, x1toN))
 
     signature(dept_employee)
     #=>
-    (name = [String, REG],
-     employee = [(name = [String, REG],
-                  position = [String, REG],
-                  salary = [Int, OPT],
-                  rate = [Float64, OPT]),
-                 PLU]) ->
-        [(name = [String, REG],
-          position = [String, REG],
-          salary = [Int, OPT],
-          rate = [Float64, OPT]),
-         PLU]
+    (name = [String, x1to1],
+     employee = [(name = [String, x1to1],
+                  position = [String, x1to1],
+                  salary = [Int, x0to1],
+                  rate = [Float64, x0to1]),
+                 x1toN]) ->
+        [(name = [String, x1to1],
+          position = [String, x1to1],
+          salary = [Int, x0to1],
+          rate = [Float64, x0to1]),
+         x1toN]
     =#
 
 A *path* could be assembled by composing two adjacent field queries.  For
 example, consider a query that corresponds to the *rate* field.
 
     emp_rate =
-        column(:rate) |> designate(InputShape(emp_shp), OutputShape(Float64, OPT))
+        column(:rate) |> designate(InputShape(emp_shp), OutputShape(Float64, x0to1))
 
 The output domain of the `dept_employee` coincides with the input domain of `emp_rate`.
 
@@ -169,16 +170,16 @@ The output domain of the `dept_employee` coincides with the input domain of `emp
     #=>
     RecordShape(OutputShape(:name, String),
                 OutputShape(:position, String),
-                OutputShape(:salary, Int, OPT),
-                OutputShape(:rate, Float64, OPT))
+                OutputShape(:salary, Int, x0to1),
+                OutputShape(:rate, Float64, x0to1))
     =#
 
     idomain(emp_rate)
     #=>
     RecordShape(OutputShape(:name, String),
                 OutputShape(:position, String),
-                OutputShape(:salary, Int, OPT),
-                OutputShape(:rate, Float64, OPT))
+                OutputShape(:salary, Int, x0to1),
+                OutputShape(:rate, Float64, x0to1))
     =#
 
 This means the queries are composable.  Note that we cannot simply chain the
@@ -198,12 +199,12 @@ has a signature assigned to it.
 
     signature(dept_employee_rate)
     #=>
-    (name = [String, REG],
-     employee = [(name = [String, REG],
-                  position = [String, REG],
-                  salary = [Int, OPT],
-                  rate = [Float64, OPT]),
-                 PLU]) ->
+    (name = [String, x1to1],
+     employee = [(name = [String, x1to1],
+                  position = [String, x1to1],
+                  salary = [Int, x0to1],
+                  rate = [Float64, x0to1]),
+                 x1toN]) ->
         [Float64]
     =#
 
@@ -265,7 +266,7 @@ composition is the upper bound of the component cardinalities while its input
 slots are formed from the slots of the components.
 
     print(cardinality(dept_employee_round_rate))
-    #-> OPT_PLU
+    #-> x0toN
 
     slots(dept_employee_round_rate)
     #-> Pair{Symbol,DataKnots.OutputShape}[:P=>OutputShape(Float64)]
@@ -294,20 +295,20 @@ Pages = ["shapes.jl"]
 `Cardinality` constraints are partially ordered.  In particular, there are the
 greatest and the least cardinalities.
 
-    print(bound(Cardinality))   #-> REG
-    print(ibound(Cardinality))  #-> OPT_PLU
+    print(bound(Cardinality))   #-> x1to1
+    print(ibound(Cardinality))  #-> x0toN
 
 For a collection of cardinality constraints, we can determine their least upper
 bound and their greatest lower bound.
 
-    print(bound(OPT, PLU))      #-> OPT_PLU
-    print(ibound(PLU, OPT))     #-> REG
+    print(bound(x0to1, x1toN))      #-> x0toN
+    print(ibound(x1toN, x0to1))     #-> x1to1
 
 For two `Cardinality` constraints, we can determine whether one is more strict
 than the other.
 
-    fits(OPT, PLU)              #-> false
-    fits(REG, OPT|PLU)          #-> true
+    fits(x0to1, x1toN)              #-> false
+    fits(x1to1, x0toN)          #-> true
 
 
 ### Data shapes
@@ -349,68 +350,66 @@ shapes of the parameters, and whether or not the input is framed.
 To describe the query output, we specify the shape and the cardinality of the
 output elements.
 
-    o_shp = OutputShape(Int, OPT|PLU)
-    #-> OutputShape(Int, OPT | PLU)
+    o_shp = OutputShape(Int, x0toN)
+    #-> OutputShape(Int, x0toN)
 
     print(cardinality(o_shp))
-    #-> OPT_PLU
+    #-> x0toN
 
     domain(o_shp)
     #-> NativeShape(Int)
 
     mode(o_shp)
-    #-> OutputMode(OPT | PLU)
+    #-> OutputMode(x0toN)
 
 It is possible to decorate `InputShape` and `OutputShape` objects to specify
 additional attributes.  Currently, we can only specify the *label*.
 
     o_shp |> decorate(label=:output)
-    #-> OutputShape(:output, Int, OPT | PLU)
+    #-> OutputShape(:output, Int, x0toN)
 
 RecordShape` specifies the shape of a record value where each record field has
 a certain shape and cardinality.
 
     dept_shp = RecordShape(OutputShape(:name, String),
-                           OutputShape(:employee, UInt, OPT|PLU))
+                           OutputShape(:employee, UInt, x0toN))
     #=>
-    RecordShape(OutputShape(:name, String),
-                OutputShape(:employee, UInt, OPT | PLU))
+    RecordShape(OutputShape(:name, String), OutputShape(:employee, UInt, x0toN))
     =#
 
     emp_shp = RecordShape(OutputShape(:name, String),
                           OutputShape(:department, UInt),
                           OutputShape(:position, String),
                           OutputShape(:salary, Int),
-                          OutputShape(:manager, UInt, OPT),
-                          OutputShape(:subordinate, UInt, OPT|PLU))
+                          OutputShape(:manager, UInt, x0to1),
+                          OutputShape(:subordinate, UInt, x0toN))
     #=>
     RecordShape(OutputShape(:name, String),
                 OutputShape(:department, UInt),
                 OutputShape(:position, String),
                 OutputShape(:salary, Int),
-                OutputShape(:manager, UInt, OPT),
-                OutputShape(:subordinate, UInt, OPT | PLU))
+                OutputShape(:manager, UInt, x0to1),
+                OutputShape(:subordinate, UInt, x0toN))
     =#
 
 Using the combination of different shapes we can describe the structure of any
 data source.
 
-    db_shp = RecordShape(OutputShape(:department, dept_shp, OPT|PLU),
-                         OutputShape(:employee, emp_shp, OPT|PLU))
+    db_shp = RecordShape(OutputShape(:department, dept_shp, x0toN),
+                         OutputShape(:employee, emp_shp, x0toN))
     #=>
     RecordShape(OutputShape(:department,
                             RecordShape(OutputShape(:name, String),
-                                        OutputShape(:employee, UInt, OPT | PLU)),
-                            OPT | PLU),
+                                        OutputShape(:employee, UInt, x0toN)),
+                            x0toN),
                 OutputShape(:employee,
-                            RecordShape(
-                                OutputShape(:name, String),
-                                OutputShape(:department, UInt),
-                                OutputShape(:position, String),
-                                OutputShape(:salary, Int),
-                                OutputShape(:manager, UInt, OPT),
-                                OutputShape(:subordinate, UInt, OPT | PLU)),
-                            OPT | PLU))
+                            RecordShape(OutputShape(:name, String),
+                                        OutputShape(:department, UInt),
+                                        OutputShape(:position, String),
+                                        OutputShape(:salary, Int),
+                                        OutputShape(:manager, UInt, x0to1),
+                                        OutputShape(:subordinate, UInt, x0toN)),
+                            x0toN))
     =#
 
 
@@ -418,7 +417,7 @@ data source.
 
 The same data can satisfy many different shape constraints.  For example, a
 vector `BlockVector(:, [Chicago])` can be said to have, among others, the shape
-`OutputShape(String)`, the shape `OutputShape(AbstractString, OPT|PLU)` or the
+`OutputShape(String)`, the shape `OutputShape(AbstractString, x0toN)` or the
 shape `AnyShape()`.  We can tell, for any two shapes, if one of them is more
 specific than the other.
 
@@ -430,35 +429,35 @@ specific than the other.
                                :Y => OutputShape(String)],
                               true)),
          InputShape(Number,
-                    InputMode([:X => OutputShape(Int, OPT)])))
+                    InputMode([:X => OutputShape(Int, x0to1)])))
     #-> true
     fits(InputShape(Int),
          InputShape(Number, InputMode(true)))
     #-> false
     fits(InputShape(Int,
-                    InputMode([:X => OutputShape(Int, OPT)])),
+                    InputMode([:X => OutputShape(Int, x0to1)])),
          InputShape(Number,
                     InputMode([:X => OutputShape(Int)])))
     #-> false
 
     fits(OutputShape(Int),
-         OutputShape(Number, OPT))                  #-> true
-    fits(OutputShape(Int, PLU),
-         OutputShape(Number, OPT))                  #-> false
+         OutputShape(Number, x0to1))                  #-> true
+    fits(OutputShape(Int, x1toN),
+         OutputShape(Number, x0to1))                  #-> false
     fits(OutputShape(Int),
-         OutputShape(String, OPT))                  #-> false
+         OutputShape(String, x0to1))                  #-> false
 
     fits(RecordShape(OutputShape(Int),
-                     OutputShape(String, OPT)),
+                     OutputShape(String, x0to1)),
          RecordShape(OutputShape(Number),
-                     OutputShape(String, OPT|PLU)))     #-> true
-    fits(RecordShape(OutputShape(Int, OPT),
+                     OutputShape(String, x0toN)))     #-> true
+    fits(RecordShape(OutputShape(Int, x0to1),
                      OutputShape(String)),
          RecordShape(OutputShape(Number),
-                     OutputShape(String, OPT|PLU)))     #-> false
+                     OutputShape(String, x0toN)))     #-> false
     fits(RecordShape(OutputShape(Int)),
          RecordShape(OutputShape(Number),
-                     OutputShape(String, OPT|PLU)))     #-> false
+                     OutputShape(String, x0toN)))     #-> false
 
 Shapes of different kinds are typically not compatible with each other.  The
 exceptions are `AnyShape` and `NullShape`.
@@ -486,12 +485,12 @@ is more general than each of them.  We can also find their lower bound.
     ibound(NativeShape(Int), NativeShape(Number))
     #-> NativeShape(Int)
 
-    bound(InputShape(Int, InputMode([:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true)),
+    bound(InputShape(Int, InputMode([:X => OutputShape(Int, x0to1), :Y => OutputShape(String)], true)),
           InputShape(Number, InputMode([:X => OutputShape(Int)])))
     #=>
-    InputShape(Number, InputMode([:X => OutputShape(Int, OPT)]))
+    InputShape(Number, InputMode([:X => OutputShape(Int, x0to1)]))
     =#
-    ibound(InputShape(Int, InputMode([:X => OutputShape(Int, OPT), :Y => OutputShape(String)], true)),
+    ibound(InputShape(Int, InputMode([:X => OutputShape(Int, x0to1), :Y => OutputShape(String)], true)),
            InputShape(Number, InputMode([:X => OutputShape(Int)])))
     #=>
     InputShape(Int,
@@ -499,24 +498,24 @@ is more general than each of them.  We can also find their lower bound.
                          true))
     =#
 
-    bound(OutputShape(String, OPT), OutputShape(String, PLU))
-    #-> OutputShape(String, OPT | PLU)
-    ibound(OutputShape(String, OPT), OutputShape(String, PLU))
+    bound(OutputShape(String, x0to1), OutputShape(String, x1toN))
+    #-> OutputShape(String, x0toN)
+    ibound(OutputShape(String, x0to1), OutputShape(String, x1toN))
     #-> OutputShape(String)
 
-    bound(RecordShape(OutputShape(Int, PLU),
-                      OutputShape(String, OPT)),
+    bound(RecordShape(OutputShape(Int, x1toN),
+                      OutputShape(String, x0to1)),
           RecordShape(OutputShape(Number),
-                      OutputShape(UInt, OPT|PLU)))
+                      OutputShape(UInt, x0toN)))
     #=>
-    RecordShape(OutputShape(Number, PLU), OutputShape(AnyShape(), OPT | PLU))
+    RecordShape(OutputShape(Number, x1toN), OutputShape(AnyShape(), x0toN))
     =#
-    ibound(RecordShape(OutputShape(Int, PLU),
-                       OutputShape(String, OPT)),
+    ibound(RecordShape(OutputShape(Int, x1toN),
+                       OutputShape(String, x0to1)),
            RecordShape(OutputShape(Number),
-                       OutputShape(UInt, OPT|PLU)))
+                       OutputShape(UInt, x0toN)))
     #=>
-    RecordShape(OutputShape(Int), OutputShape(NoneShape(), OPT))
+    RecordShape(OutputShape(Int), OutputShape(NoneShape(), x0to1))
     =#
 
 For decorated shapes, incompatible labels are replaced with an empty label.
@@ -547,15 +546,15 @@ The signature of a monadic query is a pair of an `InputShape` object and an
 
     sig = Signature(InputShape(UInt),
                     OutputShape(RecordShape(OutputShape(:name, String),
-                                            OutputShape(:employee, UInt, OPT|PLU))))
-    #-> UInt -> [(name = [String, REG], employee = [UInt]), REG]
+                                            OutputShape(:employee, UInt, x0toN))))
+    #-> UInt -> [(name = [String, x1to1], employee = [UInt]), x1to1]
 
 Different components of the signature can be easily extracted.
 
     shape(sig)
     #=>
     OutputShape(RecordShape(OutputShape(:name, String),
-                            OutputShape(:employee, UInt, OPT | PLU)))
+                            OutputShape(:employee, UInt, x0toN)))
     =#
 
     ishape(sig)
@@ -563,8 +562,7 @@ Different components of the signature can be easily extracted.
 
     domain(sig)
     #=>
-    RecordShape(OutputShape(:name, String),
-                OutputShape(:employee, UInt, OPT | PLU))
+    RecordShape(OutputShape(:name, String), OutputShape(:employee, UInt, x0toN))
     =#
 
     mode(sig)
@@ -596,9 +594,9 @@ In particular, it detects the record layout.
     RecordShape(OutputShape(String),
                 OutputShape(RecordShape(OutputShape(:name, String),
                                         OutputShape(:position, String),
-                                        OutputShape(:salary, Int, OPT),
-                                        OutputShape(:rate, Float64, OPT)),
-                            PLU))
+                                        OutputShape(:salary, Int, x0to1),
+                                        OutputShape(:rate, Float64, x0to1)),
+                            x1toN))
     =#
 
 `TupleVector` and `BlockVector` objects that are not in the record layout are

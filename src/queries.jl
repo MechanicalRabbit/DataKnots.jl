@@ -243,7 +243,7 @@ end
 
 @generated function _record_lift(f, len::Int, cols::BlockVector...)
     D = length(cols)
-    CARD = |(REG, cardinality.(cols)...)
+    CARD = |(x1to1, cardinality.(cols)...)
     return quote
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
@@ -294,14 +294,14 @@ This query produces a block vector with empty blocks.
 null_filler() = Query(null_filler)
 
 null_filler(rt::Runtime, input::AbstractVector) =
-    BlockVector(fill(1, length(input)+1), Union{}[], OPT)
+    BlockVector(fill(1, length(input)+1), Union{}[], x0to1)
 
 """
     block_filler(block::AbstractVector, card::Cardinality) :: Query
 
 This query produces a block vector filled with the given block.
 """
-block_filler(block, card::Cardinality=OPT|PLU) = Query(block_filler, block, card)
+block_filler(block, card::Cardinality=x0toN) = Query(block_filler, block, card)
 
 function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector, card::Cardinality)
     if isempty(input)
@@ -334,7 +334,7 @@ adapt_missing() = Query(adapt_missing)
 
 function adapt_missing(rt::Runtime, input::AbstractVector)
     if !(Missing <: eltype(input))
-        return BlockVector(:, input, OPT)
+        return BlockVector(:, input, x0to1)
     end
     sz = 0
     for elt in input
@@ -344,7 +344,7 @@ function adapt_missing(rt::Runtime, input::AbstractVector)
     end
     O = Base.nonmissingtype(eltype(input))
     if sz == length(input)
-        return BlockVector(:, collect(O, input), OPT)
+        return BlockVector(:, collect(O, input), x0to1)
     end
     offs = Vector{Int}(undef, length(input)+1)
     elts = Vector{O}(undef, sz)
@@ -357,7 +357,7 @@ function adapt_missing(rt::Runtime, input::AbstractVector)
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, elts, OPT)
+    return BlockVector(offs, elts, x0to1)
 end
 
 """
@@ -383,7 +383,7 @@ function adapt_vector(rt::Runtime, input::AbstractVector)
         top += length(v)
         offs[k+1] = top
     end
-    return BlockVector(offs, elts, OPT|PLU)
+    return BlockVector(offs, elts, x0toN)
 end
 
 """
@@ -546,7 +546,7 @@ of the input vector.
 wrap() = Query(wrap)
 
 wrap(rt::Runtime, input::AbstractVector) =
-    BlockVector(:, input, REG)
+    BlockVector(:, input, x1to1)
 
 
 """
@@ -647,7 +647,7 @@ end
 
 @generated function _distribute_all(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
     D = length(cols)
-    CARD = |(REG, cardinality.(cols)...)
+    CARD = |(x1to1, cardinality.(cols)...)
     return quote
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
@@ -756,9 +756,9 @@ function sieve(rt::Runtime, input::AbstractVector)
     val_col, pred_col = columns(input)
     sz = count(pred_col)
     if sz == len
-        return BlockVector(:, val_col, OPT)
+        return BlockVector(:, val_col, x0to1)
     elseif sz == 0
-        return BlockVector(fill(1, len+1), val_col[[]], OPT)
+        return BlockVector(fill(1, len+1), val_col[[]], x0to1)
     end
     offs = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
@@ -770,7 +770,7 @@ function sieve(rt::Runtime, input::AbstractVector)
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, val_col[perm], OPT)
+    return BlockVector(offs, val_col[perm], x0to1)
 end
 
 
@@ -823,7 +823,7 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    card = cardinality(input)|OPT
+    card = cardinality(input)|x0to1
     return BlockVector(offs′, elts′, card)
 end
 
@@ -874,7 +874,7 @@ function slice(rt::Runtime, input::AbstractVector, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    card = cardinality(vals)|OPT
+    card = cardinality(vals)|x0to1
     return BlockVector(offs′, elts′, card)
 end
 

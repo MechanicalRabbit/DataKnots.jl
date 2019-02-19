@@ -24,16 +24,16 @@ struct DataKnot <: AbstractPipeline
     shp::OutputShape
 end
 
-DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU) =
+DataKnot(elts::AbstractVector, card::Cardinality=x0toN) =
     DataKnot(elts, OutputShape(shapeof(elts), card))
 
-DataKnot(elt::T, card::Cardinality=REG) where {T} =
+DataKnot(elt::T, card::Cardinality=x1to1) where {T} =
     DataKnot(T[elt], OutputShape(NativeShape(T), card))
 
-DataKnot(::Missing, card::Cardinality=OPT) =
+DataKnot(::Missing, card::Cardinality=x0to1) =
     DataKnot(Union{}[], OutputShape(NoneShape(), card))
 
-DataKnot(ref::Base.RefValue{T}, card::Cardinality=REG) where {T} =
+DataKnot(ref::Base.RefValue{T}, card::Cardinality=x1to1) where {T} =
     DataKnot(T[ref.x], OutputShape(NativeShape(T), card))
 
 DataKnot() = DataKnot(nothing)
@@ -44,8 +44,8 @@ convert(::Type{DataKnot}, val) = DataKnot(val)
 
 get(db::DataKnot) =
     let card = cardinality(db.shp)
-        card == REG || card == OPT && !isempty(db.elts) ? db.elts[1] :
-        card == OPT ? missing : db.elts
+        card == x1to1 || card == x0to1 && !isempty(db.elts) ? db.elts[1] :
+        card == x0to1 ? missing : db.elts
     end
 
 elements(db::DataKnot) = db.elts
@@ -327,7 +327,7 @@ function render_cell(shp::OutputShape, vals::AbstractVector, idx::Int, avail::In
     r = offs[idx+1]-1
     if l > r
         return TableCell()
-    elseif fits(PLU, cardinality(shp))
+    elseif fits(x1toN, cardinality(shp))
         buf = IOBuffer()
         comma = false
         for k = l:r

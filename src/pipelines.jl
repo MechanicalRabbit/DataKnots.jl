@@ -320,15 +320,15 @@ function monadic_lift(f, xs::Vector{Query})
     oty = Core.Compiler.return_type(f, ity)
     oty != Union{} || error("cannot apply $f to $ity")
     tail = wrap()
-    card = REG
+    card = x1to1
     if oty <: AbstractVector
         oty = eltype(oty)
         tail = adapt_vector()
-        card = OPT|PLU
+        card = x0toN
     elseif Missing <: oty
         oty = Base.nonmissingtype(oty)
         tail = adapt_missing()
-        card = OPT
+        card = x0to1
     end
     ishp = ibound(ishape.(xs))
     shp = OutputShape(NativeShape(oty), card)
@@ -541,15 +541,15 @@ function lookup(ity::Type{<:NamedTuple}, name::Symbol)
     oty = ity.parameters[2].parameters[j]
     f = t -> t[j]
     tail = wrap()
-    card = REG
+    card = x1to1
     if oty <: AbstractVector
         oty = eltype(oty)
         tail = adapt_vector()
-        card = OPT|PLU
+        card = x0toN
     elseif Missing <: oty
         oty = Base.nonmissingtype(oty)
         tail = adapt_missing()
-        card = OPT
+        card = x0to1
     end
     ishp = InputShape(ity)
     shp = OutputShape(name, NativeShape(oty), card)
@@ -674,7 +674,7 @@ function monadic_aggregate(f, q::Query, hasdefault=true)
     ity = Tuple{AbstractVector{eltype(domain(q))}}
     oty = Core.Compiler.return_type(f, ity)
     oty != Union{} || error("cannot apply $f to $ity")
-    if hasdefault || !fits(OPT, cardinality(q))
+    if hasdefault || !fits(x0to1, cardinality(q))
         chain_of(
             q,
             block_lift(f),
@@ -685,7 +685,7 @@ function monadic_aggregate(f, q::Query, hasdefault=true)
             q,
             block_lift(f, missing),
             adapt_missing(),
-        ) |> designate(ishape(q), OutputShape(domain(q), OPT))
+        ) |> designate(ishape(q), OutputShape(domain(q), x0to1))
     end
 end
 
@@ -752,7 +752,7 @@ function monadic_filter(q::Query, p::Query)
             narrow_input(imode(p)),
             chain_of(p, block_any())),
         sieve(),
-    ) |> designate(ishape(p), OutputShape(decoration(q), domain(q), OPT))
+    ) |> designate(ishape(p), OutputShape(decoration(q), domain(q), x0to1))
     compose(q, r)
 end
 
@@ -778,7 +778,7 @@ monadic_take(q::Query, n::Int, rev::Bool) =
     chain_of(
         q,
         slice(n, rev),
-    ) |> designate(ishape(q), OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(OPT))))
+    ) |> designate(ishape(q), OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(x0to1))))
 
 function monadic_take(q::Query, n::Query, rev::Bool)
     fits(domain(n), NativeShape(Int)) || error("expected an integer query")
@@ -787,11 +787,11 @@ function monadic_take(q::Query, n::Query, rev::Bool)
         tuple_of(
             narrow_input(mode(ishp), q),
             chain_of(narrow_input(mode(ishp), n),
-                     fits(OPT, cardinality(n)) ?
+                     fits(x0to1, cardinality(n)) ?
                         block_lift(first, missing) :
                         block_lift(first))),
         slice(rev),
-    ) |> designate(ishp, OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(OPT))))
+    ) |> designate(ishp, OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(x0to1))))
 end
 
 """

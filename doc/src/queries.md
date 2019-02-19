@@ -8,9 +8,6 @@ transformations.  We will use the following definitions:
 
     using DataKnots:
         @VectorTree,
-        OPT,
-        PLU,
-        REG,
         Query,
         Runtime,
         adapt_missing,
@@ -36,7 +33,8 @@ transformations.  We will use the following definitions:
         tuple_of,
         with_column,
         with_elements,
-        wrap
+        wrap,
+        x1toN
 
 
 ### Lifting and fillers
@@ -322,8 +320,8 @@ The query `filler(val)` ignores its input and produces a vector filled with
 The query `block_filler(blk, card)` produces a block vector filled with the
 given block.
 
-    q = block_filler(["POLICE", "FIRE"], PLU)
-    #-> block_filler(["POLICE", "FIRE"], PLU)
+    q = block_filler(["POLICE", "FIRE"], x1toN)
+    #-> block_filler(["POLICE", "FIRE"], x1toN)
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
     #-> @VectorTree (1:N) × String [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]

@@ -212,27 +212,24 @@ end
 #
 
 """
-    REG::Cardinality
-    OPT::Cardinality
-    PLU::Cardinality
-    OPT|PLU::Cardinality
+    x1to1::Cardinality
+    x0to1::Cardinality
+    x1toN::Cardinality
+    x0toN::Cardinality
 
-Cardinality constraints on a block of data.  `REG` stands for *1…1*, `OPT`
-for *0…1*, `PLU` for *1…∞*, `OPT|PLU` for *0…∞*.
+Cardinality constraints on a block of data.
 """
 Cardinality
 
-@enum Cardinality::UInt8 REG OPT PLU OPT_PLU
+@enum Cardinality::UInt8 x1to1 x0to1 x1toN x0toN
 
 syntax(c::Cardinality) =
-    c == REG ? :REG :
-    c == OPT ? :OPT :
-    c == PLU ? :PLU : Expr(:call, :(|), :OPT, :PLU)
+    c == x1to1 ? :x1to1 : c == x0to1 ? :x0to1 : c == x1toN ? :x1toN : :x0toN
 
 # Bitwise operations.
 
 (~)(c::Cardinality) =
-    Base.bitcast(Cardinality, (~UInt8(c))&UInt8(OPT|PLU))
+    Base.bitcast(Cardinality, (~UInt8(c))&UInt8(x0toN))
 
 (|)(c1::Cardinality, c2::Cardinality) =
     Base.bitcast(Cardinality, UInt8(c1)|UInt8(c2))
@@ -243,13 +240,13 @@ syntax(c::Cardinality) =
 # Predicates.
 
 isregular(c::Cardinality) =
-    c == REG
+    c == x1to1
 
 isoptional(c::Cardinality) =
-    c & OPT == OPT
+    c & x0to1 == x0to1
 
 isplural(c::Cardinality) =
-    c & PLU == PLU
+    c & x1toN == x1toN
 
 
 #
@@ -259,8 +256,8 @@ isplural(c::Cardinality) =
 # Constructors.
 
 """
-    BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=OPT|PLU)
-    BlockVector(:, elts::AbstractVector, card::Cardinality=REG)
+    BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=x0toN)
+    BlockVector(:, elts::AbstractVector, card::Cardinality=x1to1)
 
 Vector of data blocks stored as a vector of elements partitioned by a
 vector of offsets.
@@ -287,10 +284,10 @@ end
 @inline BlockVector{CARD}(::Colon, elts::AbstractVector) where {CARD} =
     BlockVector{CARD}(OneTo{Int}(length(elts)+1), elts)
 
-@inline BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=PLU|OPT) =
+@inline BlockVector(offs::AbstractVector{Int}, elts::AbstractVector, card::Cardinality=x1toN|x0to1) =
     BlockVector{card}(offs, elts)
 
-@inline BlockVector(::Colon, elts::AbstractVector, card::Cardinality=REG) =
+@inline BlockVector(::Colon, elts::AbstractVector, card::Cardinality=x1to1) =
     BlockVector{card}(:, elts)
 
 function _checkblock(len::Int, offs::OneTo{Int}, ::Cardinality)
@@ -315,7 +312,7 @@ end
 # Printing.
 
 sigsyntax(bv::BlockVector{CARD}) where {CARD} =
-    Expr(:call, :×, CARD == OPT|PLU ? :(0:N) : CARD == PLU ? :(1:N) : CARD == OPT ? :(0:1) : :(1:1), sigsyntax(bv.elts))
+    Expr(:call, :×, CARD == x0toN ? :(0:N) : CARD == x1toN ? :(1:N) : CARD == x0to1 ? :(0:1) : :(1:1), sigsyntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
     show_columnar(io, bv)
@@ -354,10 +351,10 @@ IndexStyle(::Type{<:BlockVector}) = IndexLinear()
 eltype(bv::BlockVector) =
     Vector{eltype(bv.elts)} # TODO: clarify
 
-eltype(bv::BlockVector{OPT}) =
+eltype(bv::BlockVector{x0to1}) =
     Union{eltype(bv.elts),Missing}
 
-eltype(bv::BlockVector{REG}) =
+eltype(bv::BlockVector{x1to1}) =
     eltype(bv.elts)
 
 @inline function getindex(bv::BlockVector, k::Int)
@@ -367,14 +364,14 @@ eltype(bv::BlockVector{REG}) =
     elt
 end
 
-@inline function getindex(bv::BlockVector{OPT}, k::Int)
+@inline function getindex(bv::BlockVector{x0to1}, k::Int)
     @boundscheck checkbounds(bv, k)
     @inbounds rng = bv.offs[k]:bv.offs[k+1]-1
     @inbounds elt = !isempty(rng) ? bv.elts[rng.start] : missing
     elt
 end
 
-@inline function getindex(bv::BlockVector{REG}, k::Int)
+@inline function getindex(bv::BlockVector{x1to1}, k::Int)
     @boundscheck checkbounds(bv, k)
     @inbounds elt = bv.elts[k]
     elt
@@ -570,12 +567,12 @@ macro VectorTree(sig, vec)
     return esc(ex)
 end
 
-const CARD_MAP = Dict(:(0:N) => OPT|PLU,
-                      :(0:n) => OPT|PLU,
-                      :(1:N) => PLU,
-                      :(1:n) => PLU,
-                      :(0:1) => OPT,
-                      :(1:1) => REG)
+const CARD_MAP = Dict(:(0:N) => x0toN,
+                      :(0:n) => x0toN,
+                      :(1:N) => x1toN,
+                      :(1:n) => x1toN,
+                      :(0:1) => x0to1,
+                      :(1:1) => x1to1)
 
 function sig2mk(sig)
     if sig isa Expr && sig.head == :tuple
@@ -592,7 +589,7 @@ function sig2mk(sig)
         return MakeTupleVector(lbls, col_mks)
     elseif sig isa Expr && sig.head == :vect && length(sig.args) == 1
         elts_mk = sig2mk(sig.args[1])
-        return MakeBlockVector(elts_mk, OPT|PLU)
+        return MakeBlockVector(elts_mk, x0toN)
     elseif sig isa Expr && sig.head == :call && length(sig.args) == 3 &&
            sig.args[1] in (:×, :*) && sig.args[2] in keys(CARD_MAP)
         elts_mk = sig2mk(sig.args[3])

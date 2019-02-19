@@ -5,6 +5,7 @@
 module DataKnots
 
 export
+    Cardinality,
     Count,
     DataKnot,
     Drop,
@@ -21,14 +22,11 @@ export
     Sum,
     Tag,
     Take,
-    Then
-
-export
-    Cardinality,
-    REG,
-    OPT,
-    PLU,
-    OPT_PLU
+    Then,
+    x0to1,
+    x0toN,
+    x1to1,
+    x1toN
 
 include("layouts.jl")
 include("vectors.jl")
