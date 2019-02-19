@@ -187,7 +187,8 @@ The pairs of element of offset vectors are wrapped as `BlockVector` objects.
 
 Here, the last parameter of the `BlockVector` constructor is the cardinality
 constraint on the size of the blocks.  The constraint `x0to1` indicates that
-each block should contain from 0 to 1 elements.
+each block should contain from 0 to 1 elements.  The default constraint `x0toN`
+does not restrict the block size.
 
 The first two columns of the table do not contain empty cells, and therefore
 could be represented by regular vectors.  If we choose to wrap these columns
