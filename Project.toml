@@ -1,9 +1,9 @@
 name = "DataKnots"
-uuid = "d135c000-65a7-11e8-1c84-5b268381127b"
+uuid = "f3f2b2ad-91c8-5588-b964-d77e2d3bb090"
 authors = ["Kirill Simonov <xi@resolvent.net>"]
 version = "0.1.0"
 
 [deps]
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-PPrint = "db3ad36c-ec73-11e8-397c-91c865de92e2"
+PPrint = "58e6f5bb-1ca5-5b55-8dd3-df7fbd0a3bdf"
