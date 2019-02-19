@@ -536,13 +536,13 @@ Ill-formed `@VectorTree` contructors are rejected.
 
 Using `@VectorTree`, we can easily construct hierarchical data.
 
-    hier_data = @VectorTree (name = String, employee = (0:N)(name = String, salary = (0:1)Int)) [
+    hier_data = @VectorTree (name = (1:1)String, employee = (0:N)(name = (1:1)String, salary = (0:1)Int)) [
         "POLICE"    ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
         "FIRE"      ["JOSE S" 202728; "CHARLES S" 197736]
     ]
     display(hier_data)
     #=>
-    TupleVector of 2 × (name = String, employee = (0:N) × (name = String, salary = (0:1) × Int)):
+    TupleVector of 2 × (name = (1:1) × String, employee = (0:N) × (name = (1:1) × String, salary = (0:1) × Int)):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
     =#
