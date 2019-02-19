@@ -126,7 +126,9 @@ function pack(q, params)
                 error("parameter is not specified: $(slot.first)")
             end
             elts = elements(params[k].second)
-            push!(cols, BlockVector(length(elts) == 1 ? (:) : [1, length(elts)+1], elts, cardinality(slot.second)))
+            card = cardinality(slot.second)
+            push!(cols, BlockVector(length(elts) == 1 ? (:) : [1, length(elts)+1], elts,
+                                    plural=isplural(card), optional=isoptional(card)))
         end
         return TupleVector(1, AbstractVector[data, TupleVector(1, cols)])
     end
@@ -155,7 +157,8 @@ apply(F, env::Environment, q::Query)::Query =
     apply(Lift(F), env, q)
 
 function apply(db::DataKnot, env::Environment, q::Query)::Query
-    r = block_filler(elements(db), cardinality(db)) |> designate(InputShape(AnyShape()), shape(db))
+    card = cardinality(db)
+    r = block_filler(elements(db), isplural(card), isoptional(card)) |> designate(InputShape(AnyShape()), shape(db))
     compose(q, r)
 end
 
