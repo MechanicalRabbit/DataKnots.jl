@@ -506,9 +506,9 @@ end
 #
 
 summary(io::IO, v::Union{TupleVector,BlockVector}) =
-    pprint(io, PPrint.pair_layout(PPrint.literal("@VectorTree"),
-                                  tile_expr(Expr(:call, :×, length(v), sigsyntax(v))),
-                                  sep=" of "))
+    pprint(io, pair_layout(literal("@VectorTree"),
+                           tile_expr(Expr(:call, :×, length(v), sigsyntax(v))),
+                           sep=" of "))
 
 sigsyntax(v::AbstractVector) = eltype(v)
 
