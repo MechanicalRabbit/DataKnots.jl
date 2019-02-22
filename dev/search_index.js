@@ -45,7 +45,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Getting Started",
     "category": "section",
-    "text": ""
+    "text": "DataKnots is in active development and is not expected to be usable for general audiences. In particular, with the v0.1 release, there are no data source adapters."
 },
 
 {
@@ -53,7 +53,87 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Installation Instructions",
     "category": "section",
-    "text": "DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager.  To install it, run in the package shell (enter with ] from the Julia shell):pkg> add https://github.com/rbt-lang/DataKnots.jlDataKnots.jl requires Julia 0.7 or higher.If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:pkg> dev https://github.com/rbt-lang/DataKnots.jl"
+    "text": "DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager.  To install it, run in the package shell (enter with ] from the Julia shell):pkg> add https://github.com/rbt-lang/DataKnots.jlDataKnots.jl requires Julia 1.0 or higher.If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:pkg> dev https://github.com/rbt-lang/DataKnots.jl"
+},
+
+{
+    "location": "start/#Quick-Tutorial-1",
+    "page": "Getting Started",
+    "title": "Quick Tutorial",
+    "category": "section",
+    "text": "Consider the following example containing a tiny cross-section of public data from Chicago, represented as nested  NamedTuple and Vector objects.chicago_data =\n    (department = [\n     (name = \"POLICE\", employee = [\n       (name = \"JEFFERY A\", position = \"SERGEANT\",\n        salary = 101442),\n       (name = \"NANCY A\", position = \"POLICE OFFICER\",\n        salary = 80016)]),\n     (name = \"FIRE\", employee = [\n       (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n        salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. This data could be converted back into Julia structure via get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#=>\nNamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}\n=#By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named \"department\"."
+},
+
+{
+    "location": "start/#Navigating-1",
+    "page": "Getting Started",
+    "title": "Navigating",
+    "category": "section",
+    "text": "Pipeline queries can then be run on data knot. For example, to list all department names, we write:run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#In this pipeline, It means \"use the current input\" and the period operator lets one navigate via the names provided. During this navigation context matters. For example, given the data provided, employee tuples are not directly accessible.run(ChicagoData, It.employee)\n#=>\nERROR: cannot find employee at\nNamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}\n=#In DataKnots, nested lists are flatted as necessary, hence, we can list all of the employees in the dataset as follows.run(ChicagoData, It.department.employee.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n2 │ NANCY A   │\n3 │ DANIEL A  │\n=#"
+},
+
+{
+    "location": "start/#Composition-1",
+    "page": "Getting Started",
+    "title": "Composition",
+    "category": "section",
+    "text": "The dotted expressions above are actually a syntax shorthand for the Lookup operation together with composition (>>).Department = Lookup(:department)\nName = Lookup(:name)\n\nrun(ChicagoData, Department >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Since the pipeline It is the identity, the query above could be equivalently written:run(ChicagoData, It >> Department >> It >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Hence, from here on, we\'ll use It.department instead of Lookup(:department)."
+},
+
+{
+    "location": "start/#Counting-1",
+    "page": "Getting Started",
+    "title": "Counting",
+    "category": "section",
+    "text": "We can count records. Here we return number of departments.get(run(ChicagoData, Count(It.department)))\n#-> 2Using pipeline composition (>>), we can perform Count in a nested context; in this case, we count employee records within each department.run(ChicagoData,\n    It.department\n    >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        2 │\n2 │        1 │\n=#In this toy dataset, we see that the 1st department, \"POLICE\", has 2 employees, while the 2nd, \"FIRE\" only has 1."
+},
+
+{
+    "location": "start/#Labels-1",
+    "page": "Getting Started",
+    "title": "Labels",
+    "category": "section",
+    "text": "It\'s sometimes useful to factor out reusable pipeline expressions and to label output columns.EmployeeCount = (\n  Count(It.employee)\n  >> Label(:count))\n\nrun(ChicagoData,\n    It.department\n    >> EmployeeCount)\n#=>\n  │ count │\n──┼───────┤\n1 │     2 │\n2 │     1 │\n=#"
+},
+
+{
+    "location": "start/#Records-and-Labels-1",
+    "page": "Getting Started",
+    "title": "Records & Labels",
+    "category": "section",
+    "text": "Sometimes it is helpful to label output and return records. Let us pretty-up the previous result so it shows the department name for each count.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#Showing department statistics might be generally useful, so let\'s also assign it to a reusable pipeline.DeptStats =\n  Record(It.name,\n         EmployeeCount)No matter how nested, pipeline expressions can be displayedDeptStats\n#-> Record(It.name, Count(It.employee) >> Label(:count))"
+},
+
+{
+    "location": "start/#Filtering-Data-1",
+    "page": "Getting Started",
+    "title": "Filtering Data",
+    "category": "section",
+    "text": "Filtering data is also contextual. Here we list department names who have exactly one employee.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount .== 1)\n    >> DeptStats)\n#=>\n  │ department  │\n  │ name  count │\n──┼─────────────┤\n1 │ FIRE      1 │\n=#Pipeline expressions can use arguments.HavingSize(N) = Filter(EmployeeCount .== N)\n\nrun(ChicagoData,\n    It.department\n    >> HavingSize(2)\n    >> DeptStats)\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n=#"
+},
+
+{
+    "location": "start/#Query-Parameters-1",
+    "page": "Getting Started",
+    "title": "Query Parameters",
+    "category": "section",
+    "text": "Query expressions may use outside parameters. The run command can take a set of additional values that are accessible anywhere within the query.DeptNameWith(N) = (\n  It.department\n  >> HavingSize(N)\n  >> It.name)\n\nrun(ChicagoData, DeptNameWith(It.no), no=1)\n#=>\n  │ name │\n──┼──────┤\n1 │ FIRE │\n=#Parameters can also be set as part of the query.run(ChicagoData,\n    Given(:no => 1,\n      DeptNameWith(It.no)))\n#=>\n  │ name │\n──┼──────┤\n1 │ FIRE │\n=#In both of these variants, the parameter It.no is accessible anywhere in the query, at root of the data structure, within each department, and within each employee."
+},
+
+{
+    "location": "start/#Nested-Aggregates-1",
+    "page": "Getting Started",
+    "title": "Nested Aggregates",
+    "category": "section",
+    "text": "Aggregates can be nested. In this case we calculate the maximum employee count to which a department might have.MaximalEmployees = Max(It.department >> EmployeeCount)\n\nrun(ChicagoData, MaximalEmployees)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#It\'s important to realize that this pipeline is only valid at the top of the tree, where Lookup(:department) can succeed. Conversely, if this same pipeline is used in the context of a department, it will fail.run(ChicagoData, It.department >> MaximalEmployees)\n#=>\nERROR: cannot find department at\nNamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}}\n=#It\'s for the same reason that DeptNameWith(MaximalEmployees) will also fail. However this scoping problem can be overcome by using parameters.run(ChicagoData,\n    Given(:no => MaximalEmployees,\n          DeptNameWith(It.no)))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#"
+},
+
+{
+    "location": "start/#Robust-Pipeline-Macros-1",
+    "page": "Getting Started",
+    "title": "Robust Pipeline Macros",
+    "category": "section",
+    "text": "This scope challenge can be solved be rewriting DeptNameWith to use a Given parameter.ImprovedWith(N) =\n  Given(:no => N,\n    It.department\n    >> HavingSize(It.no)\n    >> It.name)\n\nrun(ChicagoData, ImprovedWith(MaximalEmployees))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#"
 },
 
 {
@@ -157,15 +237,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "Reference",
     "category": "section",
-    "text": "DataKnots are a Julia library for building and evaluating data processing pipelines. Informally, each Pipeline represents a data transformation; a pipeline\'s input and output is represented by a DataKnot. With the exception of a few overloaded Base functions, such as run and get, the bulk of this reference focuses on pipeline constructors.To exercise our reference examples, we import the package:using DataKnots"
+    "text": "DataKnots are a Julia library for building and evaluating data processing pipelines. Each Pipeline represents a context-aware data transformation; a pipeline\'s input and output is represented by a DataKnot. Besides a few overloaded Base functions, such as run and get, the bulk of this reference focuses on pipeline constructors."
 },
 
 {
-    "location": "reference/#DataKnots-and-Running-Pipelines-1",
+    "location": "reference/#Concept-Overview-1",
     "page": "Reference",
-    "title": "DataKnots & Running Pipelines",
+    "title": "Concept Overview",
     "category": "section",
-    "text": "A DataKnot is a column-oriented data store supporting hierarchical and self-referential data. A DataKnot is produced when a Pipeline is run."
+    "text": "The DataKnots package exports two data types: DataKnot and Pipeline. A DataKnot represents a data set, which may be composite, hierarchical or cyclic; hence the monkier knot. A Pipeline represents a context-aware data transformation from an input knot to an output knot.Consider the following example containing a cross-section of public data from Chicago. This data could be modeled in native Julia as a hierarchy of NamedTuple and Vector objects. Within each department is a set of employee records.Emp = NamedTuple{(:name,:position,:salary,:rate),\n                  Tuple{String,String,Union{Int,Missing},\n                        Union{Float64,Missing}}}\nDep = NamedTuple{(:name, :employee), \n                  Tuple{String,Vector{Emp}}}\n\nchicago_data = \n  (department = Dep[\n   (name = \"POLICE\", employee = Emp[\n     (name = \"JEFFERY A\", position = \"SERGEANT\", \n      salary = 101442, rate = missing), \n     (name = \"NANCY A\", position = \"POLICE OFFICER\", \n      salary = 80016, rate = missing)]), \n   (name = \"FIRE\", employee = Emp[\n     (name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", \n      salary = 103350, rate = missing), \n     (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", \n      salary = 95484, rate = missing)]), \n   (name = \"OEMC\", employee = Emp[\n     (name = \"LAKENYA A\", position = \"CROSSING GUARD\", \n      salary = missing, rate = 17.68), \n     (name = \"DORIS A\", position = \"CROSSING GUARD\", \n      salary = missing, rate = 19.38)])]\n  ,);We can inquire the maximum salary for each department using the DataKnots system. Here we define a MaxSalary pipeline and then incorporate it into the broader DeptStats pipeline. This pipeline can then be run on the ChicagoData knot.using DataKnots\nMaxSalary = :max_salary => Max(It.employee.salary)\nDeptStats = Record(It.name, MaxSalary)\nChicagoData = DataKnot(chicago_data)\n\nrun(ChicagoData, It.department >> DeptStats)\n#=>\n  │ department         │\n  │ name    max_salary │\n──┼────────────────────┤\n1 │ POLICE      101442 │\n2 │ FIRE        103350 │\n3 │ OEMC               │\n=#The MaxSalary pipeline is context-aware: it assumes a list of employee data found within a given department. It could be used independently by first extracting a particular department. FindDept(X) = It.department >> Filter(It.name .== X)\n PoliceData = run(ChicagoData, FindDept(\"POLICE\"))\n run(PoliceData, DeptStats)\n#=>\n  │ department         │\n  │ name    max_salary │\n──┼────────────────────┤\n1 │ POLICE      101442 │\n=#When the MaxSalary pipeline is invoked, it sees employee data having an origin relative to each department. This is what we mean by DataKnots being context-aware. In the DeptStats pipeline, after each MaxSalary is computed, the results are integrated to provide output of the DeptStats pipeline."
 },
 
 {
@@ -173,7 +253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Cardinality",
     "category": "section",
-    "text": "In DataKnots, the elementary unit is a collection of values, we call a data block. Besides the Julia datatype for a block\'s values, each data block also has a cardinality. The bookkeeping of cardinality is an essential aspect of pipeline evaluation.Cardinality is a constraint on the number of values in a block. A block is called mandatory if it must contain at least one value; optional otherwise. Similarly, a block is called singular if it must contain at most one value; plural otherwise.    REG::Cardinality = 0      # singular and mandatory\n    OPT::Cardinality = 1      # optional, but singular\n    PLU::Cardinality = 2      # plural, but mandatory\n    OPT_PLU::Cardinality = 3  # optional and pluralTo record the block cardinality constraint we use the OPT, PLU and REG flags of the type DataKnots.Cardinality. The OPT and PLU flags express relaxations of the mandatory and singular constraint, respectively. A REG block, which is both mandatory and singular, is called regular and it must contain exactly one value. Conversely, a block with both OPT|PLU flags has unconstrained cardinality and may contain any number of values.For any block with values of Julia type T, the block\'s cardinality has a correspondence to native Julia types: A regular block corresponds to a single Julia value of type T.  An unconstrained block corresponds to Vector{T}. An optional block corresponds to Union{Missing, T}. There is no correspondence for mandatory yet plural blocks; however, Vector{T} could be used with the convention that it always has at least one element."
+    "text": "In DataKnots, the elementary unit is a collection of values, we call a data knot. Besides the Julia datatype for a knot\'s values, each data knot also has a cardinality. The bookkeeping of cardinality is an essential aspect of pipeline evaluation.Cardinality is a constraint on the number of values in a knot. A knot is called mandatory if it must contain at least one value; optional otherwise. Similarly, a knot is called singular if it must contain at most one value; plural otherwise.    REG::Cardinality = 0      # singular and mandatory\n    OPT::Cardinality = 1      # optional, but singular\n    PLU::Cardinality = 2      # plural, but mandatory\n    OPT_PLU::Cardinality = 3  # optional and pluralTo record the knot cardinality constraint we use the OPT, PLU and REG flags of the type DataKnots.Cardinality. The OPT and PLU flags express relaxations of the mandatory and singular constraint, respectively. A REG knot, which is both mandatory and singular, is called regular and it must contain exactly one value. Conversely, a knot with both OPT|PLU flags has unconstrained cardinality and may contain any number of values.For any knot with values of Julia type T, the knot\'s cardinality has a correspondence to native Julia types: A regular knot corresponds to a single Julia value of type T.  An unconstrained knot corresponds to Vector{T}. An optional knot corresponds to Union{Missing, T}. There is no correspondence for mandatory yet plural knots; however, Vector{T} could be used with the convention that it always has at least one element."
 },
 
 {
@@ -229,7 +309,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "run",
     "category": "section",
-    "text": "    run(F::AbstractPipeline; params...)In its simplest form, run takes a pipeline with a set of named parameters and evaluates the pipeline with the unit knot as input. The parameters are each converted to a DataKnot before being made available within the pipeline\'s evaluation.    run(F::Pair{Symbol,<:AbstractPipeline}; params...)Using Julia\'s Pair syntax, this run method provides a convenient way to label an output DataKnot.    run(db::DataKnot, F; params...)The general case run permits easy use of a specific input data source. Since the 1st argument is a DataKnot and dispatch is unambiguous, the second argument to the method can be automatically converted to a Pipeline using Lift.Therefore, we can write the following examples.run(DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(:greeting => DataKnot(\"Hello World\"))\n#=>\n│ greeting    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(\"Hello World\"), It)\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(), \"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Named arguments to run() become additional values that are accessible via It. Those arguments are converted into a DataKnot if they are not already.run(It.hello, hello=DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(It.a .* (It.b .+ It.c), a=7, b=7, c=-1)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#Once a pipeline is run() the resulting DataKnot value can be retrieved via get().get(run(DataKnot(1), It .+ 1))\n#=>\n2\n=#Like get and show, the run function comes Julia\'s Base, and hence the methods defined here are only chosen if an argument matches the signature dispatch."
+    "text": "    run(F::AbstractPipeline; params...)In its simplest form, run takes a pipeline with a set of named parameters and evaluates the pipeline with the unit knot as input. The parameters are each converted to a DataKnot before being made available within the pipeline\'s evaluation.    run(F::Pair{Symbol,<:AbstractPipeline}; params...)Using Julia\'s Pair syntax, this run method provides a convenient way to label an output DataKnot.    run(db::DataKnot, F; params...)The general case run permits easy use of a specific input data source. It run applies the pipeline F to the input dataset db elementwise with the context params.  Since the 1st argument is a DataKnot and dispatch is unambiguous, the second argument to the method can be automatically converted to a Pipeline using Lift.Therefore, we can write the following examples.run(DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(:greeting => DataKnot(\"Hello World\"))\n#=>\n│ greeting    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(\"Hello World\"), It)\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(DataKnot(), \"Hello World\")\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#Named arguments to run() become additional values that are accessible via It. Those arguments are converted into a DataKnot if they are not already.run(It.hello, hello=DataKnot(\"Hello World\"))\n#=>\n│ DataKnot    │\n├─────────────┤\n│ Hello World │\n=#\n\nrun(It.a .* (It.b .+ It.c), a=7, b=7, c=-1)\n#=>\n│ DataKnot │\n├──────────┤\n│       42 │\n=#Once a pipeline is run() the resulting DataKnot value can be retrieved via get().get(run(DataKnot(1), It .+ 1))\n#=>\n2\n=#Like get and show, the run function comes Julia\'s Base, and hence the methods defined here are only chosen if an argument matches the signature dispatch."
+},
+
+{
+    "location": "reference/#Pipeline-Construction-1",
+    "page": "Reference",
+    "title": "Pipeline Construction",
+    "category": "section",
+    "text": "..."
 },
 
 {
