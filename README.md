@@ -47,6 +47,9 @@ the state of the art.
   it possible to specialize it into various domain
   specific query languages.
 
+We use the word *knot* since the general form of data
+input and output, a `DataKnot`, isn't limited to simple
+tables, they can be trees or even arbitrary graphs.
 
 [travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl

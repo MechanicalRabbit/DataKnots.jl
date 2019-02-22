@@ -1,33 +1,101 @@
 # Reference
 
 DataKnots are a Julia library for building and evaluating data
-processing pipelines. Informally, each `Pipeline` represents
-a data transformation; a pipeline's input and output is
-represented by a `DataKnot`. With the exception of a few
-overloaded `Base` functions, such as `run` and `get`, the bulk of
-this reference focuses on pipeline constructors.
+processing pipelines. Each `Pipeline` represents a context-aware
+data transformation; a pipeline's input and output is represented
+by a `DataKnot`. Besides a few overloaded `Base` functions, such
+as `run` and `get`, the bulk of this reference focuses on pipeline
+constructors.
 
-To exercise our reference examples, we import the package:
+## Concept Overview
+
+The DataKnots package exports two data types: `DataKnot` and
+`Pipeline`. A `DataKnot` represents a data set, which may be
+composite, hierarchical or cyclic; hence the monkier *knot*.
+A `Pipeline` represents a context-aware data transformation from
+an input knot to an output knot.
+
+Consider the following example containing a cross-section of
+public data from Chicago. This data could be modeled in native
+Julia as a hierarchy of `NamedTuple` and `Vector` objects. Within
+each `department` is a set of `employee` records.
+
+    Emp = NamedTuple{(:name,:position,:salary,:rate),
+                      Tuple{String,String,Union{Int,Missing},
+                            Union{Float64,Missing}}}
+    Dep = NamedTuple{(:name, :employee), 
+                      Tuple{String,Vector{Emp}}}
+
+    chicago_data = 
+      (department = Dep[
+       (name = "POLICE", employee = Emp[
+         (name = "JEFFERY A", position = "SERGEANT", 
+          salary = 101442, rate = missing), 
+         (name = "NANCY A", position = "POLICE OFFICER", 
+          salary = 80016, rate = missing)]), 
+       (name = "FIRE", employee = Emp[
+         (name = "JAMES A", position = "FIRE ENGINEER-EMT", 
+          salary = 103350, rate = missing), 
+         (name = "DANIEL A", position = "FIRE FIGHTER-EMT", 
+          salary = 95484, rate = missing)]), 
+       (name = "OEMC", employee = Emp[
+         (name = "LAKENYA A", position = "CROSSING GUARD", 
+          salary = missing, rate = 17.68), 
+         (name = "DORIS A", position = "CROSSING GUARD", 
+          salary = missing, rate = 19.38)])]
+      ,);
+
+We can inquire the maximum salary for each department using the
+DataKnots system. Here we define a `MaxSalary` pipeline and then
+incorporate it into the broader `DeptStats` pipeline. This
+pipeline can then be `run` on the `ChicagoData` knot.
 
     using DataKnots
+    MaxSalary = :max_salary => Max(It.employee.salary)
+    DeptStats = Record(It.name, MaxSalary)
+    ChicagoData = DataKnot(chicago_data)
 
-## DataKnots & Running Pipelines
+    run(ChicagoData, It.department >> DeptStats)
+    #=>
+      │ department         │
+      │ name    max_salary │
+    ──┼────────────────────┤
+    1 │ POLICE      101442 │
+    2 │ FIRE        103350 │
+    3 │ OEMC               │
+    =#
 
-A `DataKnot` is a column-oriented data store supporting
-hierarchical and self-referential data. A `DataKnot` is produced
-when a `Pipeline` is `run`.
+The `MaxSalary` pipeline is context-aware: it assumes a list of
+`employee` data found within a given `department`. It could be
+used independently by first extracting a particular department.
+
+     FindDept(X) = It.department >> Filter(It.name .== X)
+     PoliceData = run(ChicagoData, FindDept("POLICE"))
+     run(PoliceData, DeptStats)
+    #=>
+      │ department         │
+      │ name    max_salary │
+    ──┼────────────────────┤
+    1 │ POLICE      101442 │
+    =#
+
+When the `MaxSalary` pipeline is invoked, it sees employee data
+having an *origin* relative to each department. This is what we
+mean by DataKnots being context-aware. In the `DeptStats` pipeline,
+after each `MaxSalary` is computed, the results are integrated
+to provide output of the `DeptStats` pipeline.
 
 #### `DataKnots.Cardinality`
 
 In DataKnots, the elementary unit is a collection of values, we
-call a data *block*. Besides the Julia datatype for a block's
-values, each data block also has a cardinality. The bookkeeping of
-cardinality is an essential aspect of pipeline evaluation.
+call a data *knot*. Besides the Julia datatype for a knot's
+values, each data knot also has a *cardinality*. The bookkeeping
+of cardinality is an essential aspect of pipeline evaluation.
 
-Cardinality is a constraint on the number of values in a block. A
-block is called *mandatory* if it must contain at least one value;
-*optional* otherwise. Similarly, a block is called *singular* if
-it must contain at most one value; *plural* otherwise.
+Cardinality is a constraint on the number of values in a knot. A
+knot is called *mandatory* if it must contain at least one value;
+*optional* otherwise. Similarly, a knot is called *singular* if it
+must contain at most one value; *plural* otherwise.
 
 ```julia
     REG::Cardinality = 0      # singular and mandatory
@@ -36,20 +104,20 @@ it must contain at most one value; *plural* otherwise.
     OPT_PLU::Cardinality = 3  # optional and plural
 ```
 
-To record the block cardinality constraint we use the `OPT`, `PLU`
+To record the knot cardinality constraint we use the `OPT`, `PLU`
 and `REG` flags of the type `DataKnots.Cardinality`. The `OPT` and
 `PLU` flags express relaxations of the mandatory and singular
-constraint, respectively. A `REG` block, which is both mandatory
+constraint, respectively. A `REG` knot, which is both mandatory
 and singular, is called *regular* and it must contain exactly one
-value. Conversely, a block with both `OPT|PLU` flags has
+value. Conversely, a knot with both `OPT|PLU` flags has
 *unconstrained* cardinality and may contain any number of values.
 
-For any block with values of Julia type `T`, the block's
+For any knot with values of Julia type `T`, the knot's
 cardinality has a correspondence to native Julia types: A regular
-block corresponds to a single Julia value of type `T`.  An
-unconstrained block corresponds to `Vector{T}`. An optional block
+knot corresponds to a single Julia value of type `T`.  An
+unconstrained knot corresponds to `Vector{T}`. An optional knot
 corresponds to `Union{Missing, T}`. There is no correspondence for
-mandatory yet plural blocks; however, `Vector{T}` could be used
+mandatory yet plural knots; however, `Vector{T}` could be used
 with the convention that it always has at least one element.
 
 ### Creating & Extracting DataKnots
@@ -261,9 +329,11 @@ convenient way to label an output `DataKnot`.
 ```
 
 The general case `run` permits easy use of a specific input data
-source. Since the 1st argument is a `DataKnot` and dispatch is
-unambiguous, the second argument to the method can be
-automatically converted to a `Pipeline` using `Lift`.
+source. It `run` applies the pipeline `F` to the input dataset
+`db` elementwise with the context `params`.  Since the 1st
+argument is a `DataKnot` and dispatch is unambiguous, the second
+argument to the method can be automatically converted to a
+`Pipeline` using `Lift`.
 
 Therefore, we can write the following examples.
 
@@ -324,3 +394,8 @@ retrieved via `get()`.
 Like `get` and `show`, the `run` function comes Julia's `Base`,
 and hence the methods defined here are only chosen if an argument
 matches the signature dispatch.
+
+## Pipeline Construction
+
+...
+
