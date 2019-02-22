@@ -67,13 +67,13 @@ function designate end
 designate(q::Query, sig::Signature) =
     Query(q.op, q.args, sig)
 
-designate(q::Query, ishp::InputShape, shp::OutputShape) =
+designate(q::Query, ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
     Query(q.op, q.args, Signature(ishp, shp))
 
 designate(sig::Signature) =
     q::Query -> designate(q, sig)
 
-designate(ishp::InputShape, shp::OutputShape) =
+designate(ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
     q::Query -> designate(q, Signature(ishp, shp))
 
 """
@@ -86,32 +86,6 @@ signature(q::Query) = q.sig
 shape(q::Query) = shape(q.sig)
 
 ishape(q::Query) = ishape(q.sig)
-
-decoration(q::Query) = decoration(q.sig)
-
-idecoration(q::Query) = idecoration(q.sig)
-
-domain(q::Query) = domain(q.sig)
-
-idomain(q::Query) = idomain(q.sig)
-
-mode(q::Query) = mode(q.sig)
-
-imode(q::Query) = imode(q.sig)
-
-cardinality(q::Query) = cardinality(q.sig)
-
-isregular(q::Query) = isregular(q.sig)
-
-isoptional(q::Query) = isoptional(q.sig)
-
-isplural(q::Query) = isplural(q.sig)
-
-isfree(q::Query) = isfree(q.sig)
-
-isframed(q::Query) = isframed(q.sig)
-
-slots(q::Query) = slots(q.sig)
 
 function (q::Query)(input::AbstractVector)
     rt = Runtime()

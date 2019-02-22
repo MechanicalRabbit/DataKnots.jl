@@ -31,8 +31,8 @@ export
 include("layouts.jl")
 include("vectors.jl")
 include("shapes.jl")
-include("knots.jl")
+#include("knots.jl")
 include("queries.jl")
-include("pipelines.jl")
+#include("pipelines.jl")
 
 end
