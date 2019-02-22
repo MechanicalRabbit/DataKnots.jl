@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Quick Tutorial",
     "category": "section",
-    "text": "Consider the following example containing a tiny cross-section of public data from Chicago, represented as nested  NamedTuple and Vector objects.chicago_data =\n    (department = [\n     (name = \"POLICE\", employee = [\n       (name = \"JEFFERY A\", position = \"SERGEANT\",\n        salary = 101442),\n       (name = \"NANCY A\", position = \"POLICE OFFICER\",\n        salary = 80016)]),\n     (name = \"FIRE\", employee = [\n       (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n        salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. This data could be converted back into Julia structure via get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#=>\nNamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}\n=#By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named \"department\"."
+    "text": "Consider the following example database containing a tiny cross-section of public data from Chicago, represented as nested NamedTuple and Vector objects.chicago_data =\n    (department = [\n     (name = \"POLICE\", employee = [\n       (name = \"JEFFERY A\", position = \"SERGEANT\",\n        salary = 101442),\n       (name = \"NANCY A\", position = \"POLICE OFFICER\",\n        salary = 80016)]),\n     (name = \"FIRE\", employee = [\n       (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n        salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. This data could be converted back into Julia structure via get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#-> NamedTuple{(:department,),⋮By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named \"department\"."
 },
 
 {
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Navigating",
     "category": "section",
-    "text": "Pipeline queries can then be run on data knot. For example, to list all department names, we write:run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#In this pipeline, It means \"use the current input\" and the period operator lets one navigate via the names provided. During this navigation context matters. For example, given the data provided, employee tuples are not directly accessible.run(ChicagoData, It.employee)\n#=>\nERROR: cannot find employee at\nNamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}\n=#In DataKnots, nested lists are flatted as necessary, hence, we can list all of the employees in the dataset as follows.run(ChicagoData, It.department.employee.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n2 │ NANCY A   │\n3 │ DANIEL A  │\n=#"
+    "text": "Pipeline queries can then be run on data knot. For example, to list all department names, we write:run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#In this pipeline, It means \"use the current input\" and the period operator lets one navigate via the names provided. During this navigation context matters. For example, given the data provided, employee tuples are not directly accessible.run(ChicagoData, It.employee)\n#-> ERROR: cannot find employee ⋮In DataKnots, nested lists are flatted as necessary, hence, we can list all of the employees in the dataset as follows.run(ChicagoData, It.department.employee.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n2 │ NANCY A   │\n3 │ DANIEL A  │\n=#"
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Composition",
     "category": "section",
-    "text": "The dotted expressions above are actually a syntax shorthand for the Lookup operation together with composition (>>).Department = Lookup(:department)\nName = Lookup(:name)\n\nrun(ChicagoData, Department >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Since the pipeline It is the identity, the query above could be equivalently written:run(ChicagoData, It >> Department >> It >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Hence, from here on, we\'ll use It.department instead of Lookup(:department)."
+    "text": "The dotted expressions above are actually a syntax shorthand for the Lookup operation together with composition (>>).Department = Lookup(:department)\nName = Lookup(:name)\n\nrun(ChicagoData, Department >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Since the pipeline It is the identity, the query above could be equivalently written:run(ChicagoData, It >> Department >> It >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#From here on, we\'ll use It.department, and not Lookup(:department)."
 },
 
 {
@@ -93,7 +93,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Labels",
     "category": "section",
-    "text": "It\'s sometimes useful to factor out reusable pipeline expressions and to label output columns.EmployeeCount = (\n  Count(It.employee)\n  >> Label(:count))\n\nrun(ChicagoData,\n    It.department\n    >> EmployeeCount)\n#=>\n  │ count │\n──┼───────┤\n1 │     2 │\n2 │     1 │\n=#"
+    "text": "Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a Label.EmployeeCount = (\n  Count(It.employee)\n  >> Label(:count))\n\nrun(ChicagoData,\n    It.department\n    >> EmployeeCount)\n#=>\n  │ count │\n──┼───────┤\n1 │     2 │\n2 │     1 │\n=#To aid in debugging expressions, the content of a pipeline expression can be displayed.EmployeeCount\n#-> Count(It.employee) >> Label(:count)"
 },
 
 {
@@ -101,7 +101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Records & Labels",
     "category": "section",
-    "text": "Sometimes it is helpful to label output and return records. Let us pretty-up the previous result so it shows the department name for each count.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#Showing department statistics might be generally useful, so let\'s also assign it to a reusable pipeline.DeptStats =\n  Record(It.name,\n         EmployeeCount)No matter how nested, pipeline expressions can be displayedDeptStats\n#-> Record(It.name, Count(It.employee) >> Label(:count))"
+    "text": "Sometimes it is helpful to return two or more values in tandem; this can be done with Record.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#Showing department statistics might be generally useful, so let\'s also assign it to a reusable pipeline.DeptStats =\n  Record(It.name,\n         EmployeeCount)No matter how nested, pipeline expressions can be displayedDeptStats\n#-> Record(It.name, Count(It.employee) >> Label(:count))"
 },
 
 {
@@ -125,15 +125,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Nested Aggregates",
     "category": "section",
-    "text": "Aggregates can be nested. In this case we calculate the maximum employee count to which a department might have.MaximalEmployees = Max(It.department >> EmployeeCount)\n\nrun(ChicagoData, MaximalEmployees)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#It\'s important to realize that this pipeline is only valid at the top of the tree, where Lookup(:department) can succeed. Conversely, if this same pipeline is used in the context of a department, it will fail.run(ChicagoData, It.department >> MaximalEmployees)\n#=>\nERROR: cannot find department at\nNamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}}\n=#It\'s for the same reason that DeptNameWith(MaximalEmployees) will also fail. However this scoping problem can be overcome by using parameters.run(ChicagoData,\n    Given(:no => MaximalEmployees,\n          DeptNameWith(It.no)))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#"
+    "text": "Aggregates can be nested. In this case we calculate the maximum employee count to which a department might have.MaximalEmployees = Max(It.department >> EmployeeCount)\n\nrun(ChicagoData, MaximalEmployees)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#"
 },
 
 {
-    "location": "start/#Robust-Pipeline-Macros-1",
+    "location": "start/#Scoping-Rules-1",
     "page": "Getting Started",
-    "title": "Robust Pipeline Macros",
+    "title": "Scoping Rules",
     "category": "section",
-    "text": "This scope challenge can be solved be rewriting DeptNameWith to use a Given parameter.ImprovedWith(N) =\n  Given(:no => N,\n    It.department\n    >> HavingSize(It.no)\n    >> It.name)\n\nrun(ChicagoData, ImprovedWith(MaximalEmployees))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#"
+    "text": "It\'s important to realize that this pipeline is only valid at the top of the tree, where Lookup(:department) can succeed. Conversely, if this same pipeline is used in the context of a department, it will fail.run(ChicagoData, It.department >> MaximalEmployees)\n#-> ERROR: cannot find department ⋮It\'s for the same reason that DeptNameWith(MaximalEmployees) will also fail. However this scoping problem can be overcome by using parameters.run(ChicagoData,\n    Given(:no => MaximalEmployees,\n          DeptNameWith(It.no)))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#This scope challenge can be solved be rewriting DeptNameWith to use a Given parameter.ImprovedWith(N) =\n  Given(:no => N,\n    It.department\n    >> HavingSize(It.no)\n    >> It.name)\n\nrun(ChicagoData, ImprovedWith(MaximalEmployees))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#"
 },
 
 {

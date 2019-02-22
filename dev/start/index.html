@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting Started · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>Getting Started</a><ul class="internal"><li><a class="toctext" href="#Installation-Instructions-1">Installation Instructions</a></li><li><a class="toctext" href="#Quick-Tutorial-1">Quick Tutorial</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Getting Started</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/start.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Getting Started</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h1><p>DataKnots is in active development and is not expected to be usable for general audiences. In particular, with the v0.1 release, there are no data source adapters.</p><h2><a class="nav-anchor" id="Installation-Instructions-1" href="#Installation-Instructions-1">Installation Instructions</a></h2><p>DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager.  To install it, run in the package shell (enter with <code>]</code> from the Julia shell):</p><pre><code class="language-juliarepl">pkg&gt; add https://github.com/rbt-lang/DataKnots.jl</code></pre><p>DataKnots.jl requires Julia 1.0 or higher.</p><p>If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:</p><pre><code class="language-juliarepl">pkg&gt; dev https://github.com/rbt-lang/DataKnots.jl</code></pre><h2><a class="nav-anchor" id="Quick-Tutorial-1" href="#Quick-Tutorial-1">Quick Tutorial</a></h2><p>Consider the following example containing a tiny cross-section of public data from Chicago, represented as nested  <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting Started · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>Getting Started</a><ul class="internal"><li><a class="toctext" href="#Installation-Instructions-1">Installation Instructions</a></li><li><a class="toctext" href="#Quick-Tutorial-1">Quick Tutorial</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Getting Started</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/start.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Getting Started</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h1><p>DataKnots is in active development and is not expected to be usable for general audiences. In particular, with the v0.1 release, there are no data source adapters.</p><h2><a class="nav-anchor" id="Installation-Instructions-1" href="#Installation-Instructions-1">Installation Instructions</a></h2><p>DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager.  To install it, run in the package shell (enter with <code>]</code> from the Julia shell):</p><pre><code class="language-juliarepl">pkg&gt; add https://github.com/rbt-lang/DataKnots.jl</code></pre><p>DataKnots.jl requires Julia 1.0 or higher.</p><p>If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:</p><pre><code class="language-juliarepl">pkg&gt; dev https://github.com/rbt-lang/DataKnots.jl</code></pre><h2><a class="nav-anchor" id="Quick-Tutorial-1" href="#Quick-Tutorial-1">Quick Tutorial</a></h2><p>Consider the following example database containing a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
     (department = [
      (name = &quot;POLICE&quot;, employee = [
        (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;,
@@ -11,19 +11,14 @@
         salary = 95484)])],);</code></pre><p>To query this data via DataKnots, we need to first convert it into a <em>knot</em> structure. This data could be converted back into Julia structure via <code>get</code> function.</p><pre><code class="language-julia">using DataKnots
 ChicagoData = DataKnot(chicago_data)
 typeof(get(ChicagoData))
-#=&gt;
-NamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}
-=#</code></pre><p>By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named <code>&quot;department&quot;</code>.</p><h3><a class="nav-anchor" id="Navigating-1" href="#Navigating-1">Navigating</a></h3><p>Pipeline queries can then be <code>run</code> on data knot. For example, to list all department names, we write:</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
+#-&gt; NamedTuple{(:department,),⋮</code></pre><p>By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named <code>&quot;department&quot;</code>.</p><h3><a class="nav-anchor" id="Navigating-1" href="#Navigating-1">Navigating</a></h3><p>Pipeline queries can then be <code>run</code> on data knot. For example, to list all department names, we write:</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
 #=&gt;
   │ name   │
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
 =#</code></pre><p>In this pipeline, <code>It</code> means &quot;use the current input&quot; and the period operator lets one navigate via the names provided. During this navigation context matters. For example, given the data provided, <code>employee</code> tuples are not directly accessible.</p><pre><code class="language-julia">run(ChicagoData, It.employee)
-#=&gt;
-ERROR: cannot find employee at
-NamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}
-=#</code></pre><p>In DataKnots, nested lists are flatted as necessary, hence, we can list all of the employees in the dataset as follows.</p><pre><code class="language-julia">run(ChicagoData, It.department.employee.name)
+#-&gt; ERROR: cannot find employee ⋮</code></pre><p>In DataKnots, nested lists are flatted as necessary, hence, we can list all of the employees in the dataset as follows.</p><pre><code class="language-julia">run(ChicagoData, It.department.employee.name)
 #=&gt;
   │ name      │
 ──┼───────────┤
@@ -45,7 +40,7 @@ run(ChicagoData, Department &gt;&gt; Name)
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>Hence, from here on, we&#39;ll use <code>It.department</code> instead of <code>Lookup(:department)</code>.</p><h3><a class="nav-anchor" id="Counting-1" href="#Counting-1">Counting</a></h3><p>We can count records. Here we return number of departments.</p><pre><code class="language-julia">get(run(ChicagoData, Count(It.department)))
+=#</code></pre><p>From here on, we&#39;ll use <code>It.department</code>, and not <code>Lookup(:department)</code>.</p><h3><a class="nav-anchor" id="Counting-1" href="#Counting-1">Counting</a></h3><p>We can count records. Here we return number of departments.</p><pre><code class="language-julia">get(run(ChicagoData, Count(It.department)))
 #-&gt; 2</code></pre><p>Using pipeline composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context; in this case, we count <code>employee</code> records within each <code>department</code>.</p><pre><code class="language-julia">run(ChicagoData,
     It.department
     &gt;&gt; Count(It.employee))
@@ -54,7 +49,7 @@ run(ChicagoData, Department &gt;&gt; Name)
 ──┼──────────┤
 1 │        2 │
 2 │        1 │
-=#</code></pre><p>In this toy dataset, we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>.</p><h3><a class="nav-anchor" id="Labels-1" href="#Labels-1">Labels</a></h3><p>It&#39;s sometimes useful to factor out reusable pipeline expressions and to label output columns.</p><pre><code class="language-julia">EmployeeCount = (
+=#</code></pre><p>In this toy dataset, we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>.</p><h3><a class="nav-anchor" id="Labels-1" href="#Labels-1">Labels</a></h3><p>Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a <code>Label</code>.</p><pre><code class="language-julia">EmployeeCount = (
   Count(It.employee)
   &gt;&gt; Label(:count))
 
@@ -66,7 +61,8 @@ run(ChicagoData,
 ──┼───────┤
 1 │     2 │
 2 │     1 │
-=#</code></pre><h3><a class="nav-anchor" id="Records-and-Labels-1" href="#Records-and-Labels-1">Records &amp; Labels</a></h3><p>Sometimes it is helpful to label output and return records. Let us pretty-up the previous result so it shows the department name for each count.</p><pre><code class="language-julia">run(ChicagoData,
+=#</code></pre><p>To aid in debugging expressions, the content of a pipeline expression can be displayed.</p><pre><code class="language-julia">EmployeeCount
+#-&gt; Count(It.employee) &gt;&gt; Label(:count)</code></pre><h3><a class="nav-anchor" id="Records-and-Labels-1" href="#Records-and-Labels-1">Records &amp; Labels</a></h3><p>Sometimes it is helpful to return two or more values in tandem; this can be done with <code>Record</code>.</p><pre><code class="language-julia">run(ChicagoData,
     It.department
     &gt;&gt; Record(It.name,
               EmployeeCount))
@@ -123,18 +119,15 @@ run(ChicagoData, MaximalEmployees)
 │ DataKnot │
 ├──────────┤
 │        2 │
-=#</code></pre><p>It&#39;s important to realize that this pipeline is only valid at the top of the tree, where <code>Lookup(:department)</code> can succeed. Conversely, if this same pipeline is used in the context of a department, it will fail.</p><pre><code class="language-julia">run(ChicagoData, It.department &gt;&gt; MaximalEmployees)
-#=&gt;
-ERROR: cannot find department at
-NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}}
-=#</code></pre><p>It&#39;s for the same reason that <code>DeptNameWith(MaximalEmployees)</code> will also fail. However this scoping problem can be overcome by using parameters.</p><pre><code class="language-julia">run(ChicagoData,
+=#</code></pre><h3><a class="nav-anchor" id="Scoping-Rules-1" href="#Scoping-Rules-1">Scoping Rules</a></h3><p>It&#39;s important to realize that this pipeline is only valid at the top of the tree, where <code>Lookup(:department)</code> can succeed. Conversely, if this same pipeline is used in the context of a department, it will fail.</p><pre><code class="language-julia">run(ChicagoData, It.department &gt;&gt; MaximalEmployees)
+#-&gt; ERROR: cannot find department ⋮</code></pre><p>It&#39;s for the same reason that <code>DeptNameWith(MaximalEmployees)</code> will also fail. However this scoping problem can be overcome by using parameters.</p><pre><code class="language-julia">run(ChicagoData,
     Given(:no =&gt; MaximalEmployees,
           DeptNameWith(It.no)))
 #=&gt;
   │ name   │
 ──┼────────┤
 1 │ POLICE │
-=#</code></pre><h3><a class="nav-anchor" id="Robust-Pipeline-Macros-1" href="#Robust-Pipeline-Macros-1">Robust Pipeline Macros</a></h3><p>This scope challenge can be solved be rewriting <code>DeptNameWith</code> to use a <code>Given</code> parameter.</p><pre><code class="language-julia">ImprovedWith(N) =
+=#</code></pre><p>This scope challenge can be solved be rewriting <code>DeptNameWith</code> to use a <code>Given</code> parameter.</p><pre><code class="language-julia">ImprovedWith(N) =
   Given(:no =&gt; N,
     It.department
     &gt;&gt; HavingSize(It.no)
