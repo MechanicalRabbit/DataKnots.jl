@@ -25,9 +25,9 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 
 ## Quick Tutorial
 
-Consider the following example containing a tiny cross-section of
-public data from Chicago, represented as nested  `NamedTuple` and
-`Vector` objects.
+Consider the following example database containing a tiny
+cross-section of public data from Chicago, represented as nested
+`NamedTuple` and `Vector` objects.
 
     chicago_data =
         (department = [
@@ -47,9 +47,7 @@ structure via `get` function.
     using DataKnots
     ChicagoData = DataKnot(chicago_data)
     typeof(get(ChicagoData))
-    #=>
-    NamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}
-    =#
+    #-> NamedTuple{(:department,),⋮
 
 By convention, it is helpful if the top-level object in a data
 structure be a named tuple. In our source dataset, the very top of
@@ -74,10 +72,7 @@ this navigation context matters. For example, given the data
 provided, `employee` tuples are not directly accessible.
 
     run(ChicagoData, It.employee)
-    #=>
-    ERROR: cannot find employee at
-    NamedTuple{(:department,),Tuple{Array{NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}},1}}}
-    =#
+    #-> ERROR: cannot find employee ⋮
 
 In DataKnots, nested lists are flatted as necessary, hence, we can
 list all of the employees in the dataset as follows.
@@ -118,7 +113,7 @@ could be equivalently written:
     2 │ FIRE   │
     =#
 
-Hence, from here on, we'll use `It.department` instead of
+From here on, we'll use `It.department`, and not
 `Lookup(:department)`.
 
 ### Counting
@@ -147,8 +142,8 @@ has `2` employees, while the 2nd, `"FIRE"` only has `1`.
 
 ### Labels
 
-It's sometimes useful to factor out reusable pipeline expressions
-and to label output columns.
+Since DataKnots is compositional, reusable pipeline expressions
+can be factored. These expressions can be given a `Label`.
 
     EmployeeCount = (
       Count(It.employee)
@@ -164,11 +159,16 @@ and to label output columns.
     2 │     1 │
     =#
 
+To aid in debugging expressions, the content of a pipeline
+expression can be displayed.
+
+    EmployeeCount
+    #-> Count(It.employee) >> Label(:count)
+
 ### Records & Labels
 
-Sometimes it is helpful to label output and return records. Let us
-pretty-up the previous result so it shows the department name for
-each count.
+Sometimes it is helpful to return two or more values in tandem;
+this can be done with `Record`.
 
     run(ChicagoData,
         It.department
@@ -272,17 +272,15 @@ employee count to which a department might have.
     │        2 │
     =#
 
+### Scoping Rules
+
 It's important to realize that this pipeline is only valid at
 the top of the tree, where `Lookup(:department)` can succeed.
 Conversely, if this same pipeline is used in the context of a
 department, it will fail.
 
     run(ChicagoData, It.department >> MaximalEmployees)
-    #=>
-    ERROR: cannot find department at
-    NamedTuple{(:name, :employee),Tuple{String,Array{NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}},1}}}
-    =#
-
+    #-> ERROR: cannot find department ⋮
 
 It's for the same reason that `DeptNameWith(MaximalEmployees)`
 will also fail. However this scoping problem can be overcome
@@ -296,8 +294,6 @@ by using parameters.
     ──┼────────┤
     1 │ POLICE │
     =#
-
-### Robust Pipeline Macros
 
 This scope challenge can be solved be rewriting `DeptNameWith` to
 use a `Given` parameter.
