@@ -117,13 +117,14 @@ equivalently written:
     2 │ FIRE   │
     =#
 
-We will use `It.department` and `Department` interchangably.
+We will use `It.department` in preference to `Department` as
+defined to be `Lookup(:department)`.
 
 ### Counting
 
 This example returns the number of departments in the dataset.
 
-    run(ChicagoData, Count(Department))
+    run(ChicagoData, Count(It.department))
     #=>
     │ DataKnot │
     ├──────────┤
@@ -134,7 +135,9 @@ Using pipeline composition (`>>`), we can perform `Count` in a
 nested context; in this case, we count `employee` records within
 each `department`.
 
-    run(ChicagoData, Department >> Count(Employee))
+    run(ChicagoData, 
+        It.department 
+        >> Count(It.employee))
     #=>
       │ DataKnot │
     ──┼──────────┤
@@ -150,11 +153,12 @@ has `2` employees, while the 2nd, `"FIRE"` only has `1`.
 Since DataKnots is compositional, reusable pipeline expressions
 can be factored. These expressions can be given a `Label`.
 
-    EmployeeCount =
-      Count(Employee) >> Label(:count)
+    EmployeeCount = (
+      Count(It.employee) 
+      >> Label(:count))
 
     run(ChicagoData,
-        Department
+        It.department
         >> EmployeeCount)
     #=>
       │ count │
@@ -167,7 +171,7 @@ The pair syntax (`=>`) sugar will also attach an expression label.
 
     run(ChicagoData,
         :dept_count =>
-          Count(Department))
+          Count(It.department))
     #=>
     │ dept_count │
     ├────────────┤
@@ -178,12 +182,12 @@ The pair syntax (`=>`) sugar will also attach an expression label.
 
 Sometimes it is helpful to return two or more values in tandem;
 this can be done with `Record`. In the following pipeline, `It`
-refers to the current department; hence `Name` refers to that
+refers to the current department; hence `It.name` refers to that
 department's name.
 
     run(ChicagoData,
-        Department
-        >> Record(Name,
+        It.department
+        >> Record(It.name,
                   EmployeeCount))
     #=>
       │ department    │
@@ -197,10 +201,10 @@ Records can be nested. We could build a result that includes
 department names and, within each department, employee names.
 
     run(ChicagoData,
-        Department
-        >> Record(Name,
-             Employee >>
-             Record(Name, Salary)))
+        It.department
+        >> Record(It.name,
+             It.employee >>
+             Record(It.name, It.salary)))
     #=>
       │ department                                │
       │ name    employee                          │
@@ -218,9 +222,9 @@ Filtering data is also contextual. Here we list department names
 who have exactly one employee.
 
     run(ChicagoData,
-        Department
+        It.department
         >> Filter(EmployeeCount .== 1)
-        >> Record(Name, EmployeeCount))
+        >> Record(It.name, EmployeeCount))
     #=>
       │ department  │
       │ name  count │
@@ -232,9 +236,9 @@ In in pipeline expressions, the broadcast variant of common
 operators, such as `.==` are to be used.
 
     run(ChicagoData,
-        Department
+        It.department
         >> Filter(EmployeeCount == 1)
-        >> Record(Name, EmployeeCount))
+        >> Record(It.name, EmployeeCount))
     #=>
     ERROR: AssertionError: eltype(input) <: AbstractVector
     =#
@@ -242,9 +246,9 @@ operators, such as `.==` are to be used.
 Most broadcast operators just work.
 
     run(ChicagoData,
-        Department >> Employee
-        >> Filter(Salary .> 100000)
-        >> Name)
+        It.department.employee
+        >> Filter(It.salary .> 100000)
+        >> It.name)
     #=>
       │ name      │
     ──┼───────────┤
@@ -277,8 +281,8 @@ Aggregate julia functions, such as `mean`, can also be used.
       >> Label(:mean_salary))
 
     run(ChicagoData,
-        Department
-        >> Record(Name, MeanSalary))
+        It.department
+        >> Record(It.name, MeanSalary))
     #=>
       │ department          │
       │ name    mean_salary │
@@ -299,10 +303,10 @@ corresponding department's name.
 
 ```julia
     run(ChicagoData,
-         Department
-         >> Keep(:dept_name => Name)
-         >> Employee
-         >> Record(Name, It.dept_name))
+         It.department
+         >> Keep(:dept_name => It.name)
+         >> It.employee
+         >> Record(It.name, It.dept_name))
     #=>
       │ employee             │
       │ name       dept_name │
@@ -318,10 +322,10 @@ having a salary greater than that department's average.
 
 ```julia
     run(ChicagoData,
-         Department
-         >> Keep(:mean_salary => MeanSalary)
-         >> Employee
-         >> Filter(Salary .> Lookup(:mean_salary)))
+         It.department
+         >> Keep(MeanSalary)
+         >> It.employee
+         >> Filter(It.salary .> It.mean_salary))
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -337,9 +341,9 @@ salary would return employees having greater than that salary.
 
     EmployeesOver(N) =
       Given(:avg => N,
-       Department
-       >> Employee
-       >> Filter(Salary .> It.avg))
+       It.department
+       >> It.employee
+       >> Filter(It.salary .> It.avg))
 
     run(ChicagoData, EmployeesOver(100000))
     #=>
