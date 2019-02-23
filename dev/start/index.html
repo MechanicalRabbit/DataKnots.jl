@@ -11,13 +11,13 @@
         salary = 95484)])],);</code></pre><p>To query this data via DataKnots, we need to first convert it into a <em>knot</em> structure. This data could then be converted back into Julia structure via <code>get</code> function.</p><pre><code class="language-julia">using DataKnots
 ChicagoData = DataKnot(chicago_data)
 typeof(get(ChicagoData))
-#-&gt; NamedTuple{(:department,),⋮</code></pre><p>By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named <code>&quot;department&quot;</code>.</p><h3><a class="nav-anchor" id="Navigating-1" href="#Navigating-1">Navigating</a></h3><p>Pipeline queries can be <code>run</code> on data knot. For example, to list all department names, we write <code>It.department.name</code>:</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
+#-&gt; NamedTuple{(:department,),⋮</code></pre><p>By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named <code>&quot;department&quot;</code>.</p><h3><a class="nav-anchor" id="Navigating-1" href="#Navigating-1">Navigating</a></h3><p>Pipeline queries can be <code>run</code> on data knot. For example, to list all department names, we write <code>It.department.name</code>. In this pipeline, <code>It</code> means &quot;use the current input&quot;. The dotted notation lets one navigate via hierarchy.</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
 #=&gt;
   │ name   │
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>In this pipeline, <code>It</code> means &quot;use the current input&quot; and the dotted notation let one navigate via hierarchy. Navigation context matters. For example, given the data provided, <code>employee</code> tuples are not directly accessible from the root of the dataset.</p><pre><code class="language-julia">run(ChicagoData, It.employee)
+=#</code></pre><p>Navigation context matters. For example, the <code>employee</code> tuples are not directly accessible from the root of the dataset provided.</p><pre><code class="language-julia">run(ChicagoData, It.employee)
 #-&gt; ERROR: cannot find employee ⋮</code></pre><p>The <code>employee</code> tuples can be accessed by navigating though <code>department</code> tuples.</p><pre><code class="language-julia">run(ChicagoData, It.department.employee)
 #=&gt;
   │ employee                            │
@@ -26,7 +26,7 @@ typeof(get(ChicagoData))
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ NANCY A    POLICE OFFICER     80016 │
 3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>Notice that nested lists are flattened as necessary. </p><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>Dotted expressions above are a syntax shorthand for the <code>Lookup</code> primitive together with pipeline composition (<code>&gt;&gt;</code>). We could list departments in this dataset more formally:</p><pre><code class="language-julia">Department, Employee, Name, Salary = 
+=#</code></pre><p>Notice that nested lists are flattened as necessary.</p><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>Dotted expressions above are a syntax shorthand for the <code>Lookup</code> primitive together with pipeline composition (<code>&gt;&gt;</code>). We could list departments in this dataset more formally:</p><pre><code class="language-julia">Department, Employee, Name, Salary =
    Lookup.([:department, :employee, :name, :salary])
 
 run(ChicagoData, Department &gt;&gt; Name)
@@ -41,40 +41,38 @@ run(ChicagoData, Department &gt;&gt; Name)
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>From here on, we use <code>It.department</code>, not <code>Lookup(:department)</code>.</p><h3><a class="nav-anchor" id="Counting-1" href="#Counting-1">Counting</a></h3><p>This example returns the number of departments in the dataset.</p><pre><code class="language-julia">run(ChicagoData, Count(It.department))
+=#</code></pre><p>We will use <code>It.department</code> and <code>Department</code> interchangably.</p><h3><a class="nav-anchor" id="Counting-1" href="#Counting-1">Counting</a></h3><p>This example returns the number of departments in the dataset.</p><pre><code class="language-julia">run(ChicagoData, Count(Department))
 #=&gt;
 │ DataKnot │
 ├──────────┤
 │        2 │
-=#</code></pre><p>Using pipeline composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context; in this case, we count <code>employee</code> records within each <code>department</code>.</p><pre><code class="language-julia">run(ChicagoData,
-    It.department
-    &gt;&gt; Count(It.employee))
+=#</code></pre><p>Using pipeline composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context; in this case, we count <code>employee</code> records within each <code>department</code>.</p><pre><code class="language-julia">run(ChicagoData, Department &gt;&gt; Count(Employee))
 #=&gt;
   │ DataKnot │
 ──┼──────────┤
 1 │        2 │
 2 │        1 │
-=#</code></pre><p>In this toy dataset, we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>.</p><h3><a class="nav-anchor" id="Labels-1" href="#Labels-1">Labels</a></h3><p>Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a <code>Label</code>.</p><pre><code class="language-julia">EmployeeCount = 
-  Count(It.employee) &gt;&gt; Label(:count)
+=#</code></pre><p>In this toy dataset, we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>.</p><h3><a class="nav-anchor" id="Labels-1" href="#Labels-1">Labels</a></h3><p>Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a <code>Label</code>.</p><pre><code class="language-julia">EmployeeCount =
+  Count(Employee) &gt;&gt; Label(:count)
 
 run(ChicagoData,
-    It.department
+    Department
     &gt;&gt; EmployeeCount)
 #=&gt;
   │ count │
 ──┼───────┤
 1 │     2 │
 2 │     1 │
-=#</code></pre><p>The pair syntax (<code>=&gt;</code>) sugar will also attach an expression label.</p><pre><code class="language-julia">run(ChicagoData, 
-    :dept_count =&gt; 
-      Count(It.department))
+=#</code></pre><p>The pair syntax (<code>=&gt;</code>) sugar will also attach an expression label.</p><pre><code class="language-julia">run(ChicagoData,
+    :dept_count =&gt;
+      Count(Department))
 #=&gt;
 │ dept_count │
 ├────────────┤
 │          2 │
-=#</code></pre><h3><a class="nav-anchor" id="Records-1" href="#Records-1">Records</a></h3><p>Sometimes it is helpful to return two or more values in tandem; this can be done with <code>Record</code>.</p><pre><code class="language-julia">run(ChicagoData,
-    It.department
-    &gt;&gt; Record(It.name,
+=#</code></pre><h3><a class="nav-anchor" id="Records-1" href="#Records-1">Records</a></h3><p>Sometimes it is helpful to return two or more values in tandem; this can be done with <code>Record</code>. In the following pipeline, <code>It</code> refers to the current department; hence <code>Name</code> refers to that department&#39;s name.</p><pre><code class="language-julia">run(ChicagoData,
+    Department
+    &gt;&gt; Record(Name,
               EmployeeCount))
 #=&gt;
   │ department    │
@@ -83,10 +81,10 @@ run(ChicagoData,
 1 │ POLICE      2 │
 2 │ FIRE        1 │
 =#</code></pre><p>Records can be nested. We could build a result that includes department names and, within each department, employee names.</p><pre><code class="language-julia">run(ChicagoData,
-    It.department
-    &gt;&gt; Record(It.name,
-         It.employee &gt;&gt;
-         Record(It.name, It.salary)))
+    Department
+    &gt;&gt; Record(Name,
+         Employee &gt;&gt;
+         Record(Name, Salary)))
 #=&gt;
   │ department                                │
   │ name    employee                          │
@@ -94,24 +92,24 @@ run(ChicagoData,
 1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
 2 │ FIRE    DANIEL A, 95484                   │
 =#</code></pre><p>In the nested display, commas are used to separate fields and semi-colons separate values.</p><h3><a class="nav-anchor" id="Filtering-Data-1" href="#Filtering-Data-1">Filtering Data</a></h3><p>Filtering data is also contextual. Here we list department names who have exactly one employee.</p><pre><code class="language-julia">run(ChicagoData,
-    It.department
+    Department
     &gt;&gt; Filter(EmployeeCount .== 1)
-    &gt;&gt; Record(It.name, EmployeeCount))
+    &gt;&gt; Record(Name, EmployeeCount))
 #=&gt;
   │ department  │
   │ name  count │
 ──┼─────────────┤
 1 │ FIRE      1 │
 =#</code></pre><p>In in pipeline expressions, the broadcast variant of common operators, such as <code>.==</code> are to be used.</p><pre><code class="language-julia">run(ChicagoData,
-    It.department
+    Department
     &gt;&gt; Filter(EmployeeCount == 1)
-    &gt;&gt; Record(It.name, EmployeeCount))
+    &gt;&gt; Record(Name, EmployeeCount))
 #=&gt;
 ERROR: AssertionError: eltype(input) &lt;: AbstractVector
 =#</code></pre><p>Most broadcast operators just work.</p><pre><code class="language-julia">run(ChicagoData,
-    It.department.employee
-    &gt;&gt; Filter(It.salary .&gt; 100000)
-    &gt;&gt; It.name)
+    Department &gt;&gt; Employee
+    &gt;&gt; Filter(Salary .&gt; 100000)
+    &gt;&gt; Name)
 #=&gt;
   │ name      │
 ──┼───────────┤
@@ -127,23 +125,23 @@ ERROR: AssertionError: eltype(input) &lt;: AbstractVector
 =#</code></pre><p>Aggregate julia functions, such as <code>mean</code>, can also be used.</p><pre><code class="language-julia">using Statistics: mean
 
 MeanSalary = (
-  mean.(It.employee.salary) 
+  mean.(It.employee.salary)
   &gt;&gt; Label(:mean_salary))
 
 run(ChicagoData,
-    It.department
-    &gt;&gt; Record(It.name, MeanSalary))
+    Department
+    &gt;&gt; Record(Name, MeanSalary))
 #=&gt;
   │ department          │
   │ name    mean_salary │
 ──┼─────────────────────┤
 1 │ POLICE      90729.0 │
 2 │ FIRE        95484.0 │
-=#</code></pre><p>The more general form of <code>Lift</code> can be used to handle more complex situations. Its usage is documented in the reference.</p><h3><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h3><p>It&#39;s possible to <code>Keep</code> an expression&#39;s result, so that it is available within subsequent computations. For example, you may want to return records of an employee&#39;s name with their corresponding department&#39;s name.</p><pre><code class="language-julia">    run(ChicagoData, 
-         It.department 
-         &gt;&gt; Keep(:dept_name =&gt; It.name) 
-         &gt;&gt; It.employee 
-         &gt;&gt; Record(It.name, It.dept_name))
+=#</code></pre><p>The more general form of <code>Lift</code> can be used to handle more complex situations. Its usage is documented in the reference.</p><h3><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h3><p>It&#39;s possible to <code>Keep</code> an expression&#39;s result, so that it is available within subsequent computations. For example, you may want to return records of an employee&#39;s name with their corresponding department&#39;s name.</p><pre><code class="language-julia">    run(ChicagoData,
+         Department
+         &gt;&gt; Keep(:dept_name =&gt; Name)
+         &gt;&gt; Employee
+         &gt;&gt; Record(Name, It.dept_name))
     #=&gt;
       │ employee             │
       │ name       dept_name │
@@ -151,21 +149,21 @@ run(ChicagoData,
     1 │ JEFFERY A  POLICE    │
     2 │ NANCY A    POLICE    │
     3 │ DANIEL A   FIRE      │
-    =#</code></pre><p>Suppose we wish, for a given department, to return employees having a salary greater than that department&#39;s average. </p><pre><code class="language-julia">    run(ChicagoData, 
-         It.department 
-         &gt;&gt; Keep(MeanSalary)
-         &gt;&gt; It.employee 
-         &gt;&gt; Filter(It.salary .&gt; It.mean_salary))
+    =#</code></pre><p>Suppose we wish, for a given department, to return employees having a salary greater than that department&#39;s average.</p><pre><code class="language-julia">    run(ChicagoData,
+         Department
+         &gt;&gt; Keep(:mean_salary =&gt; MeanSalary)
+         &gt;&gt; Employee
+         &gt;&gt; Filter(Salary .&gt; Lookup(:mean_salary)))
     #=&gt;
       │ employee                    │
       │ name       position  salary │
     ──┼─────────────────────────────┤
     1 │ JEFFERY A  SERGEANT  101442 │
-    =#</code></pre><h3><a class="nav-anchor" id="Parameters-1" href="#Parameters-1">Parameters</a></h3><p>Suppose we want a parameterized pipeline that when passed a given salary would return employees having greater than that salary.</p><pre><code class="language-julia">EmployeesOver(N) = 
+    =#</code></pre><h3><a class="nav-anchor" id="Parameters-1" href="#Parameters-1">Parameters</a></h3><p>Suppose we want a parameterized pipeline that when passed a given salary would return employees having greater than that salary.</p><pre><code class="language-julia">EmployeesOver(N) =
   Given(:avg =&gt; N,
-   It.department
-   &gt;&gt; It.employee
-   &gt;&gt; Filter(It.salary .&gt; It.avg))
+   Department
+   &gt;&gt; Employee
+   &gt;&gt; Filter(Salary .&gt; It.avg))
 
 run(ChicagoData, EmployeesOver(100000))
 #=&gt;
@@ -179,7 +177,7 @@ run(ChicagoData, EmployeesOver(100000))
   │ name       position  salary │
 ──┼─────────────────────────────┤
 1 │ JEFFERY A  SERGEANT  101442 │
-=#</code></pre><p>Now suppose we wish to run this to return employees having greater than average salary?  We could compute the average salary across all employees as follows.</p><pre><code class="language-julia">AvgSalary = 
+=#</code></pre><p>Now suppose we wish to run this to return employees having greater than average salary?  We could compute the average salary across all employees as follows.</p><pre><code class="language-julia">AvgSalary =
    :avg_salary =&gt; mean.(It.department.employee.salary)
 
 run(ChicagoData, AvgSalary)
