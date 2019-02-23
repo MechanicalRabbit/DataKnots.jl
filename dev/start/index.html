@@ -26,8 +26,8 @@ typeof(get(ChicagoData))
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ NANCY A    POLICE OFFICER     80016 │
 3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>Notice that nested lists are flattened as necessary.</p><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>Dotted expressions above are a syntax shorthand for the <code>Lookup</code> primitive together with pipeline composition (<code>&gt;&gt;</code>). We could list departments in this dataset more formally:</p><pre><code class="language-julia">Department, Employee, Name, Salary =
-   Lookup.([:department, :employee, :name, :salary])
+=#</code></pre><p>Notice that nested lists are flattened as necessary.</p><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>Dotted expressions above are a syntax shorthand for the <code>Get</code> primitive together with pipeline composition (<code>&gt;&gt;</code>). We could list departments in this dataset more formally:</p><pre><code class="language-julia">Department, Employee, Name, Salary =
+   Get.([:department, :employee, :name, :salary])
 
 run(ChicagoData, Department &gt;&gt; Name)
 #=&gt;
@@ -41,7 +41,7 @@ run(ChicagoData, Department &gt;&gt; Name)
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>We will use <code>It.department</code> in preference to <code>Department</code> as defined to be <code>Lookup(:department)</code>.</p><h3><a class="nav-anchor" id="Counting-1" href="#Counting-1">Counting</a></h3><p>This example returns the number of departments in the dataset.</p><pre><code class="language-julia">run(ChicagoData, Count(It.department))
+=#</code></pre><p>We will use <code>It.department</code> in preference to <code>Department</code> as defined to be <code>Get(:department)</code>.</p><h3><a class="nav-anchor" id="Counting-1" href="#Counting-1">Counting</a></h3><p>This example returns the number of departments in the dataset.</p><pre><code class="language-julia">run(ChicagoData, Count(It.department))
 #=&gt;
 │ DataKnot │
 ├──────────┤

@@ -159,12 +159,12 @@ run(FirstHalf(OneTo(6)))
 1 │        1 │
 2 │        2 │
 3 │        3 │
-=#</code></pre><p>In DataKnots, filtering and slicing are realized as pipeline components. They are attached to data processing pipelines using the composition combinator. This brings common data processing concepts into our pipeline algebra.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* Lookup(:WHO), WHO=&quot;World&quot;)
+=#</code></pre><p>In DataKnots, filtering and slicing are realized as pipeline components. They are attached to data processing pipelines using the composition combinator. This brings common data processing concepts into our pipeline algebra.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* Get(:WHO), WHO=&quot;World&quot;)
 #=&gt;
 │ DataKnot    │
 ├─────────────┤
 │ Hello World │
-=#</code></pre><p>To make <code>Lookup</code> convenient, <code>It</code> provides a shorthand syntax.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* It.WHO, WHO=&quot;World&quot;)
+=#</code></pre><p>To make <code>Get</code> convenient, <code>It</code> provides a shorthand syntax.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* It.WHO, WHO=&quot;World&quot;)
 #=&gt;
 │ DataKnot    │
 ├─────────────┤
@@ -178,14 +178,14 @@ run(query, START=3)
 2 │        5 │
 3 │        6 │
 =#</code></pre><p>Parameters can also be defined as part of a query using <code>Given</code>. This combinator takes set of pairs (<code>=&gt;</code>) that map symbols (<code>:name</code>) onto query expressions. The subsequent argument is then evaluated in a naming context where the defined parameters are available for reuse.</p><pre><code class="language-julia">run(Given(:WHO =&gt; &quot;World&quot;,
-    &quot;Hello &quot; .* Lookup(:WHO)))
+    &quot;Hello &quot; .* Get(:WHO)))
 #=&gt;
 │ DataKnot    │
 ├─────────────┤
 │ Hello World │
 =#</code></pre><p>Query parameters can be especially useful when managing aggregates, or with expressions that one may wish to repeat more than once.</p><pre><code class="language-julia">GreaterThanAverage(X) =
   Given(:AVG =&gt; Mean(X),
-        X &gt;&gt; Filter(It .&gt; Lookup(:AVG)))
+        X &gt;&gt; Filter(It .&gt; Get(:AVG)))
 
 run(OneTo(6) &gt;&gt; Then(GreaterThanAverage))
 #=&gt;
@@ -201,7 +201,7 @@ run(GM)
 │ name     salary │
 ├─────────────────┤
 │ GARRY M  260004 │
-=#</code></pre><p>Field access is also possible via <code>Lookup</code> or via the <code>It</code> shortcut.</p><pre><code class="language-julia">run(GM &gt;&gt; It.name)
+=#</code></pre><p>Field access is also possible via <code>Get</code> or via the <code>It</code> shortcut.</p><pre><code class="language-julia">run(GM &gt;&gt; It.name)
 #=&gt;
 │ name    │
 ├─────────┤
@@ -260,7 +260,7 @@ run(:staff =&gt; DATA)
 1 │ GARRY M    260004 │
 2 │ ANTHONY R  185364 │
 3 │ DANA A     170112 │
-=#</code></pre><p>Access to slots in a <code>NamedTuple</code> is also supported by <code>Lookup</code>.</p><pre><code class="language-julia">run(DATA &gt;&gt; Lookup(:name))
+=#</code></pre><p>Access to slots in a <code>NamedTuple</code> is also supported by <code>Get</code>.</p><pre><code class="language-julia">run(DATA &gt;&gt; Get(:name))
 #=&gt;
   │ name      │
 ──┼───────────┤
@@ -269,7 +269,7 @@ run(:staff =&gt; DATA)
 3 │ DANA A    │
 =#</code></pre><p>Together with previous combinators, DataKnots could be used to create readable queries, such as &quot;who has the greatest salary&quot;?</p><pre><code class="language-julia">run(:highest_salary =&gt;
   Given(:MAX =&gt; Max(DATA &gt;&gt; It.salary),
-        DATA &gt;&gt; Filter(It.salary .== Lookup(:MAX))))
+        DATA &gt;&gt; Filter(It.salary .== Get(:MAX))))
 #=&gt;
   │ highest_salary  │
   │ name     salary │
