@@ -61,7 +61,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Quick Tutorial",
     "category": "section",
-    "text": "Consider the following example database containing a tiny cross-section of public data from Chicago, represented as nested NamedTuple and Vector objects.chicago_data =\n    (department = [\n     (name = \"POLICE\", employee = [\n       (name = \"JEFFERY A\", position = \"SERGEANT\",\n        salary = 101442),\n       (name = \"NANCY A\", position = \"POLICE OFFICER\",\n        salary = 80016)]),\n     (name = \"FIRE\", employee = [\n       (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n        salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. This data could be converted back into Julia structure via get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#-> NamedTuple{(:department,),⋮By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named \"department\"."
+    "text": "Consider the following database containing a tiny cross-section of public data from Chicago, represented as nested NamedTuple and Vector objects.chicago_data =\n    (department = [\n     (name = \"POLICE\", employee = [\n       (name = \"JEFFERY A\", position = \"SERGEANT\",\n        salary = 101442),\n       (name = \"NANCY A\", position = \"POLICE OFFICER\",\n        salary = 80016)]),\n     (name = \"FIRE\", employee = [\n       (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n        salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. This data could then be converted back into Julia structure via get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#-> NamedTuple{(:department,),⋮By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named \"department\"."
 },
 
 {
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Navigating",
     "category": "section",
-    "text": "Pipeline queries can then be run on data knot. For example, to list all department names, we write:run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#In this pipeline, It means \"use the current input\" and the period operator lets one navigate via the names provided. During this navigation context matters. For example, given the data provided, employee tuples are not directly accessible.run(ChicagoData, It.employee)\n#-> ERROR: cannot find employee ⋮In DataKnots, nested lists are flatted as necessary, hence, we can list all of the employees in the dataset as follows.run(ChicagoData, It.department.employee.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n2 │ NANCY A   │\n3 │ DANIEL A  │\n=#"
+    "text": "Pipeline queries can be run on data knot. For example, to list all department names, we write It.department.name:run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#In this pipeline, It means \"use the current input\" and the dotted notation let one navigate via hierarchy. Navigation context matters. For example, given the data provided, employee tuples are not directly accessible from the root of the dataset.run(ChicagoData, It.employee)\n#-> ERROR: cannot find employee ⋮The employee tuples can be accessed by navigating though department tuples.run(ChicagoData, It.department.employee)\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Notice that nested lists are flattened as necessary. "
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Composition",
     "category": "section",
-    "text": "The dotted expressions above are actually a syntax shorthand for the Lookup operation together with composition (>>).Department = Lookup(:department)\nName = Lookup(:name)\n\nrun(ChicagoData, Department >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Since the pipeline It is the identity, the query above could be equivalently written:run(ChicagoData, It >> Department >> It >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#From here on, we\'ll use It.department, and not Lookup(:department)."
+    "text": "Dotted expressions above are a syntax shorthand for the Lookup primitive together with pipeline composition (>>). We could list departments in this dataset more formally:Department, Employee, Name, Salary = \n   Lookup.([:department, :employee, :name, :salary])\n\nrun(ChicagoData, Department >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Since It is the pipeline identity, the query above could be equivalently written:run(ChicagoData, It >> Department >> It >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#From here on, we use It.department, not Lookup(:department)."
 },
 
 {
@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Counting",
     "category": "section",
-    "text": "We can count records. Here we return number of departments.get(run(ChicagoData, Count(It.department)))\n#-> 2Using pipeline composition (>>), we can perform Count in a nested context; in this case, we count employee records within each department.run(ChicagoData,\n    It.department\n    >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        2 │\n2 │        1 │\n=#In this toy dataset, we see that the 1st department, \"POLICE\", has 2 employees, while the 2nd, \"FIRE\" only has 1."
+    "text": "This example returns the number of departments in the dataset.run(ChicagoData, Count(It.department))\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#Using pipeline composition (>>), we can perform Count in a nested context; in this case, we count employee records within each department.run(ChicagoData,\n    It.department\n    >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        2 │\n2 │        1 │\n=#In this toy dataset, we see that the 1st department, \"POLICE\", has 2 employees, while the 2nd, \"FIRE\" only has 1."
 },
 
 {
@@ -93,15 +93,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Labels",
     "category": "section",
-    "text": "Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a Label.EmployeeCount = (\n  Count(It.employee)\n  >> Label(:count))\n\nrun(ChicagoData,\n    It.department\n    >> EmployeeCount)\n#=>\n  │ count │\n──┼───────┤\n1 │     2 │\n2 │     1 │\n=#To aid in debugging expressions, the content of a pipeline expression can be displayed.EmployeeCount\n#-> Count(It.employee) >> Label(:count)"
+    "text": "Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a Label.EmployeeCount = \n  Count(It.employee) >> Label(:count)\n\nrun(ChicagoData,\n    It.department\n    >> EmployeeCount)\n#=>\n  │ count │\n──┼───────┤\n1 │     2 │\n2 │     1 │\n=#The pair syntax (=>) sugar will also attach an expression label.run(ChicagoData, \n    :dept_count => \n      Count(It.department))\n#=>\n│ dept_count │\n├────────────┤\n│          2 │\n=#"
 },
 
 {
-    "location": "start/#Records-and-Labels-1",
+    "location": "start/#Records-1",
     "page": "Getting Started",
-    "title": "Records & Labels",
+    "title": "Records",
     "category": "section",
-    "text": "Sometimes it is helpful to return two or more values in tandem; this can be done with Record.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#Showing department statistics might be generally useful, so let\'s also assign it to a reusable pipeline.DeptStats =\n  Record(It.name,\n         EmployeeCount)No matter how nested, pipeline expressions can be displayedDeptStats\n#-> Record(It.name, Count(It.employee) >> Label(:count))"
+    "text": "Sometimes it is helpful to return two or more values in tandem; this can be done with Record.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#Records can be nested. We could build a result that includes department names and, within each department, employee names.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n         It.employee >>\n         Record(It.name, It.salary)))\n#=>\n  │ department                                │\n  │ name    employee                          │\n──┼───────────────────────────────────────────┤\n1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │\n2 │ FIRE    DANIEL A, 95484                   │\n=#In the nested display, commas are used to separate fields and semi-colons separate values."
 },
 
 {
@@ -109,31 +109,31 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Filtering Data",
     "category": "section",
-    "text": "Filtering data is also contextual. Here we list department names who have exactly one employee.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount .== 1)\n    >> DeptStats)\n#=>\n  │ department  │\n  │ name  count │\n──┼─────────────┤\n1 │ FIRE      1 │\n=#Pipeline expressions can use arguments.HavingSize(N) = Filter(EmployeeCount .== N)\n\nrun(ChicagoData,\n    It.department\n    >> HavingSize(2)\n    >> DeptStats)\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n=#"
+    "text": "Filtering data is also contextual. Here we list department names who have exactly one employee.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount .== 1)\n    >> Record(It.name, EmployeeCount))\n#=>\n  │ department  │\n  │ name  count │\n──┼─────────────┤\n1 │ FIRE      1 │\n=#In in pipeline expressions, the broadcast variant of common operators, such as .== are to be used.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount == 1)\n    >> Record(It.name, EmployeeCount))\n#=>\nERROR: AssertionError: eltype(input) <: AbstractVector\n=#Most broadcast operators just work.run(ChicagoData,\n    It.department.employee\n    >> Filter(It.salary .> 100000)\n    >> It.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n=#"
 },
 
 {
-    "location": "start/#Query-Parameters-1",
+    "location": "start/#Lifting-1",
     "page": "Getting Started",
-    "title": "Query Parameters",
+    "title": "Lifting",
     "category": "section",
-    "text": "Query expressions may use outside parameters. The run command can take a set of additional values that are accessible anywhere within the query.DeptNameWith(N) = (\n  It.department\n  >> HavingSize(N)\n  >> It.name)\n\nrun(ChicagoData, DeptNameWith(It.no), no=1)\n#=>\n  │ name │\n──┼──────┤\n1 │ FIRE │\n=#Parameters can also be set as part of the query.run(ChicagoData,\n    Given(:no => 1,\n      DeptNameWith(It.no)))\n#=>\n  │ name │\n──┼──────┤\n1 │ FIRE │\n=#In both of these variants, the parameter It.no is accessible anywhere in the query, at root of the data structure, within each department, and within each employee."
+    "text": "Arbitrary Julia functions can also be used within DataKnots using the broadcast notation. For example, occursin returns a boolean value if its 1st argument is found within another. Hence, it could be used within a filter expression.run(ChicagoData,\n    It.department.employee.name\n    >> Filter(occursin.(\"AN\", It)))\n#=>\n  │ name     │\n──┼──────────┤\n1 │ NANCY A  │\n2 │ DANIEL A │\n=#Aggregate julia functions, such as mean, can also be used.using Statistics: mean\n\nMeanSalary = (\n  mean.(It.employee.salary) \n  >> Label(:mean_salary))\n\nrun(ChicagoData,\n    It.department\n    >> Record(It.name, MeanSalary))\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┤\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#The more general form of Lift can be used to handle more complex situations. Its usage is documented in the reference."
 },
 
 {
-    "location": "start/#Nested-Aggregates-1",
+    "location": "start/#Keeping-Values-1",
     "page": "Getting Started",
-    "title": "Nested Aggregates",
+    "title": "Keeping Values",
     "category": "section",
-    "text": "Aggregates can be nested. In this case we calculate the maximum employee count to which a department might have.MaximalEmployees = Max(It.department >> EmployeeCount)\n\nrun(ChicagoData, MaximalEmployees)\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#"
+    "text": "It\'s possible to Keep an expression\'s result, so that it is available within subsequent computations. For example, you may want to return records of an employee\'s name with their corresponding department\'s name.    run(ChicagoData, \n         It.department \n         >> Keep(:dept_name => It.name) \n         >> It.employee \n         >> Record(It.name, It.dept_name))\n    #=>\n      │ employee             │\n      │ name       dept_name │\n    ──┼──────────────────────┤\n    1 │ JEFFERY A  POLICE    │\n    2 │ NANCY A    POLICE    │\n    3 │ DANIEL A   FIRE      │\n    =#Suppose we wish, for a given department, to return employees having a salary greater than that department\'s average.     run(ChicagoData, \n         It.department \n         >> Keep(MeanSalary)\n         >> It.employee \n         >> Filter(It.salary .> It.mean_salary))\n    #=>\n      │ employee                    │\n      │ name       position  salary │\n    ──┼─────────────────────────────┤\n    1 │ JEFFERY A  SERGEANT  101442 │\n    =#"
 },
 
 {
-    "location": "start/#Scoping-Rules-1",
+    "location": "start/#Parameters-1",
     "page": "Getting Started",
-    "title": "Scoping Rules",
+    "title": "Parameters",
     "category": "section",
-    "text": "It\'s important to realize that this pipeline is only valid at the top of the tree, where Lookup(:department) can succeed. Conversely, if this same pipeline is used in the context of a department, it will fail.run(ChicagoData, It.department >> MaximalEmployees)\n#-> ERROR: cannot find department ⋮It\'s for the same reason that DeptNameWith(MaximalEmployees) will also fail. However this scoping problem can be overcome by using parameters.run(ChicagoData,\n    Given(:no => MaximalEmployees,\n          DeptNameWith(It.no)))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#This scope challenge can be solved be rewriting DeptNameWith to use a Given parameter.ImprovedWith(N) =\n  Given(:no => N,\n    It.department\n    >> HavingSize(It.no)\n    >> It.name)\n\nrun(ChicagoData, ImprovedWith(MaximalEmployees))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n=#"
+    "text": "Suppose we want a parameterized pipeline that when passed a given salary would return employees having greater than that salary.EmployeesOver(N) = \n  Given(:avg => N,\n   It.department\n   >> It.employee\n   >> Filter(It.salary .> It.avg))\n\nrun(ChicagoData, EmployeesOver(100000))\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┤\n1 │ JEFFERY A  SERGEANT  101442 │\n=#This same query can be written as a parameter to run.run(ChicagoData, EmployeesOver(It.amt), amt=100000)\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┤\n1 │ JEFFERY A  SERGEANT  101442 │\n=#Now suppose we wish to run this to return employees having greater than average salary?  We could compute the average salary across all employees as follows.AvgSalary = \n   :avg_salary => mean.(It.department.employee.salary)\n\nrun(ChicagoData, AvgSalary)\n#=>\n│ avg_salary │\n├────────────┤\n│    92314.0 │\n=#We could then combine these two pipelines.run(ChicagoData, EmployeesOver(AvgSalary))\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#"
 },
 
 {
