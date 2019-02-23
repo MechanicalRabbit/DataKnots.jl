@@ -25,9 +25,9 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 
 ## Quick Tutorial
 
-Consider the following example database containing a tiny
-cross-section of public data from Chicago, represented as nested
-`NamedTuple` and `Vector` objects.
+Consider the following database containing a tiny cross-section of
+public data from Chicago, represented as nested `NamedTuple` and
+`Vector` objects.
 
     chicago_data =
         (department = [
@@ -41,8 +41,8 @@ cross-section of public data from Chicago, represented as nested
             salary = 95484)])],);
 
 To query this data via DataKnots, we need to first convert it into
-a *knot* structure. This data could be converted back into Julia
-structure via `get` function.
+a *knot* structure. This data could then be converted back into
+Julia structure via `get` function.
 
     using DataKnots
     ChicagoData = DataKnot(chicago_data)
@@ -55,8 +55,8 @@ the tree is named `"department"`.
 
 ### Navigating
 
-Pipeline queries can then be `run` on data knot. For example, to
-list all department names, we write:
+Pipeline queries can be `run` on data knot. For example, to list
+all department names, we write `It.department.name`:
 
     run(ChicagoData, It.department.name)
     #=>
@@ -67,32 +67,36 @@ list all department names, we write:
     =#
 
 In this pipeline, `It` means "use the current input" and the
-period operator lets one navigate via the names provided. During
-this navigation context matters. For example, given the data
-provided, `employee` tuples are not directly accessible.
+dotted notation let one navigate via hierarchy. Navigation context
+matters. For example, given the data provided, `employee` tuples
+are not directly accessible from the root of the dataset.
 
     run(ChicagoData, It.employee)
     #-> ERROR: cannot find employee ⋮
 
-In DataKnots, nested lists are flatted as necessary, hence, we can
-list all of the employees in the dataset as follows.
+The `employee` tuples can be accessed by navigating though
+`department` tuples.
 
-    run(ChicagoData, It.department.employee.name)
+    run(ChicagoData, It.department.employee)
     #=>
-      │ name      │
-    ──┼───────────┤
-    1 │ JEFFERY A │
-    2 │ NANCY A   │
-    3 │ DANIEL A  │
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ NANCY A    POLICE OFFICER     80016 │
+    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
+
+Notice that nested lists are flattened as necessary. 
 
 ### Composition
 
-The dotted expressions above are actually a syntax shorthand for
-the `Lookup` operation together with composition (`>>`).
+Dotted expressions above are a syntax shorthand for the `Lookup`
+primitive together with pipeline composition (`>>`). We could list
+departments in this dataset more formally:
 
-    Department = Lookup(:department)
-    Name = Lookup(:name)
+    Department, Employee, Name, Salary = 
+       Lookup.([:department, :employee, :name, :salary])
 
     run(ChicagoData, Department >> Name)
     #=>
@@ -102,8 +106,8 @@ the `Lookup` operation together with composition (`>>`).
     2 │ FIRE   │
     =#
 
-Since the pipeline `It` is the identity, the query above
-could be equivalently written:
+Since `It` is the pipeline identity, the query above could be
+equivalently written:
 
     run(ChicagoData, It >> Department >> It >> Name)
     #=>
@@ -113,15 +117,18 @@ could be equivalently written:
     2 │ FIRE   │
     =#
 
-From here on, we'll use `It.department`, and not
-`Lookup(:department)`.
+From here on, we use `It.department`, not `Lookup(:department)`.
 
-### Counting
+### Counting 
 
-We can count records. Here we return number of departments.
+This example returns the number of departments in the dataset.
 
-    get(run(ChicagoData, Count(It.department)))
-    #-> 2
+    run(ChicagoData, Count(It.department))
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        2 │
+    =#
 
 Using pipeline composition (`>>`), we can perform `Count` in a
 nested context; in this case, we count `employee` records within
@@ -145,9 +152,8 @@ has `2` employees, while the 2nd, `"FIRE"` only has `1`.
 Since DataKnots is compositional, reusable pipeline expressions
 can be factored. These expressions can be given a `Label`.
 
-    EmployeeCount = (
-      Count(It.employee)
-      >> Label(:count))
+    EmployeeCount = 
+      Count(It.employee) >> Label(:count)
 
     run(ChicagoData,
         It.department
@@ -159,13 +165,18 @@ can be factored. These expressions can be given a `Label`.
     2 │     1 │
     =#
 
-To aid in debugging expressions, the content of a pipeline
-expression can be displayed.
+The pair syntax (`=>`) sugar will also attach an expression label.
 
-    EmployeeCount
-    #-> Count(It.employee) >> Label(:count)
+    run(ChicagoData, 
+        :dept_count => 
+          Count(It.department))
+    #=>
+    │ dept_count │
+    ├────────────┤
+    │          2 │
+    =#
 
-### Records & Labels
+### Records
 
 Sometimes it is helpful to return two or more values in tandem;
 this can be done with `Record`.
@@ -182,17 +193,24 @@ this can be done with `Record`.
     2 │ FIRE        1 │
     =#
 
-Showing department statistics might be generally useful, so let's
-also assign it to a reusable pipeline.
+Records can be nested. We could build a result that includes
+department names and, within each department, employee names.
 
-    DeptStats =
-      Record(It.name,
-             EmployeeCount)
+    run(ChicagoData,
+        It.department
+        >> Record(It.name,
+             It.employee >>
+             Record(It.name, It.salary)))
+    #=>
+      │ department                                │
+      │ name    employee                          │
+    ──┼───────────────────────────────────────────┤
+    1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
+    2 │ FIRE    DANIEL A, 95484                   │
+    =#
 
-No matter how nested, pipeline expressions can be displayed
-
-    DeptStats
-    #-> Record(It.name, Count(It.employee) >> Label(:count))
+In the nested display, commas are used to separate fields and
+semi-colons separate values.
 
 ### Filtering Data
 
@@ -202,7 +220,7 @@ who have exactly one employee.
     run(ChicagoData,
         It.department
         >> Filter(EmployeeCount .== 1)
-        >> DeptStats)
+        >> Record(It.name, EmployeeCount))
     #=>
       │ department  │
       │ name  count │
@@ -210,104 +228,159 @@ who have exactly one employee.
     1 │ FIRE      1 │
     =#
 
-Pipeline expressions can use arguments.
-
-    HavingSize(N) = Filter(EmployeeCount .== N)
+In in pipeline expressions, the broadcast variant of common
+operators, such as `.==` are to be used.
 
     run(ChicagoData,
         It.department
-        >> HavingSize(2)
-        >> DeptStats)
+        >> Filter(EmployeeCount == 1)
+        >> Record(It.name, EmployeeCount))
     #=>
-      │ department    │
-      │ name    count │
-    ──┼───────────────┤
-    1 │ POLICE      2 │
+    ERROR: AssertionError: eltype(input) <: AbstractVector
     =#
 
-### Query Parameters
-
-Query expressions may use outside parameters. The `run` command
-can take a set of additional values that are accessible anywhere
-within the query.
-
-    DeptNameWith(N) = (
-      It.department
-      >> HavingSize(N)
-      >> It.name)
-
-    run(ChicagoData, DeptNameWith(It.no), no=1)
-    #=>
-      │ name │
-    ──┼──────┤
-    1 │ FIRE │
-    =#
-
-Parameters can also be set as part of the query.
+Most broadcast operators just work.
 
     run(ChicagoData,
-        Given(:no => 1,
-          DeptNameWith(It.no)))
-    #=>
-      │ name │
-    ──┼──────┤
-    1 │ FIRE │
-    =#
-
-In both of these variants, the parameter `It.no` is accessible
-anywhere in the query, at root of the data structure, within each
-`department`, and within each `employee`.
-
-### Nested Aggregates
-
-Aggregates can be nested. In this case we calculate the maximum
-employee count to which a department might have.
-
-    MaximalEmployees = Max(It.department >> EmployeeCount)
-
-    run(ChicagoData, MaximalEmployees)
-    #=>
-    │ DataKnot │
-    ├──────────┤
-    │        2 │
-    =#
-
-### Scoping Rules
-
-It's important to realize that this pipeline is only valid at
-the top of the tree, where `Lookup(:department)` can succeed.
-Conversely, if this same pipeline is used in the context of a
-department, it will fail.
-
-    run(ChicagoData, It.department >> MaximalEmployees)
-    #-> ERROR: cannot find department ⋮
-
-It's for the same reason that `DeptNameWith(MaximalEmployees)`
-will also fail. However this scoping problem can be overcome
-by using parameters.
-
-    run(ChicagoData,
-        Given(:no => MaximalEmployees,
-              DeptNameWith(It.no)))
-    #=>
-      │ name   │
-    ──┼────────┤
-    1 │ POLICE │
-    =#
-
-This scope challenge can be solved be rewriting `DeptNameWith` to
-use a `Given` parameter.
-
-    ImprovedWith(N) =
-      Given(:no => N,
-        It.department
-        >> HavingSize(It.no)
+        It.department.employee
+        >> Filter(It.salary .> 100000)
         >> It.name)
-
-    run(ChicagoData, ImprovedWith(MaximalEmployees))
     #=>
-      │ name   │
-    ──┼────────┤
-    1 │ POLICE │
+      │ name      │
+    ──┼───────────┤
+    1 │ JEFFERY A │
+    =#
+
+### Lifting 
+
+Arbitrary Julia functions can also be used within DataKnots using
+the broadcast notation. For example, `occursin` returns a boolean
+value if its 1st argument is found within another. Hence, it could
+be used within a filter expression.
+
+    run(ChicagoData,
+        It.department.employee.name
+        >> Filter(occursin.("AN", It)))
+    #=>
+      │ name     │
+    ──┼──────────┤
+    1 │ NANCY A  │
+    2 │ DANIEL A │
+    =#
+
+Aggregate julia functions, such as `mean`, can also be used.
+
+    using Statistics: mean
+
+    MeanSalary = (
+      mean.(It.employee.salary) 
+      >> Label(:mean_salary))
+
+    run(ChicagoData,
+        It.department
+        >> Record(It.name, MeanSalary))
+    #=>
+      │ department          │
+      │ name    mean_salary │
+    ──┼─────────────────────┤
+    1 │ POLICE      90729.0 │
+    2 │ FIRE        95484.0 │
+    =#
+
+The more general form of `Lift` can be used to handle more complex
+situations. Its usage is documented in the reference.
+
+### Keeping Values
+
+It's possible to `Keep` an expression's result, so that it is
+available within subsequent computations. For example, you may
+want to return records of an employee's name with their
+corresponding department's name.
+
+```julia
+    run(ChicagoData, 
+         It.department 
+         >> Keep(:dept_name => It.name) 
+         >> It.employee 
+         >> Record(It.name, It.dept_name))
+    #=>
+      │ employee             │
+      │ name       dept_name │
+    ──┼──────────────────────┤
+    1 │ JEFFERY A  POLICE    │
+    2 │ NANCY A    POLICE    │
+    3 │ DANIEL A   FIRE      │
+    =#
+```
+
+Suppose we wish, for a given department, to return employees
+having a salary greater than that department's average. 
+
+```julia
+    run(ChicagoData, 
+         It.department 
+         >> Keep(MeanSalary)
+         >> It.employee 
+         >> Filter(It.salary .> It.mean_salary))
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+```
+
+### Parameters
+
+Suppose we want a parameterized pipeline that when passed a given
+salary would return employees having greater than that salary.
+
+    EmployeesOver(N) = 
+      Given(:avg => N,
+       It.department
+       >> It.employee
+       >> Filter(It.salary .> It.avg))
+
+    run(ChicagoData, EmployeesOver(100000))
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+This same query can be written as a parameter to `run`.
+
+    run(ChicagoData, EmployeesOver(It.amt), amt=100000)
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+Now suppose we wish to run this to return employees having greater
+than average salary?  We could compute the average salary across
+all employees as follows.
+
+    AvgSalary = 
+       :avg_salary => mean.(It.department.employee.salary)
+
+    run(ChicagoData, AvgSalary)
+    #=>
+    │ avg_salary │
+    ├────────────┤
+    │    92314.0 │
+    =#
+
+We could then combine these two pipelines.
+
+    run(ChicagoData, EmployeesOver(AvgSalary))
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
