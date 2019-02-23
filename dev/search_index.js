@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "DataKnots.jl",
     "category": "section",
-    "text": "DataKnots is a Julia library for representing and querying data, including nested and circular structures.  DataKnots provides integration and analytics across CSV, JSON, XML and SQL data sources with an extensible, practical and coherent algebra of query combinators."
+    "text": "DataKnots are a Julia library for representing and querying data, including nested and circular structures. DataKnots provides integration and analytics across CSV, JSON, XML and SQL data sources with an extensible, practical and coherent algebra of data processing pipelines."
 },
 
 {
@@ -45,15 +45,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Getting Started",
     "category": "section",
-    "text": "DataKnots is in active development and is not expected to be usable for general audiences. In particular, with the v0.1 release, there are no data source adapters."
+    "text": "DataKnots is currently usable for contributors who wish to help grow the ecosystem. However, it is not yet expected to be usable for general audiences. In particular, with the v0.1 release, there are no data source adapters. DataKnots currently lacks important operators, such as Sort, among others. Many of these obvious deficiencies have previously been implemented in prototype form. Subsequent releases will add features incrementally."
 },
 
 {
-    "location": "start/#Installation-Instructions-1",
+    "location": "start/#Installation-1",
     "page": "Getting Started",
-    "title": "Installation Instructions",
+    "title": "Installation",
     "category": "section",
-    "text": "DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager.  To install it, run in the package shell (enter with ] from the Julia shell):pkg> add https://github.com/rbt-lang/DataKnots.jlDataKnots.jl requires Julia 1.0 or higher.If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:pkg> dev https://github.com/rbt-lang/DataKnots.jl"
+    "text": "DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager. To install it, run in the package shell (enter with ] from the Julia shell):pkg> add https://github.com/rbt-lang/DataKnots.jlDataKnots.jl requires Julia 1.0 or higher.If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:pkg> dev https://github.com/rbt-lang/DataKnots.jlOur development chat is currently hosted on Gitter: https://gitter.im/rbt-lang/rbt-proto"
 },
 
 {
@@ -61,15 +61,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Quick Tutorial",
     "category": "section",
-    "text": "Consider the following database containing a tiny cross-section of public data from Chicago, represented as nested NamedTuple and Vector objects.chicago_data =\n    (department = [\n     (name = \"POLICE\", employee = [\n       (name = \"JEFFERY A\", position = \"SERGEANT\",\n        salary = 101442),\n       (name = \"NANCY A\", position = \"POLICE OFFICER\",\n        salary = 80016)]),\n     (name = \"FIRE\", employee = [\n       (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n        salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. This data could then be converted back into Julia structure via get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#-> NamedTuple{(:department,),⋮By convention, it is helpful if the top-level object in a data structure be a named tuple. In our source dataset, the very top of the tree is named \"department\"."
+    "text": "Consider a database with a tiny cross-section of public data from Chicago, represented as nested NamedTuple and Vector objects.chicago_data =\n  (department = [\n    (name = \"POLICE\", employee = [\n      (name = \"JEFFERY A\", position = \"SERGEANT\",\n       salary = 101442),\n      (name = \"NANCY A\", position = \"POLICE OFFICER\",\n       salary = 80016)]),\n    (name = \"FIRE\", employee = [\n      (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\",\n       salary = 95484)])],);To query this data via DataKnots, we need to first convert it into a knot structure. A knot can be converted back to native Julia via the get function.using DataKnots\nChicagoData = DataKnot(chicago_data)\ntypeof(get(ChicagoData))\n#-> NamedTuple{(:department,),⋮It\'s helpful for the top-level object in a data source to be a named tuple. In this Chicago data example, the very top of the tree is named \"department\"."
 },
 
 {
-    "location": "start/#Navigating-1",
+    "location": "start/#Navigation-1",
     "page": "Getting Started",
-    "title": "Navigating",
+    "title": "Navigation",
     "category": "section",
-    "text": "Pipeline queries can be run on data knot. For example, to list all department names, we write It.department.name. In this pipeline, It means \"use the current input\". The dotted notation lets one navigate via hierarchy.run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Navigation context matters. For example, the employee tuples are not directly accessible from the root of the dataset provided.run(ChicagoData, It.employee)\n#-> ERROR: cannot find employee ⋮The employee tuples can be accessed by navigating though department tuples.run(ChicagoData, It.department.employee)\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Notice that nested lists are flattened as necessary."
+    "text": "Pipelines can be run on data knot. For example, to list all department names in ChicagoData, we write It.department.name. In this pipeline, It means \"use the current input\". The dotted notation lets one navigate via hierarchy.run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Navigation context matters. For example, employee tuples are not directly accessible from the root of the dataset provided.run(ChicagoData, It.employee)\n#-> ERROR: cannot find employee ⋮In this case, employee tuples can be accessed by navigating though department tuples.run(ChicagoData, It.department.employee)\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Notice that nested lists traversed during navigation are flattened into a single output."
 },
 
 {
@@ -77,7 +77,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Composition",
     "category": "section",
-    "text": "Dotted expressions above are a syntax shorthand for the Get primitive together with pipeline composition (>>). We could list departments in this dataset more formally:Department, Employee, Name, Salary =\n   Get.([:department, :employee, :name, :salary])\n\nrun(ChicagoData, Department >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Since It is the pipeline identity, the query above could be equivalently written:run(ChicagoData, It >> Department >> It >> Name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#We will use It.department in preference to Department as defined to be Get(:department)."
+    "text": "Dotted navigations, such as It.department.name, are a syntax shorthand for the Get primitive together with pipeline composition (>>).run(ChicagoData, Get(:department) >> Get(:name))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#The Get(::Symbol) primitive reproduces the contents from the matching container. Pipeline composition >> combines results across nested containers. For example, the next query shows employee tuples across both departments.run(ChicagoData, Get(:department) >> Get(:employee))\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#In this pipeline algebra, It is the identity relative to pipeline composition (>>). Since It can be mixed into any composition without changing the result, we can write:run(ChicagoData, It >> Get(:department) >> Get(:name))\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#This motivates our clever use of It as syntax short hand.run(ChicagoData, It.department.name)\n#=>\n  │ name   │\n──┼────────┤\n1 │ POLICE │\n2 │ FIRE   │\n=#Hence, subsequent examples using the It.x.y sugar could equivalently be written Get(:x) >> Get(:y)."
 },
 
 {
@@ -85,15 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Counting",
     "category": "section",
-    "text": "This example returns the number of departments in the dataset.run(ChicagoData, Count(It.department))\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#Using pipeline composition (>>), we can perform Count in a nested context; in this case, we count employee records within each department.run(ChicagoData, \n    It.department \n    >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        2 │\n2 │        1 │\n=#In this toy dataset, we see that the 1st department, \"POLICE\", has 2 employees, while the 2nd, \"FIRE\" only has 1."
-},
-
-{
-    "location": "start/#Labels-1",
-    "page": "Getting Started",
-    "title": "Labels",
-    "category": "section",
-    "text": "Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can be given a Label.EmployeeCount = (\n  Count(It.employee) \n  >> Label(:count))\n\nrun(ChicagoData,\n    It.department\n    >> EmployeeCount)\n#=>\n  │ count │\n──┼───────┤\n1 │     2 │\n2 │     1 │\n=#The pair syntax (=>) sugar will also attach an expression label.run(ChicagoData,\n    :dept_count =>\n      Count(It.department))\n#=>\n│ dept_count │\n├────────────┤\n│          2 │\n=#"
+    "text": "This next example returns the number of departments in the dataset. Note that the argument to Count, It.department, is itself a pipeline.run(ChicagoData, Count(It.department))\n#=>\n│ DataKnot │\n├──────────┤\n│        2 │\n=#Using pipeline composition (>>), we can perform Count in a nested context; in this case, let\'s count employee records within each department.run(ChicagoData,\n    It.department\n    >> Count(It.employee))\n#=>\n  │ DataKnot │\n──┼──────────┤\n1 │        2 │\n2 │        1 │\n=#Here we see that the 1st department, \"POLICE\", has 2 employees, while the 2nd, \"FIRE\" only has 1. The occurance of It within the subordinate pipeline Count(It.employee) refers to each department individually, not to the dataset as a whole."
 },
 
 {
@@ -101,7 +93,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Records",
     "category": "section",
-    "text": "Sometimes it is helpful to return two or more values in tandem; this can be done with Record. In the following pipeline, It refers to the current department; hence It.name refers to that department\'s name.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#Records can be nested. We could build a result that includes department names and, within each department, employee names.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n         It.employee >>\n         Record(It.name, It.salary)))\n#=>\n  │ department                                │\n  │ name    employee                          │\n──┼───────────────────────────────────────────┤\n1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │\n2 │ FIRE    DANIEL A, 95484                   │\n=#In the nested display, commas are used to separate fields and semi-colons separate values."
+    "text": "Returning values in tandem can be done with Record. We can improve on the previous example to additionally include each department\'s name.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n              Count(It.employee)))\n#=>\n  │ department │\n  │ name    #2 │\n──┼────────────┤\n1 │ POLICE   2 │\n2 │ FIRE     1 │\n=#Records can be nested. The following department listing includes, for each department, employee names and their salary.run(ChicagoData,\n    It.department\n    >> Record(It.name,\n         It.employee >>\n         Record(It.name, It.salary)))\n#=>\n  │ department                                │\n  │ name    employee                          │\n──┼───────────────────────────────────────────┤\n1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │\n2 │ FIRE    DANIEL A, 95484                   │\n=#In this nested display, commas are used to separate fields and semi-colons separate values."
+},
+
+{
+    "location": "start/#Expression-Labels-1",
+    "page": "Getting Started",
+    "title": "Expression Labels",
+    "category": "section",
+    "text": "Since DataKnots is compositional, reusable pipeline expressions can be factored. These expressions can also be given a Label.EmployeeCount = (\n  Count(It.employee)\n  >> Label(:count))\n\nrun(ChicagoData,\n    It.department\n    >> Record(It.name,\n              EmployeeCount))\n#=>\n  │ department    │\n  │ name    count │\n──┼───────────────┤\n1 │ POLICE      2 │\n2 │ FIRE        1 │\n=#The pair syntax (=>) will also attach an expression label.run(ChicagoData,\n    :dept_count =>\n      Count(It.department))\n#=>\n│ dept_count │\n├────────────┤\n│          2 │\n=#"
 },
 
 {
@@ -109,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Filtering Data",
     "category": "section",
-    "text": "Filtering data is also contextual. Here we list department names who have exactly one employee.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount .== 1)\n    >> Record(It.name, EmployeeCount))\n#=>\n  │ department  │\n  │ name  count │\n──┼─────────────┤\n1 │ FIRE      1 │\n=#In in pipeline expressions, the broadcast variant of common operators, such as .== are to be used.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount == 1)\n    >> Record(It.name, EmployeeCount))\n#=>\nERROR: AssertionError: eltype(input) <: AbstractVector\n=#Most broadcast operators just work.run(ChicagoData,\n    It.department.employee\n    >> Filter(It.salary .> 100000)\n    >> It.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n=#"
+    "text": "What would a query language be without filtering? Here we list department names who have exactly one employee.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount .== 1)\n    >> Record(It.name, EmployeeCount))\n#=>\n  │ department  │\n  │ name  count │\n──┼─────────────┤\n1 │ FIRE      1 │\n=#In in pipeline expressions, the broadcast variant of common operators, such as .== are to be used.run(ChicagoData,\n    It.department\n    >> Filter(EmployeeCount == 1)\n    >> Record(It.name, EmployeeCount))\n#=>\nERROR: AssertionError: eltype(input) <: AbstractVector\n=#Let\'s define a GT100K pipeline to compute if an employee\'s salary is greater than 100K.GT100K =\n  :gt100k =>\n    It.salary .> 100000\n\nrun(ChicagoData,\n    It.department.employee\n    >> Record(It.name, It.salary, GT100K))\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┤\n1 │ JEFFERY A  101442    true │\n2 │ NANCY A     80016   false │\n3 │ DANIEL A    95484   false │\n=#Since Filter uses takes boolean valued pipeline for an argument, we could use it to filter employees employees.run(ChicagoData,\n    It.department.employee\n    >> Filter(GT100K)\n    >> It.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n=#"
 },
 
 {
@@ -117,7 +117,23 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Lifting",
     "category": "section",
-    "text": "Arbitrary Julia functions can also be used within DataKnots using the broadcast notation. For example, occursin returns a boolean value if its 1st argument is found within another. Hence, it could be used within a filter expression.run(ChicagoData,\n    It.department.employee.name\n    >> Filter(occursin.(\"AN\", It)))\n#=>\n  │ name     │\n──┼──────────┤\n1 │ NANCY A  │\n2 │ DANIEL A │\n=#Aggregate julia functions, such as mean, can also be used.using Statistics: mean\n\nMeanSalary = (\n  mean.(It.employee.salary)\n  >> Label(:mean_salary))\n\nrun(ChicagoData,\n    It.department\n    >> Record(It.name, MeanSalary))\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┤\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#The more general form of Lift can be used to handle more complex situations. Its usage is documented in the reference."
+    "text": "Besides operators, such as greater than (>), arbitrary functions can also be used within DataKnots using the broadcast notation. Let\'s define a function to extract an employee\'s first name.fname(x) = titlecase(split(x)[1])\nfname(\"NANCY A\")\n#-> \"Nancy\"This fname function can then be used within a pipeline expression to return first names of all employees.run(ChicagoData,\n    It.department.employee\n    >> fname.(It.name)\n    >> Label(:first_name))\n#=>\n  │ first_name │\n──┼────────────┤\n1 │ Jeffery    │\n2 │ Nancy      │\n3 │ Daniel     │\n=#Aggregate Julia functions, such as mean, can also be used. In this case, let\'s make it a reusable expression, with it\'s own built-in label.using Statistics: mean\n\nMeanSalary =\n  :mean_salary =>\n     mean.(It.employee.salary)\n\nrun(ChicagoData,\n    It.department\n    >> Record(It.name, MeanSalary))\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┤\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#The more general form of Lift, documented in the reference, can be used to handle more complex situations."
+},
+
+{
+    "location": "start/#Query-Parameters-1",
+    "page": "Getting Started",
+    "title": "Query Parameters",
+    "category": "section",
+    "text": "The run function takes named parameters. Each argument passed via named parameter is converted into a DataKnot and made available as a global label available anywhere in the pipeline.run(ChicagoData, It.AMT, AMT=100000)\n#=>\n│ DataKnot │\n├──────────┤\n│   100000 │\n=#This technique permits complex pipelines to be re-used with different argument values. By convention we capitalize parameters so they standout from regular data labels.PaidOverAmt = (\n  It.department\n  >> It.employee\n  >> Filter(It.salary .> It.AMT)\n  >> It.name)\n\nrun(ChicagoData, PaidOverAmt, AMT=100000)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n=#With a different threshold amount, the result may change.run(ChicagoData, PaidOverAmt, AMT=85000)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n2 │ DANIEL A  │\n=#"
+},
+
+{
+    "location": "start/#Parameterized-Pipelines-1",
+    "page": "Getting Started",
+    "title": "Parameterized Pipelines",
+    "category": "section",
+    "text": "Suppose we want a parameterized pipeline that could be used anywhere within another pipeline, or could take pipeline arguments. Let\'s use an example returning employee records that have salary greater than a given amount.EmployeesOver(N) =\n  Given(:amt => N,\n    It.department\n    >> It.employee\n    >> Filter(It.salary .> It.amt))\n\nrun(ChicagoData, EmployeesOver(100000))\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┤\n1 │ JEFFERY A  SERGEANT  101442 │\n=#This pipeline could be passed an argument via a run parameter.run(ChicagoData, EmployeesOver(It.AMT), AMT=100000)\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┤\n1 │ JEFFERY A  SERGEANT  101442 │\n=#To return employees having greater than average salary, we must first compute the average salary.AvgSalary =\n   :avg_salary => mean.(It.department.employee.salary)\n\nrun(ChicagoData, AvgSalary)\n#=>\n│ avg_salary │\n├────────────┤\n│    92314.0 │\n=#We could then combine these two pipelines.run(ChicagoData, EmployeesOver(AvgSalary))\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Note that this high-level expression is yet another pipeline and it could be combined within further computation.run(ChicagoData,\n    EmployeesOver(AvgSalary)\n    >> It.name)\n#=>\n  │ name      │\n──┼───────────┤\n1 │ JEFFERY A │\n2 │ DANIEL A  │\n=#Although Given in this parameterized query defines It.avg it doesn\'t leak this attribute. run(ChicagoData,\n     EmployeesOver(AvgSalary)\n     >> It.avg)\n#-> ERROR: cannot find avg ⋮"
 },
 
 {
@@ -125,15 +141,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Keeping Values",
     "category": "section",
-    "text": "It\'s possible to Keep an expression\'s result, so that it is available within subsequent computations. For example, you may want to return records of an employee\'s name with their corresponding department\'s name.    run(ChicagoData,\n         It.department\n         >> Keep(:dept_name => It.name)\n         >> It.employee\n         >> Record(It.name, It.dept_name))\n    #=>\n      │ employee             │\n      │ name       dept_name │\n    ──┼──────────────────────┤\n    1 │ JEFFERY A  POLICE    │\n    2 │ NANCY A    POLICE    │\n    3 │ DANIEL A   FIRE      │\n    =#Suppose we wish, for a given department, to return employees having a salary greater than that department\'s average.    run(ChicagoData,\n         It.department\n         >> Keep(MeanSalary)\n         >> It.employee\n         >> Filter(It.salary .> It.mean_salary))\n    #=>\n      │ employee                    │\n      │ name       position  salary │\n    ──┼─────────────────────────────┤\n    1 │ JEFFERY A  SERGEANT  101442 │\n    =#"
+    "text": "Suppose we\'d like a list of employee names together with the corresponding department name. The naive approach won\'t work, because department is not a label in the context of an employee.run(ChicagoData,\n     It.department\n     >> It.employee\n     >> Record(It.name, It.department.name))\n#-> ERROR: cannot find department ⋮This can be overcome by using Keep to label an expression\'s result, so that it is available within subsequent computations.    run(ChicagoData,\n         It.department\n         >> Keep(:dept_name => It.name)\n         >> It.employee\n         >> Record(It.name, It.dept_name))\n    #=>\n      │ employee             │\n      │ name       dept_name │\n    ──┼──────────────────────┤\n    1 │ JEFFERY A  POLICE    │\n    2 │ NANCY A    POLICE    │\n    3 │ DANIEL A   FIRE      │\n    =#This pattern also emerges with aggregate computations which need to be done in a parent scope, for example, taking the MeanSalary across all employees, before treating them individually.    run(ChicagoData,\n         It.department\n         >> Keep(MeanSalary)\n         >> It.employee\n         >> Filter(It.salary .> It.mean_salary))\n    #=>\n      │ employee                    │\n      │ name       position  salary │\n    ──┼─────────────────────────────┤\n    1 │ JEFFERY A  SERGEANT  101442 │\n    =#While Keep and Given are similar, Keep deliberately leaks the values that it defines."
 },
 
 {
-    "location": "start/#Parameters-1",
+    "location": "start/#Paging-1",
     "page": "Getting Started",
-    "title": "Parameters",
+    "title": "Paging",
     "category": "section",
-    "text": "Suppose we want a parameterized pipeline that when passed a given salary would return employees having greater than that salary.EmployeesOver(N) =\n  Given(:avg => N,\n   It.department\n   >> It.employee\n   >> Filter(It.salary .> It.avg))\n\nrun(ChicagoData, EmployeesOver(100000))\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┤\n1 │ JEFFERY A  SERGEANT  101442 │\n=#This same query can be written as a parameter to run.run(ChicagoData, EmployeesOver(It.amt), amt=100000)\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┤\n1 │ JEFFERY A  SERGEANT  101442 │\n=#Now suppose we wish to run this to return employees having greater than average salary?  We could compute the average salary across all employees as follows.AvgSalary =\n   :avg_salary => mean.(It.department.employee.salary)\n\nrun(ChicagoData, AvgSalary)\n#=>\n│ avg_salary │\n├────────────┤\n│    92314.0 │\n=#We could then combine these two pipelines.run(ChicagoData, EmployeesOver(AvgSalary))\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#"
+    "text": "Sometimes query results can be quite large. In this case it\'s helpful to Take or Drop items from a stream. Let\'s start by listing all 3 employees of our toy database.run(ChicagoData, It.department.employee)\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#To return the first 2 employee records, we use Take.run(ChicagoData,\n    It.department.employee\n    >> Take(2))\n#=>\n  │ employee                          │\n  │ name       position        salary │\n──┼───────────────────────────────────┤\n1 │ JEFFERY A  SERGEANT        101442 │\n2 │ NANCY A    POLICE OFFICER   80016 │\n=#"
 },
 
 {
