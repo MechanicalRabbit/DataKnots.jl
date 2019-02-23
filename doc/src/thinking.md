@@ -383,14 +383,14 @@ With DataKnots, parameters can be provided so that static data can
 be used within query expressions. By convention, we use upper case,
 singular labels for query parameters.
 
-    run("Hello " .* Lookup(:WHO), WHO="World")
+    run("Hello " .* Get(:WHO), WHO="World")
     #=>
     │ DataKnot    │
     ├─────────────┤
     │ Hello World │
     =#
 
-To make `Lookup` convenient, `It` provides a shorthand syntax.
+To make `Get` convenient, `It` provides a shorthand syntax.
 
     run("Hello " .* It.WHO, WHO="World")
     #=>
@@ -418,7 +418,7 @@ query expressions. The subsequent argument is then evaluated in a
 naming context where the defined parameters are available for reuse.
 
     run(Given(:WHO => "World",
-        "Hello " .* Lookup(:WHO)))
+        "Hello " .* Get(:WHO)))
     #=>
     │ DataKnot    │
     ├─────────────┤
@@ -430,7 +430,7 @@ with expressions that one may wish to repeat more than once.
 
     GreaterThanAverage(X) =
       Given(:AVG => Mean(X),
-            X >> Filter(It .> Lookup(:AVG)))
+            X >> Filter(It .> Get(:AVG)))
 
     run(OneTo(6) >> Then(GreaterThanAverage))
     #=>
@@ -460,7 +460,7 @@ created using the `Record` combinator.
     │ GARRY M  260004 │
     =#
 
-Field access is also possible via `Lookup` or via the `It` shortcut.
+Field access is also possible via `Get` or via the `It` shortcut.
 
     run(GM >> It.name)
     #=>
@@ -567,9 +567,9 @@ support so that it prints well.
     3 │ DANA A     170112 │
     =#
 
-Access to slots in a `NamedTuple` is also supported by `Lookup`.
+Access to slots in a `NamedTuple` is also supported by `Get`.
 
-    run(DATA >> Lookup(:name))
+    run(DATA >> Get(:name))
     #=>
       │ name      │
     ──┼───────────┤
@@ -583,7 +583,7 @@ readable queries, such as "who has the greatest salary"?
 
     run(:highest_salary =>
       Given(:MAX => Max(DATA >> It.salary),
-            DATA >> Filter(It.salary .== Lookup(:MAX))))
+            DATA >> Filter(It.salary .== Get(:MAX))))
     #=>
       │ highest_salary  │
       │ name     salary │

@@ -91,12 +91,12 @@ Notice that nested lists are flattened as necessary.
 
 ### Composition
 
-Dotted expressions above are a syntax shorthand for the `Lookup`
+Dotted expressions above are a syntax shorthand for the `Get`
 primitive together with pipeline composition (`>>`). We could list
 departments in this dataset more formally:
 
     Department, Employee, Name, Salary =
-       Lookup.([:department, :employee, :name, :salary])
+       Get.([:department, :employee, :name, :salary])
 
     run(ChicagoData, Department >> Name)
     #=>
@@ -118,7 +118,7 @@ equivalently written:
     =#
 
 We will use `It.department` in preference to `Department` as
-defined to be `Lookup(:department)`.
+defined to be `Get(:department)`.
 
 ### Counting
 

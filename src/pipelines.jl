@@ -57,7 +57,7 @@ Identity pipeline with respect to pipeline composition.
 
     It.a.b.c
 
-Equivalent to `Lookup(:a) >> Lookup(:b) >> Lookup(:c)`.
+Equivalent to `Get(:a) >> Get(:b) >> Get(:c)`.
 """
 struct Navigation <: AbstractPipeline
     __path::Tuple{Vararg{Symbol}}
@@ -164,7 +164,7 @@ apply(F::Pipeline, env::Environment, q::Query)::Query =
 
 function apply(nav::Navigation, env::Environment, q::Query)::Query
     for fld in getfield(nav, :__path)
-        q = Lookup(env, q, fld)
+        q = Get(env, q, fld)
     end
     q
 end
@@ -481,14 +481,14 @@ syntax(::typeof(Tag), name::Symbol, args::Tuple, X) =
 #
 
 """
-    Lookup(name)
+    Get(name)
 
 Finds an attribute or a parameter.
 """
-Lookup(name) =
-    Pipeline(Lookup, name)
+Get(name) =
+    Pipeline(Get, name)
 
-function Lookup(env::Environment, q::Query, name)
+function Get(env::Environment, q::Query, name)
     r = lookup(env, name)
     if r == nothing
         r = lookup(domain(q), name)

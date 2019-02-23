@@ -13,10 +13,10 @@ algebra.  We will need the following definitions.
         Drop,
         Environment,
         Filter,
+        Get,
         Given,
         It,
         Lift,
-        Lookup,
         Max,
         Min,
         Record,
@@ -69,12 +69,12 @@ Pipeline are assembled algebraically: they either come a set of atomic
 
 For example, consider the pipeline:
 
-    Employees = Lookup(:department) >> Lookup(:employee)
-    #-> Lookup(:department) >> Lookup(:employee)
+    Employees = Get(:department) >> Get(:employee)
+    #-> Get(:department) >> Get(:employee)
 
 This pipeline traverses the dataset through fields *department* and *employee*.
-It is assembled from two primitive pipelines `Lookup(:department)` and
-`Lookup(:employee)` connected using the pipeline composition combinator `>>`.
+It is assembled from two primitive pipelines `Get(:department)` and
+`Get(:employee)` connected using the pipeline composition combinator `>>`.
 
 Since attribute traversal is very common, DataKnots provides a shorthand notation.
 
@@ -111,11 +111,11 @@ If we were constructing an ordinary predicate function, we would write:
 
 An equivalent pipeline is constructed as follows:
 
-    SalaryOver100K = Lift(>, (Lookup(:salary), Lift(100000)))
-    #-> Lift(>, (Lookup(:salary), Lift(100000)))
+    SalaryOver100K = Lift(>, (Get(:salary), Lift(100000)))
+    #-> Lift(>, (Get(:salary), Lift(100000)))
 
 This pipeline expression is assembled from two primitive components:
-`Lookup(:salary)` and `Lift(100000)`, which serve as parameters of the
+`Get(:salary)` and `Lift(100000)`, which serve as parameters of the
 `Lift(>)` combinator.  Here, `Lift` is used twice.  `Lift` applied to a regular
 Julia value converts it to a *constant* pipeline primitive while `Lift` applied
 to a function *lifts* it to a pipeline combinator.
@@ -209,14 +209,14 @@ To demonstrate how the principal query is constructed, let us use the pipeline
 `EmployeesWithSalaryOver100K` from the previous section.  Recall that it could
 be represented as follows:
 
-    Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)
-    #-> Lookup(:department) >> Lookup(:employee) >> Filter(Lookup(:salary) .> 100000)
+    Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)
+    #-> Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)
 
 The pipeline `P` is constructed using a composition combinator.  A composition
 transforms a query by sequentially applying its components.  Therefore, to find
 the principal query of `P`, we need to start with a trivial query and
-sequentially tranfrorm it with the pipelines `Lookup(:department)`,
-`Lookup(:employee)` and `Filter(SalaryOver100K)`.
+sequentially tranfrorm it with the pipelines `Get(:department)`,
+`Get(:employee)` and `Filter(SalaryOver100K)`.
 
 The trivial query is a monadic identity on the input dataset.
 
@@ -228,18 +228,18 @@ Then we use the function `apply()`.
 
     env = Environment()
 
-    q1 = apply(Lookup(:department), env, q0)
+    q1 = apply(Get(:department), env, q0)
     #-> chain_of(wrap(), with_elements(column(:department)), flatten())
 
 Here, the query `q1` is a monadic composition of `q0` with
 `column(:department)`.  Since `q0` is a monadic identity, this query is
 actually equivalent to `column(:department)`.
 
-In general, `Lookup(name)` maps a query to its monadic composition with
-`column(name)`.  For example, when we apply `Lookup(:employee)` to `q1`, we get
+In general, `Get(name)` maps a query to its monadic composition with
+`column(name)`.  For example, when we apply `Get(:employee)` to `q1`, we get
 `compose(q1, column(:employee))`.
 
-    q2 = apply(Lookup(:employee), env, q1)
+    q2 = apply(Get(:employee), env, q1)
     #=>
     chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
              with_elements(column(:employee)),
