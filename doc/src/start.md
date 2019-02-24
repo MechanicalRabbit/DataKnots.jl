@@ -32,8 +32,8 @@ https://gitter.im/rbt-lang/rbt-proto
 
 ## Quick Tutorial
 
-Consider a database with a tiny cross-section of public data from
-Chicago, represented as nested `NamedTuple` and `Vector` objects.
+Consider a tiny cross-section of public data from Chicago,
+represented as nested `NamedTuple` and `Vector` objects.
 
     chicago_data =
       (department = [
@@ -55,14 +55,14 @@ via the `get` function.
     typeof(get(ChicagoData))
     #-> NamedTuple{(:department,),⋮
 
-It's helpful for the top-level object in a data source to be a
-named tuple. In this Chicago data example, the very top of the
-tree is named `"department"`.
+In this hierarchical Chicago data, the root is a `NamedTuple` with
+an entry `:department`. This entry is a `Vector` of nested tuples,
+one for each department. Each of those department tuples in turn
+have an entry for `:employee` tuples within this department.
 
 ### Navigation
 
-Pipelines can be `run` on data knot. For example, to list all
-department names in `ChicagoData`, we write `It.department.name`.
+To list all the department names we write `It.department.name`.
 In this pipeline, `It` means "use the current input". The dotted
 notation lets one navigate via hierarchy.
 
@@ -99,7 +99,7 @@ into a single output.
 ### Composition
 
 Dotted navigations, such as `It.department.name`, are a syntax
-shorthand for the `Get` primitive together with pipeline
+shorthand for the `Get()` primitive together with pipeline
 composition (`>>`).
 
     run(ChicagoData, Get(:department) >> Get(:name))
@@ -110,10 +110,10 @@ composition (`>>`).
     2 │ FIRE   │
     =#
 
-The `Get(::Symbol)` primitive reproduces the contents from the
-matching container. Pipeline composition `>>` combines results
-across nested containers. For example, the next query shows
-`employee` tuples across both departments.
+The `Get(:Symbol)` primitive reproduces the contents from a named
+container. Pipeline composition `>>` combines results from nested
+traversal. For example, the next query shows `employee` tuples
+across both departments.
 
     run(ChicagoData, Get(:department) >> Get(:employee))
     #=>
@@ -147,14 +147,14 @@ This motivates our clever use of `It` as syntax short hand.
     2 │ FIRE   │
     =#
 
-Hence, subsequent examples using the `It.x.y` sugar could
-equivalently be written `Get(:x) >> Get(:y)`.
+Subsequent use of `It.x.y` syntax could be equivalently written
+`Get(:x) >> Get(:y)`.
 
 ### Counting
 
-This next example returns the number of departments in the
-dataset. Note that the argument to `Count`, `It.department`, is
-itself a pipeline.
+To return the number of departments in this dataset we write
+`Count(It.department)`. Observe that the argument provided to
+`Count()`, `It.department`, is itself a pipeline.
 
     run(ChicagoData, Count(It.department))
     #=>
@@ -164,8 +164,8 @@ itself a pipeline.
     =#
 
 Using pipeline composition (`>>`), we can perform `Count` in a
-nested context; in this case, let's count `employee` records
-within each `department`.
+nested context; for this next example, let's count `employee`
+records within each `department`.
 
     run(ChicagoData,
         It.department
@@ -184,9 +184,9 @@ to each department individually, not to the dataset as a whole.
 
 ### Records
 
-Returning values in tandem can be done with `Record`. We can
-improve on the previous example to additionally include each
-department's name.
+Returning values in tandem can be done with `Record()`. Let's
+improve our employee counting example by including each
+department's name alongside employee counts.
 
     run(ChicagoData,
         It.department
@@ -200,8 +200,8 @@ department's name.
     2 │ FIRE     1 │
     =#
 
-Records can be nested. The following department listing includes,
-for each department, employee names and their salary.
+Records can be nested. The following listing includes, for each
+department, employee names and their salary.
 
     run(ChicagoData,
         It.department
@@ -221,12 +221,14 @@ semi-colons separate values.
 
 ### Expression Labels
 
-Since DataKnots is compositional, reusable pipeline expressions
-can be factored. These expressions can also be given a `Label`.
+Reusable pipeline expressions can be independently defined. They
+may be optionally labeled using the pair syntax (`=>`). Consider a
+pipeline `EmployeeCount` that, within a context of a department,
+returns the number of employees for that department.
 
-    EmployeeCount = (
-      Count(It.employee)
-      >> Label(:count))
+    EmployeeCount =
+      :count =>
+        Count(It.employee)
 
     run(ChicagoData,
         It.department
@@ -240,11 +242,26 @@ can be factored. These expressions can also be given a `Label`.
     2 │ FIRE        1 │
     =#
 
-The pair syntax (`=>`) will also attach an expression label.
+Labels can also be attached to an existing pipeline using the
+`Label` primitive. This form is handy for use in successive
+pipeline refinements (`>>=`).
+
+    DeptCount = Count(It.department)
+    DeptCount >>= Label(:dept_count)
+
+    run(ChicagoData, DeptCount)
+    #=>
+    │ dept_count │
+    ├────────────┤
+    │          2 │
+    =#
+
+Besides providing a lovely display title, labels also provide a
+way to access fields within a record.
 
     run(ChicagoData,
-        :dept_count =>
-          Count(It.department))
+        Record(It, DeptCount)
+        >> It.dept_count)
     #=>
     │ dept_count │
     ├────────────┤
@@ -253,8 +270,9 @@ The pair syntax (`=>`) will also attach an expression label.
 
 ### Filtering Data
 
-What would a query language be without filtering? Here we list
-department names who have exactly one employee.
+Returning only wanted input can be done with `Filter()`. Here we
+list department names who have exactly one employee. Observe again
+that the argument provided to `Filter` is itself a pipeline.
 
     run(ChicagoData,
         It.department
@@ -268,7 +286,8 @@ department names who have exactly one employee.
     =#
 
 In in pipeline expressions, the broadcast variant of common
-operators, such as `.==` are to be used.
+operators, such as `.==` are to be used. Forgetting the period is
+an easy mistake to make and the error message can be unhelpful.
 
     run(ChicagoData,
         It.department
@@ -278,8 +297,8 @@ operators, such as `.==` are to be used.
     ERROR: AssertionError: eltype(input) <: AbstractVector
     =#
 
-Let's define a `GT100K` pipeline to compute if an employee's
-salary is greater than 100K.
+Let's define a `GT100K` pipeline to decide if an employee's salary
+is greater than 100K. The computation is also labeled.
 
     GT100K =
       :gt100k =>
@@ -297,8 +316,8 @@ salary is greater than 100K.
     3 │ DANIEL A    95484   false │
     =#
 
-Since `Filter` uses takes boolean valued pipeline for an
-argument, we could use it to filter employees employees.
+Since `Filter` uses takes boolean valued pipeline for an argument,
+we could use `GTK100K` to filter employees.
 
     run(ChicagoData,
         It.department.employee
@@ -310,10 +329,62 @@ argument, we could use it to filter employees employees.
     1 │ JEFFERY A │
     =#
 
+### Incremental Composition
+
+This data discovery could have been done incrementally, with each
+intermediate pipeline being fully runnable. Let's start `OurQuery`
+as a list of employees. We're not going to `run` it, but we could.
+
+    OurQuery = It.department.employee
+    #-> It.department.employee
+
+Let's extend this pipeline to construct a record so we may inspect
+the `GT100K` computation. Notice how pipeline composition is
+tracked for us. We could `run` this step also, if we wanted.
+
+    OurQuery >>= Record(It.name, It.salary, GT100K)
+    #=>
+    It.department.employee >>
+    Record(It.name, It.salary, :gt100k => It.salary .> 100000)
+    =#
+
+Since labeling permits direct Record access, we could further
+extend this pipeline to filter unwanted rows.
+
+    OurQuery >>= Filter(It.gt100k)
+    #=>
+    It.department.employee >>
+    Record(It.name, It.salary, :gt100k => It.salary .> 100000) >>
+    Filter(It.gt100k)
+    =#
+
+Let's run it.
+
+    run(ChicagoData, OurQuery)
+    #=>
+      │ employee                  │
+      │ name       salary  gt100k │
+    ──┼───────────────────────────┤
+    1 │ JEFFERY A  101442    true │
+    =#
+
+For the final step in the journey, let's only show the name.
+
+    OurQuery >>= It.name
+    run(ChicagoData, OurQuery)
+    #=>
+      │ name      │
+    ──┼───────────┤
+    1 │ JEFFERY A │
+    =#
+
+Previously, we showed how pipelines can be factored and tested
+independently. Now we have shown incremental construction.
+
 ### Lifting
 
-Besides operators, such as greater than (`>`), arbitrary functions
-can also be used within DataKnots using the broadcast notation.
+Besides broadcast operators, such as greater than (`.>`),
+arbitrary functions can also be used with the broadcast notation.
 Let's define a function to extract an employee's first name.
 
     fname(x) = titlecase(split(x)[1])
@@ -357,13 +428,15 @@ built-in label.
     =#
 
 The more general form of `Lift`, documented in the reference, can
-be used to handle more complex situations.
+be used to handle more complex situations. How the lifted function
+is treated as a pipeline constructor depends upon that function's
+input and output signature.
 
 ### Query Parameters
 
 The `run` function takes named parameters. Each argument passed
-via named parameter is converted into a `DataKnot` and made
-available as a global label available anywhere in the pipeline.
+via named parameter is converted into a `DataKnot` and then made
+available as a label accessable anywhere in the pipeline.
 
     run(ChicagoData, It.AMT, AMT=100000)
     #=>
@@ -401,10 +474,9 @@ With a different threshold amount, the result may change.
 
 ### Parameterized Pipelines
 
-Suppose we want a parameterized pipeline that could be used
-anywhere within another pipeline, or could take pipeline
-arguments. Let's use an example returning `employee` records that
-have salary greater than a given amount.
+Suppose we want a parameterized pipeline that could take other
+pipelines as arguments. For example, let's return `employee`
+records that have salary greater than a given amount.
 
     EmployeesOver(N) =
       Given(:amt => N,
@@ -420,7 +492,13 @@ have salary greater than a given amount.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-This pipeline could be passed an argument via a `run` parameter.
+The `Given` wrapper above is needed when the argument `N` is an
+arbitrary pipeline. With `Given`, `N` is evaluated with its result
+recorded as `It.amt`. This value can then be accesed from within
+the subordinate pipeline expression.
+
+In this way, a parameterized pipeline such as `EmployeesOver` can
+be passed an argument via a `run` parameter.
 
     run(ChicagoData, EmployeesOver(It.AMT), AMT=100000)
     #=>
@@ -430,8 +508,9 @@ This pipeline could be passed an argument via a `run` parameter.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-To return employees having greater than average salary, we must
-first compute the average salary.
+Let's make this example more interesting. To return employees
+having greater than average salary, we must first compute the
+average salary.
 
     AvgSalary =
        :avg_salary => mean.(It.department.employee.salary)
@@ -467,13 +546,13 @@ it could be combined within further computation.
     2 │ DANIEL A  │
     =#
 
-Although `Given` in this parameterized query defines `It.avg` it
+Although `Given` in this parameterized query defines `It.amt` it
 doesn't leak this attribute.
 
      run(ChicagoData,
          EmployeesOver(AvgSalary)
-         >> It.avg)
-    #-> ERROR: cannot find avg ⋮
+         >> It.amt)
+    #-> ERROR: cannot find amt ⋮
 
 ### Keeping Values
 
@@ -530,8 +609,8 @@ the values that it defines.
 # Paging
 
 Sometimes query results can be quite large. In this case it's
-helpful to `Take` or `Drop` items from a stream. Let's start by
-listing all 3 employees of our toy database.
+helpful to `Take` or `Drop` the first few items from a stream.
+Let's start by listing all 3 employees of our toy database.
 
     run(ChicagoData, It.department.employee)
     #=>
@@ -555,4 +634,3 @@ To return the first 2 employee records, we use `Take`.
     1 │ JEFFERY A  SERGEANT        101442 │
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
-
