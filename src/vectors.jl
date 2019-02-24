@@ -197,6 +197,9 @@ Returns a new `TupleVector` with a subset of rows specified by indexes `ks`.
     tv′
 end
 
+@inline getindex(tv::TupleVector, ::Colon) =
+    columns(tv)
+
 @inline getindex(tv::TupleVector, ::Colon, j::Union{Int,Symbol}) =
     column(tv, j)
 

@@ -18,6 +18,12 @@ Checks if constraint `x` implies constraint `y`.
 """
 function fits end
 
+#
+# Order on cardinalities.
+#
+
+fits(c1::Cardinality, c2::Cardinality) = (c1 | c2) == c2
+
 
 #
 # Represents the shape of data.
@@ -244,6 +250,21 @@ HasLabel(lbl::Union{Symbol,String}) =
 
 syntax(shp::HasLabel) =
     Expr(:call, nameof(|>), syntax_inner(shp.sub), Expr(:call, nameof(HasLabel), syntax(siglabel(shp.lbl))))
+
+label(shp::HasLabel, default=nothing) =
+    shp.lbl
+
+label(shp::Annotation, default=nothing) =
+    label(shp[], default)
+
+label(shp::AbstractShape, default=nothing) =
+    default
+
+delabel(shp::HasLabel) =
+    shp[]
+
+delabel(shp::AbstractShape) =
+    shp
 
 """
     sub |> IsMonad()

@@ -15,26 +15,32 @@ import Base:
 abstract type AbstractPipeline end
 
 """
-    DataKnot(::OutputShape, ::AbstractVector)
+    DataKnot(cell::AbstractVector, shp::AbstractShape)
 
-Encapsulates data in column-oriented format.
+Encapsulates a data point in a column-oriented form.
 """
 struct DataKnot <: AbstractPipeline
-    elts::AbstractVector
-    shp::OutputShape
+    cell::AbstractVector
+    shp::AbstractShape
+
+    function DataKnot(cell::AbstractVector, shp::AbstractShape)
+        @assert length(cell) == 1
+        #@assert fits(shapeof(cell), shp)
+        new(cell, shp)
+    end
 end
 
 DataKnot(elts::AbstractVector, card::Cardinality=x0toN) =
-    DataKnot(elts, OutputShape(shapeof(elts), card))
+    DataKnot(BlockVector([1, length(elts)+1], elts, card), BlockOf(shapeof(elts), card))
 
-DataKnot(elt::T, card::Cardinality=x1to1) where {T} =
-    DataKnot(T[elt], OutputShape(NativeShape(T), card))
+DataKnot(::Missing) =
+    DataKnot(Union{}[], NoShape())
 
-DataKnot(::Missing, card::Cardinality=x0to1) =
-    DataKnot(Union{}[], OutputShape(NoneShape(), card))
+DataKnot(ref::Base.RefValue{T}) where {T} =
+    DataKnot(T[ref.x], ValueOf(T))
 
-DataKnot(ref::Base.RefValue{T}, card::Cardinality=x1to1) where {T} =
-    DataKnot(T[ref.x], OutputShape(NativeShape(T), card))
+DataKnot(elt::T) where {T} =
+    DataKnot(T[elt], ValueOf(T))
 
 DataKnot() = DataKnot(nothing)
 
@@ -42,23 +48,13 @@ convert(::Type{DataKnot}, db::DataKnot) = db
 
 convert(::Type{DataKnot}, val) = DataKnot(val)
 
-get(db::DataKnot) =
-    let card = cardinality(db.shp)
-        card == x1to1 || card == x0to1 && !isempty(db.elts) ? db.elts[1] :
-        card == x0to1 ? missing : db.elts
-    end
+get(db::DataKnot) = db.cell[1]
 
-elements(db::DataKnot) = db.elts
+getindex(db::DataKnot) = db.cell[1]
+
+cell(db::DataKnot) = db.cell
 
 shape(db::DataKnot) = db.shp
-
-decoration(db::DataKnot) = decoration(db.shp)
-
-domain(db::DataKnot) = domain(db.shp)
-
-mode(db::DataKnot) = mode(db.shp)
-
-cardinality(db::DataKnot) = cardinality(db.shp)
 
 syntax(db::DataKnot) =
     Symbol("DataKnot( … )")
@@ -86,96 +82,114 @@ end
 struct TableData
     head::Array{Tuple{String,Int},2}
     body::TupleVector
-    doms::Vector{AbstractShape}
+    flds::Vector{AbstractShape}
     idxs::AbstractVector{Int}
     tear::Int
 end
 
-TableData(head, body, doms) =
-    TableData(head, body, doms, 1:0, 0)
+TableData(head, body, flds) =
+    TableData(head, body, flds, 1:0, 0)
 
 function table_data(db::DataKnot, maxy::Int)
-    elts = elements(db)
-    dom = domain(db)
-    card = cardinality(db)
-    title =
-        let lbl = label(shape(db))
-            if lbl === nothing
-                lbl = :DataKnot
-            end
-            String(lbl)
-        end
-    parts = data_parts(dom, elts)
-    if isempty(parts)
-        head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
-        body = TupleVector(length(elts), AbstractVector[elts])
-        doms = AbstractShape[NoneShape()]
-    else
-        hh = (!isempty(title) ? 1 : 0) + maximum(p -> size(p.head, 1), parts)
-        hw = sum(p -> size(p.head, 2), parts)
-        head = fill(("", 0), (hh, hw))
-        if !isempty(title)
-            head[1,1] = (title, hw)
-        end
-        cols = AbstractVector[]
-        doms = AbstractShape[]
-        l = 1
-        for part in parts
-            append!(cols, columns(part.body))
-            append!(doms, part.doms)
-            ph = size(part.head, 1)
-            pw = size(part.head, 2)
-            t = hh - ph + 1
-            copyto!(head, CartesianIndices((t:t+ph-1, l:l+pw-1)), part.head, CartesianIndices(part.head))
-            l += pw
-        end
-        body = TupleVector(length(elts), cols)
-    end
-    L = length(elts)
-    idxs = 1:L
-    tear = 0
-    if !isplural(card)
-        idxs = 1:0
-    else
-        avail = max(3, maxy - size(head, 1) - 4)
-        if avail < L
-            tear = 1 + avail ÷ 2
-            idxs = [1:tear; L-avail+tear+2:L]
-            body = body[idxs]
-        end
-    end
-    return TableData(head, body, doms, idxs, tear)
+    shp = shape(db)
+    title = String(label(shp, :DataKnot))
+    head = fill((title, 1), (1, 1))
+    body = TupleVector(1, AbstractVector[cell(db)])
+    flds = AbstractShape[delabel(shp)]
+    d = TableData(head, body, flds)
+    return _data_tear(_data_focus(d, 1), maxy)
 end
 
-data_parts(shp::AbstractShape, vals::AbstractVector) =
-    [TableData(fill(("", 0), (0, 1)), TupleVector(length(vals), AbstractVector[vals]), AbstractShape[shp])]
+_data_focus(d::TableData, pos) =
+    _focus_tuple(_focus_block(d, pos), pos)
 
-function data_parts(shp::RecordShape, vals::TupleVector)
-    parts = TableData[]
-    for i in eachindex(shp[:])
-        title =
-            let lbl = label(shp[i])
-                if lbl === nothing
-                    lbl = Symbol("#$i")
-                end
-                String(lbl)
-            end
-        head = fill((title, 1), (!isempty(title) ? 1 : 0, 1))
-        body = TupleVector(length(vals), AbstractVector[column(vals, i)])
-        doms = AbstractShape[shp[i]]
-        push!(parts, TableData(head, body, doms))
+function _focus_block(d::TableData, pos::Int)
+    col_fld = _prepare_focus_block(d.body[:, pos], d.flds[pos])
+    col_fld !== nothing || return d
+    col, fld = col_fld
+    offs = offsets(col)
+    elts = elements(col)
+    perm = Vector{Int}(undef, length(elts))
+    l = r = 1
+    @inbounds for k = 1:length(col)
+        l = r
+        r = offs[k+1]
+        for n = l:r-1
+            perm[n] = k
+        end
     end
-    parts
+    cols′ = copy(d.body[:])
+    for i in eachindex(cols′)
+        cols′[i] =
+            if i == pos
+                elts
+            else
+                cols′[i][perm]
+            end
+    end
+    body′ = TupleVector(length(elts), cols′)
+    flds′ = copy(d.flds)
+    flds′[pos] = fld[]
+    idxs′ = !isempty(d.idxs) ? d.idxs[perm] :
+            isplural(fld) ? (1:length(elts)) : (1:0)
+    return TableData(d.head, body′, flds′, idxs′, 0)
 end
 
-function data_parts(::NativeShape, vals::AbstractVector{<:NamedTuple})
-    ty = eltype(vals)
-    lbls = collect(Symbol, ty.parameters[1])
-    coltys = ty.parameters[2].parameters
-    cols = AbstractVector[BlockVector(:, collect(coltys[j], map(t -> t[j], vals)))
-                          for j = eachindex(coltys)]
-    vals′ = TupleVector(lbls, length(vals), cols)
-    data_parts(shapeof(vals′), vals′)
+_prepare_focus_block(col::BlockVector, shp::BlockOf) =
+    (col, shp)
+
+_prepare_focus_block(col::AbstractVector, shp::AbstractShape) =
+    nothing
+
+function _focus_tuple(d::TableData, pos::Int)
+    col_fld = _prepare_focus_tuple(d.body[:, pos], d.flds[pos])
+    col_fld !== nothing || return d
+    col, fld = col_fld
+    cw = max(1, width(col))
+    hh, hw = size(d.head)
+    hh′ = hh + 1
+    hw′ = hw + cw - 1
+    head′ = fill(("", 0), (hh′, hw′))
+    for row = 1:hh
+        for col = 1:hw
+            col′ = (col <= pos) ? col : col + cw - 1
+            (text, span) = d.head[row, col]
+            span′ = (col + span - 1 < pos || col > pos) ? span : span + cw - 1
+            head′[row, col′] = (text, span′)
+        end
+    end
+    for col = 1:hw
+        col′ = (col <= pos) ? col : col + cw - 1
+        head′[hw′, col′] = ("", 1)
+    end
+    for k = 1:cw
+        col′ = pos + k - 1
+        text = String(label(fld, k))
+        head′[hw′, col′] = (text, 1)
+    end
+    cols′ = copy(d.body[:])
+    splice!(cols′, pos:pos, width(col) > 0 ? col[:] : [BlockVector(fill(1, length(col)+1), Union{}[], x0to1)])
+    body′ = TupleVector(length(d.body), cols′)
+    flds′ = copy(d.flds)
+    splice!(flds′, pos:pos, width(col) > 0 ? fld[:] : [NoShape()])
+    return TableData(head′, body′, flds′, d.idxs, d.tear)
+end
+
+_prepare_focus_tuple(col::TupleVector, shp::TupleOf) =
+    (col, shp)
+
+_prepare_focus_tuple(::AbstractVector, AbstractShape) =
+    nothing
+
+function _data_tear(d::TableData, maxy::Int)
+    L = length(d.body)
+    avail = max(3, maxy - size(d.head, 1) - 4)
+    avail < L || return d
+    tear = 1 + avail ÷ 2
+    perm = [1:tear; L-avail+tear+2:L]
+    body′ = d.body[perm]
+    idxs′ = !isempty(d.idxs) ? d.idxs[perm] : d.idxs
+    return TableData(d.head, body′, d.flds, idxs′, tear)
 end
 
 struct TableCell
@@ -214,14 +228,14 @@ function populate_body!(d::TableData, l::TableLayout, maxx::Int)
     col = 1
     avail = maxx
     if !isempty(d.idxs)
-        avail = populate_column!(l, col, NativeShape(Int), d.idxs, avail)
+        avail = populate_column!(l, col, ValueOf(Int), d.idxs, avail)
         col += 1
     end
-    for (dom, vals) in zip(d.doms, columns(d.body))
+    for (fld, vals) in zip(d.flds, columns(d.body))
         if avail < 0
             break
         end
-        avail = populate_column!(l, col, dom, vals, avail)
+        avail = populate_column!(l, col, fld, vals, avail)
         col += 1
     end
 end
@@ -273,7 +287,7 @@ function populate_head!(d::TableData, l::TableLayout)
     end
 end
 
-function render_cell(shp::RecordShape, vals::AbstractVector, idx::Int, avail::Int)
+function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int)
     buf = IOBuffer()
     comma = false
     for i in eachindex(shp[:])
@@ -295,7 +309,7 @@ function render_cell(shp::RecordShape, vals::AbstractVector, idx::Int, avail::In
     return TableCell(String(take!(buf)))
 end
 
-function render_cell(::NativeShape, vals::AbstractVector{<:Union{Tuple,NamedTuple}}, idx::Int, avail::Int)
+function render_cell(::ValueOf, vals::AbstractVector{<:Union{Tuple,NamedTuple}}, idx::Int, avail::Int)
     ty = eltype(vals)
     w = length(ty <: Tuple ? ty.parameters : ty.parameters[2].parameters)
     buf = IOBuffer()
@@ -320,7 +334,7 @@ function render_cell(::NativeShape, vals::AbstractVector{<:Union{Tuple,NamedTupl
     return TableCell(String(take!(buf)))
 end
 
-function render_cell(shp::OutputShape, vals::AbstractVector, idx::Int, avail::Int)
+function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int)
     offs = offsets(vals)
     elts = elements(vals)
     l = offs[idx]
@@ -336,7 +350,7 @@ function render_cell(shp::OutputShape, vals::AbstractVector, idx::Int, avail::In
                 avail -= 2
                 comma = false
             end
-            cell = render_cell(domain(shp), elts, k, avail)
+            cell = render_cell(shp[], elts, k, avail)
             print(buf, cell.text)
             avail -= textwidth(cell.text)
             if avail < 0
@@ -348,11 +362,11 @@ function render_cell(shp::OutputShape, vals::AbstractVector, idx::Int, avail::In
         end
         return TableCell(String(take!(buf)))
     else
-        return render_cell(domain(shp), elts, l, avail)
+        return render_cell(shp[], elts, l, avail)
     end
 end
 
-render_cell(shp::NativeShape, vals::AbstractVector, idx::Int, avail::Int) =
+render_cell(shp::ValueOf, vals::AbstractVector, idx::Int, avail::Int) =
     render_cell(shp.ty, vals[idx], avail)
 
 const render_context = :compact => true

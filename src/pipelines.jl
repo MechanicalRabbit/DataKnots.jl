@@ -16,17 +16,18 @@ import Base:
 """
     Pipeline(op, args...)
 
-A pipeline is a transformation of monadic queries.
+A pipeline is a query transformation.  Specifically, it takes a query that maps
+*origin* to *input* and generates a query that maps *origin* to *output*.
 
 Parameter `op` is a function that performs the transformation; `args` are extra
 arguments passed to the function.
 
-The pipeline transforms an input monadic query `q` by invoking `op` with
-the following arguments:
+The pipeline transforms an input query `q` by invoking `op` with the following
+arguments:
 
     op(env::Environment, q::Query, args...)
 
-The result of `op` must again be a monadic query.
+The result of `op` must again be the output query.
 """
 struct Pipeline <: AbstractPipeline
     op
@@ -146,10 +147,7 @@ unpack(q, output) =
 Pipeline execution state.
 """
 mutable struct Environment
-    slots::Vector{Pair{Symbol,OutputShape}}
 end
-
-Environment() = Environment([])
 
 apply(F, env::Environment, q::Query)::Query =
     apply(Lift(F), env, q)
