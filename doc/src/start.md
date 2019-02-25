@@ -381,6 +381,98 @@ name that met the criteria.
     1 │ JEFFERY A │
     =#
 
+### Aggregate pipelines
+
+Aggregates, such as `Count` may be used directly as a pipeline,
+providing incremental refinement without additional nesting. In
+this next example, `Count` takes an input of filtered employees,
+and returns the size of its input.
+
+    run(ChicagoData,
+        It.department.employee
+        >> Filter(It.salary .> 100000)
+        >> Count)
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        1 │
+    =#
+
+Aggregate pipelines like operate contextually. In the following
+example, the `Count` is performed relative to each department.
+
+    run(ChicagoData,
+        It.department
+        >> Record(
+            It.name,
+            :count =>
+              It.employee
+              >> Filter(It.salary .> 100000)
+              >> Count))
+    #=>
+      │ department    │
+      │ name    count │
+    ──┼───────────────┤
+    1 │ POLICE      1 │
+    2 │ FIRE        0 │
+    =#
+
+There are other aggregate functions, such as `Min`, `Max`, `Sum`
+and `Count`. They could be used to create a statistical measure.
+
+    Stats(X) =
+      :stats =>
+        Record(
+          :count => Count(X),
+          :min => Min(X),
+          :max => Max(X),
+          :sum => Sum(X))
+
+    run(ChicagoData, Stats(It.department.employee.salary))
+
+    #=>
+    │ stats                        │
+    │ count  min    max     sum    │
+    ├──────────────────────────────┤
+    │     3  80016  101442  276942 │
+    =#
+
+This `Stats()` pipeline constructor could be made usable as a
+pipeline primitive using `Then()` as follows:
+
+    run(ChicagoData,
+        It.department
+        >> Record(It.name,
+             It.employee.salary
+             >> Then(Stats)))
+    #=>
+      │ department                       │
+      │ name    stats                    │
+    ──┼──────────────────────────────────┤
+    1 │ POLICE  2, 80016, 101442, 181458 │
+    2 │ FIRE    1, 95484, 95484, 95484   │
+    =#
+
+To avoid having to type in `Then()`, one could register an
+automatic type conversion for the `Stats` function.
+
+    DataKnots.Lift(::typeof(Stats)) = Then(Stats)
+
+    MyQuery = It.department.employee.salary
+    MyQuery >>= Filter(It .< 100000)
+    run(ChicagoData, MyQuery >> Stats)
+    #=>
+    │ stats                       │
+    │ count  min    max    sum    │
+    ├─────────────────────────────┤
+    │     2  80016  95484  175500 │
+    =#
+
+The converse of `Then` is called `Each`. In an expression such as
+`Y >> Each(Z)`, for each `Y`, the pipeline evaluates `Z`
+*elementwise* and merges the outputs. In this way, `Count(X)` has
+an output identical to `Each(X >> Count)`.
+
 ### Paging Data
 
 Sometimes query results can be quite large. In this case it's
@@ -432,41 +524,6 @@ up to the last item in the stream:
     ──┼────────────────────────────────────┤
     1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
     =#
-
-### Input Origin
-
-When a pipeline is `run`, the input stream for a pipeline isn't
-simply a data set, instead, it is a relationship between an
-*origin* with a set of *target* values. For most pipeline
-constructors, such as `Count()`, only the *target* is considered.
-However, sometimes the origin of the input can be used as well.
-
-For example, how could we return the first half of a pipeline's
-input? We could start by computing the half-way point, using
-integer division (`.÷`).
-
-    Halfway = Count(Employee) .÷ 2
-    run(ChicagoData, Halfway)
-    #=>
-    │ DataKnot │
-    ├──────────┤
-    │        1 │
-    =#
-
-Then, use `Take` with this computed index.
-
-    run(ChicagoData, Employee >> Take(Halfway))
-    #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┤
-    1 │ JEFFERY A  SERGEANT  101442 │
-    =#
-
-This evaluation works because the pipeline that is built by `Take`
-evaluates its argument, `Halfway` against the origin and not the
-target of the pipeline's input stream. Other operators that are
-aware of an input's origin include `Sort` and `GroupBy`.
 
 ### Lifting
 
@@ -692,4 +749,39 @@ across all employees, before treating them individually.
 
 While `Keep` and `Given` are similar, `Keep` deliberately leaks
 the values that it defines.
+
+### Input Origin
+
+When a pipeline is `run`, the input for a pipeline isn't simply a
+data set, instead, it is a path between an *origin* and a set of
+*target* values. For most pipeline constructors, such as
+`Count()`, only the target is considered. However, sometimes the
+origin of the input can be used as well.
+
+For example, how could we return the first half of a pipeline's
+input? We could start by computing the half-way point, using
+integer division (`.÷`).
+
+    Employee = It.department.employee
+    Halfway = Count(Employee) .÷ 2
+    run(ChicagoData, Halfway)
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        1 │
+    =#
+
+Then, use `Take` with this computed index.
+
+    run(ChicagoData, Employee >> Take(Halfway))
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+This evaluation works because the pipeline that is built by `Take`
+evaluates its argument, `Halfway` against the origin and not the
+target of the pipeline's input stream.
 
