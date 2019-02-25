@@ -58,7 +58,7 @@ via the `get` function.
 In this hierarchical Chicago data, the root is a `NamedTuple` with
 an entry `:department`. This entry is a `Vector` of nested tuples,
 one for each department. Each of those department tuples in turn
-have an entry for `:employee` tuples within this department.
+have a `:name` entry and an entry for `:employee` tuples.
 
 ### Navigation
 
@@ -80,7 +80,7 @@ directly accessible from the root of the dataset provided.
     run(ChicagoData, It.employee)
     #-> ERROR: cannot find employee ⋮
 
-In this case, `employee` tuples can be accessed by navigating
+Instead, the `employee` tuples can be accessed by navigating
 though `department` tuples.
 
     run(ChicagoData, It.department.employee)
@@ -96,7 +96,7 @@ though `department` tuples.
 Notice that nested lists traversed during navigation are flattened
 into a single output.
 
-### Composition
+### Composition & Identity
 
 Dotted navigations, such as `It.department.name`, are a syntax
 shorthand for the `Get()` primitive together with pipeline
@@ -112,7 +112,7 @@ composition (`>>`).
 
 The `Get(:Symbol)` primitive reproduces the contents from a named
 container. Pipeline composition `>>` combines results from nested
-traversal. For example, the next query shows `employee` tuples
+traversal. For example, the next pipeline returns employee tuples
 across both departments.
 
     run(ChicagoData, Get(:department) >> Get(:employee))
@@ -150,11 +150,11 @@ This motivates our clever use of `It` as syntax short hand.
 Subsequent use of `It.x.y` syntax could be equivalently written
 `Get(:x) >> Get(:y)`.
 
-### Counting
+### Counting Data
 
-To return the number of departments in this dataset we write
-`Count(It.department)`. Observe that the argument provided to
-`Count()`, `It.department`, is itself a pipeline.
+To return the number of departments in this Chicago dataset we
+write `Count(It.department)`. Observe that the argument provided
+to `Count()`, `It.department`, is itself a pipeline.
 
     run(ChicagoData, Count(It.department))
     #=>
@@ -178,14 +178,14 @@ records within each `department`.
     =#
 
 Here we see that the 1st department, `"POLICE"`, has `2`
-employees, while the 2nd, `"FIRE"` only has `1`. The occurance of
+employees, while the 2nd, `"FIRE"` only has `1`. The occurrence of
 `It` within the subordinate pipeline `Count(It.employee)` refers
 to each department individually, not to the dataset as a whole.
 
-### Records
+### Record Construction
 
 Returning values in tandem can be done with `Record()`. Let's
-improve our employee counting example by including each
+improve the output of the previous pipeline by including each
 department's name alongside employee counts.
 
     run(ChicagoData,
@@ -219,12 +219,13 @@ department, employee names and their salary.
 In this nested display, commas are used to separate fields and
 semi-colons separate values.
 
-### Expression Labels
+### Expressions & Output Labels
 
-Reusable pipeline expressions can be independently defined. They
-may be optionally labeled using the pair syntax (`=>`). Consider a
-pipeline `EmployeeCount` that, within a context of a department,
-returns the number of employees for that department.
+Pipeline expressions can be independently defined, encapsulating
+logic and enabling reuse. Further, the output column of these
+named pipelines may be labeled using the pair syntax (`=>`).
+Consider an `EmployeeCount` pipeline that, within the context of a
+department, returns the number of employees in that department.
 
     EmployeeCount =
       :count =>
@@ -270,9 +271,8 @@ way to access fields within a record.
 
 ### Filtering Data
 
-Returning only wanted input can be done with `Filter()`. Here we
-list department names who have exactly one employee. Observe again
-that the argument provided to `Filter` is itself a pipeline.
+Returning only wanted values can be done with `Filter()`. Here we
+list department names who have exactly one employee.
 
     run(ChicagoData,
         It.department
@@ -285,9 +285,10 @@ that the argument provided to `Filter` is itself a pipeline.
     1 │ FIRE      1 │
     =#
 
-In in pipeline expressions, the broadcast variant of common
+In pipeline expressions, the broadcast variant of common
 operators, such as `.==` are to be used. Forgetting the period is
-an easy mistake to make and the error message can be unhelpful.
+an easy mistake to make and the Julia language error message can
+be unhelpful to figuring out what went wrong.
 
     run(ChicagoData,
         It.department
@@ -298,7 +299,7 @@ an easy mistake to make and the error message can be unhelpful.
     =#
 
 Let's define a `GT100K` pipeline to decide if an employee's salary
-is greater than 100K. The computation is also labeled.
+is greater than 100K. The output of this pipeline is also labeled.
 
     GT100K =
       :gt100k =>
@@ -338,9 +339,9 @@ as a list of employees. We're not going to `run` it, but we could.
     OurQuery = It.department.employee
     #-> It.department.employee
 
-Let's extend this pipeline to construct a record so we may inspect
-the `GT100K` computation. Notice how pipeline composition is
-tracked for us. We could `run` this step also, if we wanted.
+Let's extend this pipeline to inspect the `GT100K` computation.
+Notice how pipeline composition is tracked for us. We could `run`
+this step also, if we wanted.
 
     OurQuery >>= Record(It.name, It.salary, GT100K)
     #=>
@@ -368,7 +369,8 @@ Let's run it.
     1 │ JEFFERY A  101442    true │
     =#
 
-For the final step in the journey, let's only show the name.
+For the final step in the journey, let's only show the employee's
+name that met the criteria.
 
     OurQuery >>= It.name
     run(ChicagoData, OurQuery)
@@ -378,8 +380,82 @@ For the final step in the journey, let's only show the name.
     1 │ JEFFERY A │
     =#
 
-Previously, we showed how pipelines can be factored and tested
-independently. Now we have shown incremental construction.
+# Paging Data
+
+Sometimes query results can be quite large. In this case it's
+helpful to `Take` or `Drop` items from the input stream. Let's
+start by listing all 3 employees of our toy database.
+
+    Employee = It.department.employee)
+    run(ChicagoData, Employee)
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ NANCY A    POLICE OFFICER     80016 │
+    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+To return upto the 2nd employee record, we use `Take`.
+
+    run(ChicagoData, Employee >> Take(2))
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+A negative index can be used to mark records from the end of the
+pipeline's input. So, to return upto, but not including, the very
+last item in the stream, we could write:
+
+    run(ChicagoData, Employee >> Take(-1))
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+To return the last record of the pipeline's input, we could `Drop`
+upto the last item in the stream:
+
+    run(ChicagoData, Employee >> Drop(-1))
+    #=>
+      │ employee                           │
+      │ name      position          salary │
+    ──┼────────────────────────────────────┤
+    1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
+    =#
+
+How could we return the first half of the pipeline's input? Start
+by computing the half-way point, using integer division (`.÷`).
+
+    Halfway = Count(Employee) .÷ 2
+    run(ChicagoData, Halfway)
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        1 │
+    =#
+
+Then, use `Take` with this computed index.
+
+    run(ChicagoData, Employee >> Take(Halfway))
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+This works because the arguments to `Take`/`Drop` can be arbitrary
+pipelines. However, unlike `Filter`, the arguments are evaluated
+in the *origin*, not the *target* of the pipeline's input.
 
 ### Lifting
 
@@ -436,7 +512,7 @@ input and output signature.
 
 The `run` function takes named parameters. Each argument passed
 via named parameter is converted into a `DataKnot` and then made
-available as a label accessable anywhere in the pipeline.
+available as a label accessible anywhere in the pipeline.
 
     run(ChicagoData, It.AMT, AMT=100000)
     #=>
@@ -494,7 +570,7 @@ records that have salary greater than a given amount.
 
 The `Given` wrapper above is needed when the argument `N` is an
 arbitrary pipeline. With `Given`, `N` is evaluated with its result
-recorded as `It.amt`. This value can then be accesed from within
+recorded as `It.amt`. This value can then be accessed from within
 the subordinate pipeline expression.
 
 In this way, a parameterized pipeline such as `EmployeesOver` can
@@ -606,31 +682,3 @@ across all employees, before treating them individually.
 While `Keep` and `Given` are similar, `Keep` deliberately leaks
 the values that it defines.
 
-# Paging
-
-Sometimes query results can be quite large. In this case it's
-helpful to `Take` or `Drop` the first few items from a stream.
-Let's start by listing all 3 employees of our toy database.
-
-    run(ChicagoData, It.department.employee)
-    #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┤
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-    =#
-
-To return the first 2 employee records, we use `Take`.
-
-    run(ChicagoData,
-        It.department.employee
-        >> Take(2))
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┤
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
