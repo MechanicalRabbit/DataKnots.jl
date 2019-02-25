@@ -3,10 +3,10 @@
 DataKnots is currently usable for contributors who wish to help
 grow the ecosystem. However, it is not yet expected to be usable
 for general audiences. In particular, with the v0.1 release, there
-are no data source adapters. DataKnots currently lacks important
-operators, such as `Sort`, among others. Many of these obvious
-deficiencies have previously been implemented in prototype form.
-Subsequent releases will add features incrementally.
+are no data source adapters. Further, DataKnots currently lacks
+important operators, such as `Sort`, among others. Many of these
+obvious deficiencies have previously been implemented in prototype
+form.  Subsequent releases will add features incrementally.
 
 ## Installation
 
@@ -317,8 +317,8 @@ is greater than 100K. The output of this pipeline is also labeled.
     3 │ DANIEL A    95484   false │
     =#
 
-Since `Filter` uses takes boolean valued pipeline for an argument,
-we could use `GTK100K` to filter employees.
+Since `Filter` takes a boolean valued pipeline for an argument, we
+could use `GTK100K` to filter employees.
 
     run(ChicagoData,
         It.department.employee
@@ -339,10 +339,11 @@ as a list of employees. We're not going to `run` it, but we could.
     OurQuery = It.department.employee
     #-> It.department.employee
 
-Let's extend this pipeline to inspect the `GT100K` computation.
-Notice how pipeline composition is tracked for us. We could `run`
-this step also, if we wanted.
+Let's extend this pipeline to compute and show if the salary is
+over $100k. Notice how pipeline composition is unwrapped and
+tracked for us. We could `run` this step also, if we wanted.
 
+    GT100K = :gt100k => It.salary .> 100000
     OurQuery >>= Record(It.name, It.salary, GT100K)
     #=>
     It.department.employee >>
@@ -380,13 +381,13 @@ name that met the criteria.
     1 │ JEFFERY A │
     =#
 
-# Paging Data
+### Paging Data
 
 Sometimes query results can be quite large. In this case it's
 helpful to `Take` or `Drop` items from the input stream. Let's
 start by listing all 3 employees of our toy database.
 
-    Employee = It.department.employee)
+    Employee = It.department.employee
     run(ChicagoData, Employee)
     #=>
       │ employee                            │
@@ -397,7 +398,7 @@ start by listing all 3 employees of our toy database.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-To return upto the 2nd employee record, we use `Take`.
+To return up to the 2nd employee record, we use `Take`.
 
     run(ChicagoData, Employee >> Take(2))
     #=>
@@ -409,7 +410,7 @@ To return upto the 2nd employee record, we use `Take`.
     =#
 
 A negative index can be used to mark records from the end of the
-pipeline's input. So, to return upto, but not including, the very
+pipeline's input. So, to return up to, but not including, the very
 last item in the stream, we could write:
 
     run(ChicagoData, Employee >> Take(-1))
@@ -422,7 +423,7 @@ last item in the stream, we could write:
     =#
 
 To return the last record of the pipeline's input, we could `Drop`
-upto the last item in the stream:
+up to the last item in the stream:
 
     run(ChicagoData, Employee >> Drop(-1))
     #=>
@@ -432,8 +433,17 @@ upto the last item in the stream:
     1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
     =#
 
-How could we return the first half of the pipeline's input? Start
-by computing the half-way point, using integer division (`.÷`).
+### Input Origin
+
+When a pipeline is `run`, the input stream for a pipeline isn't
+simply a data set, instead, it is a relationship between an
+*origin* with a set of *target* values. For most pipeline
+constructors, such as `Count()`, only the *target* is considered.
+However, sometimes the origin of the input can be used as well.
+
+For example, how could we return the first half of a pipeline's
+input? We could start by computing the half-way point, using
+integer division (`.÷`).
 
     Halfway = Count(Employee) .÷ 2
     run(ChicagoData, Halfway)
@@ -453,9 +463,10 @@ Then, use `Take` with this computed index.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-This works because the arguments to `Take`/`Drop` can be arbitrary
-pipelines. However, unlike `Filter`, the arguments are evaluated
-in the *origin*, not the *target* of the pipeline's input.
+This evaluation works because the pipeline that is built by `Take`
+evaluates its argument, `Halfway` against the origin and not the
+target of the pipeline's input stream. Other operators that are
+aware of an input's origin include `Sort` and `GroupBy`.
 
 ### Lifting
 
