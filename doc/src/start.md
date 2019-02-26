@@ -1,12 +1,11 @@
 # Getting Started
 
 DataKnots is currently usable for contributors who wish to help
-grow the ecosystem. However, it is not yet expected to be usable
-for general audiences. In particular, with the v0.1 release, there
-are no data source adapters. Further, DataKnots currently lacks
-important operators, such as `Sort`, among others. Many of these
-obvious deficiencies have previously been implemented in prototype
-form.  Subsequent releases will add features incrementally.
+grow the ecosystem. However, DataKnots is not yet usable for
+general audiences: with v0.1, there are no data source adapters
+and we lack important operators, such as `Sort` and `Group`. Many
+of these deficiencies were successfully prototyped and subsequent
+releases will add these necessary features incrementally.
 
 ## Installation
 
@@ -56,9 +55,9 @@ via the `get` function.
     #-> NamedTuple{(:department,),⋮
 
 In this hierarchical Chicago data, the root is a `NamedTuple` with
-an entry `:department`. This entry is a `Vector` of nested tuples,
-one for each department. Each of those department tuples in turn
-have a `:name` entry and an entry for `:employee` tuples.
+an entry `:department`, that `Vector` valued entry has another
+vector of tuples labeled `:employee`. The label `name` occurs both
+within the context of a department and within an employee record.
 
 ### Navigation
 
@@ -110,10 +109,9 @@ composition (`>>`).
     2 │ FIRE   │
     =#
 
-The `Get(:Symbol)` primitive reproduces the contents from a named
-container. Pipeline composition `>>` combines results from nested
-traversal. For example, the next pipeline returns employee tuples
-across both departments.
+The `Get()` pipeline primitive reproduces contents from a named
+container. Pipeline composition `>>` merges results from nested
+traversal. They can be used together creatively.
 
     run(ChicagoData, Get(:department) >> Get(:employee))
     #=>
@@ -137,7 +135,8 @@ composition without changing the result, we can write:
     2 │ FIRE   │
     =#
 
-This motivates our clever use of `It` as syntax short hand.
+This motivates our clever use of `It` as a syntax short hand,
+implemented via Julia's attribute lookup.
 
     run(ChicagoData, It.department.name)
     #=>
@@ -147,10 +146,11 @@ This motivates our clever use of `It` as syntax short hand.
     2 │ FIRE   │
     =#
 
-Subsequent use of `It.x.y` syntax could be equivalently written
-`Get(:x) >> Get(:y)`.
+Use of `It.x.y` syntax could be equivalently written `Get(:x) >>
+Get(:y)`. In a macro syntax for DataKnots these navigation paths
+could be written plainly as `x.y` without `It`.
 
-### Counting Data
+### Context & Counting
 
 To return the number of departments in this Chicago dataset we
 write `Count(It.department)`. Observe that the argument provided
@@ -370,8 +370,36 @@ Let's run it.
     1 │ JEFFERY A  101442    true │
     =#
 
+Well-tested pipelines may have definitions that obscure their
+display in larger compositions. We can `Tag` them.
+
+    GT100K = Tag(:GT100K, :gt100k => It.salary .> 100000)
+    #-> GT100K
+
+Then, when they are used in larger compositions, their definition
+is gracefully replaced with the tag that we provided.
+
+    OurQuery = It.department.employee >>
+                 Record(It.name, It.salary, GT100K)
+    #=>
+    It.department.employee >> Record(It.name, It.salary, GT100K)
+    =#
+
+Of course, they still work the same way. Notice that the tag
+(`:GT100K`) is distinct from the data label (`:gt100k`), the tag
+names the pipeline while the label names the output column.
+
+    OurQuery >>= Filter(It.gt100k)
+    run(ChicagoData, OurQuery)
+    #=>
+      │ employee                  │
+      │ name       salary  gt100k │
+    ──┼───────────────────────────┤
+    1 │ JEFFERY A  101442    true │
+    =#
+
 For the final step in the journey, let's only show the employee's
-name that met the criteria.
+name that met the GT100K criteria.
 
     OurQuery >>= It.name
     run(ChicagoData, OurQuery)
@@ -398,91 +426,72 @@ and returns the size of its input.
     │        1 │
     =#
 
-Aggregate pipelines like operate contextually. In the following
-example, the `Count` is performed relative to each department.
+Aggregate pipelines operate contextually. In the following
+example, `Count` is performed relative to each department.
 
     run(ChicagoData,
         It.department
         >> Record(
             It.name,
-            :count =>
+            :over_100k =>
               It.employee
               >> Filter(It.salary .> 100000)
               >> Count))
     #=>
-      │ department    │
-      │ name    count │
-    ──┼───────────────┤
-    1 │ POLICE      1 │
-    2 │ FIRE        0 │
+      │ department        │
+      │ name    over_100k │
+    ──┼───────────────────┤
+    1 │ POLICE          1 │
+    2 │ FIRE            0 │
     =#
 
-There are other aggregate functions, such as `Min`, `Max`, `Sum`
-and `Count`. They could be used to create a statistical measure.
-
-    Stats(X) =
-      :stats =>
-        Record(
-          :count => Count(X),
-          :min => Min(X),
-          :max => Max(X),
-          :sum => Sum(X))
-
-    run(ChicagoData, Stats(It.department.employee.salary))
-
-    #=>
-    │ stats                        │
-    │ count  min    max     sum    │
-    ├──────────────────────────────┤
-    │     3  80016  101442  276942 │
-    =#
-
-This `Stats()` pipeline constructor could be made usable as a
-pipeline primitive using `Then()` as follows:
+Note that in `It.department.employee >> Count`, the `Count`
+pipeline aggregates the number of employees across all
+departments. This doesn't change even if we add parentheses:
 
     run(ChicagoData,
-        It.department
-        >> Record(It.name,
-             It.employee.salary
-             >> Then(Stats)))
+        It.department >> (It.employee >> Count))
     #=>
-      │ department                       │
-      │ name    stats                    │
-    ──┼──────────────────────────────────┤
-    1 │ POLICE  2, 80016, 101442, 181458 │
-    2 │ FIRE    1, 95484, 95484, 95484   │
+    │ DataKnot │
+    ├──────────┤
+    │        3 │
     =#
 
-To avoid having to type in `Then()`, one could register an
-automatic type conversion for the `Stats` function.
-
-    DataKnots.Lift(::typeof(Stats)) = Then(Stats)
-
-    MyQuery = It.department.employee.salary
-    MyQuery >>= Filter(It .< 100000)
-    run(ChicagoData, MyQuery >> Stats)
-    #=>
-    │ stats                       │
-    │ count  min    max    sum    │
-    ├─────────────────────────────┤
-    │     2  80016  95484  175500 │
-    =#
-
-The converse of `Then` is called `Each`. In an expression such as
-`Y >> Each(Z)`, for each `Y`, the pipeline evaluates `Z`
-*elementwise* and merges the outputs. In this way, `Count(X)` has
-an output identical to `Each(X >> Count)`.
+To count employees in *each* department, we use the `Each()`
+pipeline constructor.
 
     run(ChicagoData,
-        It.department
-        >> Each(
-             It.employee
-             >> Count))
+        It.department >> Each(It.employee >> Count))
     #=>
       │ DataKnot │
     ──┼──────────┤
     1 │        2 │
     2 │        1 │
+    =#
+
+Naturally, we could use the `Count()` pipeline constructor to
+get the same result.
+
+    run(ChicagoData,
+        It.department >> Count(It.employee >> Count))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        1 │
+    =#
+
+Thus, for any `Z` and `Y` we see that `Z >> Each(Y >> Count)` is
+the same as `Z >> Count(Y)`. Which form to use depends upon what
+is notationally convenient. For incremental construction, being
+able to simply append `>> Count` is often very helpful.
+
+    OurQuery = It.department.employee
+    run(ChicagoData, OurQuery >> Count)
+    #=>
+    │ DataKnot │
+    ├──────────┤
+    │        3 │
     =#
 
 ### Paging Data
@@ -562,19 +571,16 @@ expression to return first names of all employees.
     3 │ Daniel     │
     =#
 
-Aggregate Julia functions, such as `mean`, can also be used. In
-this case, let's make it a reusable expression, with it's own
-built-in label.
+Aggregate Julia functions, such as `mean`, can also be used.
 
     using Statistics: mean
 
-    MeanSalary =
-      :mean_salary =>
-         mean.(It.employee.salary)
-
     run(ChicagoData,
         It.department
-        >> Record(It.name, MeanSalary))
+        >> Record(
+            It.name,
+            :mean_salary =>
+              mean.(It.employee.salary)))
     #=>
       │ department          │
       │ name    mean_salary │
@@ -702,8 +708,8 @@ it could be combined within further computation.
     2 │ DANIEL A  │
     =#
 
-Although `Given` in this parameterized query defines `It.amt` it
-doesn't leak this attribute.
+Although `Given` in this parameterized query defines `It.amt`,
+this parameter doesn't leak outside the definition.
 
      run(ChicagoData,
          EmployeesOver(AvgSalary)
@@ -761,6 +767,78 @@ across all employees, before treating them individually.
 
 While `Keep` and `Given` are similar, `Keep` deliberately leaks
 the values that it defines.
+
+### More on Aggregates
+
+There are other aggregate functions, such as `Min`, `Max`, and
+`Sum`. They could be used to create a statistical measure.
+
+    using Statistics: mean
+    Stats(X) =
+      Record(
+        :count => Count(X),
+        :mean => Int.(floor.(mean.(X))),
+        :min => Min(X),
+        :max => Max(X),
+        :sum => Sum(X))
+
+    run(ChicagoData,
+        :salary_stats_for_all_employees =>
+           Stats(It.department.employee.salary))
+    #=>
+    │ salary_stats_for_all_employees      │
+    │ count  mean   min    max     sum    │
+    ├─────────────────────────────────────┤
+    │     3  92314  80016  101442  276942 │
+    =#
+
+This `Stats()` pipeline constructor could be made usable as a
+pipeline primitive using `Then()` as follows:
+
+    run(ChicagoData,
+        It.department
+        >> Record(It.name,
+             It.employee.salary
+             >> Then(Stats)
+             >> Label(:salary_stats)))
+    #=>
+      │ department                              │
+      │ name    salary_stats                    │
+    ──┼─────────────────────────────────────────┤
+    1 │ POLICE  2, 90729, 80016, 101442, 181458 │
+    2 │ FIRE    1, 95484, 95484, 95484, 95484   │
+    =#
+
+To avoid having to type in `Then()`, one could register an
+automatic type conversion for the `Stats` function.
+
+    DataKnots.Lift(::typeof(Stats)) = Then(Stats)
+
+    run(ChicagoData,
+        It.department.employee.salary
+        >> Filter(It .< 100000)
+        >> Stats)
+    #=>
+    │ DataKnot                           │
+    │ count  mean   min    max    sum    │
+    ├────────────────────────────────────┤
+    │     2  87750  80016  95484  175500 │
+    =#
+
+As an aside, `Stats` could also be tagged so that higher-level
+pipelines don't `show` an expansion of its entire definition.
+
+    Stats(X) =
+      Tag(:Stats, (X,),
+          Record(
+            :count => Count(X),
+            :mean => Int.(floor.(mean.(X))),
+            :min => Min(X),
+            :max => Max(X),
+            :sum => Sum(X)))
+
+    Stats(It.department.employee.salary)
+    #-> Stats(It.department.employee.salary)
 
 ### Input Origin
 
