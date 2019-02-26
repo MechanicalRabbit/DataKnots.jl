@@ -473,7 +473,7 @@ Naturally, we could use the `Count()` pipeline constructor to
 get the same result.
 
     run(ChicagoData,
-        It.department >> Count(It.employee >> Count))
+        It.department >> Count(It.employee))
     #=>
       │ DataKnot │
     ──┼──────────┤
