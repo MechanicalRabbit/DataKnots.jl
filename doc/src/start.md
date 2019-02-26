@@ -473,6 +473,18 @@ The converse of `Then` is called `Each`. In an expression such as
 *elementwise* and merges the outputs. In this way, `Count(X)` has
 an output identical to `Each(X >> Count)`.
 
+    run(ChicagoData,
+        It.department
+        >> Each(
+             It.employee
+             >> Count))
+    #=>
+      │ DataKnot │
+    ──┼──────────┤
+    1 │        2 │
+    2 │        1 │
+    =#
+
 ### Paging Data
 
 Sometimes query results can be quite large. In this case it's
