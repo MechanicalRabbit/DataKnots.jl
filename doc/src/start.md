@@ -340,7 +340,7 @@ as a list of employees. We're not going to `run` it, but we could.
     #-> It.department.employee
 
 Let's extend this pipeline to compute and show if the salary is
-over $100k. Notice how pipeline composition is unwrapped and
+over 100k. Notice how pipeline composition is unwrapped and
 tracked for us. We could `run` this step also, if we wanted.
 
     GT100K = :gt100k => It.salary .> 100000
