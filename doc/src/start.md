@@ -4,8 +4,14 @@ DataKnots is currently usable for contributors who wish to help
 grow the ecosystem. However, DataKnots is not yet usable for
 general audiences: with v0.1, there are no data source adapters
 and we lack important operators, such as `Sort` and `Group`. Many
-of these deficiencies were successfully prototyped and subsequent
-releases will add these necessary features incrementally.
+of these deficiencies were prototyped and subsequent releases will
+address these feature gaps incrementally.
+
+This is a Julia language library; hence, the DataKnot syntax is
+necessarily in the Julia language. We've taken pride to provide a
+usable notation even without using macros. In a future release we
+will likely include a DataKnot macro syntax as well. Such a macro
+syntax would be compatible with this language integrated approach.
 
 ## Installation
 
@@ -36,18 +42,19 @@ represented as nested `NamedTuple` and `Vector` objects.
 
     chicago_data =
       (department = [
-        (name = "POLICE", employee = [
+        (name = "POLICE",
+         employee = [
           (name = "JEFFERY A", position = "SERGEANT",
            salary = 101442),
           (name = "NANCY A", position = "POLICE OFFICER",
            salary = 80016)]),
-        (name = "FIRE", employee = [
+        (name = "FIRE",
+         employee = [
           (name = "DANIEL A", position = "FIRE FIGHTER-EMT",
            salary = 95484)])],);
 
-To query this data via DataKnots, we need to first convert it into
-a *knot* structure. A knot can be converted back to native Julia
-via the `get` function.
+To query this data, we convert it into a `DataKnot`. Any *knot*
+can be converted back to native Julia via the `get` function.
 
     using DataKnots
     ChicagoData = DataKnot(chicago_data)
@@ -57,7 +64,7 @@ via the `get` function.
 In this hierarchical Chicago data, the root is a `NamedTuple` with
 an entry `:department`, that `Vector` valued entry has another
 vector of tuples labeled `:employee`. The label `name` occurs both
-within the context of a department and within an employee record.
+within the context of a department and an employee record.
 
 ### Navigation
 
@@ -74,13 +81,14 @@ notation lets one navigate via hierarchy.
     =#
 
 Navigation context matters. For example, `employee` tuples are not
-directly accessible from the root of the dataset provided.
+directly accessible from the root of the dataset provided. When a
+label can't be found, an appropriate error message is displayed.
 
     run(ChicagoData, It.employee)
     #-> ERROR: cannot find employee ⋮
 
-Instead, the `employee` tuples can be accessed by navigating
-though `department` tuples.
+Instead, `employee` tuples can be accessed by navigating though
+`department` tuples.
 
     run(ChicagoData, It.department.employee)
     #=>
@@ -135,8 +143,7 @@ composition without changing the result, we can write:
     2 │ FIRE   │
     =#
 
-This motivates our clever use of `It` as a syntax short hand,
-implemented via Julia's attribute lookup.
+This motivates our clever use of `It` as a syntax short hand.
 
     run(ChicagoData, It.department.name)
     #=>
@@ -146,9 +153,9 @@ implemented via Julia's attribute lookup.
     2 │ FIRE   │
     =#
 
-Use of `It.x.y` syntax could be equivalently written `Get(:x) >>
-Get(:y)`. In a macro syntax for DataKnots these navigation paths
-could be written plainly as `x.y` without `It`.
+This pipeline, `It.department.name`, could be equivalently written
+`Get(:department) >> Get(:name)`. In a Julia macro syntax, this
+path could be written plainly `department.employee` without `It`.
 
 ### Context & Counting
 
@@ -177,7 +184,7 @@ records within each `department`.
     2 │        1 │
     =#
 
-Here we see that the 1st department, `"POLICE"`, has `2`
+In this output we see that the 1st department, `"POLICE"`, has `2`
 employees, while the 2nd, `"FIRE"` only has `1`. The occurrence of
 `It` within the subordinate pipeline `Count(It.employee)` refers
 to each department individually, not to the dataset as a whole.
@@ -221,14 +228,13 @@ semi-colons separate values.
 
 ### Expressions & Output Labels
 
-Pipeline expressions can be independently defined, encapsulating
-logic and enabling reuse. Further, the output column of these
-named pipelines may be labeled using the pair syntax (`=>`).
-Consider an `EmployeeCount` pipeline that, within the context of a
-department, returns the number of employees in that department.
+Pipeline expressions can be named and reused. Further, the output
+column of these named pipelines may be labeled using Julia's
+`Pair` syntax (`=>`). For example, let's define `EmployeeCount` to
+be the number of employees in a given department.
 
     EmployeeCount =
-      :count =>
+      :employee_count =>
         Count(It.employee)
 
     run(ChicagoData,
@@ -236,16 +242,16 @@ department, returns the number of employees in that department.
         >> Record(It.name,
                   EmployeeCount))
     #=>
-      │ department    │
-      │ name    count │
-    ──┼───────────────┤
-    1 │ POLICE      2 │
-    2 │ FIRE        1 │
+      │ department             │
+      │ name    employee_count │
+    ──┼────────────────────────┤
+    1 │ POLICE               2 │
+    2 │ FIRE                 1 │
     =#
 
-Labels can also be attached to an existing pipeline using the
-`Label` primitive. This form is handy for use in successive
-pipeline refinements (`>>=`).
+Labels can be attached to an existing pipeline using the `Label`
+primitive. This form is handy for use in successive pipeline
+refinements (`>>=`).
 
     DeptCount = Count(It.department)
     DeptCount >>= Label(:dept_count)
@@ -279,16 +285,16 @@ list department names who have exactly one employee.
         >> Filter(EmployeeCount .== 1)
         >> Record(It.name, EmployeeCount))
     #=>
-      │ department  │
-      │ name  count │
-    ──┼─────────────┤
-    1 │ FIRE      1 │
+      │ department           │
+      │ name  employee_count │
+    ──┼──────────────────────┤
+    1 │ FIRE               1 │
     =#
 
 In pipeline expressions, the broadcast variant of common
 operators, such as `.==` are to be used. Forgetting the period is
 an easy mistake to make and the Julia language error message can
-be unhelpful to figuring out what went wrong.
+be unhelpful.
 
     run(ChicagoData,
         It.department
@@ -298,8 +304,8 @@ be unhelpful to figuring out what went wrong.
     ERROR: AssertionError: eltype(input) <: AbstractVector
     =#
 
-Let's define a `GT100K` pipeline to decide if an employee's salary
-is greater than 100K. The output of this pipeline is also labeled.
+Let's define `GT100K` to check if an employee's salary is greater
+than 100K. The output of this pipeline is also labeled.
 
     GT100K =
       :gt100k =>
@@ -370,14 +376,14 @@ Let's run it.
     1 │ JEFFERY A  101442    true │
     =#
 
-Well-tested pipelines may have definitions that obscure their
-display in larger compositions. We can `Tag` them.
+Well-tested pipelines may benefit from being given a `Tag` so that
+their definitions are suppressed in larger compositions.
 
     GT100K = Tag(:GT100K, :gt100k => It.salary .> 100000)
     #-> GT100K
 
-Then, when they are used in larger compositions, their definition
-is gracefully replaced with the tag that we provided.
+This tagging can make subsequent compositions easier to read, when
+the definition of the named pipeline is not being questioned.
 
     OurQuery = It.department.employee >>
                  Record(It.name, It.salary, GT100K)
@@ -385,9 +391,9 @@ is gracefully replaced with the tag that we provided.
     It.department.employee >> Record(It.name, It.salary, GT100K)
     =#
 
-Of course, they still work the same way. Notice that the tag
-(`:GT100K`) is distinct from the data label (`:gt100k`), the tag
-names the pipeline while the label names the output column.
+Notice that the tag (`:GT100K`) is distinct from the data label
+(`:gt100k`), the tag names the pipeline while the label names the
+output column.
 
     OurQuery >>= Filter(It.gt100k)
     run(ChicagoData, OurQuery)
@@ -398,7 +404,7 @@ names the pipeline while the label names the output column.
     1 │ JEFFERY A  101442    true │
     =#
 
-For the final step in the journey, let's only show the employee's
+For the final step of our incremental construction, in the journey, let's only show the employee's
 name that met the GT100K criteria.
 
     OurQuery >>= It.name
@@ -481,9 +487,8 @@ get the same result.
     2 │        1 │
     =#
 
-Thus, for any `Z` and `Y` we see that `Z >> Each(Y >> Count)` is
-the same as `Z >> Count(Y)`. Which form to use depends upon what
-is notationally convenient. For incremental construction, being
+Which form of an aggregate to use depends upon what is
+notationally convenient.  For incremental construction, being
 able to simply append `>> Count` is often very helpful.
 
     OurQuery = It.department.employee
@@ -522,7 +527,7 @@ To return up to the 2nd employee record, we use `Take`.
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
 
-A negative index can be used to mark records from the end of the
+A negative index can be used to count records from the end of the
 pipeline's input. So, to return up to, but not including, the very
 last item in the stream, we could write:
 
@@ -589,10 +594,9 @@ Aggregate Julia functions, such as `mean`, can also be used.
     2 │ FIRE        95484.0 │
     =#
 
-The more general form of `Lift`, documented in the reference, can
-be used to handle more complex situations. How the lifted function
-is treated as a pipeline constructor depends upon that function's
-input and output signature.
+The more general form of `Lift`, documented in the reference. How
+a lifted function is treated as a pipeline constructor depends
+upon that function's input and output signature.
 
 ### Query Parameters
 
@@ -637,14 +641,13 @@ With a different threshold amount, the result may change.
 ### Parameterized Pipelines
 
 Suppose we want a parameterized pipeline that could take other
-pipelines as arguments. For example, let's return `employee`
-records that have salary greater than a given amount.
+pipelines as arguments. Let's define `EmployeesOver()` to return
+`employee` records that have salary greater than a given amount.
 
-    EmployeesOver(N) =
-      Given(:amt => N,
+    EmployeesOver(X) = (
         It.department
         >> It.employee
-        >> Filter(It.salary .> It.amt))
+        >> Filter(It.salary .> X))
 
     run(ChicagoData, EmployeesOver(100000))
     #=>
@@ -654,35 +657,57 @@ records that have salary greater than a given amount.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-The `Given` wrapper above is needed when the argument `N` is an
-arbitrary pipeline. With `Given`, `N` is evaluated with its result
-recorded as `It.amt`. This value can then be accessed from within
-the subordinate pipeline expression.
+Let's list employees having greater than average salary. To start,
+we must first compute the average salary.
 
-In this way, a parameterized pipeline such as `EmployeesOver` can
-be passed an argument via a `run` parameter.
-
-    run(ChicagoData, EmployeesOver(It.AMT), AMT=100000)
-    #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┤
-    1 │ JEFFERY A  SERGEANT  101442 │
-    =#
-
-Let's make this example more interesting. To return employees
-having greater than average salary, we must first compute the
-average salary.
-
-    AvgSalary =
-       :avg_salary => mean.(It.department.employee.salary)
+    AvgSalary = mean.(It.department.employee.salary)
 
     run(ChicagoData, AvgSalary)
     #=>
-    │ avg_salary │
-    ├────────────┤
-    │    92314.0 │
+    │ DataKnot │
+    ├──────────┤
+    │  92314.0 │
     =#
+
+We could use this *knot* value as a parameter to a subsequent
+`run` of `EmployeesOver()`. This works, but is not elegant.
+
+    run(ChicagoData,
+        EmployeesOver(It.AMT),
+        AMT=run(ChicagoData, AvgSalary))
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+However, if we try to combine these two pipelines directly, we get
+a naming error.
+
+    run(ChicagoData, EmployeesOver(AvgSalary))
+    #-> ERROR: cannot find department ⋮
+
+By looking at the definition, we can see the problem: in the scope
+of `employee` there is no attribute `department`.
+
+    EmployeesOver(AvgSalary)
+    #=>
+    It.department >>
+    It.employee >>
+    Filter(It.salary .> mean.(It.department.employee.salary))
+    =#
+
+This challenge can be overcome with `Given`, which evaluates its
+named arguments in the current scope and makes those values
+available within a subordinate pipeline.
+
+    EmployeesOver(X) =
+      Given(:AMT => X,
+        It.department
+        >> It.employee
+        >> Filter(It.salary .> It.AMT))
 
 We could then combine these two pipelines.
 
@@ -695,8 +720,8 @@ We could then combine these two pipelines.
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-Note that this high-level expression is yet another pipeline and
-it could be combined within further computation.
+Note that this expression is yet another pipeline that could be
+refined with further computation.
 
     run(ChicagoData,
         EmployeesOver(AvgSalary)
@@ -709,7 +734,7 @@ it could be combined within further computation.
     =#
 
 Although `Given` in this parameterized query defines `It.amt`,
-this parameter doesn't leak outside the definition.
+this computation's label doesn't leak outside the definition.
 
      run(ChicagoData,
          EmployeesOver(AvgSalary)
@@ -748,13 +773,13 @@ result, so that it is available within subsequent computations.
 ```
 
 This pattern also emerges with aggregate computations which need
-to be done in a parent scope, for example, taking the `MeanSalary`
-across all employees, before treating them individually.
+to be done in a parent scope. For example, let's compute employees
+with a higher than average salary within their department.
 
 ```julia
     run(ChicagoData,
          It.department
-         >> Keep(MeanSalary)
+         >> Keep(:mean_salary => mean.(It.employee.salary))
          >> It.employee
          >> Filter(It.salary .> It.mean_salary))
     #=>
@@ -765,10 +790,25 @@ across all employees, before treating them individually.
     =#
 ```
 
-While `Keep` and `Given` are similar, `Keep` deliberately leaks
-the values that it defines.
+Compare this with an equivalent query prepared via `Given`.
 
-### More on Aggregates
+    run(ChicagoData,
+         It.department
+         >> Given(:mean_salary => mean.(It.employee.salary),
+              It.employee
+               >> Filter(It.salary .> It.mean_salary)))
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┤
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+While `Keep` and `Given` are similar, `Keep` deliberately leaks
+the values that it defines while not increasing the nesting. On
+the other hand, `Given` increases nesting but doesn't leak.
+
+### More Aggregates
 
 There are other aggregate functions, such as `Min`, `Max`, and
 `Sum`. They could be used to create a statistical measure.
