@@ -59,7 +59,7 @@ pipeline can then be `run` on the `ChicagoData` knot.
     #=>
       │ department         │
       │ name    max_salary │
-    ──┼────────────────────┤
+    ──┼────────────────────┼
     1 │ POLICE      101442 │
     2 │ FIRE        103350 │
     3 │ OEMC               │
@@ -75,7 +75,7 @@ used independently by first extracting a particular department.
     #=>
       │ department         │
       │ name    max_salary │
-    ──┼────────────────────┤
+    ──┼────────────────────┼
     1 │ POLICE      101442 │
     =#
 
@@ -161,30 +161,32 @@ evaluated without an input data source.
 
     DataKnot(["GARRY M", "ANTHONY R", "DANA A"])
     #=>
-      │ DataKnot  │
-    ──┼───────────┤
+      │ It        │
+    ──┼───────────┼
     1 │ GARRY M   │
     2 │ ANTHONY R │
     3 │ DANA A    │
+
     =#
 
     DataKnot("GARRY M")
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │ GARRY M  │
+    │ It      │
+    ┼─────────┼
+    │ GARRY M │
     =#
 
     DataKnot(missing)
     #=>
-    │ DataKnot │
+    │ It │
+    ┼────┼
     =#
 
     DataKnot()
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │          │
+    │ It │
+    ┼────┼
+    │    │
     =#
 
 Note that plural DataKnots are shown with an index, while singular
@@ -205,9 +207,8 @@ Besides displaying plural and singular knots differently, the
 
     DataKnot((name = "GARRY M", salary = 260004))
     #=>
-    │ DataKnot        │
     │ name     salary │
-    ├─────────────────┤
+    ┼─────────────────┼
     │ GARRY M  260004 │
     =#
 
@@ -217,9 +218,8 @@ This permits a vector-of-tuples to be displayed as tabular data.
               (name = "ANTHONY R", salary = 185364),
               (name = "DANA A", salary = 170112)])
     #=>
-      │ DataKnot          │
       │ name       salary │
-    ──┼───────────────────┤
+    ──┼───────────────────┼
     1 │ GARRY M    260004 │
     2 │ ANTHONY R  185364 │
     3 │ DANA A     170112 │
@@ -339,29 +339,29 @@ Therefore, we can write the following examples.
 
     run(DataKnot("Hello World"))
     #=>
-    │ DataKnot    │
-    ├─────────────┤
+    │ It          │
+    ┼─────────────┼
     │ Hello World │
     =#
 
     run(:greeting => DataKnot("Hello World"))
     #=>
     │ greeting    │
-    ├─────────────┤
+    ┼─────────────┼
     │ Hello World │
     =#
 
     run(DataKnot("Hello World"), It)
     #=>
-    │ DataKnot    │
-    ├─────────────┤
+    │ It          │
+    ┼─────────────┼
     │ Hello World │
     =#
 
     run(DataKnot(), "Hello World")
     #=>
-    │ DataKnot    │
-    ├─────────────┤
+    │ It          │
+    ┼─────────────┼
     │ Hello World │
     =#
 
@@ -372,15 +372,15 @@ accessible via `It`. Those arguments are converted into a
     run(It.hello, hello=DataKnot("Hello World"))
     #=>
     │ hello       │
-    ├─────────────┤
+    ┼─────────────┼
     │ Hello World │
     =#
 
     run(It.a .* (It.b .+ It.c), a=7, b=7, c=-1)
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │       42 │
+    │ It │
+    ┼────┼
+    │ 42 │
     =#
 
 Once a pipeline is `run()` the resulting `DataKnot` value can be

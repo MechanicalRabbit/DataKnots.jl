@@ -75,7 +75,7 @@ notation lets one navigate via hierarchy.
     run(ChicagoData, It.department.name)
     #=>
       │ name   │
-    ──┼────────┤
+    ──┼────────┼
     1 │ POLICE │
     2 │ FIRE   │
     =#
@@ -94,7 +94,7 @@ Instead, `employee` tuples can be accessed by navigating though
     #=>
       │ employee                            │
       │ name       position          salary │
-    ──┼─────────────────────────────────────┤
+    ──┼─────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT          101442 │
     2 │ NANCY A    POLICE OFFICER     80016 │
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
@@ -112,7 +112,7 @@ composition (`>>`).
     run(ChicagoData, Get(:department) >> Get(:name))
     #=>
       │ name   │
-    ──┼────────┤
+    ──┼────────┼
     1 │ POLICE │
     2 │ FIRE   │
     =#
@@ -125,7 +125,7 @@ traversal. They can be used together creatively.
     #=>
       │ employee                            │
       │ name       position          salary │
-    ──┼─────────────────────────────────────┤
+    ──┼─────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT          101442 │
     2 │ NANCY A    POLICE OFFICER     80016 │
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
@@ -138,7 +138,7 @@ composition without changing the result, we can write:
     run(ChicagoData, It >> Get(:department) >> Get(:name))
     #=>
       │ name   │
-    ──┼────────┤
+    ──┼────────┼
     1 │ POLICE │
     2 │ FIRE   │
     =#
@@ -148,7 +148,7 @@ This motivates our clever use of `It` as a syntax short hand.
     run(ChicagoData, It.department.name)
     #=>
       │ name   │
-    ──┼────────┤
+    ──┼────────┼
     1 │ POLICE │
     2 │ FIRE   │
     =#
@@ -165,9 +165,9 @@ to `Count()`, `It.department`, is itself a pipeline.
 
     run(ChicagoData, Count(It.department))
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        2 │
+    │ It │
+    ┼────┼
+    │  2 │
     =#
 
 Using pipeline composition (`>>`), we can perform `Count` in a
@@ -178,10 +178,10 @@ records within each `department`.
         It.department
         >> Count(It.employee))
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        1 │
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  1 │
     =#
 
 In this output we see that the 1st department, `"POLICE"`, has `2`
@@ -202,7 +202,7 @@ department's name alongside employee counts.
     #=>
       │ department │
       │ name    #B │
-    ──┼────────────┤
+    ──┼────────────┼
     1 │ POLICE   2 │
     2 │ FIRE     1 │
     =#
@@ -218,7 +218,7 @@ department, employee names and their salary.
     #=>
       │ department                                │
       │ name    employee                          │
-    ──┼───────────────────────────────────────────┤
+    ──┼───────────────────────────────────────────┼
     1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
     2 │ FIRE    DANIEL A, 95484                   │
     =#
@@ -244,7 +244,7 @@ be the number of employees in a given department.
     #=>
       │ department             │
       │ name    employee_count │
-    ──┼────────────────────────┤
+    ──┼────────────────────────┼
     1 │ POLICE               2 │
     2 │ FIRE                 1 │
     =#
@@ -259,7 +259,7 @@ refinements (`>>=`).
     run(ChicagoData, DeptCount)
     #=>
     │ dept_count │
-    ├────────────┤
+    ┼────────────┼
     │          2 │
     =#
 
@@ -271,7 +271,7 @@ way to access fields within a record.
         >> It.dept_count)
     #=>
     │ dept_count │
-    ├────────────┤
+    ┼────────────┼
     │          2 │
     =#
 
@@ -287,7 +287,7 @@ list department names who have exactly one employee.
     #=>
       │ department           │
       │ name  employee_count │
-    ──┼──────────────────────┤
+    ──┼──────────────────────┼
     1 │ FIRE               1 │
     =#
 
@@ -317,7 +317,7 @@ than 100K. The output of this pipeline is also labeled.
     #=>
       │ employee                  │
       │ name       salary  gt100k │
-    ──┼───────────────────────────┤
+    ──┼───────────────────────────┼
     1 │ JEFFERY A  101442    true │
     2 │ NANCY A     80016   false │
     3 │ DANIEL A    95484   false │
@@ -332,7 +332,7 @@ could use `GTK100K` to filter employees.
         >> It.name)
     #=>
       │ name      │
-    ──┼───────────┤
+    ──┼───────────┼
     1 │ JEFFERY A │
     =#
 
@@ -372,7 +372,7 @@ Let's run it.
     #=>
       │ employee                  │
       │ name       salary  gt100k │
-    ──┼───────────────────────────┤
+    ──┼───────────────────────────┼
     1 │ JEFFERY A  101442    true │
     =#
 
@@ -400,7 +400,7 @@ output column.
     #=>
       │ employee                  │
       │ name       salary  gt100k │
-    ──┼───────────────────────────┤
+    ──┼───────────────────────────┼
     1 │ JEFFERY A  101442    true │
     =#
 
@@ -411,7 +411,7 @@ name that met the GT100K criteria.
     run(ChicagoData, OurQuery)
     #=>
       │ name      │
-    ──┼───────────┤
+    ──┼───────────┼
     1 │ JEFFERY A │
     =#
 
@@ -427,9 +427,9 @@ and returns the size of its input.
         >> Filter(It.salary .> 100000)
         >> Count)
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        1 │
+    │ It │
+    ┼────┼
+    │  1 │
     =#
 
 Aggregate pipelines operate contextually. In the following
@@ -446,7 +446,7 @@ example, `Count` is performed relative to each department.
     #=>
       │ department        │
       │ name    over_100k │
-    ──┼───────────────────┤
+    ──┼───────────────────┼
     1 │ POLICE          1 │
     2 │ FIRE            0 │
     =#
@@ -458,9 +458,9 @@ departments. This doesn't change even if we add parentheses:
     run(ChicagoData,
         It.department >> (It.employee >> Count))
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        3 │
+    │ It │
+    ┼────┼
+    │  3 │
     =#
 
 To count employees in *each* department, we use the `Each()`
@@ -469,10 +469,10 @@ pipeline constructor.
     run(ChicagoData,
         It.department >> Each(It.employee >> Count))
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        1 │
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  1 │
     =#
 
 Naturally, we could use the `Count()` pipeline constructor to
@@ -481,10 +481,10 @@ get the same result.
     run(ChicagoData,
         It.department >> Count(It.employee))
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │        2 │
-    2 │        1 │
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  1 │
     =#
 
 Which form of an aggregate to use depends upon what is
@@ -494,9 +494,9 @@ able to simply append `>> Count` is often very helpful.
     OurQuery = It.department.employee
     run(ChicagoData, OurQuery >> Count)
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        3 │
+    │ It │
+    ┼────┼
+    │  3 │
     =#
 
 ### Paging Data
@@ -510,7 +510,7 @@ start by listing all 3 employees of our toy database.
     #=>
       │ employee                            │
       │ name       position          salary │
-    ──┼─────────────────────────────────────┤
+    ──┼─────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT          101442 │
     2 │ NANCY A    POLICE OFFICER     80016 │
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
@@ -522,7 +522,7 @@ To return up to the 2nd employee record, we use `Take`.
     #=>
       │ employee                          │
       │ name       position        salary │
-    ──┼───────────────────────────────────┤
+    ──┼───────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT        101442 │
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
@@ -535,7 +535,7 @@ last item in the stream, we could write:
     #=>
       │ employee                          │
       │ name       position        salary │
-    ──┼───────────────────────────────────┤
+    ──┼───────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT        101442 │
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
@@ -547,7 +547,7 @@ up to the last item in the stream:
     #=>
       │ employee                           │
       │ name      position          salary │
-    ──┼────────────────────────────────────┤
+    ──┼────────────────────────────────────┼
     1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
     =#
 
@@ -570,7 +570,7 @@ expression to return first names of all employees.
         >> Label(:first_name))
     #=>
       │ first_name │
-    ──┼────────────┤
+    ──┼────────────┼
     1 │ Jeffery    │
     2 │ Nancy      │
     3 │ Daniel     │
@@ -589,7 +589,7 @@ Aggregate Julia functions, such as `mean`, can also be used.
     #=>
       │ department          │
       │ name    mean_salary │
-    ──┼─────────────────────┤
+    ──┼─────────────────────┼
     1 │ POLICE      90729.0 │
     2 │ FIRE        95484.0 │
     =#
@@ -607,7 +607,7 @@ available as a label accessible anywhere in the pipeline.
     run(ChicagoData, It.AMT, AMT=100000)
     #=>
     │ AMT    │
-    ├────────┤
+    ┼────────┼
     │ 100000 │
     =#
 
@@ -624,7 +624,7 @@ so they standout from regular data labels.
     run(ChicagoData, PaidOverAmt, AMT=100000)
     #=>
       │ name      │
-    ──┼───────────┤
+    ──┼───────────┼
     1 │ JEFFERY A │
     =#
 
@@ -633,7 +633,7 @@ With a different threshold amount, the result may change.
     run(ChicagoData, PaidOverAmt, AMT=85000)
     #=>
       │ name      │
-    ──┼───────────┤
+    ──┼───────────┼
     1 │ JEFFERY A │
     2 │ DANIEL A  │
     =#
@@ -653,7 +653,7 @@ pipelines as arguments. Let's define `EmployeesOver()` to return
     #=>
       │ employee                    │
       │ name       position  salary │
-    ──┼─────────────────────────────┤
+    ──┼─────────────────────────────┼
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
@@ -664,9 +664,9 @@ we must first compute the average salary.
 
     run(ChicagoData, AvgSalary)
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │  92314.0 │
+    │ It      │
+    ┼─────────┼
+    │ 92314.0 │
     =#
 
 We could use this *knot* value as a parameter to a subsequent
@@ -678,7 +678,7 @@ We could use this *knot* value as a parameter to a subsequent
     #=>
       │ employee                            │
       │ name       position          salary │
-    ──┼─────────────────────────────────────┤
+    ──┼─────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT          101442 │
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
@@ -715,7 +715,7 @@ We could then combine these two pipelines.
     #=>
       │ employee                            │
       │ name       position          salary │
-    ──┼─────────────────────────────────────┤
+    ──┼─────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT          101442 │
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
@@ -728,7 +728,7 @@ refined with further computation.
         >> It.name)
     #=>
       │ name      │
-    ──┼───────────┤
+    ──┼───────────┼
     1 │ JEFFERY A │
     2 │ DANIEL A  │
     =#
@@ -764,7 +764,7 @@ result, so that it is available within subsequent computations.
     #=>
       │ employee             │
       │ name       dept_name │
-    ──┼──────────────────────┤
+    ──┼──────────────────────┼
     1 │ JEFFERY A  POLICE    │
     2 │ NANCY A    POLICE    │
     3 │ DANIEL A   FIRE      │
@@ -782,7 +782,7 @@ with a higher than average salary within their department.
     #=>
       │ employee                    │
       │ name       position  salary │
-    ──┼─────────────────────────────┤
+    ──┼─────────────────────────────┼
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
@@ -796,7 +796,7 @@ Compare this with an equivalent query prepared via `Given`.
     #=>
       │ employee                    │
       │ name       position  salary │
-    ──┼─────────────────────────────┤
+    ──┼─────────────────────────────┼
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
@@ -824,7 +824,7 @@ There are other aggregate functions, such as `Min`, `Max`, and
     #=>
     │ salary_stats_for_all_employees      │
     │ count  mean   min    max     sum    │
-    ├─────────────────────────────────────┤
+    ┼─────────────────────────────────────┼
     │     3  92314  80016  101442  276942 │
     =#
 
@@ -840,7 +840,7 @@ pipeline primitive using `Then()` as follows:
     #=>
       │ department                              │
       │ name    salary_stats                    │
-    ──┼─────────────────────────────────────────┤
+    ──┼─────────────────────────────────────────┼
     1 │ POLICE  2, 90729, 80016, 101442, 181458 │
     2 │ FIRE    1, 95484, 95484, 95484, 95484   │
     =#
@@ -855,9 +855,8 @@ automatic type conversion for the `Stats` function.
         >> Filter(It .< 100000)
         >> Stats)
     #=>
-    │ DataKnot                           │
     │ count  mean   min    max    sum    │
-    ├────────────────────────────────────┤
+    ┼────────────────────────────────────┼
     │     2  87750  80016  95484  175500 │
     =#
 
@@ -892,9 +891,9 @@ integer division (`.÷`).
     Halfway = Count(Employee) .÷ 2
     run(ChicagoData, Halfway)
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        1 │
+    │ It │
+    ┼────┼
+    │  1 │
     =#
 
 Then, use `Take` with this computed index.
@@ -903,7 +902,7 @@ Then, use `Take` with this computed index.
     #=>
       │ employee                    │
       │ name       position  salary │
-    ──┼─────────────────────────────┤
+    ──┼─────────────────────────────┼
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
