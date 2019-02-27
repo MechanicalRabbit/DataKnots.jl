@@ -95,8 +95,6 @@ run(F::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}; params...) =
 function execute(db::DataKnot, F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     db = pack(db, params)
     q = prepare(F, shape(db))
-    println(F)
-    println(q)
     db′ = q(db)
     return db′
 end
