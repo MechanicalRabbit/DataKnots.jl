@@ -31,7 +31,7 @@ run(ChicagoData, It.department &gt;&gt; DeptStats)
 #=&gt;
   │ department         │
   │ name    max_salary │
-──┼────────────────────┤
+──┼────────────────────┼
 1 │ POLICE      101442 │
 2 │ FIRE        103350 │
 3 │ OEMC               │
@@ -41,50 +41,50 @@ run(ChicagoData, It.department &gt;&gt; DeptStats)
 #=&gt;
   │ department         │
   │ name    max_salary │
-──┼────────────────────┤
+──┼────────────────────┼
 1 │ POLICE      101442 │
 =#</code></pre><p>When the <code>MaxSalary</code> pipeline is invoked, it sees employee data having an <em>origin</em> relative to each department. This is what we mean by DataKnots being context-aware. In the <code>DeptStats</code> pipeline, after each <code>MaxSalary</code> is computed, the results are integrated to provide output of the <code>DeptStats</code> pipeline.</p><h4><a class="nav-anchor" id="DataKnots.Cardinality-1" href="#DataKnots.Cardinality-1"><code>DataKnots.Cardinality</code></a></h4><p>In DataKnots, the elementary unit is a collection of values, we call a data <em>knot</em>. Besides the Julia datatype for a knot&#39;s values, each data knot also has a <em>cardinality</em>. The bookkeeping of cardinality is an essential aspect of pipeline evaluation.</p><p>Cardinality is a constraint on the number of values in a knot. A knot is called <em>mandatory</em> if it must contain at least one value; <em>optional</em> otherwise. Similarly, a knot is called <em>singular</em> if it must contain at most one value; <em>plural</em> otherwise.</p><pre><code class="language-julia">    REG::Cardinality = 0      # singular and mandatory
     OPT::Cardinality = 1      # optional, but singular
     PLU::Cardinality = 2      # plural, but mandatory
     OPT_PLU::Cardinality = 3  # optional and plural</code></pre><p>To record the knot cardinality constraint we use the <code>OPT</code>, <code>PLU</code> and <code>REG</code> flags of the type <code>DataKnots.Cardinality</code>. The <code>OPT</code> and <code>PLU</code> flags express relaxations of the mandatory and singular constraint, respectively. A <code>REG</code> knot, which is both mandatory and singular, is called <em>regular</em> and it must contain exactly one value. Conversely, a knot with both <code>OPT|PLU</code> flags has <em>unconstrained</em> cardinality and may contain any number of values.</p><p>For any knot with values of Julia type <code>T</code>, the knot&#39;s cardinality has a correspondence to native Julia types: A regular knot corresponds to a single Julia value of type <code>T</code>.  An unconstrained knot corresponds to <code>Vector{T}</code>. An optional knot corresponds to <code>Union{Missing, T}</code>. There is no correspondence for mandatory yet plural knots; however, <code>Vector{T}</code> could be used with the convention that it always has at least one element.</p><h3><a class="nav-anchor" id="Creating-and-Extracting-DataKnots-1" href="#Creating-and-Extracting-DataKnots-1">Creating &amp; Extracting DataKnots</a></h3><p>The constructor <code>DataKnot()</code> takes a native Julia object, typically a vector or scalar value. The <code>get()</code> function can be used to retrieve the DataKnot&#39;s native Julia value. Like most libraries, <code>show()</code> will produce a suitable display.</p><h4><a class="nav-anchor" id="DataKnots.DataKnot-1" href="#DataKnots.DataKnot-1"><code>DataKnots.DataKnot</code></a></h4><pre><code class="language-julia">    DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU)</code></pre><p>In the general case, a <code>DataKnot</code> can be constructed from an <code>AbstractVector</code> to produce a <code>DataKnot</code> with a given cardinality. By default, the <code>card</code> of the collection is unconstrained.</p><pre><code class="language-julia">    DataKnot(elt, card::Cardinality=REG)</code></pre><p>As a convenience, a non-vector constructor is also defined, it marks the collection as being both singular and mandatory.</p><pre><code class="language-julia">    DataKnot(::Missing, card::Cardinality=OPT)</code></pre><p>There is an edge-case constructor for the creation of a singular but empty collection.</p><pre><code class="language-julia">    DataKnot()</code></pre><p>Finally, there is the <em>unit</em> knot, with a single value <code>nothing</code>; this is the default, implicit <code>DataKnot</code> used when <code>run</code> is evaluated without an input data source.</p><pre><code class="language-julia">DataKnot([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
 #=&gt;
-  │ DataKnot  │
-──┼───────────┤
+  │ It        │
+──┼───────────┼
 1 │ GARRY M   │
 2 │ ANTHONY R │
 3 │ DANA A    │
+
 =#
 
 DataKnot(&quot;GARRY M&quot;)
 #=&gt;
-│ DataKnot │
-├──────────┤
-│ GARRY M  │
+│ It      │
+┼─────────┼
+│ GARRY M │
 =#
 
 DataKnot(missing)
 #=&gt;
-│ DataKnot │
+│ It │
+┼────┼
 =#
 
 DataKnot()
 #=&gt;
-│ DataKnot │
-├──────────┤
-│          │
+│ It │
+┼────┼
+│    │
 =#</code></pre><p>Note that plural DataKnots are shown with an index, while singular knots are shown without. Further note that the <code>missing</code> knot doesn&#39;t have a value in its data block, unlike the unit knot which has a value of <code>nothing</code>. When showing a <code>DataKnot</code>, we follow Julia&#39;s command line behavior of rendering <code>nothing</code> as a blank since we wish to display short string values unquoted.</p><h4><a class="nav-anchor" id="show-1" href="#show-1"><code>show</code></a></h4><pre><code class="language-julia">    show(data::DataKnot)</code></pre><p>Besides displaying plural and singular knots differently, the <code>show</code> method has special treatment for <code>Tuple</code> and <code>NamedTuple</code>.</p><pre><code class="language-julia">DataKnot((name = &quot;GARRY M&quot;, salary = 260004))
 #=&gt;
-│ DataKnot        │
 │ name     salary │
-├─────────────────┤
+┼─────────────────┼
 │ GARRY M  260004 │
 =#</code></pre><p>This permits a vector-of-tuples to be displayed as tabular data.</p><pre><code class="language-julia">DataKnot([(name = &quot;GARRY M&quot;, salary = 260004),
           (name = &quot;ANTHONY R&quot;, salary = 185364),
           (name = &quot;DANA A&quot;, salary = 170112)])
 #=&gt;
-  │ DataKnot          │
   │ name       salary │
-──┼───────────────────┤
+──┼───────────────────┼
 1 │ GARRY M    260004 │
 2 │ ANTHONY R  185364 │
 3 │ DANA A     170112 │
@@ -116,42 +116,42 @@ get(DataKnot((name = &quot;GARRY M&quot;, salary = 260004)))
 (name = &quot;GARRY M&quot;, salary = 260004)
 =#</code></pre><p>The Implementation Guide provides for lower level details as to the internal representation of a <code>DataKnot</code>. Libraries built with this internal API may provide more convenient ways to construct knots and retrieve values.</p><h3><a class="nav-anchor" id="Running-Pipelines-and-Parameters-1" href="#Running-Pipelines-and-Parameters-1">Running Pipelines &amp; Parameters</a></h3><p>Pipelines can be evaluated against an input <code>DataKnot</code> using <code>run()</code> to produce an output <code>DataKnot</code>. If an input is not specified, the default <em>unit</em> knot, <code>DataKnot()</code>, is used. There are several sorts of pipelines that could be evaluated.</p><h4><a class="nav-anchor" id="DataKnots.AbstractPipeline-1" href="#DataKnots.AbstractPipeline-1"><code>DataKnots.AbstractPipeline</code></a></h4><pre><code class="language-julia">    struct DataKnot &lt;: AbstractPipeline ... end</code></pre><p>A <code>DataKnot</code> is viewed as a pipeline that produces its entire data block for each input value it receives.</p><pre><code class="language-julia">    struct Navigation &lt;: AbstractPipeline ... end</code></pre><p>For convenience, path-based navigation is also seen as a pipeline. The identity pipeline, <code>It</code>, simply reproduces its input. Further, when a parameter <code>x</code> is provided via <code>run()</code> it is available for lookup with <code>It</code>.<code>x</code>.</p><pre><code class="language-julia">    struct Pipeline &lt;: AbstractPipeline ... end</code></pre><p>Besides the primitives identified above, the remainder of this reference is dedicated to various ways of constructing <code>Pipeline</code> instances from other pipelines.</p><h4><a class="nav-anchor" id="run-1" href="#run-1"><code>run</code></a></h4><pre><code class="language-julia">    run(F::AbstractPipeline; params...)</code></pre><p>In its simplest form, <code>run</code> takes a pipeline with a set of named parameters and evaluates the pipeline with the unit knot as input. The parameters are each converted to a <code>DataKnot</code> before being made available within the pipeline&#39;s evaluation.</p><pre><code class="language-julia">    run(F::Pair{Symbol,&lt;:AbstractPipeline}; params...)</code></pre><p>Using Julia&#39;s <code>Pair</code> syntax, this <code>run</code> method provides a convenient way to label an output <code>DataKnot</code>.</p><pre><code class="language-julia">    run(db::DataKnot, F; params...)</code></pre><p>The general case <code>run</code> permits easy use of a specific input data source. It <code>run</code> applies the pipeline <code>F</code> to the input dataset <code>db</code> elementwise with the context <code>params</code>.  Since the 1st argument is a <code>DataKnot</code> and dispatch is unambiguous, the second argument to the method can be automatically converted to a <code>Pipeline</code> using <code>Lift</code>.</p><p>Therefore, we can write the following examples.</p><pre><code class="language-julia">run(DataKnot(&quot;Hello World&quot;))
 #=&gt;
-│ DataKnot    │
-├─────────────┤
+│ It          │
+┼─────────────┼
 │ Hello World │
 =#
 
 run(:greeting =&gt; DataKnot(&quot;Hello World&quot;))
 #=&gt;
 │ greeting    │
-├─────────────┤
+┼─────────────┼
 │ Hello World │
 =#
 
 run(DataKnot(&quot;Hello World&quot;), It)
 #=&gt;
-│ DataKnot    │
-├─────────────┤
+│ It          │
+┼─────────────┼
 │ Hello World │
 =#
 
 run(DataKnot(), &quot;Hello World&quot;)
 #=&gt;
-│ DataKnot    │
-├─────────────┤
+│ It          │
+┼─────────────┼
 │ Hello World │
 =#</code></pre><p>Named arguments to <code>run()</code> become additional values that are accessible via <code>It</code>. Those arguments are converted into a <code>DataKnot</code> if they are not already.</p><pre><code class="language-julia">run(It.hello, hello=DataKnot(&quot;Hello World&quot;))
 #=&gt;
-│ DataKnot    │
-├─────────────┤
+│ hello       │
+┼─────────────┼
 │ Hello World │
 =#
 
 run(It.a .* (It.b .+ It.c), a=7, b=7, c=-1)
 #=&gt;
-│ DataKnot │
-├──────────┤
-│       42 │
+│ It │
+┼────┼
+│ 42 │
 =#</code></pre><p>Once a pipeline is <code>run()</code> the resulting <code>DataKnot</code> value can be retrieved via <code>get()</code>.</p><pre><code class="language-julia">get(run(DataKnot(1), It .+ 1))
 #=&gt;
 2
