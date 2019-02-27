@@ -507,15 +507,15 @@ function draw_bar!(c::TableCanvas, extent::Int, l::TableLayout, pos::Int)
     x = extent + 1
     y = 1
     for row = 1:size(l.cells, 1)
-        if row == l.head_rows + 1
-            write!(c, x, y, pos < 0 ? "├" : pos > 0 ? "┤" : "┼")
-            y += 1
-        end
-        if row == l.tear_row + 1 && l.tear_row > 0
-            y += 1
-        end
         write!(c, x, y, "│")
         y += 1
+        if row == l.head_rows
+            write!(c, x, y, "┼")
+            y += 1
+        end
+        if row == l.tear_row
+            y += 1
+        end
     end
     extent + 1
 end
@@ -528,16 +528,6 @@ function draw_column!(c::TableCanvas, extent::Int, l::TableLayout, col::Int)
     y = 1
     for row = 1:size(l.cells, 1)
         x = extent + 2
-        if row == l.head_rows + 1
-            write!(c, extent + 1, y, "─" ^ (sz + 2))
-            y += 1
-        end
-        if row == l.tear_row + 1 && l.tear_row > 0
-            if col == 1
-                write!(c, x + sz - 1, y, "⋮")
-            end
-            y += 1
-        end
         cell = l.cells[row, col]
         if !isempty(cell.text)
             if cell.align > 0
@@ -546,6 +536,17 @@ function draw_column!(c::TableCanvas, extent::Int, l::TableLayout, col::Int)
             write!(c, x, y, cell.text)
         end
         y += 1
+        x = extent + 2
+        if row == l.head_rows
+            write!(c, extent + 1, y, "─" ^ (sz + 2))
+            y += 1
+        end
+        if row == l.tear_row
+            if col == 1
+                write!(c, x + sz - 1, y, "⋮")
+            end
+            y += 1
+        end
     end
     extent + sz + 2
 end
