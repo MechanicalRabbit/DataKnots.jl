@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting Started · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>Getting Started</a><ul class="internal"><li><a class="toctext" href="#Installation-1">Installation</a></li><li><a class="toctext" href="#Quick-Tutorial-1">Quick Tutorial</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Getting Started</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/start.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Getting Started</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h1><p>DataKnots is currently usable for contributors who wish to help grow the ecosystem. However, DataKnots is not yet usable for general audiences: with v0.1, there are no data source adapters and we lack important operators, such as <code>Sort</code> and <code>Group</code>. Many of these deficiencies were successfully prototyped and subsequent releases will add these necessary features incrementally.</p><h2><a class="nav-anchor" id="Installation-1" href="#Installation-1">Installation</a></h2><p>DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager. To install it, run in the package shell (enter with <code>]</code> from the Julia shell):</p><pre><code class="language-juliarepl">pkg&gt; add https://github.com/rbt-lang/DataKnots.jl</code></pre><p>DataKnots.jl requires Julia 1.0 or higher.</p><p>If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:</p><pre><code class="language-juliarepl">pkg&gt; dev https://github.com/rbt-lang/DataKnots.jl</code></pre><p>Our development chat is currently hosted on Gitter: https://gitter.im/rbt-lang/rbt-proto</p><h2><a class="nav-anchor" id="Quick-Tutorial-1" href="#Quick-Tutorial-1">Quick Tutorial</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting Started · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>Getting Started</a><ul class="internal"><li><a class="toctext" href="#Installation-1">Installation</a></li><li><a class="toctext" href="#Quick-Tutorial-1">Quick Tutorial</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Getting Started</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/start.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Getting Started</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h1><p>DataKnots is currently usable for contributors who wish to help grow the ecosystem. However, DataKnots is not yet usable for general audiences: with v0.1, there are no data source adapters and we lack important operators, such as <code>Sort</code> and <code>Group</code>. Many of these deficiencies were prototyped and subsequent releases will address these feature gaps incrementally.</p><p>This is a Julia language library; hence, the DataKnot syntax is necessarily in the Julia language. We&#39;ve taken pride to provide a usable notation even without using macros. In a future release we will likely include a DataKnot macro syntax as well. Such a macro syntax would be compatible with this language integrated approach.</p><h2><a class="nav-anchor" id="Installation-1" href="#Installation-1">Installation</a></h2><p>DataKnots.jl is a Julia library, but it is not yet registered with the Julia package manager. To install it, run in the package shell (enter with <code>]</code> from the Julia shell):</p><pre><code class="language-juliarepl">pkg&gt; add https://github.com/rbt-lang/DataKnots.jl</code></pre><p>DataKnots.jl requires Julia 1.0 or higher.</p><p>If you want to modify the source code of DataKnots.jl, you need to install it in development mode with:</p><pre><code class="language-juliarepl">pkg&gt; dev https://github.com/rbt-lang/DataKnots.jl</code></pre><p>Our development chat is currently hosted on Gitter: https://gitter.im/rbt-lang/rbt-proto</p><h2><a class="nav-anchor" id="Quick-Tutorial-1" href="#Quick-Tutorial-1">Quick Tutorial</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
   (department = [
-    (name = &quot;POLICE&quot;, employee = [
+    (name = &quot;POLICE&quot;,
+     employee = [
       (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;,
        salary = 101442),
       (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;,
        salary = 80016)]),
-    (name = &quot;FIRE&quot;, employee = [
+    (name = &quot;FIRE&quot;,
+     employee = [
       (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;,
-       salary = 95484)])],);</code></pre><p>To query this data via DataKnots, we need to first convert it into a <em>knot</em> structure. A knot can be converted back to native Julia via the <code>get</code> function.</p><pre><code class="language-julia">using DataKnots
+       salary = 95484)])],);</code></pre><p>To query this data, we convert it into a <code>DataKnot</code>. Any <em>knot</em> can be converted back to native Julia via the <code>get</code> function.</p><pre><code class="language-julia">using DataKnots
 ChicagoData = DataKnot(chicago_data)
 typeof(get(ChicagoData))
-#-&gt; NamedTuple{(:department,),⋮</code></pre><p>In this hierarchical Chicago data, the root is a <code>NamedTuple</code> with an entry <code>:department</code>, that <code>Vector</code> valued entry has another vector of tuples labeled <code>:employee</code>. The label <code>name</code> occurs both within the context of a department and within an employee record.</p><h3><a class="nav-anchor" id="Navigation-1" href="#Navigation-1">Navigation</a></h3><p>To list all the department names we write <code>It.department.name</code>. In this pipeline, <code>It</code> means &quot;use the current input&quot;. The dotted notation lets one navigate via hierarchy.</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
+#-&gt; NamedTuple{(:department,),⋮</code></pre><p>In this hierarchical Chicago data, the root is a <code>NamedTuple</code> with an entry <code>:department</code>, that <code>Vector</code> valued entry has another vector of tuples labeled <code>:employee</code>. The label <code>name</code> occurs both within the context of a department and an employee record.</p><h3><a class="nav-anchor" id="Navigation-1" href="#Navigation-1">Navigation</a></h3><p>To list all the department names we write <code>It.department.name</code>. In this pipeline, <code>It</code> means &quot;use the current input&quot;. The dotted notation lets one navigate via hierarchy.</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
 #=&gt;
   │ name   │
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset provided.</p><pre><code class="language-julia">run(ChicagoData, It.employee)
-#-&gt; ERROR: cannot find employee ⋮</code></pre><p>Instead, the <code>employee</code> tuples can be accessed by navigating though <code>department</code> tuples.</p><pre><code class="language-julia">run(ChicagoData, It.department.employee)
+=#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset provided. When a label can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">run(ChicagoData, It.employee)
+#-&gt; ERROR: cannot find employee ⋮</code></pre><p>Instead, <code>employee</code> tuples can be accessed by navigating though <code>department</code> tuples.</p><pre><code class="language-julia">run(ChicagoData, It.department.employee)
 #=&gt;
   │ employee                            │
   │ name       position          salary │
@@ -46,13 +48,13 @@ typeof(get(ChicagoData))
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>This motivates our clever use of <code>It</code> as a syntax short hand, implemented via Julia&#39;s attribute lookup.</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
+=#</code></pre><p>This motivates our clever use of <code>It</code> as a syntax short hand.</p><pre><code class="language-julia">run(ChicagoData, It.department.name)
 #=&gt;
   │ name   │
 ──┼────────┤
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>Use of <code>It.x.y</code> syntax could be equivalently written <code>Get(:x) &gt;&gt; Get(:y)</code>. In a macro syntax for DataKnots these navigation paths could be written plainly as <code>x.y</code> without <code>It</code>.</p><h3><a class="nav-anchor" id="Context-and-Counting-1" href="#Context-and-Counting-1">Context &amp; Counting</a></h3><p>To return the number of departments in this Chicago dataset we write <code>Count(It.department)</code>. Observe that the argument provided to <code>Count()</code>, <code>It.department</code>, is itself a pipeline.</p><pre><code class="language-julia">run(ChicagoData, Count(It.department))
+=#</code></pre><p>This pipeline, <code>It.department.name</code>, could be equivalently written <code>Get(:department) &gt;&gt; Get(:name)</code>. In a Julia macro syntax, this path could be written plainly <code>department.employee</code> without <code>It</code>.</p><h3><a class="nav-anchor" id="Context-and-Counting-1" href="#Context-and-Counting-1">Context &amp; Counting</a></h3><p>To return the number of departments in this Chicago dataset we write <code>Count(It.department)</code>. Observe that the argument provided to <code>Count()</code>, <code>It.department</code>, is itself a pipeline.</p><pre><code class="language-julia">run(ChicagoData, Count(It.department))
 #=&gt;
 │ DataKnot │
 ├──────────┤
@@ -65,7 +67,7 @@ typeof(get(ChicagoData))
 ──┼──────────┤
 1 │        2 │
 2 │        1 │
-=#</code></pre><p>Here we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>. The occurrence of <code>It</code> within the subordinate pipeline <code>Count(It.employee)</code> refers to each department individually, not to the dataset as a whole.</p><h3><a class="nav-anchor" id="Record-Construction-1" href="#Record-Construction-1">Record Construction</a></h3><p>Returning values in tandem can be done with <code>Record()</code>. Let&#39;s improve the output of the previous pipeline by including each department&#39;s name alongside employee counts.</p><pre><code class="language-julia">run(ChicagoData,
+=#</code></pre><p>In this output we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>. The occurrence of <code>It</code> within the subordinate pipeline <code>Count(It.employee)</code> refers to each department individually, not to the dataset as a whole.</p><h3><a class="nav-anchor" id="Record-Construction-1" href="#Record-Construction-1">Record Construction</a></h3><p>Returning values in tandem can be done with <code>Record()</code>. Let&#39;s improve the output of the previous pipeline by including each department&#39;s name alongside employee counts.</p><pre><code class="language-julia">run(ChicagoData,
     It.department
     &gt;&gt; Record(It.name,
               Count(It.employee)))
@@ -86,8 +88,8 @@ typeof(get(ChicagoData))
 ──┼───────────────────────────────────────────┤
 1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
 2 │ FIRE    DANIEL A, 95484                   │
-=#</code></pre><p>In this nested display, commas are used to separate fields and semi-colons separate values.</p><h3><a class="nav-anchor" id="Expressions-and-Output-Labels-1" href="#Expressions-and-Output-Labels-1">Expressions &amp; Output Labels</a></h3><p>Pipeline expressions can be independently defined, encapsulating logic and enabling reuse. Further, the output column of these named pipelines may be labeled using the pair syntax (<code>=&gt;</code>). Consider an <code>EmployeeCount</code> pipeline that, within the context of a department, returns the number of employees in that department.</p><pre><code class="language-julia">EmployeeCount =
-  :count =&gt;
+=#</code></pre><p>In this nested display, commas are used to separate fields and semi-colons separate values.</p><h3><a class="nav-anchor" id="Expressions-and-Output-Labels-1" href="#Expressions-and-Output-Labels-1">Expressions &amp; Output Labels</a></h3><p>Pipeline expressions can be named and reused. Further, the output column of these named pipelines may be labeled using Julia&#39;s <code>Pair</code> syntax (<code>=&gt;</code>). For example, let&#39;s define <code>EmployeeCount</code> to be the number of employees in a given department.</p><pre><code class="language-julia">EmployeeCount =
+  :employee_count =&gt;
     Count(It.employee)
 
 run(ChicagoData,
@@ -95,12 +97,12 @@ run(ChicagoData,
     &gt;&gt; Record(It.name,
               EmployeeCount))
 #=&gt;
-  │ department    │
-  │ name    count │
-──┼───────────────┤
-1 │ POLICE      2 │
-2 │ FIRE        1 │
-=#</code></pre><p>Labels can also be attached to an existing pipeline using the <code>Label</code> primitive. This form is handy for use in successive pipeline refinements (<code>&gt;&gt;=</code>).</p><pre><code class="language-julia">DeptCount = Count(It.department)
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┤
+1 │ POLICE               2 │
+2 │ FIRE                 1 │
+=#</code></pre><p>Labels can be attached to an existing pipeline using the <code>Label</code> primitive. This form is handy for use in successive pipeline refinements (<code>&gt;&gt;=</code>).</p><pre><code class="language-julia">DeptCount = Count(It.department)
 DeptCount &gt;&gt;= Label(:dept_count)
 
 run(ChicagoData, DeptCount)
@@ -120,17 +122,17 @@ run(ChicagoData, DeptCount)
     &gt;&gt; Filter(EmployeeCount .== 1)
     &gt;&gt; Record(It.name, EmployeeCount))
 #=&gt;
-  │ department  │
-  │ name  count │
-──┼─────────────┤
-1 │ FIRE      1 │
-=#</code></pre><p>In pipeline expressions, the broadcast variant of common operators, such as <code>.==</code> are to be used. Forgetting the period is an easy mistake to make and the Julia language error message can be unhelpful to figuring out what went wrong.</p><pre><code class="language-julia">run(ChicagoData,
+  │ department           │
+  │ name  employee_count │
+──┼──────────────────────┤
+1 │ FIRE               1 │
+=#</code></pre><p>In pipeline expressions, the broadcast variant of common operators, such as <code>.==</code> are to be used. Forgetting the period is an easy mistake to make and the Julia language error message can be unhelpful.</p><pre><code class="language-julia">run(ChicagoData,
     It.department
     &gt;&gt; Filter(EmployeeCount == 1)
     &gt;&gt; Record(It.name, EmployeeCount))
 #=&gt;
 ERROR: AssertionError: eltype(input) &lt;: AbstractVector
-=#</code></pre><p>Let&#39;s define a <code>GT100K</code> pipeline to decide if an employee&#39;s salary is greater than 100K. The output of this pipeline is also labeled.</p><pre><code class="language-julia">GT100K =
+=#</code></pre><p>Let&#39;s define <code>GT100K</code> to check if an employee&#39;s salary is greater than 100K. The output of this pipeline is also labeled.</p><pre><code class="language-julia">GT100K =
   :gt100k =&gt;
     It.salary .&gt; 100000
 
@@ -169,19 +171,19 @@ Filter(It.gt100k)
   │ name       salary  gt100k │
 ──┼───────────────────────────┤
 1 │ JEFFERY A  101442    true │
-=#</code></pre><p>Well-tested pipelines may have definitions that obscure their display in larger compositions. We can <code>Tag</code> them.</p><pre><code class="language-julia">GT100K = Tag(:GT100K, :gt100k =&gt; It.salary .&gt; 100000)
-#-&gt; GT100K</code></pre><p>Then, when they are used in larger compositions, their definition is gracefully replaced with the tag that we provided.</p><pre><code class="language-julia">OurQuery = It.department.employee &gt;&gt;
+=#</code></pre><p>Well-tested pipelines may benefit from being given a <code>Tag</code> so that their definitions are suppressed in larger compositions.</p><pre><code class="language-julia">GT100K = Tag(:GT100K, :gt100k =&gt; It.salary .&gt; 100000)
+#-&gt; GT100K</code></pre><p>This tagging can make subsequent compositions easier to read, when the definition of the named pipeline is not being questioned.</p><pre><code class="language-julia">OurQuery = It.department.employee &gt;&gt;
              Record(It.name, It.salary, GT100K)
 #=&gt;
 It.department.employee &gt;&gt; Record(It.name, It.salary, GT100K)
-=#</code></pre><p>Of course, they still work the same way. Notice that the tag (<code>:GT100K</code>) is distinct from the data label (<code>:gt100k</code>), the tag names the pipeline while the label names the output column.</p><pre><code class="language-julia">OurQuery &gt;&gt;= Filter(It.gt100k)
+=#</code></pre><p>Notice that the tag (<code>:GT100K</code>) is distinct from the data label (<code>:gt100k</code>), the tag names the pipeline while the label names the output column.</p><pre><code class="language-julia">OurQuery &gt;&gt;= Filter(It.gt100k)
 run(ChicagoData, OurQuery)
 #=&gt;
   │ employee                  │
   │ name       salary  gt100k │
 ──┼───────────────────────────┤
 1 │ JEFFERY A  101442    true │
-=#</code></pre><p>For the final step in the journey, let&#39;s only show the employee&#39;s name that met the GT100K criteria.</p><pre><code class="language-julia">OurQuery &gt;&gt;= It.name
+=#</code></pre><p>For the final step of our incremental construction, in the journey, let&#39;s only show the employee&#39;s name that met the GT100K criteria.</p><pre><code class="language-julia">OurQuery &gt;&gt;= It.name
 run(ChicagoData, OurQuery)
 #=&gt;
   │ name      │
@@ -229,7 +231,7 @@ run(ChicagoData, OurQuery)
 ──┼──────────┤
 1 │        2 │
 2 │        1 │
-=#</code></pre><p>Thus, for any <code>Z</code> and <code>Y</code> we see that <code>Z &gt;&gt; Each(Y &gt;&gt; Count)</code> is the same as <code>Z &gt;&gt; Count(Y)</code>. Which form to use depends upon what is notationally convenient. For incremental construction, being able to simply append <code>&gt;&gt; Count</code> is often very helpful.</p><pre><code class="language-julia">OurQuery = It.department.employee
+=#</code></pre><p>Which form of an aggregate to use depends upon what is notationally convenient.  For incremental construction, being able to simply append <code>&gt;&gt; Count</code> is often very helpful.</p><pre><code class="language-julia">OurQuery = It.department.employee
 run(ChicagoData, OurQuery &gt;&gt; Count)
 #=&gt;
 │ DataKnot │
@@ -251,7 +253,7 @@ run(ChicagoData, Employee)
 ──┼───────────────────────────────────┤
 1 │ JEFFERY A  SERGEANT        101442 │
 2 │ NANCY A    POLICE OFFICER   80016 │
-=#</code></pre><p>A negative index can be used to mark records from the end of the pipeline&#39;s input. So, to return up to, but not including, the very last item in the stream, we could write:</p><pre><code class="language-julia">run(ChicagoData, Employee &gt;&gt; Take(-1))
+=#</code></pre><p>A negative index can be used to count records from the end of the pipeline&#39;s input. So, to return up to, but not including, the very last item in the stream, we could write:</p><pre><code class="language-julia">run(ChicagoData, Employee &gt;&gt; Take(-1))
 #=&gt;
   │ employee                          │
   │ name       position        salary │
@@ -290,7 +292,7 @@ run(ChicagoData,
 ──┼─────────────────────┤
 1 │ POLICE      90729.0 │
 2 │ FIRE        95484.0 │
-=#</code></pre><p>The more general form of <code>Lift</code>, documented in the reference, can be used to handle more complex situations. How the lifted function is treated as a pipeline constructor depends upon that function&#39;s input and output signature.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>The <code>run</code> function takes named parameters. Each argument passed via named parameter is converted into a <code>DataKnot</code> and then made available as a label accessible anywhere in the pipeline.</p><pre><code class="language-julia">run(ChicagoData, It.AMT, AMT=100000)
+=#</code></pre><p>The more general form of <code>Lift</code>, documented in the reference. How a lifted function is treated as a pipeline constructor depends upon that function&#39;s input and output signature.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>The <code>run</code> function takes named parameters. Each argument passed via named parameter is converted into a <code>DataKnot</code> and then made available as a label accessible anywhere in the pipeline.</p><pre><code class="language-julia">run(ChicagoData, It.AMT, AMT=100000)
 #=&gt;
 │ DataKnot │
 ├──────────┤
@@ -312,11 +314,10 @@ run(ChicagoData, PaidOverAmt, AMT=100000)
 ──┼───────────┤
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-=#</code></pre><h3><a class="nav-anchor" id="Parameterized-Pipelines-1" href="#Parameterized-Pipelines-1">Parameterized Pipelines</a></h3><p>Suppose we want a parameterized pipeline that could take other pipelines as arguments. For example, let&#39;s return <code>employee</code> records that have salary greater than a given amount.</p><pre><code class="language-julia">EmployeesOver(N) =
-  Given(:amt =&gt; N,
+=#</code></pre><h3><a class="nav-anchor" id="Parameterized-Pipelines-1" href="#Parameterized-Pipelines-1">Parameterized Pipelines</a></h3><p>Suppose we want a parameterized pipeline that could take other pipelines as arguments. Let&#39;s define <code>EmployeesOver()</code> to return <code>employee</code> records that have salary greater than a given amount.</p><pre><code class="language-julia">EmployeesOver(X) = (
     It.department
     &gt;&gt; It.employee
-    &gt;&gt; Filter(It.salary .&gt; It.amt))
+    &gt;&gt; Filter(It.salary .&gt; X))
 
 run(ChicagoData, EmployeesOver(100000))
 #=&gt;
@@ -324,28 +325,40 @@ run(ChicagoData, EmployeesOver(100000))
   │ name       position  salary │
 ──┼─────────────────────────────┤
 1 │ JEFFERY A  SERGEANT  101442 │
-=#</code></pre><p>The <code>Given</code> wrapper above is needed when the argument <code>N</code> is an arbitrary pipeline. With <code>Given</code>, <code>N</code> is evaluated with its result recorded as <code>It.amt</code>. This value can then be accessed from within the subordinate pipeline expression.</p><p>In this way, a parameterized pipeline such as <code>EmployeesOver</code> can be passed an argument via a <code>run</code> parameter.</p><pre><code class="language-julia">run(ChicagoData, EmployeesOver(It.AMT), AMT=100000)
-#=&gt;
-  │ employee                    │
-  │ name       position  salary │
-──┼─────────────────────────────┤
-1 │ JEFFERY A  SERGEANT  101442 │
-=#</code></pre><p>Let&#39;s make this example more interesting. To return employees having greater than average salary, we must first compute the average salary.</p><pre><code class="language-julia">AvgSalary =
-   :avg_salary =&gt; mean.(It.department.employee.salary)
+=#</code></pre><p>Let&#39;s list employees having greater than average salary. To start, we must first compute the average salary.</p><pre><code class="language-julia">AvgSalary = mean.(It.department.employee.salary)
 
 run(ChicagoData, AvgSalary)
 #=&gt;
-│ avg_salary │
-├────────────┤
-│    92314.0 │
-=#</code></pre><p>We could then combine these two pipelines.</p><pre><code class="language-julia">run(ChicagoData, EmployeesOver(AvgSalary))
+│ DataKnot │
+├──────────┤
+│  92314.0 │
+=#</code></pre><p>We could use this <em>knot</em> value as a parameter to a subsequent <code>run</code> of <code>EmployeesOver()</code>. This works, but is not elegant.</p><pre><code class="language-julia">run(ChicagoData,
+    EmployeesOver(It.AMT),
+    AMT=run(ChicagoData, AvgSalary))
 #=&gt;
   │ employee                            │
   │ name       position          salary │
 ──┼─────────────────────────────────────┤
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>Note that this high-level expression is yet another pipeline and it could be combined within further computation.</p><pre><code class="language-julia">run(ChicagoData,
+=#</code></pre><p>However, if we try to combine these two pipelines directly, we get a naming error.</p><pre><code class="language-julia">run(ChicagoData, EmployeesOver(AvgSalary))
+#-&gt; ERROR: cannot find department ⋮</code></pre><p>By looking at the definition, we can see the problem: in the scope of <code>employee</code> there is no attribute <code>department</code>.</p><pre><code class="language-julia">EmployeesOver(AvgSalary)
+#=&gt;
+It.department &gt;&gt;
+It.employee &gt;&gt;
+Filter(It.salary .&gt; mean.(It.department.employee.salary))
+=#</code></pre><p>This challenge can be overcome with <code>Given</code>, which evaluates its named arguments in the current scope and makes those values available within a subordinate pipeline.</p><pre><code class="language-julia">EmployeesOver(X) =
+  Given(:AMT =&gt; X,
+    It.department
+    &gt;&gt; It.employee
+    &gt;&gt; Filter(It.salary .&gt; It.AMT))</code></pre><p>We could then combine these two pipelines.</p><pre><code class="language-julia">run(ChicagoData, EmployeesOver(AvgSalary))
+#=&gt;
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┤
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>Note that this expression is yet another pipeline that could be refined with further computation.</p><pre><code class="language-julia">run(ChicagoData,
     EmployeesOver(AvgSalary)
     &gt;&gt; It.name)
 #=&gt;
@@ -353,7 +366,7 @@ run(ChicagoData, AvgSalary)
 ──┼───────────┤
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-=#</code></pre><p>Although <code>Given</code> in this parameterized query defines <code>It.amt</code>, this parameter doesn&#39;t leak outside the definition.</p><pre><code class="language-julia"> run(ChicagoData,
+=#</code></pre><p>Although <code>Given</code> in this parameterized query defines <code>It.amt</code>, this computation&#39;s label doesn&#39;t leak outside the definition.</p><pre><code class="language-julia"> run(ChicagoData,
      EmployeesOver(AvgSalary)
      &gt;&gt; It.amt)
 #-&gt; ERROR: cannot find amt ⋮</code></pre><h3><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h3><p>Suppose we&#39;d like a list of employee names together with the corresponding department name. The naive approach won&#39;t work, because <code>department</code> is not a label in the context of an employee.</p><pre><code class="language-julia">run(ChicagoData,
@@ -372,9 +385,9 @@ run(ChicagoData, AvgSalary)
     1 │ JEFFERY A  POLICE    │
     2 │ NANCY A    POLICE    │
     3 │ DANIEL A   FIRE      │
-    =#</code></pre><p>This pattern also emerges with aggregate computations which need to be done in a parent scope, for example, taking the <code>MeanSalary</code> across all employees, before treating them individually.</p><pre><code class="language-julia">    run(ChicagoData,
+    =#</code></pre><p>This pattern also emerges with aggregate computations which need to be done in a parent scope. For example, let&#39;s compute employees with a higher than average salary within their department.</p><pre><code class="language-julia">    run(ChicagoData,
          It.department
-         &gt;&gt; Keep(MeanSalary)
+         &gt;&gt; Keep(:mean_salary =&gt; mean.(It.employee.salary))
          &gt;&gt; It.employee
          &gt;&gt; Filter(It.salary .&gt; It.mean_salary))
     #=&gt;
@@ -382,7 +395,17 @@ run(ChicagoData, AvgSalary)
       │ name       position  salary │
     ──┼─────────────────────────────┤
     1 │ JEFFERY A  SERGEANT  101442 │
-    =#</code></pre><p>While <code>Keep</code> and <code>Given</code> are similar, <code>Keep</code> deliberately leaks the values that it defines.</p><h3><a class="nav-anchor" id="More-on-Aggregates-1" href="#More-on-Aggregates-1">More on Aggregates</a></h3><p>There are other aggregate functions, such as <code>Min</code>, <code>Max</code>, and <code>Sum</code>. They could be used to create a statistical measure.</p><pre><code class="language-julia">using Statistics: mean
+    =#</code></pre><p>Compare this with an equivalent query prepared via <code>Given</code>.</p><pre><code class="language-julia">run(ChicagoData,
+     It.department
+     &gt;&gt; Given(:mean_salary =&gt; mean.(It.employee.salary),
+          It.employee
+           &gt;&gt; Filter(It.salary .&gt; It.mean_salary)))
+#=&gt;
+  │ employee                    │
+  │ name       position  salary │
+──┼─────────────────────────────┤
+1 │ JEFFERY A  SERGEANT  101442 │
+=#</code></pre><p>While <code>Keep</code> and <code>Given</code> are similar, <code>Keep</code> deliberately leaks the values that it defines while not increasing the nesting. On the other hand, <code>Given</code> increases nesting but doesn&#39;t leak.</p><h3><a class="nav-anchor" id="More-Aggregates-1" href="#More-Aggregates-1">More Aggregates</a></h3><p>There are other aggregate functions, such as <code>Min</code>, <code>Max</code>, and <code>Sum</code>. They could be used to create a statistical measure.</p><pre><code class="language-julia">using Statistics: mean
 Stats(X) =
   Record(
     :count =&gt; Count(X),
