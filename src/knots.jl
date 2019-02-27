@@ -92,16 +92,16 @@ TableData(head, body, flds) =
 
 function table_data(db::DataKnot, maxy::Int)
     shp = shape(db)
-    title = "DataKnot"
+    title = ""
     if shp isa HasLabel
         title = String(label(shp))
         shp = subject(shp)
     end
-    head = fill((title, 1), (1, 1))
+    head = fill((title, 1), (title != "" ? 1 : 0, 1))
     body = TupleVector(1, AbstractVector[cell(db)])
     flds = AbstractShape[shp]
     d = TableData(head, body, flds)
-    return _data_tear(_data_focus(d, 1), maxy)
+    return _data_tear(_default_header(_data_focus(d, 1)), maxy)
 end
 
 _data_focus(d::TableData, pos) =
@@ -180,12 +180,13 @@ function _focus_tuple(d::TableData, pos::Int)
 end
 
 _prepare_focus_tuple(col::TupleVector, shp::TupleOf) =
-    (col, shp)
+    width(shp) > 0 ? (col, shp) : nothing
 
 function _prepare_focus_tuple(v::AbstractVector, shp::ValueOf)
     ty = eltype(shp)
     ty <: NamedTuple || return nothing
     lbls = collect(Symbol, ty.parameters[1])
+    length(lbls) > 0 || return nothing
     shps = AbstractShape[]
     cols = AbstractVector[]
     for j = 1:length(lbls)
@@ -199,6 +200,14 @@ end
 
 _prepare_focus_tuple(::AbstractVector, AbstractShape) =
     nothing
+
+function _default_header(d::TableData)
+    hh, hw = size(d.head)
+    hh == 0 && hw > 0 || return d
+    head′ = fill(("", 0), (1, hw))
+    head′[1, 1] = ("It", hw)
+    return TableData(head′, d.body, d.flds, d.idxs, d.tear)
+end
 
 function _data_tear(d::TableData, maxy::Int)
     L = length(d.body)
