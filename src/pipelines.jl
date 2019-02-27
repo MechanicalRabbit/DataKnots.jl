@@ -95,6 +95,8 @@ run(F::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}; params...) =
 function execute(db::DataKnot, F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     db = pack(db, params)
     q = prepare(F, shape(db))
+    println(F)
+    println(q)
     db′ = q(db)
     return db′
 end
@@ -184,7 +186,11 @@ function adapt_flow(ishp::IsScope)
     q = adapt_flow(column(ishp))
     shp = shape(q)
     shp = with_elements(shp, TupleOf(elements(shp), context(ishp)) |> IsScope)
-    chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
+    if width(context(ishp)) > 0
+        chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
+    else
+        chain_of(column(1), q, with_elements(tuple_of(pass(), tuple_of()))) |> designate(ishp, shp)
+    end
 end
 
 function adapt_output(q::Query)
@@ -200,7 +206,11 @@ end
 function clone_context(ctx::TupleOf, q::Query)
     ishp = TupleOf(ishape(q), ctx) |> IsScope
     shp = with_elements(shape(q), elts -> TupleOf(elts, ctx) |> IsScope)
-    chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
+    if width(ctx) > 0
+        chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
+    else
+        chain_of(column(1), q, with_elements(tuple_of(pass(), tuple_of()))) |> designate(ishp, shp)
+    end
 end
 
 function clone_context(q::Query)
