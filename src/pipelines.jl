@@ -338,6 +338,9 @@ function monadic_record(q::Query, xs::Vector{Query})
     end
     ishp = elements(shape(q))
     shp = TupleOf(lbls, shape.(cols))
+    if column(ishp) isa HasLabel
+        shp = shp |> HasLabel(label(column(ishp)))
+    end
     r = tuple_of(lbls, cols) |> designate(ishp, shp)
     r = adapt_flow(clone_context(r))
     compose(q, r)
