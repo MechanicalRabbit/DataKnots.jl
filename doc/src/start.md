@@ -7,12 +7,6 @@ and we lack important operators, such as `Sort` and `Group`. Many
 of these deficiencies were prototyped and subsequent releases will
 address these feature gaps incrementally.
 
-This is a Julia language library; hence, the DataKnot syntax is
-necessarily in the Julia language. We've taken pride to provide a
-usable notation even without using macros. In a future release we
-will likely include a DataKnot macro syntax as well. Such a macro
-syntax would be compatible with this language integrated approach.
-
 ## Installation
 
 DataKnots.jl is a Julia library, but it is not yet registered with
@@ -192,8 +186,8 @@ to each department individually, not to the dataset as a whole.
 ### Record Construction
 
 Returning values in tandem can be done with `Record()`. Let's
-improve the output of the previous pipeline by including each
-department's name alongside employee counts.
+improve the previous output by including each department's name
+alongside employee counts.
 
     run(ChicagoData,
         It.department
@@ -293,8 +287,8 @@ list department names who have exactly one employee.
 
 In pipeline expressions, the broadcast variant of common
 operators, such as `.==` are to be used. Forgetting the period is
-an easy mistake to make and the Julia language error message can
-be unhelpful.
+an easy mistake to make and the relevant Julia language error
+message may not be helpful.
 
     run(ChicagoData,
         It.department
@@ -376,8 +370,8 @@ Let's run it.
     1 │ JEFFERY A  101442    true │
     =#
 
-Well-tested pipelines may benefit from being given a `Tag` so that
-their definitions are suppressed in larger compositions.
+Well-tested pipelines may benefit from a `Tag` so that their
+definitions are suppressed in larger compositions.
 
     GT100K = Tag(:GT100K, :gt100k => It.salary .> 100000)
     #-> GT100K
@@ -404,8 +398,8 @@ output column.
     1 │ JEFFERY A  101442    true │
     =#
 
-For the final step of our incremental construction, in the journey, let's only show the employee's
-name that met the GT100K criteria.
+For the final step of our incremental construction, let's only
+show the employee's name that met the GT100K criteria.
 
     OurQuery >>= It.name
     run(ChicagoData, OurQuery)
@@ -828,38 +822,6 @@ There are other aggregate functions, such as `Min`, `Max`, and
     │     3  92314  80016  101442  276942 │
     =#
 
-This `Stats()` pipeline constructor could be made usable as a
-pipeline primitive using `Then()` as follows:
-
-    run(ChicagoData,
-        It.department
-        >> Record(It.name,
-             It.employee.salary
-             >> Then(Stats)
-             >> Label(:salary_stats)))
-    #=>
-      │ department                              │
-      │ name    salary_stats                    │
-    ──┼─────────────────────────────────────────┼
-    1 │ POLICE  2, 90729, 80016, 101442, 181458 │
-    2 │ FIRE    1, 95484, 95484, 95484, 95484   │
-    =#
-
-To avoid having to type in `Then()`, one could register an
-automatic type conversion for the `Stats` function.
-
-    DataKnots.Lift(::typeof(Stats)) = Then(Stats)
-
-    run(ChicagoData,
-        It.department.employee.salary
-        >> Filter(It .< 100000)
-        >> Stats)
-    #=>
-    │ count  mean   min    max    sum    │
-    ┼────────────────────────────────────┼
-    │     2  87750  80016  95484  175500 │
-    =#
-
 As an aside, `Stats` could also be tagged so that higher-level
 pipelines don't `show` an expansion of its entire definition.
 
@@ -875,38 +837,102 @@ pipelines don't `show` an expansion of its entire definition.
     Stats(It.department.employee.salary)
     #-> Stats(It.department.employee.salary)
 
-### Input Origin
+### Parameter Evaluation
 
-When a pipeline is `run`, the input for a pipeline isn't simply a
-data set, instead, it is a path between an *origin* and a set of
-*target* values. For most pipeline constructors, such as
-`Count()`, only the target is considered. However, sometimes the
-origin of the input can be used as well.
+Each pipeline constructor can choose how it wishes to evaluate its
+parameters and treat its input. Most pipelines are *elementwise*,
+that is, for each of their inputs, they evaluate their arguments
+once and produce zero or more outputs.
 
-For example, how could we return the first half of a pipeline's
-input? We could start by computing the half-way point, using
-integer division (`.÷`).
+For example, `Record` produces exactly one output per input.
 
-    Employee = It.department.employee
-    Halfway = Count(Employee) .÷ 2
-    run(ChicagoData, Halfway)
+    run(ChicagoData, 
+        It.department 
+        >> Record(It.name))
+    #=>
+      │ department │
+      │ name       │
+    ──┼────────────┼
+    1 │ POLICE     │
+    2 │ FIRE       │
+    =#
+
+The `Count()` pipeline constructor is also *elementwise*, for each
+input, it evaluates its argument and produces an output. In this
+example, `Count()` gets one input per department and produces the
+count of employees in each of those departments.
+
+    run(ChicagoData, 
+        It.department 
+        >> Count(It.employee))
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  1 │
+    =#
+
+By contrast, *aggregate* pipeline primitives are not elementwise.
+For example, `Count` consumes its entire input to produce exactly
+one output. 
+
+    run(ChicagoData, 
+        It.department 
+        >> Count)
     #=>
     │ It │
     ┼────┼
-    │  1 │
+    │  2 │
     =#
 
-Then, use `Take` with this computed index.
+The `A >> B` pipeline composition operator has it's own logic, it
+passes the output of `A` as the input of `B`, and merges each
+output from `B` into a single stream.
 
-    run(ChicagoData, Employee >> Take(Halfway))
+    run(ChicagoData, 
+        It.department 
+        >> It.employee 
+        >> It.name)
     #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ NANCY A   │
+    3 │ DANIEL A  │
     =#
 
-This evaluation works because the pipeline that is built by `Take`
-evaluates its argument, `Halfway` against the origin and not the
-target of the pipeline's input stream.
+The `Take` and `Drop` pipeline constructors also deserve special
+mention since they are neither elementwise nor aggregates. Their
+argument is evaluated in the *origin* of the parent query. In this
+next example, only the first name is returned since `3÷2` is `1`.
 
+    Names = It.department.employee.name
+    Halfway = Count(Names) .÷ 2
+    run(ChicagoData, Names >> Take(Halfway))
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    =#
+
+The origin used can be changed using `Each` or `Record`. In this
+case, `2÷2` is `1`, and `1÷2` is `0`. Hence, only the first name
+is returned for `POLICE` and zero names are returned for `FIRE`.
+
+    Names = :employee_names => It.employee.name
+    Halfway = Count(Names) .÷ 2
+    run(ChicagoData, 
+        It.department
+        >> Record(
+             :dept_name => It.name,
+             Names >> Take(Halfway)))
+    #=>
+      │ department                │
+      │ dept_name  employee_names │
+    ──┼───────────────────────────┼
+    1 │ POLICE     JEFFERY A      │
+    2 │ FIRE                      │
+    =#
+
+In both of these cases, if `Take` evaluated its arguments
+*elementwise* then, `Halfway` would be an error.
