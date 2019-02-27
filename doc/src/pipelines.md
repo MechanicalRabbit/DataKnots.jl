@@ -53,9 +53,8 @@ holds associated employee records.
 
     db = DataKnot(elts, x1to1)
     #=>
-    │ DataKnot                                                                     …
     │ department                                                                   …
-    ├──────────────────────────────────────────────────────────────────────────────…
+    ┼──────────────────────────────────────────────────────────────────────────────…
     │ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…
     =#
 
@@ -88,7 +87,7 @@ the input dataset and a pipeline object, and produces the output dataset.
     #=>
       │ employee                                    │
       │ name       position           salary  rate  │
-    ──┼─────────────────────────────────────────────┤
+    ──┼─────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442        │
     2 │ NANCY A    POLICE OFFICER      80016        │
     3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
@@ -131,12 +130,12 @@ composition combinator.
 
     run(db, Employees >> SalaryOver100K)
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │     true │
-    2 │    false │
-    3 │     true │
-    4 │    false │
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │ false │
+    3 │  true │
+    4 │ false │
     =#
 
 However, this only gives us a list of bare Boolean values disconnected from the
@@ -149,7 +148,7 @@ combinator.
     #=>
       │ employee                            │
       │ name       salary  salary_over_100k │
-    ──┼─────────────────────────────────────┤
+    ──┼─────────────────────────────────────┼
     1 │ JEFFERY A  101442              true │
     2 │ NANCY A     80016             false │
     3 │ JAMES A    103350              true │
@@ -168,7 +167,7 @@ To actually filter the data using this predicate pipeline, we need to use the
     #=>
       │ employee                                   │
       │ name       position           salary  rate │
-    ──┼────────────────────────────────────────────┤
+    ──┼────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442       │
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
     =#
@@ -179,9 +178,9 @@ combinator.
 
     run(db, Count(EmployeesWithSalaryOver100K))
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │        2 │
+    │ It │
+    ┼────┼
+    │  2 │
     =#
 
 In general, pipeline algebra forms an XPath-like domain-specific language.  It

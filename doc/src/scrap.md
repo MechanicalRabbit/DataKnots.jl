@@ -89,11 +89,11 @@ could be easily incorporated into a DataKnots' processing pipeline.
     YesOrNo = Lift(() -> rand(Bool) ? "yes" : "no", ())
     run(Range(3) >> YesOrNo)
     #=>
-      │ DataKnot │
-    ──┼──────────┤
-    1 │ no       │
-    2 │ no       │
-    3 │ yes      │
+      │ It  │
+    ──┼─────┼
+    1 │ no  │
+    2 │ no  │
+    3 │ yes │
     =#
 
 
