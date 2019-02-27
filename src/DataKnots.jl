@@ -11,8 +11,10 @@ export
     Drop,
     Each,
     Filter,
+    Get,
     Given,
     It,
+    Keep,
     Label,
     Lift,
     Lookup,
@@ -33,6 +35,6 @@ include("vectors.jl")
 include("shapes.jl")
 include("knots.jl")
 include("queries.jl")
-#include("pipelines.jl")
+include("pipelines.jl")
 
 end

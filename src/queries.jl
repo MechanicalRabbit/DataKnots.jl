@@ -87,6 +87,11 @@ shape(q::Query) = shape(q.sig)
 
 ishape(q::Query) = ishape(q.sig)
 
+function (q::Query)(input::DataKnot)
+    #@assert fits(shape(input), ishape(q))
+    DataKnot(q(cell(input)), shape(q))
+end
+
 function (q::Query)(input::AbstractVector)
     rt = Runtime()
     output = q(rt, input)

@@ -82,59 +82,134 @@ const It = Navigation(())
 #
 
 """
-    run(F::AbstractPipeline; params...)
+    run(db::DataKnot, F::AbstractPipeline; params...)
 
 Runs the pipeline with the given parameters.
 """
-run(F::AbstractPipeline; params...) =
-    execute(F, sort(collect(Pair{Symbol,DataKnot}, params), by=first))
-
-run(F::Pair{Symbol,<:AbstractPipeline}; params...) =
-    run(Lift(F); params...)
-
 run(db::DataKnot, F; params...) =
-    run(db >> Each(F); params...)
+    execute(db, Lift(F), sort(collect(Pair{Symbol,DataKnot}, params), by=first))
 
-function execute(F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
-    q = prepare(F, params)
-    input = pack(q, params)
-    output = q(input)
-    return unpack(q, output)
+run(F::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}; params...) =
+    run(DataKnot(nothing), F; params...)
+
+function execute(db::DataKnot, F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
+    db = pack(db, params)
+    q = prepare(F, shape(db))
+    db′ = q(db)
+    return db′
 end
 
-prepare(F::AbstractPipeline, slots::Vector{Pair{Symbol,OutputShape}}=Pair{Symbol,OutputShape}[]) =
-    optimize(apply(F, Environment(slots), stub()))
+prepare(db::DataKnot, F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
+    prepare(F, shape(pack(db, params)))
 
-prepare(F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}) =
-    prepare(F, Pair{Symbol,OutputShape}[param.first => shape(param.second) for param in params])
+function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
+    !isempty(params) || return db
+    ctx_lbls = first.(params)
+    ctx_cols = collect(AbstractVector, cell.(last.(params)))
+    ctx_shps = collect(AbstractShape, shape.(last.(params)))
+    return DataKnot(TupleVector(1, AbstractVector[cell(db), TupleVector(ctx_lbls, 1, ctx_cols)]),
+                    TupleOf(shape(db), TupleOf(ctx_lbls, ctx_shps)) |> IsScope)
+end
 
-function pack(q, params)
-    data = [nothing]
-    md = imode(q)
-    if isfree(md)
-        return data
+function prepare(F::AbstractPipeline, ishp::AbstractShape)
+    env = Environment()
+    q_i = adapt_input(ishp)
+    q_F = compile(Each(F), env, stub(q_i))
+    q_o = adapt_output(BlockOf(elements(shape(q_F)), cardinality(shape(q_i))|cardinality(shape(q_F))) |> IsFlow)
+    shp = shape(q_o)
+    return chain_of(q_i, with_elements(q_F), flatten(), q_o) |> designate(ishp, shp) |> optimize
+end
+
+adapt_input(ishp::IsScope) =
+    adapt_flow(ishp)
+
+function adapt_input(ishp::AbstractShape)
+    q = tuple_of(pass(), tuple_of())
+    shp = TupleOf(ishp, TupleOf()) |> IsScope
+    t = adapt_input(shp)
+    shp = shape(t)
+    chain_of(q, t) |> designate(ishp, shp)
+end
+
+function adapt_output(ishp::IsFlow)
+    q = adapt_output(elements(ishp))
+    lbl = nothing
+    shp = shape(q)
+    if shp isa HasLabel
+        lbl = label(shp)
+        shp = subject(shp)
+    end
+    shp = BlockOf(shp, cardinality(ishp))
+    if lbl !== nothing
+        shp = shp |> HasLabel(lbl)
+    end
+    with_elements(q) |> designate(ishp, shp)
+end
+
+adapt_output(ishp::IsScope) =
+    column(1) |> designate(ishp, column(ishp))
+
+adapt_output(ishp::AbstractShape) =
+    pass() |> designate(ishp, ishp)
+
+adapt_flow(ishp::AbstractShape) =
+    wrap() |> designate(ishp, BlockOf(ishp, x1to1) |> IsFlow)
+
+adapt_flow(ishp::BlockOf) =
+    pass() |> designate(ishp, ishp |> IsFlow)
+
+function adapt_flow(ishp::ValueOf)
+    ty = eltype(ishp)
+    if ty <: AbstractVector
+        ty′ = eltype(ty)
+        adapt_vector() |> designate(ishp, BlockOf(ty′, x0toN) |> IsFlow)
+    elseif Missing <: ty
+        ty′ = Base.nonmissingtype(ty)
+        adapt_missing() |> designate(ishp, BlockOf(ty′, x0to1) |> IsFlow)
     else
-        cols = AbstractVector[]
-        if isframed(md)
-            push!(cols, [1])
-        end
-        k = 1
-        for slot in slots(md)
-            while k <= length(params) && params[k].first < slot.first
-                k += 1
-            end
-            if k > length(params) || params[k].first != slot.first
-                error("parameter is not specified: $(slot.first)")
-            end
-            elts = elements(params[k].second)
-            push!(cols, BlockVector(length(elts) == 1 ? (:) : [1, length(elts)+1], elts, cardinality(slot.second)))
-        end
-        return TupleVector(1, AbstractVector[data, TupleVector(1, cols)])
+        wrap() |> designate(ishp, BlockOf(ishp, x1to1) |> IsFlow)
     end
 end
 
-unpack(q, output) =
-    DataKnot(elements(output), shape(q))
+function adapt_flow(ishp::HasLabel)
+    q = adapt_flow(subject(ishp))
+    shp = with_elements(shape(q), HasLabel(label(ishp)))
+    q |> designate(ishp, shp)
+end
+
+adapt_flow(ishp::IsFlow) =
+    pass() |> designate(ishp, ishp)
+
+function adapt_flow(ishp::IsScope)
+    q = adapt_flow(column(ishp))
+    shp = shape(q)
+    shp = with_elements(shp, TupleOf(elements(shp), context(ishp)) |> IsScope)
+    chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
+end
+
+function adapt_output(q::Query)
+    r = adapt_output(shape(q))
+    chain_of(q, r) |> designate(ishape(q), shape(r))
+end
+
+function adapt_flow(q::Query)
+    r = adapt_flow(shape(q))
+    chain_of(q, r) |> designate(ishape(q), shape(r))
+end
+
+function clone_context(ctx::TupleOf, q::Query)
+    ishp = TupleOf(ishape(q), ctx) |> IsScope
+    shp = with_elements(shape(q), elts -> TupleOf(elts, ctx) |> IsScope)
+    chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
+end
+
+function clone_context(q::Query)
+    ishp = ishape(q)
+    ctx = context(ishp)
+    shp = TupleOf(shape(q), ctx) |> IsScope
+    tuple_of(q, column(2)) |> designate(ishp, shp)
+end
+
 
 
 #
@@ -149,18 +224,21 @@ Pipeline execution state.
 mutable struct Environment
 end
 
-apply(F, env::Environment, q::Query)::Query =
-    apply(Lift(F), env, q)
+compile(F, env::Environment, q::Query)::Query =
+    compile(Lift(F), env, q)
 
-function apply(db::DataKnot, env::Environment, q::Query)::Query
-    r = block_filler(elements(db), cardinality(db)) |> designate(InputShape(AnyShape()), shape(db))
+function compile(db::DataKnot, env::Environment, q::Query)::Query
+    r = block_filler(cell(db), x1to1)
+    t = adapt_flow(shape(db))
+    r = chain_of(r, with_elements(t), flatten()) |> designate(AnyShape(), shape(t))
+    r = clone_context(context(elements(shape(q))), r)
     compose(q, r)
 end
 
-apply(F::Pipeline, env::Environment, q::Query)::Query =
+compile(F::Pipeline, env::Environment, q::Query)::Query =
     F.op(env, q, F.args...)
 
-function apply(nav::Navigation, env::Environment, q::Query)::Query
+function compile(nav::Navigation, env::Environment, q::Query)::Query
     for fld in getfield(nav, :__path)
         q = Lookup(env, q, fld)
     end
@@ -172,20 +250,21 @@ end
 # Monadic composition.
 #
 
-stub(dr::Decoration, shp::AbstractShape) =
-    wrap() |> designate(InputShape(dr, shp), OutputShape(dr, shp))
+function stub(ishp::AbstractShape)
+    @assert ishp isa IsScope
+    shp = BlockOf(ishp, x1to1) |> IsFlow
+    wrap() |> designate(ishp, shp)
+end
 
-stub() =
-    stub(Decoration(), NativeShape(Nothing))
+function stub(q::Query)
+    shp = shape(q)
+    @assert shp isa IsFlow
+    stub(elements(shp))
+end
 
-stub(db::DataKnot) =
-    stub(decoration(db), domain(db))
-
-stub(q::Query) =
-    stub(decoration(q), domain(q))
-
-istub(q::Query) =
-    stub(idecoration(q), idomain(q))
+function istub(q::Query)
+    stub(ishape(q))
+end
 
 compose(q::Query) = q
 
@@ -193,75 +272,20 @@ compose(q1::Query, q2::Query, q3::Query, qs::Query...) =
     foldl(compose, qs, init=compose(compose(q1, q2), q3))
 
 function compose(q1::Query, q2::Query)
-    @assert fits(domain(q1), idomain(q2))
-    imd = ibound(imode(q1), imode(q2))
-    md = bound(mode(q1), mode(q2))
+    ishp1 = ishape(q1)
+    shp1 = shape(q1)
+    ishp2 = ishape(q2)
+    shp2 = shape(q2)
+    @assert shp1 isa IsFlow && shp2 isa IsFlow
+    #@assert fits(elements(shp1), ishp2)
+    ishp = ishp1
+    shp = BlockOf(elements(shp2), cardinality(shp1)|cardinality(shp2)) |> IsFlow
     chain_of(
-        duplicate_input(imd),
-        within_input(imd, narrow_input(imd, q1)),
-        distribute(imd, mode(q1)),
-        within_output(mode(q1), narrow_input(imd, q2)),
-        flatten_output(mode(q1), mode(q2)),
-    ) |> designate(InputShape(idecoration(q1), idomain(q1), imd),
-                   OutputShape(decoration(q2), domain(q2), md))
+        q1,
+        with_elements(q2),
+        flatten(),
+    ) |> designate(ishp, shp)
 end
-
-duplicate_input(md::InputMode) =
-    if isfree(md)
-        pass()
-    else
-        tuple_of(pass(), column(2))
-    end
-
-within_input(md::InputMode, q::Query) =
-    if isfree(md)
-        q
-    else
-        with_column(1, q)
-    end
-
-distribute(imd::InputMode, md::OutputMode) =
-    if isfree(imd)
-        pass()
-    else
-        distribute(1)
-    end
-
-within_output(md::OutputMode, q::Query) =
-    with_elements(q)
-
-function narrow_input(md1::InputMode, md2::InputMode)
-    if isfree(md1) && isfree(md2) || slots(md1) == slots(md2) && isframed(md1) == isframed(md2)
-        pass()
-    elseif isfree(md2)
-        column(1)
-    else
-        idxs = Int[]
-        if isframed(md2)
-            @assert isframed(md1)
-            push!(idxs, 1)
-        end
-        for slot2 in slots(md2)
-            idx = findfirst(slot1 -> slot1.first == slot2.first, slots(md1))
-            @assert idx != nothing
-            push!(idxs, idx + isframed(md1))
-        end
-        tuple_of(
-            column(1),
-            chain_of(
-                column(2),
-                tuple_of([column(i) for i in idxs]...)))
-    end
-end
-
-narrow_input(md::InputMode) =
-    narrow_input(md, InputMode())
-
-narrow_input(md::InputMode, q::Query) =
-    chain_of(narrow_input(md, imode(q)), q)
-
-flatten_output(md1::OutputMode, md2::OutputMode) =
-    flatten()
 
 >>(X::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}, Xs...) =
     Compose(X, Xs...)
@@ -274,7 +298,7 @@ syntax(::typeof(Compose), args::Vector{Any}) =
 
 function Compose(env::Environment, q::Query, Xs...)
     for X in Xs
-        q = apply(X, env, q)
+        q = compile(X, env, q)
     end
     q
 end
@@ -285,13 +309,29 @@ end
 #
 
 function monadic_record(q::Query, xs::Vector{Query})
-    ishp = ibound(ishape.(xs))
-    shp = OutputShape(decoration(q), RecordShape(shape.(xs)))
-    lbls = Symbol[let lbl = label(shape(x)); lbl !== nothing ? lbl : Symbol("#$i") end for (i, x) in enumerate(xs)]
-    r = chain_of(
-        tuple_of(lbls, [narrow_input(mode(ishp), x) for x in xs]),
-        wrap(),
-    ) |> designate(ishp, shp)
+    lbls = Symbol[]
+    cols = Query[]
+    seen = Dict{Symbol,Int}()
+    for (i, x) in enumerate(xs)
+        x = adapt_output(x)
+        shp = shape(x)
+        lbl = label(i)
+        if shp isa HasLabel
+            lbl = label(shp)
+            shp = subject(shp)
+            x = x |> designate(ishape(x), shp)
+        end
+        if lbl in keys(seen)
+            lbls[seen[lbl]] = label(seen[lbl])
+        end
+        seen[lbl] = i
+        push!(lbls, lbl)
+        push!(cols, x)
+    end
+    ishp = elements(shape(q))
+    shp = TupleOf(lbls, shape.(cols))
+    r = tuple_of(lbls, cols) |> designate(ishp, shp)
+    r = adapt_flow(clone_context(r))
     compose(q, r)
 end
 
@@ -304,7 +344,7 @@ Record(Xs...) =
     Pipeline(Record, Xs...)
 
 function Record(env::Environment, q::Query, Xs...)
-    xs = apply.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
+    xs = compile.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
     monadic_record(q, xs)
 end
 
@@ -313,32 +353,28 @@ end
 # Lifting Julia values and functions.
 #
 
-function monadic_lift(f, xs::Vector{Query})
-    ity = Tuple{eltype.(shape.(xs))...}
-    oty = Core.Compiler.return_type(f, ity)
-    oty != Union{} || error("cannot apply $f to $ity")
-    tail = wrap()
-    card = x1to1
-    if oty <: AbstractVector
-        oty = eltype(oty)
-        tail = adapt_vector()
-        card = x0toN
-    elseif Missing <: oty
-        oty = Base.nonmissingtype(oty)
-        tail = adapt_missing()
-        card = x0to1
+function monadic_lift(q::Query, f, xs::Vector{Query})
+    cols = Query[]
+    for x in xs
+        x = adapt_output(x)
+        push!(cols, x)
     end
-    ishp = ibound(ishape.(xs))
-    shp = OutputShape(NativeShape(oty), card)
-    q = if length(xs) == 1
-            chain_of(xs[1], lift(f), tail)
+    ity = Tuple{eltype.(shape.(cols))...}
+    oty = Core.Compiler.return_type(f, ity)
+    oty != Union{} || error("cannot compile $f to $ity")
+    ishp = elements(shape(q))
+    shp = ValueOf(oty)
+    r = if length(cols) == 1
+            if (cardinality(shape(xs[1])) & x1toN == x1toN) && !(oty <: AbstractVector)
+                chain_of(cols[1], block_lift(f))
+            else
+                chain_of(cols[1], lift(f))
+            end
         else
-            chain_of(
-                tuple_of(Symbol[], [narrow_input(mode(ishp), x) for x in xs]),
-                tuple_lift(f),
-                tail)
-        end
-    q |> designate(ishp, shp)
+            chain_of(tuple_of(Symbol[], cols), tuple_lift(f))
+        end |> designate(ishp, shp)
+    r = adapt_flow(clone_context(r))
+    compose(q, r)
 end
 
 Lift(X::AbstractPipeline) = X
@@ -366,11 +402,11 @@ convert(::Type{AbstractPipeline}, F::AbstractPipeline) =
     F
 
 Lift(env::Environment, q::Query, val) =
-    apply(convert(DataKnot, val), env, q)
+    compile(convert(DataKnot, val), env, q)
 
 function Lift(env::Environment, q::Query, f, Xs::Tuple)
-    xs = apply.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
-    compose(q, monadic_lift(f, xs))
+    xs = compile.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
+    monadic_lift(q, f, xs)
 end
 
 # Broadcasting.
@@ -418,12 +454,36 @@ Makes `X` process its input elementwise.
 Each(X) = Pipeline(Each, X)
 
 Each(env::Environment, q::Query, X) =
-    compose(q, apply(X, env, stub(q)))
+    compose(q, compile(X, env, stub(q)))
 
 
 #
 # Assigning labels.
 #
+
+replace_label(shp::AbstractShape, ::Nothing) =
+    shp
+
+replace_label(shp::AbstractShape, lbl::Symbol) =
+    shp |> HasLabel(lbl)
+
+replace_label(shp::HasLabel, ::Nothing) =
+    subject(shp)
+
+replace_label(shp::HasLabel, lbl::Symbol) =
+    subject(shp) |> HasLabel(lbl)
+
+replace_label(shp::IsFlow, ::Nothing) =
+    with_elements(shp, elts -> replace_label(elts, nothing))
+
+replace_label(shp::IsFlow, lbl::Symbol) =
+    with_elements(shp, elts -> replace_label(elts, lbl))
+
+replace_label(shp::IsScope, ::Nothing) =
+    with_column(shp, col -> replace_label(col, nothing))
+
+replace_label(shp::IsScope, lbl::Symbol) =
+    with_column(shp, col -> replace_label(col, lbl))
 
 """
     Label(lbl::Symbol)
@@ -434,7 +494,7 @@ Label(lbl::Symbol) =
     Pipeline(Label, lbl)
 
 Label(env::Environment, q::Query, lbl::Symbol) =
-    q |> designate(ishape(q), shape(q) |> decorate(label=lbl))
+    q |> designate(ishape(q), replace_label(shape(q), lbl))
 
 Lift(p::Pair{Symbol}) =
     Compose(p.second, Label(p.first))
@@ -459,10 +519,10 @@ Tag(F::Union{Function,DataType}, args::Tuple, X) =
     Tag(nameof(F), args, X)
 
 Tag(env::Environment, q::Query, name, X) =
-    apply(X, env, q)
+    compile(X, env, q)
 
 Tag(env::Environment, q::Query, name, args, X) =
-    apply(X, env, q)
+    compile(X, env, q)
 
 syntax(::typeof(Tag), args::Vector{Any}) =
     syntax(Tag, args...)
@@ -479,80 +539,67 @@ syntax(::typeof(Tag), name::Symbol, args::Tuple, X) =
 #
 
 """
-    Lookup(name)
+    Get(name)
 
 Finds an attribute or a parameter.
 """
-Lookup(name) =
-    Pipeline(Lookup, name)
+Get(name) =
+    Pipeline(Get, name)
 
-function Lookup(env::Environment, q::Query, name)
-    r = lookup(env, name)
-    if r == nothing
-        r = lookup(domain(q), name)
+function Get(env::Environment, q::Query, name)
+    shp = shape(q)
+    r = lookup(context(elements(shp)), name)
+    if r !== nothing
+        r = chain_of(column(2), r) |> designate(elements(shp), shape(r))
+    else
+        r = lookup(column(elements(shp)), name)
+        if r !== nothing
+            r = chain_of(column(1), r) |> designate(elements(shp), shape(r))
+        else
+            error("cannot find $name at\n$(sigsyntax(column(elements(shp))))")
+        end
     end
-    if r == nothing
-        error("cannot find $name at\n$(sigsyntax(domain(q)))")
-    end
+    r = adapt_flow(clone_context(r))
     compose(q, r)
 end
 
-lookup(env::Environment, ::Any) = nothing
+const Lookup = Get
 
-function lookup(env::Environment, name::Symbol)
-    for slot in env.slots
-        if slot.first == name
-            shp = slot.second
-            ishp = InputShape(AnyShape(), [slot])
-            return chain_of(
-                    column(2),
-                    column(1)
-            ) |> designate(ishp, shp)
-        end
+lookup(::AbstractShape, ::Any) = nothing
+
+lookup(shp::HasLabel, name::Any) =
+    lookup(subject(shp), name)
+
+function lookup(lbls::Vector{Symbol}, name::Symbol)
+    j = findlast(isequal(name), lbls)
+    if j === nothing
+        j = findlast(isequal(Symbol("#$name")), lbls)
     end
-    return nothing
+    j
 end
 
-lookup(::AbstractShape, ::Any) = missing
-
-function lookup(shp::RecordShape, name::Symbol)
-    for fld in shp.flds
-        lbl = label(fld)
-        if lbl == name
-            return column(lbl) |> designate(InputShape(shp), fld)
-        end
+function lookup(ishp::TupleOf, name::Symbol)
+    lbls = labels(ishp)
+    if isempty(lbls)
+        lbls = Symbol[label(i) for i = 1:width(ishp)]
     end
-    return nothing
+    j = lookup(lbls, name)
+    j !== nothing || return nothing
+    shp = replace_label(column(ishp, j), name == lbls[j] ? name : nothing)
+    column(lbls[j]) |> designate(ishp, shp)
 end
 
-lookup(shp::NativeShape, name) =
+lookup(shp::ValueOf, name) =
     lookup(shp.ty, name)
 
 lookup(::Type, ::Any) =
     nothing
 
 function lookup(ity::Type{<:NamedTuple}, name::Symbol)
-    j = findfirst(isequal(name), ity.parameters[1])
-    if j === nothing
-        return nothing
-    end
+    j = lookup(collect(Symbol, ity.parameters[1]), name)
+    j !== nothing || return nothing
     oty = ity.parameters[2].parameters[j]
-    f = t -> t[j]
-    tail = wrap()
-    card = x1to1
-    if oty <: AbstractVector
-        oty = eltype(oty)
-        tail = adapt_vector()
-        card = x0toN
-    elseif Missing <: oty
-        oty = Base.nonmissingtype(oty)
-        tail = adapt_missing()
-        card = x0to1
-    end
-    ishp = InputShape(ity)
-    shp = OutputShape(name, NativeShape(oty), card)
-    r = chain_of(lift(f), tail) |> designate(ishp, shp)
-    r
+    lift(t -> t[j]) |> designate(ValueOf(ity), ValueOf(oty) |> HasLabel(name))
 end
 
 
@@ -560,62 +607,79 @@ end
 # Specifying parameters.
 #
 
-function monadic_given(p::Query, q::Query)
-    name = label(shape(p))
-    if name === nothing
-        error("parameter name is not specified")
-    end
-    if !any(slot.first == name for slot in slots(ishape(q)))
-        return q
-    end
-    slots′ = copy(slots(q))
-    splice!(slots′, searchsorted(first.(slots′), name))
-    imd = ibound(InputMode(slots′, isframed(q)), imode(p))
-    cs = Query[]
-    if isframed(q)
-        push!(cs, chain_of(column(2), column(1)))
-    end
-    for slot in slots(q)
-        if slot.first == name
-            push!(cs, narrow_input(imd, p))
-        else
-            idx = searchsortedfirst(slots(imd), slot, by=first)
-            push!(cs, chain_of(column(2), column(idx + isframed(imd))))
+function monadic_keep(q::Query, p::Query)
+    p = adapt_output(p)
+    shp = shape(p)
+    shp isa HasLabel || error("parameter name is not specified")
+    name = label(shp)
+    shp = subject(shp)
+    ishp = ishape(p)
+    ctx = context(ishp)
+    lbls′ = Symbol[]
+    cols′ = AbstractShape[]
+    perm = Int[]
+    for j = 1:width(ctx)
+        lbl = label(ctx, j)
+        if lbl != name
+            push!(lbls′, lbl)
+            push!(cols′, column(ctx, j))
+            push!(perm, j)
         end
     end
-    chain_of(
-        tuple_of(
-            narrow_input(imd),
-            tuple_of(cs...)),
-        q,
-    ) |> designate(InputShape(ibound(idomain(q), idomain(p)), imd), shape(q))
+    push!(lbls′, name)
+    push!(cols′, shp)
+    ctx′ = TupleOf(lbls′, cols′)
+    ps = Query[chain_of(column(2), column(j)) for j in perm]
+    push!(ps, p)
+    shp = BlockOf(TupleOf(column(ishp), ctx′) |> IsScope, x1to1) |> IsFlow
+    r = chain_of(tuple_of(column(1),
+                          tuple_of(lbls′, ps)),
+                 wrap(),
+    ) |> designate(ishp, shp)
+    compose(q, r)
+end
+
+"""
+    Keep(P)
+
+Specifies the parameter.
+"""
+
+Keep(P, Qs...) =
+    Pipeline(Keep, P, Qs...)
+
+Keep(env::Environment, q::Query, P, Qs...) =
+    Keep(env, Keep(env, q, P), Qs...)
+
+function Keep(env::Environment, q::Query, P)
+    p = compile(P, env, stub(q))
+    monadic_keep(q, p)
+end
+
+
+#
+# Scope of parameters.
+#
+
+function monadic_given(q::Query, x::Query)
+    x = adapt_flow(clone_context(adapt_output(x)))
+    compose(q, x)
 end
 
 """
     Given(P, X)
 
-Specifies the parameter.
+Specifies the parameter in a bounded scope.
 """
-Given(P, X) =
-    Pipeline(Given, P, X)
+Given(P, Qs...) =
+    Pipeline(Given, P, Qs...)
 
-Given(P, Q, rest...) =
-    Pipeline(Given, P, Q, rest...)
+Given(env::Environment, q::Query, Ps...) =
+    Given(env, q, Keep(Ps[1:end-1]...) >> Ps[end])
 
-Given(env::Environment, q::Query, P, Q, rest...) =
-    Given(env, q, P, Given(Q, rest...))
-
-function Given(env::Environment, q::Query, P, X)
-    q0 = stub(q)
-    p = apply(P, env, q0)
-    name = label(shape(p))
-    slots′ = copy(env.slots)
-    if name !== nothing
-        splice!(slots′, searchsorted(first.(slots′), name), [name => shape(p)])
-    end
-    env′ = Environment(slots′)
-    x = apply(X, env′, q0)
-    compose(q, monadic_given(p, x))
+function Given(env::Environment, q::Query, X)
+    x = compile(X, env, stub(q))
+    monadic_given(q, x)
 end
 
 
@@ -636,7 +700,7 @@ Then(ctor, args::Tuple) =
     Pipeline(Then, ctor, args)
 
 Then(env::Environment, q::Query, ctor, args::Tuple=()) =
-    apply(ctor(Then(q), args...), env, istub(q))
+    compile(ctor(Then(q), args...), env, istub(q))
 
 
 #
@@ -644,11 +708,12 @@ Then(env::Environment, q::Query, ctor, args::Tuple=()) =
 #
 
 function monadic_count(q::Query)
-    chain_of(
-        q,
-        block_length(),
-        wrap(),
-    ) |> designate(ishape(q), OutputShape(Int))
+    q = adapt_output(q)
+    r = chain_of(q,
+                block_length(),
+                wrap(),
+    ) |> designate(ishape(q), ValueOf(Int))
+    adapt_flow(clone_context(r))
 end
 
 """
@@ -664,14 +729,14 @@ Lift(::typeof(Count)) =
     Then(Count)
 
 function Count(env::Environment, q::Query, X)
-    x = apply(X, env, stub(q))
+    x = compile(X, env, stub(q))
     compose(q, monadic_count(x))
 end
 
 function monadic_aggregate(f, q::Query, hasdefault=true)
     ity = Tuple{AbstractVector{eltype(domain(q))}}
     oty = Core.Compiler.return_type(f, ity)
-    oty != Union{} || error("cannot apply $f to $ity")
+    oty != Union{} || error("cannot compile $f to $ity")
     if hasdefault || !fits(x0to1, cardinality(q))
         chain_of(
             q,
@@ -724,18 +789,26 @@ Lift(::typeof(Min)) =
     Then(Min)
 
 function Sum(env::Environment, q::Query, X)
-    x = apply(X, env, stub(q))
-    compose(q, monadic_aggregate(sum, x))
+    x = compile(X, env, stub(q))
+    monadic_lift(q, sum, Query[x])
 end
+
+maximum_missing(v) =
+    !isempty(v) ? maximum(v) : missing
 
 function Max(env::Environment, q::Query, X)
-    x = apply(X, env, stub(q))
-    compose(q, monadic_aggregate(maximum, x, false))
+    x = compile(X, env, stub(q))
+    optional = cardinality(shape(x)) & x0to1 == x0to1
+    monadic_lift(q, optional ? maximum_missing : maximum, Query[x])
 end
 
+minimum_missing(v) =
+    !isempty(v) ? minimum(v) : missing
+
 function Min(env::Environment, q::Query, X)
-    x = apply(X, env, stub(q))
-    compose(q, monadic_aggregate(minimum, x, false))
+    x = compile(X, env, stub(q))
+    optional = cardinality(shape(x)) & x0to1 == x0to1
+    monadic_lift(q, optional ? minimum_missing : minimum, Query[x])
 end
 
 
@@ -744,13 +817,12 @@ end
 #
 
 function monadic_filter(q::Query, p::Query)
-    fits(domain(p), NativeShape(Bool)) || error("expected a predicate")
-    r = chain_of(
-        tuple_of(
-            narrow_input(imode(p)),
-            chain_of(p, block_any())),
-        sieve(),
-    ) |> designate(ishape(p), OutputShape(decoration(q), domain(q), x0to1))
+    p = adapt_output(p)
+    # fits(shape(p), BlockOf(ValueOf(Bool))) || error("expected a predicate")
+    r = chain_of(tuple_of(pass(),
+                          chain_of(p, block_any())),
+                 sieve(),
+    ) |> designate(ishape(p), BlockOf(ishape(p), x0to1) |> IsFlow)
     compose(q, r)
 end
 
@@ -763,7 +835,7 @@ Filter(X) =
     Pipeline(Filter, X)
 
 function Filter(env::Environment, q::Query, X)
-    x = apply(X, env, stub(q))
+    x = compile(X, env, stub(q))
     monadic_filter(q, x)
 end
 
@@ -776,20 +848,20 @@ monadic_take(q::Query, n::Int, rev::Bool) =
     chain_of(
         q,
         slice(n, rev),
-    ) |> designate(ishape(q), OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(x0to1))))
+    ) |> designate(ishape(q),
+                   BlockOf(elements(shape(q)), cardinality(shape(q))|x0to1) |> IsFlow)
 
 function monadic_take(q::Query, n::Query, rev::Bool)
-    fits(domain(n), NativeShape(Int)) || error("expected an integer query")
-    ishp = ibound(ishape(q), ishape(n))
+    n = adapt_output(n)
+    #fits(elements(n), ValueOf(Int)) || error("expected an integer query")
+    ishp = ishape(q)
+    shp = BlockOf(elements(shape(q)), cardinality(shape(q))|x0to1) |> IsFlow
     chain_of(
         tuple_of(
-            narrow_input(mode(ishp), q),
-            chain_of(narrow_input(mode(ishp), n),
-                     fits(x0to1, cardinality(n)) ?
-                        block_lift(first, missing) :
-                        block_lift(first))),
+            q,
+            chain_of(n, fits(x0to1, cardinality(shape(n))) ? block_lift(first, missing) : block_lift(first))),
         slice(rev),
-    ) |> designate(ishp, OutputShape(decoration(q), domain(q), bound(mode(q), OutputMode(x0to1))))
+    ) |> designate(ishp, shp)
 end
 
 """
@@ -815,7 +887,7 @@ Take(env::Environment, q::Query, n::Int, rev::Bool=false) =
     monadic_take(q, n, rev)
 
 function Take(env::Environment, q::Query, N, rev::Bool=false)
-    n = apply(N, env, istub(q))
+    n = compile(N, env, istub(q))
     monadic_take(q, n, rev)
 end
 

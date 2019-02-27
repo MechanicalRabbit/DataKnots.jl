@@ -34,7 +34,7 @@ DataKnot(elts::AbstractVector, card::Cardinality=x0toN) =
     DataKnot(BlockVector([1, length(elts)+1], elts, card), BlockOf(shapeof(elts), card))
 
 DataKnot(::Missing) =
-    DataKnot(Union{}[], NoShape())
+    DataKnot(Union{}[], x0to1)
 
 DataKnot(ref::Base.RefValue{T}) where {T} =
     DataKnot(T[ref.x], ValueOf(T))
@@ -92,10 +92,14 @@ TableData(head, body, flds) =
 
 function table_data(db::DataKnot, maxy::Int)
     shp = shape(db)
-    title = String(label(shp, :DataKnot))
+    title = "DataKnot"
+    if shp isa HasLabel
+        title = String(label(shp))
+        shp = subject(shp)
+    end
     head = fill((title, 1), (1, 1))
     body = TupleVector(1, AbstractVector[cell(db)])
-    flds = AbstractShape[delabel(shp)]
+    flds = AbstractShape[shp]
     d = TableData(head, body, flds)
     return _data_tear(_data_focus(d, 1), maxy)
 end
@@ -160,12 +164,12 @@ function _focus_tuple(d::TableData, pos::Int)
     end
     for col = 1:hw
         col′ = (col <= pos) ? col : col + cw - 1
-        head′[hw′, col′] = ("", 1)
+        head′[hh′, col′] = ("", 1)
     end
     for k = 1:cw
         col′ = pos + k - 1
         text = String(label(fld, k))
-        head′[hw′, col′] = (text, 1)
+        head′[hh′, col′] = (text, 1)
     end
     cols′ = copy(d.body[:])
     splice!(cols′, pos:pos, width(col) > 0 ? col[:] : [BlockVector(fill(1, length(col)+1), Union{}[], x0to1)])
@@ -177,6 +181,21 @@ end
 
 _prepare_focus_tuple(col::TupleVector, shp::TupleOf) =
     (col, shp)
+
+function _prepare_focus_tuple(v::AbstractVector, shp::ValueOf)
+    ty = eltype(shp)
+    ty <: NamedTuple || return nothing
+    lbls = collect(Symbol, ty.parameters[1])
+    shps = AbstractShape[]
+    cols = AbstractVector[]
+    for j = 1:length(lbls)
+        cty = ty.parameters[2].parameters[j]
+        push!(shps, ValueOf(cty))
+        col = cty[e[j] for e in v]
+        push!(cols, col)
+    end
+    return (TupleVector(lbls, length(v), cols), TupleOf(lbls, shps))
+end
 
 _prepare_focus_tuple(::AbstractVector, AbstractShape) =
     nothing

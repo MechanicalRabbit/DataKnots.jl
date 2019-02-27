@@ -21,7 +21,7 @@ algebra.  We will need the following definitions.
         Min,
         Record,
         Take,
-        apply,
+        compile,
         elements,
         optimize,
         stub,
@@ -223,12 +223,12 @@ The trivial query is a monadic identity on the input dataset.
     q0 = stub(db)
     #-> wrap()
 
-To apply a pipeline to a query, we need to create application *environment*.
-Then we use the function `apply()`.
+To compile a pipeline to a query, we need to create application *environment*.
+Then we use the function `compile()`.
 
     env = Environment()
 
-    q1 = apply(Lookup(:department), env, q0)
+    q1 = compile(Lookup(:department), env, q0)
     #-> chain_of(wrap(), with_elements(column(:department)), flatten())
 
 Here, the query `q1` is a monadic composition of `q0` with
@@ -236,10 +236,10 @@ Here, the query `q1` is a monadic composition of `q0` with
 actually equivalent to `column(:department)`.
 
 In general, `Lookup(name)` maps a query to its monadic composition with
-`column(name)`.  For example, when we apply `Lookup(:employee)` to `q1`, we get
+`column(name)`.  For example, when we compile `Lookup(:employee)` to `q1`, we get
 `compose(q1, column(:employee))`.
 
-    q2 = apply(Lookup(:employee), env, q1)
+    q2 = compile(Lookup(:employee), env, q1)
     #=>
     chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
              with_elements(column(:employee)),
@@ -257,7 +257,7 @@ need a trivial monadic query on the output of `q2`.
 Passing `qc0` through `SalaryOver100K` gives us a query that generates
 the result of the condition.
 
-    qc1 = apply(SalaryOver100K, env, qc0)
+    qc1 = compile(SalaryOver100K, env, qc0)
     #=>
     chain_of(wrap(),
              with_elements(
@@ -276,7 +276,7 @@ the result of the condition.
 `Filter(SalaryOver100K)` then combines the outputs of `q2` and `qc1` using
 `sieve()`.
 
-    q3 = apply(Filter(SalaryOver100K), env, q2)
+    q3 = compile(Filter(SalaryOver100K), env, q2)
     #=>
     chain_of(
         chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),

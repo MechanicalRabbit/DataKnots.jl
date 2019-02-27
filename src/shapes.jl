@@ -127,7 +127,7 @@ Shape of a `TupleVector`.
 
 struct TupleOf <: AbstractShape
     lbls::Vector{Symbol}
-    flds::Vector{AbstractShape}
+    cols::Vector{AbstractShape}
 end
 
 let NO_LBLS = Symbol[]
@@ -137,28 +137,28 @@ let NO_LBLS = Symbol[]
     @inline TupleOf() =
         TupleOf(NO_LBLS, AbstractShape[])
 
-    @inline TupleOf(flds::Vector{AbstractShape}) =
-        TupleOf(NO_LBLS, flds)
+    @inline TupleOf(cols::Vector{AbstractShape}) =
+        TupleOf(NO_LBLS, cols)
 
-    @inline TupleOf(flds::Union{AbstractShape,Type}...) =
-        TupleOf(NO_LBLS, collect(AbstractShape, flds))
+    @inline TupleOf(cols::Union{AbstractShape,Type}...) =
+        TupleOf(NO_LBLS, collect(AbstractShape, cols))
 end
 
-@inline TupleOf(lflds::Pair{<:Union{Symbol,String},<:Union{AbstractShape,Type}}...) =
-    TupleOf(collect(Symbol.(first.(lflds))), collect(AbstractShape, last.(lflds)))
+@inline TupleOf(lcols::Pair{<:Union{Symbol,String},<:Union{AbstractShape,Type}}...) =
+    TupleOf(collect(Symbol.(first.(lcols))), collect(AbstractShape, last.(lcols)))
 
 syntax(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:call, nameof(TupleOf), syntax.(shp.flds)...)
+        Expr(:call, nameof(TupleOf), syntax.(shp.cols)...)
     else
-        Expr(:call, nameof(TupleOf), syntax.(shp.lbls .=> shp.flds)...)
+        Expr(:call, nameof(TupleOf), syntax.(shp.lbls .=> shp.cols)...)
     end
 
 sigsyntax(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:tuple, sigsyntax.(shp.flds)...)
+        Expr(:tuple, sigsyntax.(shp.cols)...)
     else
-        Expr(:tuple, sigsyntax.(shp.lbls .=> shp.flds)...)
+        Expr(:tuple, sigsyntax.(shp.lbls .=> shp.cols)...)
     end
 
 @inline labels(shp::TupleOf) = shp.lbls
@@ -173,21 +173,45 @@ function label(k::Int)
             k = 1 + (k - 1) ÷ 26
         end
     end
-    return SymboL('#' * lbl)
+    return Symbol('#' * lbl)
 end
 
 function label(shp::TupleOf, k::Int)
     !isempty(shp.lbls) ? shp.lbls[k] : label(k)
 end
 
-@inline getindex(shp::TupleOf, ::Colon) = shp.flds
+@inline getindex(shp::TupleOf, ::Colon) = shp.cols
 
-@inline getindex(shp::TupleOf, k::Int) = shp.flds[k]
+@inline getindex(shp::TupleOf, k::Int) = shp.cols[k]
 
 @inline getindex(shp::TupleOf, lbl::Union{Symbol,String}) =
     shp[findfirst(isequal(Symbol(lbl)), shp.lbls)]
 
-@inline width(shp::TupleOf) = length(shp.flds)
+@inline width(shp::TupleOf) = length(shp.cols)
+
+@inline columns(shp::TupleOf) = shp.cols
+
+@inline column(shp::TupleOf, j::Int) = shp.cols[j]
+
+@inline column(shp::TupleOf, lbl::Symbol) =
+    column(shp, findfirst(isequal(lbl), shp.lbls))
+
+function with_column(shp::TupleOf, j::Int, f)
+    col = shp.cols[j]
+    col′ = f isa AbstractShape ? f : f(col)
+    cols′ = copy(shp.cols)
+    cols′[j] = col′
+    TupleOf(shp.lbls, cols′)
+end
+
+function eltype(shp::TupleOf)
+    t = Tuple{eltype.(shp.cols)...}
+    if isempty(shp.lbls)
+        t
+    else
+        NamedTuple{(shp.lbls...,),t}
+    end
+end
 
 """
     BlockOf(eshp::AbstractShape, card::Cardinality=x0toN)
@@ -195,24 +219,31 @@ end
 Shape of a `BlockVector`.
 """
 struct BlockOf <: AbstractShape
-    elt::AbstractShape
+    elts::AbstractShape
     card::Cardinality
 end
 
-BlockOf(elt) =
-    BlockOf(elt, x0toN)
+BlockOf(elts) =
+    BlockOf(elts, x0toN)
 
 syntax(shp::BlockOf) =
     if shp.card == x0toN
-        Expr(:call, nameof(BlockOf), syntax_inner(shp.elt))
+        Expr(:call, nameof(BlockOf), syntax_inner(shp.elts))
     else
-        Expr(:call, nameof(BlockOf), syntax_inner(shp.elt), syntax(shp.card))
+        Expr(:call, nameof(BlockOf), syntax_inner(shp.elts), syntax(shp.card))
     end
 
 sigsyntax(shp::BlockOf) =
-    Expr(:call, :×, sigsyntax(shp.card), sigsyntax(shp.elt))
+    Expr(:call, :×, sigsyntax(shp.card), sigsyntax(shp.elts))
 
-@inline getindex(shp::BlockOf) = shp.elt
+@inline getindex(shp::BlockOf) = shp.elts
+
+@inline elements(shp::BlockOf) = shp.elts
+
+function with_elements(shp::BlockOf, f)
+    elts′ = f isa AbstractShape ? f : f(shp.elts)
+    BlockOf(elts′, shp.card)
+end
 
 @inline cardinality(shp::BlockOf) = shp.card
 
@@ -222,6 +253,16 @@ sigsyntax(shp::BlockOf) =
 
 @inline isplural(shp::BlockOf) = isplural(shp.card)
 
+function eltype(shp::BlockOf)
+    t = eltype(shp.elts)
+    if shp.card == x1to1
+        t
+    elseif shp.card == x0to1
+        Union{t,Missing}
+    else
+        Vector{t}
+    end
+end
 
 #
 # Annotations.
@@ -233,6 +274,9 @@ abstract type Annotation <: AbstractShape end
 
 sigsyntax(shp::Annotation) =
     sigsyntax(shp.sub)
+
+eltype(shp::Annotation) =
+    eltype(subject(shp))
 
 """
     shp |> HasLabel(::Symbol)
@@ -251,48 +295,63 @@ HasLabel(lbl::Union{Symbol,String}) =
 syntax(shp::HasLabel) =
     Expr(:call, nameof(|>), syntax_inner(shp.sub), Expr(:call, nameof(HasLabel), syntax(siglabel(shp.lbl))))
 
+subject(shp::HasLabel) = shp.sub
+
+with_subject(shp::HasLabel, f) =
+    HasLabel(f isa AbstractShape ? f : f(shp.sub), shp.lbl)
+
 label(shp::HasLabel, default=nothing) =
     shp.lbl
 
-label(shp::Annotation, default=nothing) =
-    label(shp[], default)
-
-label(shp::AbstractShape, default=nothing) =
-    default
-
-delabel(shp::HasLabel) =
-    shp[]
-
-delabel(shp::AbstractShape) =
-    shp
-
 """
-    sub |> IsMonad()
+    sub |> IsFlow
 """
 
-struct IsMonad <: Annotation
-    sub::AbstractShape
+struct IsFlow <: Annotation
+    sub::BlockOf
 end
 
-IsMonad() =
-    sub -> IsMonad(sub)
+syntax(shp::IsFlow) =
+    Expr(:call, nameof(|>), syntax_inner(shp.sub), nameof(IsFlow))
 
-syntax(shp::IsMonad) =
-    Expr(:call, nameof(|>), syntax_inner(shp.sub), Expr(:call, nameof(IsMonad)))
+subject(shp::IsFlow) = shp.sub
+
+with_subject(shp::IsFlow, f) =
+    IsFlow(f isa AbstractShape ? f : f(shp.sub))
+
+elements(shp::IsFlow) =
+    elements(shp.sub)
+
+with_elements(shp::IsFlow, f) =
+    with_subject(shp, sub -> with_elements(sub, f))
+
+cardinality(shp::IsFlow) =
+    cardinality(subject(shp))
 
 """
-    sub |> IsComonad()
+    sub |> IsScope
 """
 
-struct IsComonad <: Annotation
-    sub::AbstractShape
+struct IsScope <: Annotation
+    sub::TupleOf
 end
 
-IsComonad() =
-    sub -> IsComonad(sub)
+syntax(shp::IsScope) =
+    Expr(:call, nameof(|>), syntax_inner(shp.sub), nameof(IsScope))
 
-syntax(shp::IsComonad) =
-    Expr(:call, nameof(|>), syntax_inner(shp.sub), Expr(:call, nameof(IsComonad)))
+subject(shp::IsScope) = shp.sub
+
+with_subject(shp::IsScope, f) =
+    IsScope(f isa AbstractShape ? f : f(shp.sub))
+
+column(shp::IsScope) =
+    column(shp.sub, 1)
+
+with_column(shp::IsScope, f) =
+    with_subject(shp, sub -> with_column(sub, 1, f))
+
+context(shp::IsScope) =
+    column(shp.sub, 2)
 
 
 #
