@@ -67,13 +67,13 @@ function designate end
 designate(q::Query, sig::Signature) =
     Query(q.op, q.args, sig)
 
-designate(q::Query, ishp::InputShape, shp::OutputShape) =
+designate(q::Query, ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
     Query(q.op, q.args, Signature(ishp, shp))
 
 designate(sig::Signature) =
     q::Query -> designate(q, sig)
 
-designate(ishp::InputShape, shp::OutputShape) =
+designate(ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
     q::Query -> designate(q, Signature(ishp, shp))
 
 """
@@ -87,31 +87,10 @@ shape(q::Query) = shape(q.sig)
 
 ishape(q::Query) = ishape(q.sig)
 
-decoration(q::Query) = decoration(q.sig)
-
-idecoration(q::Query) = idecoration(q.sig)
-
-domain(q::Query) = domain(q.sig)
-
-idomain(q::Query) = idomain(q.sig)
-
-mode(q::Query) = mode(q.sig)
-
-imode(q::Query) = imode(q.sig)
-
-cardinality(q::Query) = cardinality(q.sig)
-
-isregular(q::Query) = isregular(q.sig)
-
-isoptional(q::Query) = isoptional(q.sig)
-
-isplural(q::Query) = isplural(q.sig)
-
-isfree(q::Query) = isfree(q.sig)
-
-isframed(q::Query) = isframed(q.sig)
-
-slots(q::Query) = slots(q.sig)
+function (q::Query)(input::DataKnot)
+    #@assert fits(shape(input), ishape(q))
+    DataKnot(q(cell(input)), shape(q))
+end
 
 function (q::Query)(input::AbstractVector)
     rt = Runtime()
@@ -912,6 +891,10 @@ simplify(other) = other
 function simplify_chain(q::Query)
     if q.op == pass
         return Query[]
+    elseif q.op == with_column && q.args[2].op == pass
+        return Query[]
+    elseif q.op == with_elements && q.args[1].op == pass
+        return Query[]
     elseif q.op == chain_of
         return simplify_block(vcat(simplify_chain.(q.args[1])...))
     else
@@ -920,15 +903,23 @@ function simplify_chain(q::Query)
 end
 
 function simplify_block(qs)
-    while true
-        if !any(qs[k].op == wrap && qs[k+1].op == with_elements && qs[k+2].op == flatten
-                for k = 1:length(qs)-2)
-            return qs
-        end
+    simplified = true
+    while simplified
+        simplified = false
         qs′ = Query[]
         k = 1
         while k <= length(qs)
-            if k <= length(qs)-2 && qs[k].op == wrap && qs[k+1].op == with_elements && qs[k+2].op == flatten
+            if qs[k].op == with_column && qs[k].args[2].op == pass
+                simplified = true
+                k += 1
+            elseif qs[k].op == with_elements && qs[k].args[1].op == pass
+                simplified = true
+                k += 1
+            elseif k <= length(qs)-1 && qs[k].op == with_elements && qs[k].args[1].op == wrap && qs[k+1].op == flatten
+                simplified = true
+                k += 2
+            elseif k <= length(qs)-2 && qs[k].op == wrap && qs[k+1].op == with_elements && qs[k+2].op == flatten
+                simplified = true
                 q = qs[k+1].args[1]
                 if q.op == pass
                 elseif q.op == chain_of
@@ -937,6 +928,27 @@ function simplify_block(qs)
                     push!(qs′, q)
                 end
                 k += 3
+            elseif k <= length(qs)-2 && qs[k].op == with_elements && qs[k+1].op == flatten && qs[k+2].op == with_elements
+                simplified = true
+                q = with_elements(simplify(chain_of(qs[k].args[1], qs[k+2])))
+                push!(qs′, q)
+                push!(qs′, qs[k+1])
+                k += 3
+            elseif k <= length(qs)-1 && qs[k].op == tuple_of && qs[k+1].op == column && qs[k+1].args[1] isa Int
+                simplified = true
+                q = qs[k].args[2][qs[k+1].args[1]]
+                if q.op == pass
+                elseif q.op == chain_of
+                    append!(qs′, q.args[1])
+                else
+                    push!(qs′, q)
+                end
+                k += 2
+            elseif k <= length(qs)-1 && qs[k].op == with_elements && qs[k+1].op == with_elements
+                simplified = true
+                q = with_elements(simplify(chain_of(qs[k].args[1], qs[k+1].args[1])))
+                push!(qs′, q)
+                k += 2
             else
                 push!(qs′, qs[k])
                 k += 1
@@ -944,4 +956,5 @@ function simplify_block(qs)
         end
         qs = qs′
     end
+    qs
 end

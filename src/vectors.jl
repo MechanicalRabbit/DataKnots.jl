@@ -197,6 +197,9 @@ Returns a new `TupleVector` with a subset of rows specified by indexes `ks`.
     tv′
 end
 
+@inline getindex(tv::TupleVector, ::Colon) =
+    columns(tv)
+
 @inline getindex(tv::TupleVector, ::Colon, j::Union{Int,Symbol}) =
     column(tv, j)
 
@@ -225,6 +228,9 @@ Cardinality
 
 syntax(c::Cardinality) =
     c == x1to1 ? :x1to1 : c == x0to1 ? :x0to1 : c == x1toN ? :x1toN : :x0toN
+
+sigsyntax(c::Cardinality) =
+    c == x1to1 ? :(1:1) : c == x0to1 ? :(0:1) : c == x1toN ? :(1:N) : :(0:N)
 
 # Bitwise operations.
 
@@ -312,7 +318,7 @@ end
 # Printing.
 
 sigsyntax(bv::BlockVector{CARD}) where {CARD} =
-    Expr(:call, :×, CARD == x0toN ? :(0:N) : CARD == x1toN ? :(1:N) : CARD == x0to1 ? :(0:1) : :(1:1), sigsyntax(bv.elts))
+    Expr(:call, :×, sigsyntax(CARD), sigsyntax(bv.elts))
 
 show(io::IO, bv::BlockVector) =
     show_columnar(io, bv)

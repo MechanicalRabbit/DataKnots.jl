@@ -14,6 +14,7 @@ export
     Get,
     Given,
     It,
+    Keep,
     Label,
     Lift,
     Max,
