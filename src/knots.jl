@@ -213,7 +213,7 @@ function _data_tear(d::TableData, maxy::Int)
     L = length(d.body)
     avail = max(3, maxy - size(d.head, 1) - 4)
     avail < L || return d
-    tear = 1 + avail ÷ 2
+    tear = avail ÷ 2
     perm = [1:tear; L-avail+tear+2:L]
     body′ = d.body[perm]
     idxs′ = !isempty(d.idxs) ? d.idxs[perm] : d.idxs
