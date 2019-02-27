@@ -432,7 +432,7 @@ with expressions that one may wish to repeat more than once.
       Given(:AVG => Mean(X),
             X >> Filter(It .> Get(:AVG)))
 
-    run(OneTo(6) >> Then(GreaterThanAverage))
+    run(GreaterThanAverage(OneTo(6)))
     #=>
       │ DataKnot │
     ──┼──────────┤

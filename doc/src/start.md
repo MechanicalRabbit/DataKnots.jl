@@ -201,7 +201,7 @@ department's name alongside employee counts.
                   Count(It.employee)))
     #=>
       │ department │
-      │ name    #2 │
+      │ name    #B │
     ──┼────────────┤
     1 │ POLICE   2 │
     2 │ FIRE     1 │
@@ -606,9 +606,9 @@ available as a label accessible anywhere in the pipeline.
 
     run(ChicagoData, It.AMT, AMT=100000)
     #=>
-    │ DataKnot │
-    ├──────────┤
-    │   100000 │
+    │ AMT    │
+    ├────────┤
+    │ 100000 │
     =#
 
 This technique permits complex pipelines to be re-used with
@@ -756,7 +756,6 @@ because `department` is not a label in the context of an employee.
 This can be overcome by using `Keep` to label an expression's
 result, so that it is available within subsequent computations.
 
-```julia
     run(ChicagoData,
          It.department
          >> Keep(:dept_name => It.name)
@@ -770,13 +769,11 @@ result, so that it is available within subsequent computations.
     2 │ NANCY A    POLICE    │
     3 │ DANIEL A   FIRE      │
     =#
-```
 
 This pattern also emerges with aggregate computations which need
 to be done in a parent scope. For example, let's compute employees
 with a higher than average salary within their department.
 
-```julia
     run(ChicagoData,
          It.department
          >> Keep(:mean_salary => mean.(It.employee.salary))
@@ -788,7 +785,6 @@ with a higher than average salary within their department.
     ──┼─────────────────────────────┤
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
-```
 
 Compare this with an equivalent query prepared via `Given`.
 

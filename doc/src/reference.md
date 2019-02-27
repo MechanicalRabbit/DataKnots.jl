@@ -371,7 +371,7 @@ accessible via `It`. Those arguments are converted into a
 
     run(It.hello, hello=DataKnot("Hello World"))
     #=>
-    │ DataKnot    │
+    │ hello       │
     ├─────────────┤
     │ Hello World │
     =#
