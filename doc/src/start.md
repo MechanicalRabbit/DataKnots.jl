@@ -493,58 +493,6 @@ able to simply append `>> Count` is often very helpful.
     │  3 │
     =#
 
-### Paging Data
-
-Sometimes query results can be quite large. In this case it's
-helpful to `Take` or `Drop` items from the input stream. Let's
-start by listing all 3 employees of our toy database.
-
-    Employee = It.department.employee
-    run(ChicagoData, Employee)
-    #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-    =#
-
-To return up to the 2nd employee record, we use `Take`.
-
-    run(ChicagoData, Employee >> Take(2))
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
-
-A negative index can be used to count records from the end of the
-pipeline's input. So, to return up to, but not including, the very
-last item in the stream, we could write:
-
-    run(ChicagoData, Employee >> Take(-1))
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
-
-To return the last record of the pipeline's input, we could `Drop`
-up to the last item in the stream:
-
-    run(ChicagoData, Employee >> Drop(-1))
-    #=>
-      │ employee                           │
-      │ name      position          salary │
-    ──┼────────────────────────────────────┼
-    1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
-    =#
-
 ### Lifting
 
 Besides broadcast operators, such as greater than (`.>`),
@@ -798,6 +746,58 @@ While `Keep` and `Given` are similar, `Keep` deliberately leaks
 the values that it defines while not increasing the nesting. On
 the other hand, `Given` increases nesting but doesn't leak.
 
+### Paging Data
+
+Sometimes query results can be quite large. In this case it's
+helpful to `Take` or `Drop` items from the input stream. Let's
+start by listing all 3 employees of our toy database.
+
+    Employee = It.department.employee
+    run(ChicagoData, Employee)
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ NANCY A    POLICE OFFICER     80016 │
+    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+To return up to the 2nd employee record, we use `Take`.
+
+    run(ChicagoData, Employee >> Take(2))
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+A negative index can be used to count records from the end of the
+pipeline's input. So, to return up to, but not including, the very
+last item in the stream, we could write:
+
+    run(ChicagoData, Employee >> Take(-1))
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+To return the last record of the pipeline's input, we could `Drop`
+up to the last item in the stream:
+
+    run(ChicagoData, Employee >> Drop(-1))
+    #=>
+      │ employee                           │
+      │ name      position          salary │
+    ──┼────────────────────────────────────┼
+    1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
+    =#
+
 ### More Aggregates
 
 There are other aggregate functions, such as `Min`, `Max`, and
@@ -807,7 +807,7 @@ There are other aggregate functions, such as `Min`, `Max`, and
     Stats(X) =
       Record(
         :count => Count(X),
-        :mean => Int.(floor.(mean.(X))),
+        :mean => floor.(Int, mean.(X)),
         :min => Min(X),
         :max => Max(X),
         :sum => Sum(X))
@@ -822,117 +822,19 @@ There are other aggregate functions, such as `Min`, `Max`, and
     │     3  92314  80016  101442  276942 │
     =#
 
-As an aside, `Stats` could also be tagged so that higher-level
-pipelines don't `show` an expansion of its entire definition.
+These statistics could be run by department.
 
-    Stats(X) =
-      Tag(:Stats, (X,),
-          Record(
-            :count => Count(X),
-            :mean => Int.(floor.(mean.(X))),
-            :min => Min(X),
-            :max => Max(X),
-            :sum => Sum(X)))
-
-    Stats(It.department.employee.salary)
-    #-> Stats(It.department.employee.salary)
-
-### Parameter Evaluation
-
-Each pipeline constructor can choose how it wishes to evaluate its
-parameters and treat its input. Most pipelines are *elementwise*,
-that is, for each of their inputs, they evaluate their arguments
-once and produce zero or more outputs.
-
-For example, `Record` produces exactly one output per input.
-
-    run(ChicagoData, 
+    run(ChicagoData,
         It.department 
-        >> Record(It.name))
-    #=>
-      │ department │
-      │ name       │
-    ──┼────────────┼
-    1 │ POLICE     │
-    2 │ FIRE       │
-    =#
-
-The `Count()` pipeline constructor is also *elementwise*, for each
-input, it evaluates its argument and produces an output. In this
-example, `Count()` gets one input per department and produces the
-count of employees in each of those departments.
-
-    run(ChicagoData, 
-        It.department 
-        >> Count(It.employee))
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  1 │
-    =#
-
-By contrast, *aggregate* pipeline primitives are not elementwise.
-For example, `Count` consumes its entire input to produce exactly
-one output. 
-
-    run(ChicagoData, 
-        It.department 
-        >> Count)
-    #=>
-    │ It │
-    ┼────┼
-    │  2 │
-    =#
-
-The `A >> B` pipeline composition operator has it's own logic, it
-passes the output of `A` as the input of `B`, and merges each
-output from `B` into a single stream.
-
-    run(ChicagoData, 
-        It.department 
-        >> It.employee 
-        >> It.name)
-    #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    2 │ NANCY A   │
-    3 │ DANIEL A  │
-    =#
-
-The `Take` and `Drop` pipeline constructors also deserve special
-mention since they are neither elementwise nor aggregates. Their
-argument is evaluated in the *origin* of the parent query. In this
-next example, only the first name is returned since `3÷2` is `1`.
-
-    Names = It.department.employee.name
-    Halfway = Count(Names) .÷ 2
-    run(ChicagoData, Names >> Take(Halfway))
-    #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    =#
-
-The origin used can be changed using `Each` or `Record`. In this
-case, `2÷2` is `1`, and `1÷2` is `0`. Hence, only the first name
-is returned for `POLICE` and zero names are returned for `FIRE`.
-
-    Names = :employee_names => It.employee.name
-    Halfway = Count(Names) .÷ 2
-    run(ChicagoData, 
-        It.department
         >> Record(
-             :dept_name => It.name,
-             Names >> Take(Halfway)))
+            It.name,
+            :salary_stats =>
+              Stats(It.employee.salary)))
     #=>
-      │ department                │
-      │ dept_name  employee_names │
-    ──┼───────────────────────────┼
-    1 │ POLICE     JEFFERY A      │
-    2 │ FIRE                      │
+      │ department                              │
+      │ name    salary_stats                    │
+    ──┼─────────────────────────────────────────┼
+    1 │ POLICE  2, 90729, 80016, 101442, 181458 │
+    2 │ FIRE    1, 95484, 95484, 95484, 95484   │
     =#
 
-In both of these cases, if `Take` evaluated its arguments
-*elementwise* then, `Halfway` would be an error.

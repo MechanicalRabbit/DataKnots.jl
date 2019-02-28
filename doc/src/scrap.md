@@ -111,3 +111,102 @@ it's an aggregate.
     Fst(V) = Lift(fst, (V,))
     run(Fst(Lift([1,2,3])))
 
+### Parameter Evaluation
+
+Each pipeline constructor can choose how it wishes to evaluate its
+parameters and treat its input. Most pipelines are *elementwise*,
+that is, for each of their inputs, they evaluate their arguments
+once and produce zero or more outputs.
+
+For example, `Record` produces exactly one output per input.
+
+    run(ChicagoData, 
+        It.department 
+        >> Record(It.name))
+    #=>
+      │ department │
+      │ name       │
+    ──┼────────────┼
+    1 │ POLICE     │
+    2 │ FIRE       │
+    =#
+
+The `Count()` pipeline constructor is also *elementwise*, for each
+input, it evaluates its argument and produces an output. In this
+example, `Count()` gets one input per department and produces the
+count of employees in each of those departments.
+
+    run(ChicagoData, 
+        It.department 
+        >> Count(It.employee))
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  1 │
+    =#
+
+By contrast, *aggregate* pipeline primitives are not elementwise.
+For example, `Count` consumes its entire input to produce exactly
+one output. 
+
+    run(ChicagoData, 
+        It.department 
+        >> Count)
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
+The `A >> B` pipeline composition operator has it's own logic, it
+passes the output of `A` as the input of `B`, and merges each
+output from `B` into a single stream.
+
+    run(ChicagoData, 
+        It.department 
+        >> It.employee 
+        >> It.name)
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ NANCY A   │
+    3 │ DANIEL A  │
+    =#
+
+The `Take` and `Drop` pipeline constructors also deserve special
+mention since they are neither elementwise nor aggregates. Their
+argument is evaluated in the *origin* of the parent query. In this
+next example, only the first name is returned since `3÷2` is `1`.
+
+    Names = It.department.employee.name
+    Halfway = Count(Names) .÷ 2
+    run(ChicagoData, Names >> Take(Halfway))
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    =#
+
+The origin used can be changed using `Each` or `Record`. In this
+case, `2÷2` is `1`, and `1÷2` is `0`. Hence, only the first name
+is returned for `POLICE` and zero names are returned for `FIRE`.
+
+    Names = :employee_names => It.employee.name
+    Halfway = Count(Names) .÷ 2
+    run(ChicagoData, 
+        It.department
+        >> Record(
+             :dept_name => It.name,
+             Names >> Take(Halfway)))
+    #=>
+      │ department                │
+      │ dept_name  employee_names │
+    ──┼───────────────────────────┼
+    1 │ POLICE     JEFFERY A      │
+    2 │ FIRE                      │
+    =#
+
+In both of these cases, if `Take` evaluated its arguments
+*elementwise* then, `Halfway` would be an error.
