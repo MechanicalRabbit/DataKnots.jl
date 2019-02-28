@@ -47,8 +47,9 @@ represented as nested `NamedTuple` and `Vector` objects.
           (name = "DANIEL A", position = "FIRE FIGHTER-EMT",
            salary = 95484)])],);
 
-To query this data, we convert it into a `DataKnot`. Any *knot*
-can be converted back to native Julia via the `get` function.
+To query this data, we convert it into a `DataKnot`. For shallow
+data structures, any *knot* can be converted back to native Julia
+datatype via the `get` function.
 
     using DataKnots
     chicago_data = DataKnot(chicago_data_source)
@@ -62,9 +63,10 @@ within the context of a department and an employee record.
 
 ### Navigation
 
-To list all the department names we write `It.department.name`.
-In this pipeline, `It` means "use the current input". The dotted
-notation lets one navigate via hierarchy.
+To list all department names in the `chicago_data` *knot*, we use
+Julia's index notation with `It.department.name`. In this
+pipeline, `It` means "use the current input". The dotted notation
+lets one navigate via hierarchy.
 
     chicago_data[It.department.name]
     #=>
@@ -148,8 +150,7 @@ This motivates our clever use of `It` as a syntax short hand.
     =#
 
 This pipeline, `It.department.name`, could be equivalently written
-`Get(:department) >> Get(:name)`. In a Julia macro syntax, this
-path could be written plainly `department.employee` without `It`.
+`Get(:department) >> Get(:name)`.
 
 ### Context & Counting
 
@@ -224,8 +225,8 @@ semi-colons separate values.
 
 Pipeline expressions can be named and reused. Further, the output
 column of these named pipelines may be labeled using Julia's
-`Pair` syntax (`=>`). For example, let's define `EmployeeCount` to
-be the number of employees in a given department.
+`Pair` syntax (`=>`). Let's define `EmployeeCount` to be the
+number of employees in a given department.
 
     EmployeeCount =
       :employee_count =>
@@ -233,8 +234,7 @@ be the number of employees in a given department.
 
     chicago_data[
       It.department >>
-      Record(It.name,
-             EmployeeCount)]
+      Record(It.name, EmployeeCount)]
     #=>
       │ department             │
       │ name    employee_count │
@@ -257,8 +257,8 @@ refinements (`>>=`).
     │          2 │
     =#
 
-Besides providing a lovely display title, labels also provide a
-way to access fields within a record.
+Besides providing a display title, labels also provide a way to
+access fields within a record.
 
     chicago_data[
       Record(It, DeptCount) >>
@@ -287,7 +287,7 @@ list department names who have exactly one employee.
 
 In pipeline expressions, the broadcast variant of common
 operators, such as `.==` are to be used. Forgetting the period is
-an easy mistake to make and the relevant Julia language error
+an easy mistake to make and the resulting Julia language error
 message may not be helpful.
 
     chicago_data[
@@ -334,14 +334,14 @@ could use `GTK100K` to filter employees.
 
 This data discovery could have been done incrementally, with each
 intermediate pipeline being fully runnable. Let's start `OurQuery`
-as a list of employees. We're not going to `run` it, but we could.
+as a list of employees. We're not going to run it, but we could.
 
     OurQuery = It.department.employee
     #-> It.department.employee
 
 Let's extend this pipeline to compute and show if the salary is
-over 100k. Notice how pipeline composition is unwrapped and
-tracked for us. We could `run` this step also, if we wanted.
+over 100k. Notice how pipeline composition is tracked for us. We
+could run this pipeline also, if we wanted.
 
     GT100K = :gt100k => It.salary .> 100000
     OurQuery >>= Record(It.name, It.salary, GT100K)
@@ -449,7 +449,8 @@ Note that in `It.department.employee >> Count`, the `Count`
 pipeline aggregates the number of employees across all
 departments. This doesn't change even if we add parentheses:
 
-    chicago_data[It.department >> (It.employee >> Count)]
+    chicago_data[
+      It.department >> (It.employee >> Count)]
     #=>
     │ It │
     ┼────┼
@@ -459,7 +460,9 @@ departments. This doesn't change even if we add parentheses:
 To count employees in *each* department, we use the `Each()`
 pipeline constructor.
 
-    chicago_data[It.department >> Each(It.employee >> Count)]
+    chicago_data[
+      It.department >>
+      Each(It.employee >> Count)]
     #=>
       │ It │
     ──┼────┼
@@ -470,7 +473,9 @@ pipeline constructor.
 Naturally, we could use the `Count()` pipeline constructor to
 get the same result.
 
-    chicago_data[It.department >> Count(It.employee)]
+    chicago_data[
+      It.department >>
+      Count(It.employee)]
     #=>
       │ It │
     ──┼────┼
@@ -539,9 +544,9 @@ upon that function's input and output signature.
 
 ### Query Parameters
 
-The `run` function takes named parameters. Each argument passed
-via named parameter is converted into a `DataKnot` and then made
-available as a label accessible anywhere in the pipeline.
+Julia's index notation permits named parameters. Each argument
+passed via named parameter is converted into a `DataKnot` and then
+made available as a label accessible anywhere in the pipeline.
 
     chicago_data[AMT=100000, It.AMT]
     #=>
@@ -579,11 +584,13 @@ With a different threshold amount, the result may change.
 
 ### Parameterized Pipelines
 
-Suppose we want a parameterized pipeline that could take other
-pipelines as arguments. Let's define `EmployeesOver()` to return
-`employee` records that have salary greater than a given amount.
+Parameterized pipelines can be easily defined. Since there is no
+single datatype that represents a pipeline directly, we have to
+use unspecialized function arguments. Let's define a parameterized
+pipline that returns `employee` records with a salary greater than
+a given amount.
 
-    EmployeesOver(X) = 
+    EmployeesOver(X) =
       It.department >>
       It.employee >>
       Filter(It.salary .> X)
@@ -623,8 +630,9 @@ We could use this *knot* value as a parameter to a subsequent
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-However, if we try to combine these two pipelines directly, we get
-a naming error.
+Suppose we want parameterized pipeline that could take other
+pipelines as arguments. If we try to combine these two pipelines
+directly, we get a naming error.
 
     chicago_data[EmployeesOver(AvgSalary)]
     #-> ERROR: cannot find department ⋮
@@ -660,8 +668,8 @@ We could then combine these two pipelines.
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-Note that this expression is yet another pipeline that could be
-refined with further computation.
+Note that this combined expression is yet another pipeline that
+could be refined with further computation.
 
     chicago_data[
       EmployeesOver(AvgSalary) >>
@@ -717,7 +725,7 @@ with a higher than average salary within their department.
     using Statistics: mean
     chicago_data[
       It.department >>
-      Keep(:mean_salary => 
+      Keep(:mean_salary =>
         mean.(It.employee.salary)) >>
       It.employee >>
       Filter(It.salary .> It.mean_salary)]
@@ -733,7 +741,7 @@ Compare this with an equivalent query prepared via `Given`.
     chicago_data[
       It.department >>
       Given(
-        :mean_salary => 
+        :mean_salary =>
           mean.(It.employee.salary),
         It.employee >>
         Filter(It.salary .> It.mean_salary))]
@@ -827,7 +835,7 @@ There are other aggregate functions, such as `Min`, `Max`, and
 These statistics could be run by department.
 
     chicago_data[
-      It.department >> 
+      It.department >>
       Record(
         It.name,
         :salary_stats =>
