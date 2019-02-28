@@ -34,7 +34,7 @@ https://gitter.im/rbt-lang/rbt-proto
 Consider a tiny cross-section of public data from Chicago,
 represented as nested `NamedTuple` and `Vector` objects.
 
-    chicago_data =
+    chicago_data_source =
       (department = [
         (name = "POLICE",
          employee = [
@@ -51,8 +51,8 @@ To query this data, we convert it into a `DataKnot`. Any *knot*
 can be converted back to native Julia via the `get` function.
 
     using DataKnots
-    ChicagoData = DataKnot(chicago_data)
-    typeof(get(ChicagoData))
+    chicago_data = DataKnot(chicago_data_source)
+    typeof(get(chicago_data))
     #-> NamedTuple{(:department,),⋮
 
 In this hierarchical Chicago data, the root is a `NamedTuple` with
@@ -66,7 +66,7 @@ To list all the department names we write `It.department.name`.
 In this pipeline, `It` means "use the current input". The dotted
 notation lets one navigate via hierarchy.
 
-    run(ChicagoData, It.department.name)
+    chicago_data[It.department.name]
     #=>
       │ name   │
     ──┼────────┼
@@ -78,13 +78,13 @@ Navigation context matters. For example, `employee` tuples are not
 directly accessible from the root of the dataset provided. When a
 label can't be found, an appropriate error message is displayed.
 
-    run(ChicagoData, It.employee)
+    chicago_data[It.employee]
     #-> ERROR: cannot find employee ⋮
 
 Instead, `employee` tuples can be accessed by navigating though
 `department` tuples.
 
-    run(ChicagoData, It.department.employee)
+    chicago_data[It.department.employee]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -103,7 +103,7 @@ Dotted navigations, such as `It.department.name`, are a syntax
 shorthand for the `Get()` primitive together with pipeline
 composition (`>>`).
 
-    run(ChicagoData, Get(:department) >> Get(:name))
+    chicago_data[Get(:department) >> Get(:name)]
     #=>
       │ name   │
     ──┼────────┼
@@ -115,7 +115,7 @@ The `Get()` pipeline primitive reproduces contents from a named
 container. Pipeline composition `>>` merges results from nested
 traversal. They can be used together creatively.
 
-    run(ChicagoData, Get(:department) >> Get(:employee))
+    chicago_data[Get(:department) >> Get(:employee)]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -129,7 +129,7 @@ In this pipeline algebra, `It` is the identity relative to
 pipeline composition (`>>`). Since `It` can be mixed into any
 composition without changing the result, we can write:
 
-    run(ChicagoData, It >> Get(:department) >> Get(:name))
+    chicago_data[It >> Get(:department) >> Get(:name)]
     #=>
       │ name   │
     ──┼────────┼
@@ -139,7 +139,7 @@ composition without changing the result, we can write:
 
 This motivates our clever use of `It` as a syntax short hand.
 
-    run(ChicagoData, It.department.name)
+    chicago_data[It.department.name]
     #=>
       │ name   │
     ──┼────────┼
@@ -157,7 +157,7 @@ To return the number of departments in this Chicago dataset we
 write `Count(It.department)`. Observe that the argument provided
 to `Count()`, `It.department`, is itself a pipeline.
 
-    run(ChicagoData, Count(It.department))
+    chicago_data[Count(It.department)]
     #=>
     │ It │
     ┼────┼
@@ -168,9 +168,9 @@ Using pipeline composition (`>>`), we can perform `Count` in a
 nested context; for this next example, let's count `employee`
 records within each `department`.
 
-    run(ChicagoData,
-        It.department
-        >> Count(It.employee))
+    chicago_data[
+      It.department >>
+      Count(It.employee)]
     #=>
       │ It │
     ──┼────┼
@@ -189,10 +189,10 @@ Returning values in tandem can be done with `Record()`. Let's
 improve the previous output by including each department's name
 alongside employee counts.
 
-    run(ChicagoData,
-        It.department
-        >> Record(It.name,
-                  Count(It.employee)))
+    chicago_data[
+      It.department >>
+      Record(It.name,
+             Count(It.employee))]
     #=>
       │ department │
       │ name    #B │
@@ -204,11 +204,11 @@ alongside employee counts.
 Records can be nested. The following listing includes, for each
 department, employee names and their salary.
 
-    run(ChicagoData,
-        It.department
-        >> Record(It.name,
-             It.employee >>
-             Record(It.name, It.salary)))
+    chicago_data[
+      It.department >>
+      Record(It.name,
+        It.employee >>
+        Record(It.name, It.salary))]
     #=>
       │ department                                │
       │ name    employee                          │
@@ -231,10 +231,10 @@ be the number of employees in a given department.
       :employee_count =>
         Count(It.employee)
 
-    run(ChicagoData,
-        It.department
-        >> Record(It.name,
-                  EmployeeCount))
+    chicago_data[
+      It.department >>
+      Record(It.name,
+             EmployeeCount)]
     #=>
       │ department             │
       │ name    employee_count │
@@ -250,7 +250,7 @@ refinements (`>>=`).
     DeptCount = Count(It.department)
     DeptCount >>= Label(:dept_count)
 
-    run(ChicagoData, DeptCount)
+    chicago_data[DeptCount]
     #=>
     │ dept_count │
     ┼────────────┼
@@ -260,9 +260,9 @@ refinements (`>>=`).
 Besides providing a lovely display title, labels also provide a
 way to access fields within a record.
 
-    run(ChicagoData,
-        Record(It, DeptCount)
-        >> It.dept_count)
+    chicago_data[
+      Record(It, DeptCount) >>
+      It.dept_count]
     #=>
     │ dept_count │
     ┼────────────┼
@@ -274,10 +274,10 @@ way to access fields within a record.
 Returning only wanted values can be done with `Filter()`. Here we
 list department names who have exactly one employee.
 
-    run(ChicagoData,
-        It.department
-        >> Filter(EmployeeCount .== 1)
-        >> Record(It.name, EmployeeCount))
+    chicago_data[
+      It.department >>
+      Filter(EmployeeCount .== 1) >>
+      Record(It.name, EmployeeCount)]
     #=>
       │ department           │
       │ name  employee_count │
@@ -290,10 +290,10 @@ operators, such as `.==` are to be used. Forgetting the period is
 an easy mistake to make and the relevant Julia language error
 message may not be helpful.
 
-    run(ChicagoData,
-        It.department
-        >> Filter(EmployeeCount == 1)
-        >> Record(It.name, EmployeeCount))
+    chicago_data[
+      It.department >>
+      Filter(EmployeeCount == 1) >>
+      Record(It.name, EmployeeCount)]
     #=>
     ERROR: AssertionError: eltype(input) <: AbstractVector
     =#
@@ -305,9 +305,9 @@ than 100K. The output of this pipeline is also labeled.
       :gt100k =>
         It.salary .> 100000
 
-    run(ChicagoData,
-        It.department.employee
-        >> Record(It.name, It.salary, GT100K))
+    chicago_data[
+      It.department.employee >>
+      Record(It.name, It.salary, GT100K)]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -320,10 +320,10 @@ than 100K. The output of this pipeline is also labeled.
 Since `Filter` takes a boolean valued pipeline for an argument, we
 could use `GTK100K` to filter employees.
 
-    run(ChicagoData,
-        It.department.employee
-        >> Filter(GT100K)
-        >> It.name)
+    chicago_data[
+      It.department.employee >>
+      Filter(GT100K) >>
+      It.name]
     #=>
       │ name      │
     ──┼───────────┼
@@ -362,7 +362,7 @@ extend this pipeline to filter unwanted rows.
 
 Let's run it.
 
-    run(ChicagoData, OurQuery)
+    chicago_data[OurQuery]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -380,7 +380,7 @@ This tagging can make subsequent compositions easier to read, when
 the definition of the named pipeline is not being questioned.
 
     OurQuery = It.department.employee >>
-                 Record(It.name, It.salary, GT100K)
+               Record(It.name, It.salary, GT100K)
     #=>
     It.department.employee >> Record(It.name, It.salary, GT100K)
     =#
@@ -390,7 +390,7 @@ Notice that the tag (`:GT100K`) is distinct from the data label
 output column.
 
     OurQuery >>= Filter(It.gt100k)
-    run(ChicagoData, OurQuery)
+    chicago_data[OurQuery]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -402,7 +402,7 @@ For the final step of our incremental construction, let's only
 show the employee's name that met the GT100K criteria.
 
     OurQuery >>= It.name
-    run(ChicagoData, OurQuery)
+    chicago_data[OurQuery]
     #=>
       │ name      │
     ──┼───────────┼
@@ -416,10 +416,10 @@ providing incremental refinement without additional nesting. In
 this next example, `Count` takes an input of filtered employees,
 and returns the size of its input.
 
-    run(ChicagoData,
-        It.department.employee
-        >> Filter(It.salary .> 100000)
-        >> Count)
+    chicago_data[
+      It.department.employee >>
+      Filter(It.salary .> 100000) >>
+      Count]
     #=>
     │ It │
     ┼────┼
@@ -429,14 +429,14 @@ and returns the size of its input.
 Aggregate pipelines operate contextually. In the following
 example, `Count` is performed relative to each department.
 
-    run(ChicagoData,
-        It.department
-        >> Record(
-            It.name,
-            :over_100k =>
-              It.employee
-              >> Filter(It.salary .> 100000)
-              >> Count))
+    chicago_data[
+      It.department >>
+      Record(
+       It.name,
+       :over_100k =>
+         It.employee >>
+         Filter(It.salary .> 100000) >>
+         Count)]
     #=>
       │ department        │
       │ name    over_100k │
@@ -449,8 +449,7 @@ Note that in `It.department.employee >> Count`, the `Count`
 pipeline aggregates the number of employees across all
 departments. This doesn't change even if we add parentheses:
 
-    run(ChicagoData,
-        It.department >> (It.employee >> Count))
+    chicago_data[It.department >> (It.employee >> Count)]
     #=>
     │ It │
     ┼────┼
@@ -460,8 +459,7 @@ departments. This doesn't change even if we add parentheses:
 To count employees in *each* department, we use the `Each()`
 pipeline constructor.
 
-    run(ChicagoData,
-        It.department >> Each(It.employee >> Count))
+    chicago_data[It.department >> Each(It.employee >> Count)]
     #=>
       │ It │
     ──┼────┼
@@ -472,8 +470,7 @@ pipeline constructor.
 Naturally, we could use the `Count()` pipeline constructor to
 get the same result.
 
-    run(ChicagoData,
-        It.department >> Count(It.employee))
+    chicago_data[It.department >> Count(It.employee)]
     #=>
       │ It │
     ──┼────┼
@@ -486,7 +483,7 @@ notationally convenient.  For incremental construction, being
 able to simply append `>> Count` is often very helpful.
 
     OurQuery = It.department.employee
-    run(ChicagoData, OurQuery >> Count)
+    chicago_data[OurQuery >> Count]
     #=>
     │ It │
     ┼────┼
@@ -506,10 +503,10 @@ Let's define a function to extract an employee's first name.
 This `fname` function can then be used within a pipeline
 expression to return first names of all employees.
 
-    run(ChicagoData,
-        It.department.employee
-        >> fname.(It.name)
-        >> Label(:first_name))
+    chicago_data[
+      It.department.employee >>
+      fname.(It.name) >>
+      Label(:first_name)]
     #=>
       │ first_name │
     ──┼────────────┼
@@ -522,12 +519,12 @@ Aggregate Julia functions, such as `mean`, can also be used.
 
     using Statistics: mean
 
-    run(ChicagoData,
-        It.department
-        >> Record(
-            It.name,
-            :mean_salary =>
-              mean.(It.employee.salary)))
+    chicago_data[
+      It.department >>
+      Record(
+       It.name,
+       :mean_salary =>
+         mean.(It.employee.salary))]
     #=>
       │ department          │
       │ name    mean_salary │
@@ -546,7 +543,7 @@ The `run` function takes named parameters. Each argument passed
 via named parameter is converted into a `DataKnot` and then made
 available as a label accessible anywhere in the pipeline.
 
-    run(ChicagoData, It.AMT, AMT=100000)
+    chicago_data[AMT=100000, It.AMT]
     #=>
     │ AMT    │
     ┼────────┼
@@ -557,13 +554,13 @@ This technique permits complex pipelines to be re-used with
 different argument values. By convention we capitalize parameters
 so they standout from regular data labels.
 
-    PaidOverAmt = (
-      It.department
-      >> It.employee
-      >> Filter(It.salary .> It.AMT)
-      >> It.name)
+    PaidOverAmt =
+      It.department >>
+      It.employee >>
+      Filter(It.salary .> It.AMT) >>
+      It.name
 
-    run(ChicagoData, PaidOverAmt, AMT=100000)
+    chicago_data[PaidOverAmt, AMT=100000]
     #=>
       │ name      │
     ──┼───────────┼
@@ -572,7 +569,7 @@ so they standout from regular data labels.
 
 With a different threshold amount, the result may change.
 
-    run(ChicagoData, PaidOverAmt, AMT=85000)
+    chicago_data[PaidOverAmt, AMT=85000]
     #=>
       │ name      │
     ──┼───────────┼
@@ -586,12 +583,12 @@ Suppose we want a parameterized pipeline that could take other
 pipelines as arguments. Let's define `EmployeesOver()` to return
 `employee` records that have salary greater than a given amount.
 
-    EmployeesOver(X) = (
-        It.department
-        >> It.employee
-        >> Filter(It.salary .> X))
+    EmployeesOver(X) = 
+      It.department >>
+      It.employee >>
+      Filter(It.salary .> X)
 
-    run(ChicagoData, EmployeesOver(100000))
+    chicago_data[EmployeesOver(100000)]
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -602,9 +599,10 @@ pipelines as arguments. Let's define `EmployeesOver()` to return
 Let's list employees having greater than average salary. To start,
 we must first compute the average salary.
 
+    using Statistics: mean
     AvgSalary = mean.(It.department.employee.salary)
 
-    run(ChicagoData, AvgSalary)
+    chicago_data[AvgSalary]
     #=>
     │ It      │
     ┼─────────┼
@@ -614,9 +612,9 @@ we must first compute the average salary.
 We could use this *knot* value as a parameter to a subsequent
 `run` of `EmployeesOver()`. This works, but is not elegant.
 
-    run(ChicagoData,
-        EmployeesOver(It.AMT),
-        AMT=run(ChicagoData, AvgSalary))
+    chicago_data[
+      EmployeesOver(It.AMT),
+      AMT=chicago_data[AvgSalary]]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -628,7 +626,7 @@ We could use this *knot* value as a parameter to a subsequent
 However, if we try to combine these two pipelines directly, we get
 a naming error.
 
-    run(ChicagoData, EmployeesOver(AvgSalary))
+    chicago_data[EmployeesOver(AvgSalary)]
     #-> ERROR: cannot find department ⋮
 
 By looking at the definition, we can see the problem: in the scope
@@ -647,13 +645,13 @@ available within a subordinate pipeline.
 
     EmployeesOver(X) =
       Given(:AMT => X,
-        It.department
-        >> It.employee
-        >> Filter(It.salary .> It.AMT))
+        It.department >>
+        It.employee >>
+        Filter(It.salary .> It.AMT))
 
 We could then combine these two pipelines.
 
-    run(ChicagoData, EmployeesOver(AvgSalary))
+    chicago_data[EmployeesOver(AvgSalary)]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -665,9 +663,9 @@ We could then combine these two pipelines.
 Note that this expression is yet another pipeline that could be
 refined with further computation.
 
-    run(ChicagoData,
-        EmployeesOver(AvgSalary)
-        >> It.name)
+    chicago_data[
+      EmployeesOver(AvgSalary) >>
+      It.name]
     #=>
       │ name      │
     ──┼───────────┼
@@ -678,9 +676,9 @@ refined with further computation.
 Although `Given` in this parameterized query defines `It.amt`,
 this computation's label doesn't leak outside the definition.
 
-     run(ChicagoData,
-         EmployeesOver(AvgSalary)
-         >> It.amt)
+    chicago_data[
+      EmployeesOver(AvgSalary) >>
+      It.amt]
     #-> ERROR: cannot find amt ⋮
 
 ### Keeping Values
@@ -689,20 +687,20 @@ Suppose we'd like a list of employee names together with the
 corresponding department name. The naive approach won't work,
 because `department` is not a label in the context of an employee.
 
-    run(ChicagoData,
-         It.department
-         >> It.employee
-         >> Record(It.name, It.department.name))
+    chicago_data[
+      It.department >>
+      It.employee >>
+      Record(It.name, It.department.name)]
     #-> ERROR: cannot find department ⋮
 
 This can be overcome by using `Keep` to label an expression's
 result, so that it is available within subsequent computations.
 
-    run(ChicagoData,
-         It.department
-         >> Keep(:dept_name => It.name)
-         >> It.employee
-         >> Record(It.name, It.dept_name))
+    chicago_data[
+      It.department >>
+      Keep(:dept_name => It.name) >>
+      It.employee >>
+      Record(It.name, It.dept_name)]
     #=>
       │ employee             │
       │ name       dept_name │
@@ -716,11 +714,13 @@ This pattern also emerges with aggregate computations which need
 to be done in a parent scope. For example, let's compute employees
 with a higher than average salary within their department.
 
-    run(ChicagoData,
-         It.department
-         >> Keep(:mean_salary => mean.(It.employee.salary))
-         >> It.employee
-         >> Filter(It.salary .> It.mean_salary))
+    using Statistics: mean
+    chicago_data[
+      It.department >>
+      Keep(:mean_salary => 
+        mean.(It.employee.salary)) >>
+      It.employee >>
+      Filter(It.salary .> It.mean_salary)]
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -730,11 +730,13 @@ with a higher than average salary within their department.
 
 Compare this with an equivalent query prepared via `Given`.
 
-    run(ChicagoData,
-         It.department
-         >> Given(:mean_salary => mean.(It.employee.salary),
-              It.employee
-               >> Filter(It.salary .> It.mean_salary)))
+    chicago_data[
+      It.department >>
+      Given(
+        :mean_salary => 
+          mean.(It.employee.salary),
+        It.employee >>
+        Filter(It.salary .> It.mean_salary))]
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -753,7 +755,7 @@ helpful to `Take` or `Drop` items from the input stream. Let's
 start by listing all 3 employees of our toy database.
 
     Employee = It.department.employee
-    run(ChicagoData, Employee)
+    chicago_data[Employee]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -765,7 +767,7 @@ start by listing all 3 employees of our toy database.
 
 To return up to the 2nd employee record, we use `Take`.
 
-    run(ChicagoData, Employee >> Take(2))
+    chicago_data[Employee >> Take(2)]
     #=>
       │ employee                          │
       │ name       position        salary │
@@ -778,7 +780,7 @@ A negative index can be used to count records from the end of the
 pipeline's input. So, to return up to, but not including, the very
 last item in the stream, we could write:
 
-    run(ChicagoData, Employee >> Take(-1))
+    chicago_data[Employee >> Take(-1)]
     #=>
       │ employee                          │
       │ name       position        salary │
@@ -790,7 +792,7 @@ last item in the stream, we could write:
 To return the last record of the pipeline's input, we could `Drop`
 up to the last item in the stream:
 
-    run(ChicagoData, Employee >> Drop(-1))
+    chicago_data[Employee >> Drop(-1)]
     #=>
       │ employee                           │
       │ name      position          salary │
@@ -812,9 +814,9 @@ There are other aggregate functions, such as `Min`, `Max`, and
         :max => Max(X),
         :sum => Sum(X))
 
-    run(ChicagoData,
-        :salary_stats_for_all_employees =>
-           Stats(It.department.employee.salary))
+    chicago_data[
+      :salary_stats_for_all_employees =>
+         Stats(It.department.employee.salary)]
     #=>
     │ salary_stats_for_all_employees      │
     │ count  mean   min    max     sum    │
@@ -824,12 +826,12 @@ There are other aggregate functions, such as `Min`, `Max`, and
 
 These statistics could be run by department.
 
-    run(ChicagoData,
-        It.department 
-        >> Record(
-            It.name,
-            :salary_stats =>
-              Stats(It.employee.salary)))
+    chicago_data[
+      It.department >> 
+      Record(
+        It.name,
+        :salary_stats =>
+          Stats(It.employee.salary))]
     #=>
       │ department                              │
       │ name    salary_stats                    │
