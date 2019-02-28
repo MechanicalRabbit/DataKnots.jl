@@ -542,153 +542,6 @@ The more general form of `Lift`, documented in the reference. How
 a lifted function is treated as a pipeline constructor depends
 upon that function's input and output signature.
 
-### Query Parameters
-
-Julia's index notation permits named parameters. Each argument
-passed via named parameter is converted into a `DataKnot` and then
-made available as a label accessible anywhere in the pipeline.
-
-    chicago_data[AMT=100000, It.AMT]
-    #=>
-    │ AMT    │
-    ┼────────┼
-    │ 100000 │
-    =#
-
-This technique permits complex pipelines to be re-used with
-different argument values. By convention we capitalize parameters
-so they standout from regular data labels.
-
-    PaidOverAmt =
-      It.department >>
-      It.employee >>
-      Filter(It.salary .> It.AMT) >>
-      It.name
-
-    chicago_data[PaidOverAmt, AMT=100000]
-    #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    =#
-
-With a different threshold amount, the result may change.
-
-    chicago_data[PaidOverAmt, AMT=85000]
-    #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    2 │ DANIEL A  │
-    =#
-
-### Parameterized Pipelines
-
-Parameterized pipelines can be easily defined. Since there is no
-single datatype that represents a pipeline directly, we have to
-use unspecialized function arguments. Let's define a parameterized
-pipline that returns `employee` records with a salary greater than
-a given amount.
-
-    EmployeesOver(X) =
-      It.department >>
-      It.employee >>
-      Filter(It.salary .> X)
-
-    chicago_data[EmployeesOver(100000)]
-    #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
-    =#
-
-Let's list employees having greater than average salary. To start,
-we must first compute the average salary.
-
-    using Statistics: mean
-    AvgSalary = mean.(It.department.employee.salary)
-
-    chicago_data[AvgSalary]
-    #=>
-    │ It      │
-    ┼─────────┼
-    │ 92314.0 │
-    =#
-
-We could use this *knot* value as a parameter to a subsequent
-`run` of `EmployeesOver()`. This works, but is not elegant.
-
-    chicago_data[
-      EmployeesOver(It.AMT),
-      AMT=chicago_data[AvgSalary]]
-    #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-    =#
-
-Suppose we want parameterized pipeline that could take other
-pipelines as arguments. If we try to combine these two pipelines
-directly, we get a naming error.
-
-    chicago_data[EmployeesOver(AvgSalary)]
-    #-> ERROR: cannot find department ⋮
-
-By looking at the definition, we can see the problem: in the scope
-of `employee` there is no attribute `department`.
-
-    EmployeesOver(AvgSalary)
-    #=>
-    It.department >>
-    It.employee >>
-    Filter(It.salary .> mean.(It.department.employee.salary))
-    =#
-
-This challenge can be overcome with `Given`, which evaluates its
-named arguments in the current scope and makes those values
-available within a subordinate pipeline.
-
-    EmployeesOver(X) =
-      Given(:AMT => X,
-        It.department >>
-        It.employee >>
-        Filter(It.salary .> It.AMT))
-
-We could then combine these two pipelines.
-
-    chicago_data[EmployeesOver(AvgSalary)]
-    #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-    =#
-
-Note that this combined expression is yet another pipeline that
-could be refined with further computation.
-
-    chicago_data[
-      EmployeesOver(AvgSalary) >>
-      It.name]
-    #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    2 │ DANIEL A  │
-    =#
-
-Although `Given` in this parameterized query defines `It.amt`,
-this computation's label doesn't leak outside the definition.
-
-    chicago_data[
-      EmployeesOver(AvgSalary) >>
-      It.amt]
-    #-> ERROR: cannot find amt ⋮
-
 ### Keeping Values
 
 Suppose we'd like a list of employee names together with the
@@ -736,15 +589,59 @@ with a higher than average salary within their department.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-Compare this with an equivalent query prepared via `Given`.
+### Query Parameters
 
-    chicago_data[
+Julia's index notation permits named parameters. Each argument
+passed via named parameter is converted into a `DataKnot` and then
+made available as a label accessible anywhere in the pipeline.
+
+    chicago_data[AMT=100000, It.AMT]
+    #=>
+    │ AMT    │
+    ┼────────┼
+    │ 100000 │
+    =#
+
+This technique permits complex pipelines to be re-used with
+different argument values. By convention we capitalize parameters
+so they standout from regular data labels.
+
+    PaidOverAmt =
       It.department >>
-      Given(
-        :mean_salary =>
-          mean.(It.employee.salary),
+      It.employee >>
+      Filter(It.salary .> It.AMT) >>
+      It.name
+
+    chicago_data[PaidOverAmt, AMT=100000]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    =#
+
+With a different threshold amount, the result may change.
+
+    chicago_data[PaidOverAmt, AMT=85000]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ DANIEL A  │
+    =#
+
+### Parameterized Pipelines
+
+Suppose we want parameterized pipeline that could take other
+pipelines as arguments. Using `Given`, we could build a function
+that returns `employee` records with `salary` over a given amount.
+
+    EmployeesOver(X) =
+      Given(:AMT => X,
+        It.department >>
         It.employee >>
-        Filter(It.salary .> It.mean_salary))]
+        Filter(It.salary .> It.AMT))
+
+    chicago_data[EmployeesOver(100000)]
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -752,9 +649,90 @@ Compare this with an equivalent query prepared via `Given`.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-While `Keep` and `Given` are similar, `Keep` deliberately leaks
-the values that it defines while not increasing the nesting. On
-the other hand, `Given` increases nesting but doesn't leak.
+But what if we wished to find employees with higher than average
+salary? Let's compute the average value as a pipeline.
+
+    using Statistics: mean
+    AvgSalary = mean.(It.department.employee.salary)
+
+    chicago_data[AvgSalary]
+    #=>
+    │ It      │
+    ┼─────────┼
+    │ 92314.0 │
+    =#
+
+We could then combine these two pipelines.
+
+    chicago_data[EmployeesOver(AvgSalary)]
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+Note that this combined expression is yet another pipeline that
+could be refined with further computation.
+
+    chicago_data[
+      EmployeesOver(AvgSalary) >>
+      It.name]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ DANIEL A  │
+    =#
+
+Unlike it's cousin `Having`, `Given` doesn't leak its definitions.
+Specifically, `It.amt` is not available outside `EmployeesOver()`.
+
+    chicago_data[
+      EmployeesOver(AvgSalary) >>
+      It.amt]
+    #-> ERROR: cannot find amt ⋮
+
+### More Aggregates
+
+There are other aggregate functions, such as `Min`, `Max`, and
+`Sum`. They could be used to create a statistical measure.
+
+    using Statistics: mean
+    Stats(X) =
+      Record(
+        :count => Count(X),
+        :mean => floor.(Int, mean.(X)),
+        :min => Min(X),
+        :max => Max(X),
+        :sum => Sum(X))
+
+    chicago_data[
+      :salary_stats_for_all_employees =>
+         Stats(It.department.employee.salary)]
+    #=>
+    │ salary_stats_for_all_employees      │
+    │ count  mean   min    max     sum    │
+    ┼─────────────────────────────────────┼
+    │     3  92314  80016  101442  276942 │
+    =#
+
+These statistics could be run by department.
+
+    chicago_data[
+      It.department >>
+      Record(
+        It.name,
+        :salary_stats =>
+          Stats(It.employee.salary))]
+    #=>
+      │ department                              │
+      │ name    salary_stats                    │
+    ──┼─────────────────────────────────────────┼
+    1 │ POLICE  2, 90729, 80016, 101442, 181458 │
+    2 │ FIRE    1, 95484, 95484, 95484, 95484   │
+    =#
 
 ### Paging Data
 
@@ -806,45 +784,5 @@ up to the last item in the stream:
       │ name      position          salary │
     ──┼────────────────────────────────────┼
     1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
-    =#
-
-### More Aggregates
-
-There are other aggregate functions, such as `Min`, `Max`, and
-`Sum`. They could be used to create a statistical measure.
-
-    using Statistics: mean
-    Stats(X) =
-      Record(
-        :count => Count(X),
-        :mean => floor.(Int, mean.(X)),
-        :min => Min(X),
-        :max => Max(X),
-        :sum => Sum(X))
-
-    chicago_data[
-      :salary_stats_for_all_employees =>
-         Stats(It.department.employee.salary)]
-    #=>
-    │ salary_stats_for_all_employees      │
-    │ count  mean   min    max     sum    │
-    ┼─────────────────────────────────────┼
-    │     3  92314  80016  101442  276942 │
-    =#
-
-These statistics could be run by department.
-
-    chicago_data[
-      It.department >>
-      Record(
-        It.name,
-        :salary_stats =>
-          Stats(It.employee.salary))]
-    #=>
-      │ department                              │
-      │ name    salary_stats                    │
-    ──┼─────────────────────────────────────────┼
-    1 │ POLICE  2, 90729, 80016, 101442, 181458 │
-    2 │ FIRE    1, 95484, 95484, 95484, 95484   │
     =#
 
