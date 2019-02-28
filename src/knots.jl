@@ -50,7 +50,7 @@ convert(::Type{DataKnot}, val) = DataKnot(val)
 
 get(db::DataKnot) = db.cell[1]
 
-getindex(db::DataKnot) = db.cell[1]
+getindex(db::DataKnot, P; kws...) = run(db, P; kws...)
 
 cell(db::DataKnot) = db.cell
 
