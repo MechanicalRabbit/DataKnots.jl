@@ -1,11 +1,11 @@
 # Getting Started
 
-DataKnots is currently usable for contributors who wish to help
-grow the ecosystem. However, DataKnots is not yet usable for
-general audiences: with v0.1, there are no data source adapters
-and we lack important operators, such as `Sort` and `Group`. Many
-of these deficiencies were prototyped and subsequent releases will
-address these feature gaps incrementally.
+Notice: DataKnots are currently usable for contributors who wish
+to help grow the ecosystem. However, DataKnots are not yet usable
+for general audiences: with v0.1, there are no data source
+adapters and we lack important operators, such as `Sort` and
+`Group`. Many of these deficiencies were prototyped and subsequent
+releases will address these feature gaps incrementally.
 
 ## Installation
 
@@ -29,12 +29,12 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 Our development chat is currently hosted on Gitter:
 https://gitter.im/rbt-lang/rbt-proto
 
-## Quick Tutorial
+## Query Primer
 
 Consider a tiny cross-section of public data from Chicago,
 represented as nested `NamedTuple` and `Vector` objects.
 
-    chicago_data_source =
+    chicago_data =
       (department = [
         (name = "POLICE",
          employee = [
@@ -47,28 +47,22 @@ represented as nested `NamedTuple` and `Vector` objects.
           (name = "DANIEL A", position = "FIRE FIGHTER-EMT",
            salary = 95484)])],);
 
-To query this data, we convert it into a `DataKnot`. For shallow
-data structures, any *knot* can be converted back to native Julia
-datatype via the `get` function.
-
-    using DataKnots
-    chicago_data = DataKnot(chicago_data_source)
-    typeof(get(chicago_data))
-    #-> NamedTuple{(:department,),⋮
-
-In this hierarchical Chicago data, the root is a `NamedTuple` with
-an entry `:department`, that `Vector` valued entry has another
-vector of tuples labeled `:employee`. The label `name` occurs both
+In this hierarchical Chicago dataset, the root is a `NamedTuple`
+with an entry `:department`, which is a `Vector` department
+records, and so on. Notice that the label `name` occurs both
 within the context of a department and an employee record.
 
-### Navigation
+To query this dataset, we convert it into a DataKnot.
 
-To list all department names in the `chicago_data` *knot*, we use
-Julia's index notation with `It.department.name`. In this
-pipeline, `It` means "use the current input". The dotted notation
-lets one navigate via hierarchy.
+    using DataKnots
+    chicago = DataKnot(chicago_data)
 
-    chicago_data[It.department.name]
+### Our First Query
+
+Let's say we want to query a list of department names from this
+data source. We query this knot using Julia's index notation.
+
+    department_names = chicago[It.department.name]
     #=>
       │ name   │
     ──┼────────┼
@@ -76,17 +70,38 @@ lets one navigate via hierarchy.
     2 │ FIRE   │
     =#
 
-Navigation context matters. For example, `employee` tuples are not
-directly accessible from the root of the dataset provided. When a
-label can't be found, an appropriate error message is displayed.
+The output of this query, `department_names`, is also a DataKnot.
+The content of this knot could be accessed via `get` function.
 
-    chicago_data[It.employee]
+    get(department_names)
+    #-> ["POLICE", "FIRE"]
+
+### Navigation
+
+In this first query, `It` means "use the current input". The
+dotted notation lets one navigate the hierarchy. Let's list
+employee names next.
+
+    chicago[It.department.employee.name]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ NANCY A   │
+    3 │ DANIEL A  │
+    =#
+
+Navigation context matters. For example, `employee` tuples are not
+directly accessible from the root of the dataset. When a label
+can't be found, an appropriate error message is displayed.
+
+    chicago[It.employee]
     #-> ERROR: cannot find employee ⋮
 
-Instead, `employee` tuples can be accessed by navigating though
+Instead, `employee` tuples can be queried by navigating though
 `department` tuples.
 
-    chicago_data[It.department.employee]
+    chicago[It.department.employee]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -102,10 +117,10 @@ into a single output.
 ### Composition & Identity
 
 Dotted navigations, such as `It.department.name`, are a syntax
-shorthand for the `Get()` primitive together with pipeline
+shorthand for the `Get()` primitive together with query
 composition (`>>`).
 
-    chicago_data[Get(:department) >> Get(:name)]
+    chicago[Get(:department) >> Get(:name)]
     #=>
       │ name   │
     ──┼────────┼
@@ -113,11 +128,11 @@ composition (`>>`).
     2 │ FIRE   │
     =#
 
-The `Get()` pipeline primitive reproduces contents from a named
-container. Pipeline composition `>>` merges results from nested
+The `Get()` query primitive reproduces contents from a named
+container. Query composition `>>` merges results from nested
 traversal. They can be used together creatively.
 
-    chicago_data[Get(:department) >> Get(:employee)]
+    chicago[Get(:department) >> Get(:employee)]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -127,11 +142,11 @@ traversal. They can be used together creatively.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-In this pipeline algebra, `It` is the identity relative to
-pipeline composition (`>>`). Since `It` can be mixed into any
-composition without changing the result, we can write:
+In this query algebra, `It` is the identity relative to query
+composition (`>>`). Since `It` can be mixed into any composition
+without changing the result, we can write:
 
-    chicago_data[It >> Get(:department) >> Get(:name)]
+    chicago[It >> Get(:department) >> Get(:name)]
     #=>
       │ name   │
     ──┼────────┼
@@ -141,7 +156,7 @@ composition without changing the result, we can write:
 
 This motivates our clever use of `It` as a syntax short hand.
 
-    chicago_data[It.department.name]
+    chicago[It.department.name]
     #=>
       │ name   │
     ──┼────────┼
@@ -149,29 +164,27 @@ This motivates our clever use of `It` as a syntax short hand.
     2 │ FIRE   │
     =#
 
-This pipeline, `It.department.name`, could be equivalently written
+This query, `It.department.name`, could be equivalently written
 `Get(:department) >> Get(:name)`.
 
 ### Context & Counting
 
 To return the number of departments in this Chicago dataset we
-write `Count(It.department)`. Observe that the argument provided
-to `Count()`, `It.department`, is itself a pipeline.
+write the query `Count(It.department)`. Observe that the argument
+provided to `Count()`, `It.department`, is itself a query.
 
-    chicago_data[Count(It.department)]
+    chicago[Count(It.department)]
     #=>
     │ It │
     ┼────┼
     │  2 │
     =#
 
-Using pipeline composition (`>>`), we can perform `Count` in a
-nested context; for this next example, let's count `employee`
-records within each `department`.
+Using query composition (`>>`), we can perform `Count` in a nested
+context; for this next example, let's count `employee` records
+within each `department`.
 
-    chicago_data[
-      It.department >>
-      Count(It.employee)]
+    chicago[It.department >> Count(It.employee)]
     #=>
       │ It │
     ──┼────┼
@@ -181,8 +194,8 @@ records within each `department`.
 
 In this output we see that the 1st department, `"POLICE"`, has `2`
 employees, while the 2nd, `"FIRE"` only has `1`. The occurrence of
-`It` within the subordinate pipeline `Count(It.employee)` refers
-to each department individually, not to the dataset as a whole.
+`It` within the subordinate query `Count(It.employee)` refers to
+each department individually, not to the dataset as a whole.
 
 ### Record Construction
 
@@ -190,10 +203,10 @@ Returning values in tandem can be done with `Record()`. Let's
 improve the previous output by including each department's name
 alongside employee counts.
 
-    chicago_data[
-      It.department >>
-      Record(It.name,
-             Count(It.employee))]
+    chicago[
+        It.department >>
+        Record(It.name,
+               Count(It.employee))]
     #=>
       │ department │
       │ name    #B │
@@ -205,11 +218,12 @@ alongside employee counts.
 Records can be nested. The following listing includes, for each
 department, employee names and their salary.
 
-    chicago_data[
-      It.department >>
-      Record(It.name,
-        It.employee >>
-        Record(It.name, It.salary))]
+    chicago[
+        It.department >>
+        Record(It.name,
+               It.employee >>
+               Record(It.name,
+                      It.salary))]
     #=>
       │ department                                │
       │ name    employee                          │
@@ -223,18 +237,19 @@ semi-colons separate values.
 
 ### Expressions & Output Labels
 
-Pipeline expressions can be named and reused. Further, the output
-column of these named pipelines may be labeled using Julia's
-`Pair` syntax (`=>`). Let's define `EmployeeCount` to be the
-number of employees in a given department.
+Query expressions can be named and reused. Further, the output
+column of these named queries may be labeled using Julia's `Pair`
+syntax (`=>`). Let's define `EmployeeCount` to be the number of
+employees in a given department.
 
     EmployeeCount =
-      :employee_count =>
-        Count(It.employee)
+        :employee_count =>
+            Count(It.employee)
 
-    chicago_data[
-      It.department >>
-      Record(It.name, EmployeeCount)]
+    chicago[
+        It.department >>
+        Record(It.name,
+               EmployeeCount)]
     #=>
       │ department             │
       │ name    employee_count │
@@ -243,14 +258,14 @@ number of employees in a given department.
     2 │ FIRE                 1 │
     =#
 
-Labels can be attached to an existing pipeline using the `Label`
-primitive. This form is handy for use in successive pipeline
+Labels can be attached to an existing query using the `Label`
+primitive. This form is handy for use in successive query
 refinements (`>>=`).
 
     DeptCount = Count(It.department)
     DeptCount >>= Label(:dept_count)
 
-    chicago_data[DeptCount]
+    chicago[DeptCount]
     #=>
     │ dept_count │
     ┼────────────┼
@@ -260,9 +275,9 @@ refinements (`>>=`).
 Besides providing a display title, labels also provide a way to
 access fields within a record.
 
-    chicago_data[
-      Record(It, DeptCount) >>
-      It.dept_count]
+    chicago[
+        Record(It, DeptCount) >>
+        It.dept_count]
     #=>
     │ dept_count │
     ┼────────────┼
@@ -274,10 +289,10 @@ access fields within a record.
 Returning only wanted values can be done with `Filter()`. Here we
 list department names who have exactly one employee.
 
-    chicago_data[
-      It.department >>
-      Filter(EmployeeCount .== 1) >>
-      Record(It.name, EmployeeCount)]
+    chicago[
+        It.department >>
+        Filter(EmployeeCount .== 1) >>
+        Record(It.name, EmployeeCount)]
     #=>
       │ department           │
       │ name  employee_count │
@@ -285,29 +300,29 @@ list department names who have exactly one employee.
     1 │ FIRE               1 │
     =#
 
-In pipeline expressions, the broadcast variant of common
-operators, such as `.==` are to be used. Forgetting the period is
-an easy mistake to make and the resulting Julia language error
-message may not be helpful.
+In query expressions, the broadcast variant of common operators,
+such as `.==`, are to be used. Forgetting the period is an easy
+mistake to make and the resulting Julia language error message may
+not be helpful.
 
-    chicago_data[
-      It.department >>
-      Filter(EmployeeCount == 1) >>
-      Record(It.name, EmployeeCount)]
+    chicago[
+        It.department >>
+        Filter(EmployeeCount == 1) >>
+        Record(It.name, EmployeeCount)]
     #=>
     ERROR: AssertionError: eltype(input) <: AbstractVector
     =#
 
 Let's define `GT100K` to check if an employee's salary is greater
-than 100K. The output of this pipeline is also labeled.
+than 100K. The output of this query is also labeled.
 
     GT100K =
-      :gt100k =>
-        It.salary .> 100000
+        :gt100k =>
+            It.salary .> 100000
 
-    chicago_data[
-      It.department.employee >>
-      Record(It.name, It.salary, GT100K)]
+    chicago[
+        It.department.employee >>
+        Record(It.name, It.salary, GT100K)]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -317,13 +332,13 @@ than 100K. The output of this pipeline is also labeled.
     3 │ DANIEL A    95484   false │
     =#
 
-Since `Filter` takes a boolean valued pipeline for an argument, we
+Since `Filter` takes a boolean valued query for an argument, we
 could use `GTK100K` to filter employees.
 
-    chicago_data[
-      It.department.employee >>
-      Filter(GT100K) >>
-      It.name]
+    chicago[
+        It.department.employee >>
+        Filter(GT100K) >>
+        It.name]
     #=>
       │ name      │
     ──┼───────────┼
@@ -333,36 +348,36 @@ could use `GTK100K` to filter employees.
 ### Incremental Composition
 
 This data discovery could have been done incrementally, with each
-intermediate pipeline being fully runnable. Let's start `OurQuery`
+intermediate query being fully runnable. Let's start `our_query`
 as a list of employees. We're not going to run it, but we could.
 
-    OurQuery = It.department.employee
+    our_query = It.department.employee
     #-> It.department.employee
 
-Let's extend this pipeline to compute and show if the salary is
-over 100k. Notice how pipeline composition is tracked for us. We
-could run this pipeline also, if we wanted.
+Let's extend this query to compute if the salary is over 100k.
+Notice how query composition is tracked for us. We could run
+`our_query` also, if we wanted.
 
     GT100K = :gt100k => It.salary .> 100000
-    OurQuery >>= Record(It.name, It.salary, GT100K)
+    our_query >>= Record(It.name, It.salary, GT100K)
     #=>
     It.department.employee >>
     Record(It.name, It.salary, :gt100k => It.salary .> 100000)
     =#
 
 Since labeling permits direct Record access, we could further
-extend this pipeline to filter unwanted rows.
+extend `our_query` to filter unwanted rows.
 
-    OurQuery >>= Filter(It.gt100k)
+    our_query >>= Filter(It.gt100k)
     #=>
     It.department.employee >>
     Record(It.name, It.salary, :gt100k => It.salary .> 100000) >>
     Filter(It.gt100k)
     =#
 
-Let's run it.
+Let's run `our_query` against the `chicago` knot.
 
-    chicago_data[OurQuery]
+    chicago[our_query]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -370,27 +385,27 @@ Let's run it.
     1 │ JEFFERY A  101442    true │
     =#
 
-Well-tested pipelines may benefit from a `Tag` so that their
+Well-tested queries may benefit from a `Tag` so that their
 definitions are suppressed in larger compositions.
 
     GT100K = Tag(:GT100K, :gt100k => It.salary .> 100000)
     #-> GT100K
 
 This tagging can make subsequent compositions easier to read, when
-the definition of the named pipeline is not being questioned.
+the definition of the named query is not being questioned.
 
-    OurQuery = It.department.employee >>
-               Record(It.name, It.salary, GT100K)
+    our_query = It.department.employee >>
+                Record(It.name, It.salary, GT100K)
     #=>
     It.department.employee >> Record(It.name, It.salary, GT100K)
     =#
 
 Notice that the tag (`:GT100K`) is distinct from the data label
-(`:gt100k`), the tag names the pipeline while the label names the
+(`:gt100k`), the tag names the query while the label names the
 output column.
 
-    OurQuery >>= Filter(It.gt100k)
-    chicago_data[OurQuery]
+    our_query >>= Filter(It.gt100k)
+    chicago[our_query]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -398,45 +413,114 @@ output column.
     1 │ JEFFERY A  101442    true │
     =#
 
-For the final step of our incremental construction, let's only
-show the employee's name that met the GT100K criteria.
+For the final step of our query's incremental construction, let's
+only show the employee's name that met the GT100K criteria.
 
-    OurQuery >>= It.name
-    chicago_data[OurQuery]
+    our_query >>= It.name
+    chicago[our_query]
     #=>
       │ name      │
     ──┼───────────┼
     1 │ JEFFERY A │
     =#
 
-### Aggregate pipelines
+As we see, queries can be combined in series or as arguments to
+make new queries. Queries can then be performed on a DataKnot to
+produce a new DataKnot. Hence, the construction and performance of
+a query are distinct and separate operations.
 
-Aggregates, such as `Count` may be used directly as a pipeline,
+### Accessing Data
+
+Given any `DataKnot`, its content can be accessed via `get`. For
+scalar outputs, `get` returns a typed Julia value.
+
+    get(chicago[Count(It.department)])
+    #-> 2
+
+For simple lists, `get` returns a typed `Vector`.
+
+    get(chicago[It.department.employee.name])
+    #-> ["JEFFERY A", "NANCY A", "DANIEL A"]
+
+For more complex outputs, `get` often returns a `@VectorTree`, a
+column-oriented storage for our `DataKnot` system.
+
+    query = It.department >>
+            Record(It.name,
+                   :employee_count => Count(It.employee))
+    vt = get(chicago[query])
+    display(vt)
+    #=>
+    @VectorTree of 2 × (name = (1:1) × String,
+                        employee_count = (1:1) × (1:1) × Int):
+     (name = "POLICE", employee_count = 2)
+     (name = "FIRE", employee_count = 1)
+    =#
+
+This result type can be directly used quite naturally.
+
+    [dept[:name] for dept in vt]
+    #-> ["POLICE", "FIRE"]
+
+Or converted into a standard row-oriented vector structure.
+
+    display(collect(vt))
+    #=>
+    2-element Array{NamedTuple{(:name, :employee_count),…},1}:
+     (name = "POLICE", employee_count = 2)
+     (name = "FIRE", employee_count = 1)
+    =#
+
+Further information about `@VectorTree` can be found in the
+DataKnots reference.
+
+## Query Combinators
+
+DataKnots is not just a convenient, path-oriented way to do data
+inspection. It is a complete query system that can be extended to
+encapsulate arbitrary data sources and custom transformations.
+
+Query *primitives* seen thus far include the identity (`It`) as
+well as data navigation via `Get(:Symbol)`. Further, you've also
+seen constant values be automatically lifted into queries.
+
+Query *combinators* are then used to construct new queries from
+existing ones. Thus far you've seen composition (`>>`), `Count()`,
+`Record()`, `Label()`, `Filter()`, and `Tag()`. Further, you've
+also seen broadcast operators (`.==` and `.>`) be automatically
+lifted into query combinators.
+
+This next section describes additional combinators and
+functionality that we've found useful to include.
+
+### Aggregate queries
+
+Aggregates, such as `Count` may be used as a query primitive,
 providing incremental refinement without additional nesting. In
 this next example, `Count` takes an input of filtered employees,
 and returns the size of its input.
 
-    chicago_data[
-      It.department.employee >>
-      Filter(It.salary .> 100000) >>
-      Count]
+    chicago[
+        It.department.employee >>
+        Filter(It.salary .> 100000) >>
+        Count]
     #=>
     │ It │
     ┼────┼
     │  1 │
     =#
 
-Aggregate pipelines operate contextually. In the following
-example, `Count` is performed relative to each department.
+Aggregate queries operate contextually. In the following example,
+`Count` is performed relative to each department.
 
-    chicago_data[
-      It.department >>
-      Record(
-       It.name,
-       :over_100k =>
-         It.employee >>
-         Filter(It.salary .> 100000) >>
-         Count)]
+    chicago[
+        It.department >>
+        Record(
+            It.name,
+            :over_100k =>
+                It.employee >>
+                Filter(It.salary .> 100000) >>
+                Count)]
     #=>
       │ department        │
       │ name    over_100k │
@@ -446,23 +530,20 @@ example, `Count` is performed relative to each department.
     =#
 
 Note that in `It.department.employee >> Count`, the `Count`
-pipeline aggregates the number of employees across all
+primitive aggregates the number of employees across all
 departments. This doesn't change even if we add parentheses:
 
-    chicago_data[
-      It.department >> (It.employee >> Count)]
+    chicago[It.department >> (It.employee >> Count)]
     #=>
     │ It │
     ┼────┼
     │  3 │
     =#
 
-To count employees in *each* department, we use the `Each()`
-pipeline constructor.
+To count employees in *each* department, we use the `Each()` query
+combinator.
 
-    chicago_data[
-      It.department >>
-      Each(It.employee >> Count)]
+    chicago[It.department >> Each(It.employee >> Count)]
     #=>
       │ It │
     ──┼────┼
@@ -470,12 +551,10 @@ pipeline constructor.
     2 │  1 │
     =#
 
-Naturally, we could use the `Count()` pipeline constructor to
+Naturally, we could use the `Count()` query combinator to
 get the same result.
 
-    chicago_data[
-      It.department >>
-      Count(It.employee)]
+    chicago[It.department >> Count(It.employee)]
     #=>
       │ It │
     ──┼────┼
@@ -487,8 +566,8 @@ Which form of an aggregate to use depends upon what is
 notationally convenient.  For incremental construction, being
 able to simply append `>> Count` is often very helpful.
 
-    OurQuery = It.department.employee
-    chicago_data[OurQuery >> Count]
+    our_query = It.department.employee
+    chicago[our_query >> Count]
     #=>
     │ It │
     ┼────┼
@@ -505,13 +584,13 @@ Let's define a function to extract an employee's first name.
     fname("NANCY A")
     #-> "Nancy"
 
-This `fname` function can then be used within a pipeline
-expression to return first names of all employees.
+This `fname` function can then be used within a query expression
+to return first names of all employees.
 
-    chicago_data[
-      It.department.employee >>
-      fname.(It.name) >>
-      Label(:first_name)]
+    chicago[
+        It.department.employee >>
+        fname.(It.name) >>
+        Label(:first_name)]
     #=>
       │ first_name │
     ──┼────────────┼
@@ -524,12 +603,11 @@ Aggregate Julia functions, such as `mean`, can also be used.
 
     using Statistics: mean
 
-    chicago_data[
-      It.department >>
-      Record(
-       It.name,
-       :mean_salary =>
-         mean.(It.employee.salary))]
+    chicago[
+        It.department >>
+        Record(
+            It.name,
+            :mean_salary => mean.(It.employee.salary))]
     #=>
       │ department          │
       │ name    mean_salary │
@@ -539,8 +617,8 @@ Aggregate Julia functions, such as `mean`, can also be used.
     =#
 
 The more general form of `Lift`, documented in the reference. How
-a lifted function is treated as a pipeline constructor depends
-upon that function's input and output signature.
+a lifted function is treated as a query combinator depends upon
+that function's input and output signature.
 
 ### Keeping Values
 
@@ -548,20 +626,20 @@ Suppose we'd like a list of employee names together with the
 corresponding department name. The naive approach won't work,
 because `department` is not a label in the context of an employee.
 
-    chicago_data[
-      It.department >>
-      It.employee >>
-      Record(It.name, It.department.name)]
+    chicago[
+        It.department >>
+        It.employee >>
+        Record(It.name, It.department.name)]
     #-> ERROR: cannot find department ⋮
 
 This can be overcome by using `Keep` to label an expression's
 result, so that it is available within subsequent computations.
 
-    chicago_data[
-      It.department >>
-      Keep(:dept_name => It.name) >>
-      It.employee >>
-      Record(It.name, It.dept_name)]
+    chicago[
+        It.department >>
+        Keep(:dept_name => It.name) >>
+        It.employee >>
+        Record(It.name, It.dept_name)]
     #=>
       │ employee             │
       │ name       dept_name │
@@ -576,12 +654,11 @@ to be done in a parent scope. For example, let's compute employees
 with a higher than average salary within their department.
 
     using Statistics: mean
-    chicago_data[
-      It.department >>
-      Keep(:mean_salary =>
-        mean.(It.employee.salary)) >>
-      It.employee >>
-      Filter(It.salary .> It.mean_salary)]
+    chicago[
+        It.department >>
+        Keep(:mean_salary => mean.(It.employee.salary)) >>
+        It.employee >>
+        Filter(It.salary .> It.mean_salary)]
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -593,26 +670,26 @@ with a higher than average salary within their department.
 
 Julia's index notation permits named parameters. Each argument
 passed via named parameter is converted into a `DataKnot` and then
-made available as a label accessible anywhere in the pipeline.
+made available as a label accessible anywhere in the query.
 
-    chicago_data[AMT=100000, It.AMT]
+    chicago[AMT=100000, It.AMT]
     #=>
     │ AMT    │
     ┼────────┼
     │ 100000 │
     =#
 
-This technique permits complex pipelines to be re-used with
+This technique permits complex queries to be re-used with
 different argument values. By convention we capitalize parameters
 so they standout from regular data labels.
 
     PaidOverAmt =
-      It.department >>
-      It.employee >>
-      Filter(It.salary .> It.AMT) >>
-      It.name
+        It.department >>
+        It.employee >>
+        Filter(It.salary .> It.AMT) >>
+        It.name
 
-    chicago_data[PaidOverAmt, AMT=100000]
+    chicago[PaidOverAmt, AMT=100000]
     #=>
       │ name      │
     ──┼───────────┼
@@ -621,7 +698,7 @@ so they standout from regular data labels.
 
 With a different threshold amount, the result may change.
 
-    chicago_data[PaidOverAmt, AMT=85000]
+    chicago[PaidOverAmt, AMT=85000]
     #=>
       │ name      │
     ──┼───────────┼
@@ -629,19 +706,19 @@ With a different threshold amount, the result may change.
     2 │ DANIEL A  │
     =#
 
-### Parameterized Pipelines
+### Parameterized Queries
 
-Suppose we want parameterized pipeline that could take other
-pipelines as arguments. Using `Given`, we could build a function
-that returns `employee` records with `salary` over a given amount.
+Suppose we want parameterized query that could take other queries
+as arguments. Using `Given`, we could build a function that
+returns `employee` records with `salary` over a given amount.
 
     EmployeesOver(X) =
-      Given(:AMT => X,
-        It.department >>
-        It.employee >>
-        Filter(It.salary .> It.AMT))
+        Given(:AMT => X,
+            It.department >>
+            It.employee >>
+            Filter(It.salary .> It.AMT))
 
-    chicago_data[EmployeesOver(100000)]
+    chicago[EmployeesOver(100000)]
     #=>
       │ employee                    │
       │ name       position  salary │
@@ -650,21 +727,21 @@ that returns `employee` records with `salary` over a given amount.
     =#
 
 But what if we wished to find employees with higher than average
-salary? Let's compute the average value as a pipeline.
+salary? Let's compute the average value as a query.
 
     using Statistics: mean
     AvgSalary = mean.(It.department.employee.salary)
 
-    chicago_data[AvgSalary]
+    chicago[AvgSalary]
     #=>
     │ It      │
     ┼─────────┼
     │ 92314.0 │
     =#
 
-We could then combine these two pipelines.
+We could then combine these two queries.
 
-    chicago_data[EmployeesOver(AvgSalary)]
+    chicago[EmployeesOver(AvgSalary)]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -673,12 +750,10 @@ We could then combine these two pipelines.
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-Note that this combined expression is yet another pipeline that
-could be refined with further computation.
+Note that this combined expression is yet another query that could
+be refined with further computation.
 
-    chicago_data[
-      EmployeesOver(AvgSalary) >>
-      It.name]
+    chicago[EmployeesOver(AvgSalary) >> It.name]
     #=>
       │ name      │
     ──┼───────────┼
@@ -689,9 +764,7 @@ could be refined with further computation.
 Unlike it's cousin `Having`, `Given` doesn't leak its definitions.
 Specifically, `It.amt` is not available outside `EmployeesOver()`.
 
-    chicago_data[
-      EmployeesOver(AvgSalary) >>
-      It.amt]
+    chicago[EmployeesOver(AvgSalary) >> It.amt]
     #-> ERROR: cannot find amt ⋮
 
 ### More Aggregates
@@ -701,16 +774,16 @@ There are other aggregate functions, such as `Min`, `Max`, and
 
     using Statistics: mean
     Stats(X) =
-      Record(
-        :count => Count(X),
-        :mean => floor.(Int, mean.(X)),
-        :min => Min(X),
-        :max => Max(X),
-        :sum => Sum(X))
+        Record(
+            :count => Count(X),
+            :mean => floor.(Int, mean.(X)),
+            :min => Min(X),
+            :max => Max(X),
+            :sum => Sum(X))
 
-    chicago_data[
-      :salary_stats_for_all_employees =>
-         Stats(It.department.employee.salary)]
+    chicago[
+        :salary_stats_for_all_employees =>
+            Stats(It.department.employee.salary)]
     #=>
     │ salary_stats_for_all_employees      │
     │ count  mean   min    max     sum    │
@@ -720,12 +793,11 @@ There are other aggregate functions, such as `Min`, `Max`, and
 
 These statistics could be run by department.
 
-    chicago_data[
-      It.department >>
-      Record(
-        It.name,
-        :salary_stats =>
-          Stats(It.employee.salary))]
+    chicago[
+        It.department >>
+        Record(
+            It.name,
+            :salary_stats => Stats(It.employee.salary))]
     #=>
       │ department                              │
       │ name    salary_stats                    │
@@ -741,7 +813,7 @@ helpful to `Take` or `Drop` items from the input stream. Let's
 start by listing all 3 employees of our toy database.
 
     Employee = It.department.employee
-    chicago_data[Employee]
+    chicago[Employee]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -753,7 +825,7 @@ start by listing all 3 employees of our toy database.
 
 To return up to the 2nd employee record, we use `Take`.
 
-    chicago_data[Employee >> Take(2)]
+    chicago[Employee >> Take(2)]
     #=>
       │ employee                          │
       │ name       position        salary │
@@ -763,10 +835,10 @@ To return up to the 2nd employee record, we use `Take`.
     =#
 
 A negative index can be used to count records from the end of the
-pipeline's input. So, to return up to, but not including, the very
+query's input. So, to return up to, but not including, the very
 last item in the stream, we could write:
 
-    chicago_data[Employee >> Take(-1)]
+    chicago[Employee >> Take(-1)]
     #=>
       │ employee                          │
       │ name       position        salary │
@@ -775,10 +847,10 @@ last item in the stream, we could write:
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
 
-To return the last record of the pipeline's input, we could `Drop`
-up to the last item in the stream:
+To return the last record of the query's input, we could `Drop` up
+to the last item in the stream:
 
-    chicago_data[Employee >> Drop(-1)]
+    chicago[Employee >> Drop(-1)]
     #=>
       │ employee                           │
       │ name      position          salary │
