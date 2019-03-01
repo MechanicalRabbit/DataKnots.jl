@@ -11,9 +11,9 @@ pipelines.*
 
 ```@contents
 Pages = [
-    "start.md",
+    "tutorial.md",
     "thinking.md",
-    "usage.md",
+    "reference.md",
     "implementation.md",
 ]
 Depth=2

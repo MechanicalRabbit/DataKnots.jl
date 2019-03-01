@@ -25,7 +25,7 @@ makedocs(
     sitename = "DataKnots.jl",
     pages = [
         "Home" => "index.md",
-        "start.md",
+        "tutorial.md",
         "thinking.md",
         "reference.md",
         hide("implementation.md",

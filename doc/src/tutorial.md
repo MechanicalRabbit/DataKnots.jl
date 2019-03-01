@@ -1,35 +1,15 @@
-# Getting Started
+# DataKnots Tutorial
 
-Notice: DataKnots are currently usable for contributors who wish
-to help grow the ecosystem. However, DataKnots are not yet usable
-for general audiences: with v0.1, there are no data source
-adapters and we lack important operators, such as `Sort` and
-`Group`. Many of these deficiencies were prototyped and subsequent
-releases will address these feature gaps incrementally.
+DataKnots is an embedded query language designed so that
+accidental programmers could more easily solve complex data
+analysis tasks. Specifically, DataKnots allows expert users to
+construct friendly yet semantically consistent domain-specific
+query languages having customized operations and data sources.
 
-## Installation
+This tutorial is about the very basics. How mundane query
+operations are performed upon an in-memory data source.
 
-DataKnots.jl is a Julia library, but it is not yet registered with
-the Julia package manager. To install it, run in the package shell
-(enter with `]` from the Julia shell):
-
-```juliarepl
-pkg> add https://github.com/rbt-lang/DataKnots.jl
-```
-
-DataKnots.jl requires Julia 1.0 or higher.
-
-If you want to modify the source code of DataKnots.jl, you need to
-install it in development mode with:
-
-```juliarepl
-pkg> dev https://github.com/rbt-lang/DataKnots.jl
-```
-
-Our development chat is currently hosted on Gitter:
-https://gitter.im/rbt-lang/rbt-proto
-
-## Query Primer
+## Getting Started
 
 Consider a tiny cross-section of public data from Chicago,
 represented as nested `NamedTuple` and `Vector` objects.
@@ -857,4 +837,3 @@ to the last item in the stream:
     ──┼────────────────────────────────────┼
     1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
     =#
-

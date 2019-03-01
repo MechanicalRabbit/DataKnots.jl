@@ -51,6 +51,44 @@ We use the word *knot* since the general form of data
 input and output, a `DataKnot`, isn't limited to simple
 tables, they can be trees or even arbitrary graphs.
 
+## Releases
+
+| Release | Date       | Description                 |
+|---------|------------|-----------------------------|
+| v0.1    | 2019-XX-XX | Initial Contributor Release |
+
+DataKnots is currently usable for contributors who wish
+to help grow the ecosystem. However, with v0.1, DataKnots
+is not yet usable for general audiences: there are no
+data source adapters and we lack important operators,
+such as `Sort` and `Group`. Many of these deficiencies
+were prototyped and subsequent releases will address
+these feature gaps incrementally.
+
+## Installation
+
+DataKnots.jl is a Julia library, but it is not yet
+registered with the Julia package manager. To install
+it, run in the package shell (enter with `]` from the
+Julia shell):
+
+```juliarepl
+pkg> add https://github.com/rbt-lang/DataKnots.jl
+```
+
+DataKnots.jl requires Julia 1.0 or higher.
+
+If you want to modify the source code of DataKnots.jl,
+you need to install it in development mode with:
+
+```juliarepl
+pkg> dev https://github.com/rbt-lang/DataKnots.jl
+```
+
+Our development chat is currently hosted on Gitter:
+https://gitter.im/rbt-lang/rbt-proto
+
+
 [travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/rbt-lang/DataKnots.jl?branch=master&svg=true

@@ -1,12 +1,11 @@
 # Thinking in Combinators
 
-DataKnots are a Julia library for building data processing
-pipelines. In DataKnots, pipelines are assembled algebraically:
-they either come from a set of atomic *primitives* or are built
-from other pipelines using *combinators*. In this tutorial, we
-show how to build pipelines starting from smaller components and
-then combining them algebraically to implement complex processing
-tasks.
+DataKnots are a Julia library for building database queries. In
+DataKnots, queries are assembled algebraically: they either come
+from a set of atomic *primitives* or are built from other queries
+using *combinators*. In this tutorial, we show how to build
+queries starting from smaller components and then combining them
+algebraically to implement complex processing tasks.
 
 To start working with DataKnots, we import the package:
 
