@@ -646,6 +646,84 @@ In this last query, `mean` simply can't be moved into the scope of
 the `Filter` combinator, since its arguments are evaluated for
 *each* employee.
 
+### Paging Data
+
+Sometimes query results can be quite large. In this case it's
+helpful to `Take` or `Drop` items from the input stream. Let's
+start by listing all 3 employees of our toy database.
+
+    Employee = It.department.employee
+    chicago[Employee]
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ NANCY A    POLICE OFFICER     80016 │
+    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+To return up to the 2nd employee record, we use `Take`.
+
+    chicago[Employee >> Take(2)]
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+A negative index can be used to count records from the end of the
+query's input. So, to return up to, but not including, the very
+last item in the stream, we could write:
+
+    chicago[Employee >> Take(-1)]
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+To return the last record of the query's input, we could `Drop` up
+to the last item in the stream:
+
+    chicago[Employee >> Drop(-1)]
+    #=>
+      │ employee                           │
+      │ name      position          salary │
+    ──┼────────────────────────────────────┼
+    1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
+    =#
+
+To return the 1st half of the employees in the database, we could
+use `Take` with an argument that computes how many to take.
+
+    chicago[Employee >> Take(Count(Employee) .÷ 2)]
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+This last query deserves a bit of explanation, but the reference
+is a more appropriate place for this discussion. For now, we could
+say the query above is equivalent to the following.
+
+    Employee = It.department.employee
+    chicago[
+        Keep(:no => Count(Employee) .÷ 2) >>
+        Each(Employee >> Take(It.no))]
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
 ### Query Parameters
 
 Julia's index notation permits named parameters. Each argument
@@ -822,81 +900,4 @@ Suppressing the definition of parameterized queries such as
     It.department >> Stats(It.employee.salary)
     =#
 
-### Paging Data
-
-Sometimes query results can be quite large. In this case it's
-helpful to `Take` or `Drop` items from the input stream. Let's
-start by listing all 3 employees of our toy database.
-
-    Employee = It.department.employee
-    chicago[Employee]
-    #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-    =#
-
-To return up to the 2nd employee record, we use `Take`.
-
-    chicago[Employee >> Take(2)]
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
-
-A negative index can be used to count records from the end of the
-query's input. So, to return up to, but not including, the very
-last item in the stream, we could write:
-
-    chicago[Employee >> Take(-1)]
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
-
-To return the last record of the query's input, we could `Drop` up
-to the last item in the stream:
-
-    chicago[Employee >> Drop(-1)]
-    #=>
-      │ employee                           │
-      │ name      position          salary │
-    ──┼────────────────────────────────────┼
-    1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
-    =#
-
-To return the 1st half of the employees in the database, we could
-use `Take` with an argument that computes how many to take.
-
-    chicago[Employee >> Take(Count(Employee) .÷ 2)]
-    #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
-    =#
-
-This last query deserves a bit of explanation. The argument to
-`Take` is evaluated at the *origin* of its input. An equivalent
-could be written using `Keep` before `Employee`.
-
-    Employee = It.department.employee
-    chicago[
-        Keep(:no => Count(Employee) .÷ 2) >>
-        Each(Employee >> Take(It.no))]
-    #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
-    =#
 
