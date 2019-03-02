@@ -847,6 +847,7 @@ monadic_take(p::Pipeline, n::Int, rev::Bool) =
                    BlockOf(elements(shape(p)), cardinality(shape(p))|x0to1) |> IsFlow)
 
 function monadic_take(p::Pipeline, n::Pipeline, rev::Bool)
+    n_card = cardinality(shape(n))
     n = adapt_output(n)
     #fits(elements(n), ValueOf(Int)) || error("expected an integer")
     ishp = ishape(p)
@@ -854,7 +855,7 @@ function monadic_take(p::Pipeline, n::Pipeline, rev::Bool)
     chain_of(
         tuple_of(
             p,
-            chain_of(n, fits(x0to1, cardinality(shape(n))) ? block_lift(first, missing) : block_lift(first))),
+            chain_of(n, fits(x0to1, n_card) ? block_lift(first, missing) : block_lift(first))),
         slice(rev),
     ) |> designate(ishp, shp)
 end
