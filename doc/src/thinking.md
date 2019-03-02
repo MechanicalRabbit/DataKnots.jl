@@ -1,42 +1,66 @@
 # Thinking in Combinators
 
-DataKnots are a Julia library for building database queries. In
+DataKnots is a Julia library for building database queries. In
 DataKnots, queries are assembled algebraically: they either come
 from a set of atomic *primitives* or are built from other queries
-using *combinators*. In this tutorial, we show how to build
-queries starting from smaller components and then combining them
-algebraically to implement complex processing tasks.
+using *combinators*. In this conceptual guide, we show how to
+build queries starting from smaller components and then combining
+them algebraically to implement complex processing tasks.
 
 To start working with DataKnots, we import the package:
 
     using DataKnots
 
-## Constructing Pipelines
+## Constructing Queries
 
-Consider a pipeline `Hello` that produces a string value, `"Hello
-World"`. It is built using the `Lift` primitive, which converts a
-Julia value into a pipeline component. This pipeline can then be
-`run()` to produce its output.
+A `DataKnot`, or just *knot*, is a container having structured,
+vectorized data. For this conceptual guide, we'll start with the
+degenerate knot, `void` as our initial data source.
+
+    void = DataKnot(nothing)
+    #=>
+    │ It │
+    ┼────┼
+    │    │
+    =#
+
+This `void` knot has a single value, `nothing`, displayed as a
+empty output cell. The underlying value of any knot can be
+obtained using the `get()` function; here, we get `nothing`.
+
+    show(get(void))
+    #-> nothing
+
+### Constant Queries
+
+Consider a *constant* query `Hello` that produces a string value,
+`"Hello World"` for each of its inputs. This query is built using
+the `Lift` primitive, which converts a native Julia value into a
+query component. 
 
     Hello = Lift("Hello World")
-    run(Hello)
+
+To query `void` with `Hello` we use Julia's index syntax. Observe
+that the single input value from the `void` input, `nothing`, is
+ignored and that the output contains the constant value instead.
+
+    void[Hello]
     #=>
     │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
 
-The output of the pipeline is encapsulated in a `DataKnot`, which
-is a container holding structured, vectorized data. We can get the
-corresponding Julia value using `get()`.
+We can `get` the underlying value of this output knot.
 
-    get(run(Hello)) #-> "Hello World"
+    get(void[Hello])
+    #-> "Hello World"
 
-Consider another pipeline created by applying `Lift` to `3:5`, a
-native `UnitRange` value. When `run()`, this pipeline emits a
-sequence of integers from `3` to `5`.
+Consider another query created by applying `Lift` to `3:5`, a
+constant `UnitRange` value. This query emits a sequence of
+integers from `3` to `5`.
 
-    run(Lift(3:5))
+    void[Lift(3:5)]
     #=>
       │ It │
     ──┼────┼
@@ -45,22 +69,22 @@ sequence of integers from `3` to `5`.
     3 │  5 │
     =#
 
-The output of this knot can also be converted back to native Julia.
+The underlying value of this knot can also be accessed via `get`.
 
-    get(run(Lift(3:5))) #-> 3:5
+    get(void[Lift(3:5)]) 
+    #-> 3:5
 
-DataKnots track each pipeline's cardinality. Observe that the
-`Hello` pipeline produces a *singular* value, while the
-`Lift(3:5)` pipeline is *plural*. In the output notation for
-plural knots, indices are in the first column and values are in
-remaining columns.
+DataKnots track each query's cardinality. Observe that the `Hello`
+query produces a *singular* value, while the `Lift(3:5)` query is
+*plural*. In the output notation for plural knots, indices are in
+the first column and values are in remaining columns.
 
 ### Composition & Identity
 
-Two pipelines can be connected sequentially using the composition
+Two queries can be connected sequentially using the composition
 combinator (`>>`). Consider the composition `Lift(1:3) >> Hello`.
 Since `Lift(1:3)` emits 3 values and `Hello` emits `"Hello World"`
-regardless of its input, their composition emits 3 copies of
+for each of its inputs, their composition emits 3 copies of
 `"Hello World"`.
 
     run(Lift(1:3) >> Hello)
@@ -72,7 +96,7 @@ regardless of its input, their composition emits 3 copies of
     3 │ Hello World │
     =#
 
-When pipelines that produce plural values are combined, the output
+When queries that produce plural values are combined, the output
 is flattened into a single sequence. The following expression
 calculates `Lift(7:9)` twice and then flattens the outputs.
 
@@ -88,9 +112,9 @@ calculates `Lift(7:9)` twice and then flattens the outputs.
     6 │  9 │
     =#
 
-The *identity* with respect to pipeline composition is called
-`It`.  This primitive can be composed with any pipeline without
-changing the pipeline's output.
+The *identity* with respect to query composition is called
+`It`.  This primitive can be composed with any query without
+changing the query's output.
 
     run(Hello >> It)
     #=>
@@ -99,7 +123,7 @@ changing the pipeline's output.
     │ Hello World │
     =#
 
-The identity, `It`, can be used to construct pipelines which rely
+The identity, `It`, can be used to construct queries which rely
 upon the output from previous processing.
 
     Increment = It .+ 1
@@ -112,29 +136,29 @@ upon the output from previous processing.
     3 │  4 │
     =#
 
-In DataKnots, pipelines are built algebraically, using pipeline
+In DataKnots, queries are built algebraically, using query
 composition, identity and other combinators. This lets us define
-sophisticated pipeline components and remix them in creative ways.
+sophisticated query components and remix them in creative ways.
 
 ### Lifting Julia Functions
 
 With DataKnots, any native Julia expression can be *lifted* to
-build a `Pipeline`. Consider the Julia function `double()` that,
+build a `Query`. Consider the Julia function `double()` that,
 when applied to a `Number`, produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
 
 What we want is an analogue to `double` that, instead of operating
-on numbers, operates on pipelines. Such functions are called
-pipeline combinators. We can convert any Julia function to a
-pipeline combinator by passing to `Lift` the function and its
+on numbers, operates on queries. Such functions are called
+query combinators. We can convert any Julia function to a
+query combinator by passing to `Lift` the function and its
 arguments.
 
     Double(X) = Lift(double, (X,))
 
 When given an argument, the combinator `Double` can then be used
-to build a pipeline that produces a doubled value.
+to build a query that produces a doubled value.
 
     run(Double(21))
     #=>
@@ -143,8 +167,8 @@ to build a pipeline that produces a doubled value.
     │ 42 │
     =#
 
-In combinator form, `Double` can be used within pipeline
-composition.  To build a pipeline component that doubles its
+In combinator form, `Double` can be used within query
+composition.  To build a query component that doubles its
 input, the `Double` combinator could have `It` as its argument.
 
     run(Lift(1:3) >> Double(It))
@@ -171,7 +195,7 @@ to make translation convenient. Any native Julia function, such as
     =#
 
 Automatic lifting also applies to built-in Julia operators. For
-example, the expression `It .+ 1` is a pipeline component that
+example, the expression `It .+ 1` is a query component that
 increments each one of its input values.
 
     run(Lift(1:3) >> (It .+ 1))
@@ -188,7 +212,7 @@ One can define combinators in terms of expressions.
     OneTo(N) = UnitRange.(1, Lift(N))
 
 When a lifted function is vector-valued, the resulting combinator
-builds plural pipelines.
+builds plural queries.
 
     run(OneTo(3))
     #=>
@@ -199,14 +223,14 @@ builds plural pipelines.
     3 │  3 │
     =#
 
-In DataKnots, pipeline combinators can be constructed directly
+In DataKnots, query combinators can be constructed directly
 from native Julia functions. This lets us take advantage of
 Julia's rich statistical and data processing functions.
 
 ### Aggregates
 
-Some pipeline combinators transform a plural pipeline into a
-singular pipeline; we call them *aggregate* combinators. Consider
+Some query combinators transform a plural query into a
+singular query; we call them *aggregate* combinators. Consider
 the operation of the `Count` combinator.
 
     run(Count(OneTo(3)))
@@ -216,7 +240,7 @@ the operation of the `Count` combinator.
     │  3 │
     =#
 
-As a convenience, `Count` can also be used as a pipeline
+As a convenience, `Count` can also be used as a query
 primitive.
 
     run(OneTo(3) >> Count)
@@ -226,7 +250,7 @@ primitive.
     │  3 │
     =#
 
-It's possible to use aggregates within a plural pipeline. In this
+It's possible to use aggregates within a plural query. In this
 example, as the outer `OneTo` goes from `1` to `3`, the `Sum`
 aggregate would calculate its output from `OneTo(1)`, `OneTo(2)`
 and `OneTo(3)`.
@@ -240,7 +264,7 @@ and `OneTo(3)`.
     3 │  6 │
     =#
 
-However, if we rewrite the pipeline to use `Sum` as a pipeline
+However, if we rewrite the query to use `Sum` as a query
 primitive, we get a different result.
 
     run(OneTo(3) >> OneTo(It) >> Sum)
@@ -250,7 +274,7 @@ primitive, we get a different result.
     │ 10 │
     =#
 
-Since pipeline composition (`>>`) is associative, adding
+Since query composition (`>>`) is associative, adding
 parenthesis around `OneTo(It) >> Sum` will not change the result.
 
     run(OneTo(3) >> (OneTo(It) >> Sum))
@@ -261,7 +285,7 @@ parenthesis around `OneTo(It) >> Sum` will not change the result.
     =#
 
 Instead of using parenthesis, we need to wrap `OneTo(It) >> Sum`
-with the `Each` combinator. This combinator builds a pipeline that
+with the `Each` combinator. This combinator builds a query that
 processes its input elementwise.
 
     run(OneTo(3) >> Each(OneTo(It) >> Sum))
@@ -275,7 +299,7 @@ processes its input elementwise.
 
 Native Julia language aggregates, such as `sum`, can be
 automatically lifted. DataKnots automatically converts a plural
-pipeline into an input vector required by the native aggregate.
+query into an input vector required by the native aggregate.
 
     using Statistics
     Mean(X) = Lift(mean, (X,))
@@ -286,10 +310,10 @@ pipeline into an input vector required by the native aggregate.
     │ 3.33333 │
     =#
 
-To use `Mean` as a pipeline primitive, there are two steps. First,
-we use `Then` to build a pipeline that aggregates from its input.
-Second, we register a `Lift` to this pipeline when the
-combinator's name is mentioned in a pipeline expression.
+To use `Mean` as a query primitive, there are two steps. First,
+we use `Then` to build a query that aggregates from its input.
+Second, we register a `Lift` to this query when the
+combinator's name is mentioned in a query expression.
 
     DataKnots.Lift(::typeof(Mean)) = Then(Mean)
 
@@ -303,14 +327,14 @@ Once these are done, one could take an average of sums as follows:
     =#
 
 In DataKnots, aggregate operations are naturally expressed as
-pipeline combinators. Moreover, custom aggregates can be easily
-constructed as native Julia functions and lifted into the pipeline
+query combinators. Moreover, custom aggregates can be easily
+constructed as native Julia functions and lifted into the query
 algebra.
 
 ## Filtering & Slicing Data
 
 DataKnots comes with combinators for rearranging data. Consider
-`Filter`, which takes one parameter, a predicate pipeline that for
+`Filter`, which takes one parameter, a predicate query that for
 each input value decides if that value should be included in the
 output.
 
@@ -328,8 +352,8 @@ Contrast this with the built-in Julia function `filter()`.
     filter(x -> x > 3, 1:6) #-> [4, 5, 6]
 
 Where `filter()` returns a filtered dataset, the `Filter`
-combinator returns a pipeline component, which could then be
-composed with any data generating pipeline.
+combinator returns a query component, which could then be
+composed with any data generating query.
 
     KeepEven = Filter(iseven.(It))
     run(OneTo(6) >> KeepEven)
@@ -355,8 +379,8 @@ to slice an input stream: `Drop` is used to skip over input,
     =#
 
 Since `Take` is a combinator, its argument could also be a full
-blown pipeline. This next example, `FirstHalf` is a combinator
-that builds a pipeline returning the first half of an input
+blown query. This next example, `FirstHalf` is a combinator
+that builds a query returning the first half of an input
 stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
@@ -369,7 +393,7 @@ stream.
     3 │  3 │
     =#
 
-Using `Then`, this combinator could be used with pipeline
+Using `Then`, this combinator could be used with query
 composition:
 
     run(OneTo(6) >> Then(FirstHalf))
@@ -381,10 +405,10 @@ composition:
     3 │  3 │
     =#
 
-In DataKnots, filtering and slicing are realized as pipeline
-components. They are attached to data processing pipelines using
+In DataKnots, filtering and slicing are realized as query
+components. They are attached to data processing queries using
 the composition combinator. This brings common data processing
-concepts into our pipeline algebra.
+concepts into our query algebra.
 
 ### Query Parameters
 
@@ -636,7 +660,7 @@ fixed.
 
 Using the broadcast syntax to lift combinators is a clever
 shortcut, but it doesn't always work out. If an argument to the
-broadcast isn't a `Pipeline` then a regular broadcast will happen.
+broadcast isn't a `Query` then a regular broadcast will happen.
 For example, `rand.(1:3)` is an array of arrays containing random
 numbers. Wrapping an argument in `Lift` will address this
 challenge. The following will generate 3 random numbers from `1`
