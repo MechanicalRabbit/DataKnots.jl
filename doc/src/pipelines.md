@@ -1,360 +1,580 @@
-# Pipeline Algebra
+# Query Algebra
 
 
 ## Overview
 
-In this section, we describe the design and implementation of the pipeline
-algebra.  We will need the following definitions.
+This section describes the `Query` interface of vectorized data
+transformations.  We will use the following definitions:
 
     using DataKnots:
         @VectorTree,
-        Count,
-        DataKnot,
-        Drop,
-        Environment,
-        Filter,
-        Get,
-        Given,
-        It,
-        Lift,
-        Max,
-        Min,
-        Record,
-        Take,
-        compile,
-        elements,
-        optimize,
-        stub,
-        x1to1
+        Query,
+        Runtime,
+        adapt_missing,
+        adapt_tuple,
+        adapt_vector,
+        block_any,
+        block_filler,
+        block_length,
+        block_lift,
+        chain_of,
+        column,
+        distribute,
+        distribute_all,
+        filler,
+        flatten,
+        lift,
+        null_filler,
+        pass,
+        sieve,
+        slice,
+        tuple_lift,
+        tuple_of,
+        with_column,
+        with_elements,
+        wrap,
+        x1toN
 
-As a running example, we will use the following dataset of city departments
-with associated employees.  This dataset is serialized as a nested structure
-with a singleton root record, which holds all department records, each of which
-holds associated employee records.
 
-    elts =
-        @VectorTree (department = [(name     = (1:1)String,
-                                    employee = [(name     = (1:1)String,
-                                                 position = (1:1)String,
-                                                 salary   = (0:1)Int,
-                                                 rate     = (0:1)Float64)])],) [
-            (department = [
-                (name     = "POLICE",
-                 employee = ["JEFFERY A"  "SERGEANT"           101442   missing
-                             "NANCY A"    "POLICE OFFICER"     80016    missing]),
-                (name     = "FIRE",
-                 employee = ["JAMES A"    "FIRE ENGINEER-EMT"  103350   missing
-                             "DANIEL A"   "FIRE FIGHTER-EMT"   95484    missing]),
-                (name     = "OEMC",
-                 employee = ["LAKENYA A"  "CROSSING GUARD"     missing  17.68
-                             "DORIS A"    "CROSSING GUARD"     missing  19.38])],
-            )
-        ]
+### Lifting and fillers
 
-    db = DataKnot(elts, x1to1)
+`DataKnots` stores structured data in a column-oriented format, serialized
+using specialized composite vector types.  Consequently, operations on data
+must also be adapted to the column-oriented format.
+
+In `DataKnots`, operations on column-oriented data are called *queries*.  A
+query is a vectorized transformation: it takes a vector of input values and
+produces a vector of the same size containing output values.
+
+Any unary scalar function could be vectorized, which gives us a simple method
+for creating new queries.  Consider, for example, function `titlecase()`, which
+transforms the input string by capitalizing the first letter of each word and
+converting every other character to lowercase.
+
+    titlecase("JEFFERY A")      #-> "Jeffery A"
+
+This function can be converted to a query, or *lifted*, using the `lift`
+query constructor.
+
+    q = lift(titlecase)
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> ["Jeffery A", "James A", "Terry A"]
+
+A scalar function with `N` arguments could be lifted by `tuple_lift` to make a
+query that transforms a `TupleVector` with `N` columns.  For example, a binary
+predicate `>` gives rise to a query `tuple_lift(>)` that transforms a
+`TupleVector` with two columns into a Boolean vector.
+
+    q = tuple_lift(>)
+    q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
+    #-> Bool[1, 0, 0]
+
+In a similar manner, a function with a vector argument can be lifted by
+`block_lift` to make a query that expects a `BlockVector` input.  For example,
+function `length()`, which returns the length of a vector, could be converted
+to a query `block_lift(length)` that transforms a block vector to an integer
+vector containing block lengths.
+
+    q = block_lift(length)
+    q(@VectorTree [String] [["JEFFERY A", "NANCY A"], ["JAMES A"]])
+    #-> [2, 1]
+
+Not just functions, but also regular values could give rise to queries.  The
+`filler` constructor makes a query from any scalar value.  This query maps any
+input vector to a vector filled with the given scalar.
+
+    q = filler(200000)
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> [200000, 200000, 200000]
+
+Similarly, `block_filler` makes a query from any vector value.  This query
+produces a `BlockVector` filled with the given vector.
+
+    q = block_filler(["POLICE", "FIRE"])
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> @VectorTree (0:N) × String [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
+
+A variant of `block_filler` called `null_filler` makes a query that produces a
+`BlockVector` filled with empty blocks.
+
+    q = null_filler()
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> @VectorTree (0:1) × Union{} [missing, missing, missing]
+
+
+### Chaining queries
+
+Given a series of queries, the `chain_of` constructor creates their
+*composition* query, which transforms the input vector by sequentially applying
+the given queries.
+
+    q = chain_of(lift(split), lift(first), lift(titlecase))
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> ["Jeffery", "James", "Terry"]
+
+The degenerate composition of an empty sequence of queries has its own name,
+`pass()`. It passes its input to the output unchanged.
+
+    chain_of()
+    #-> pass()
+
+    q = pass()
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> ["JEFFERY A", "JAMES A", "TERRY A"]
+
+In general, query constructors that take one or more queries as arguments are
+called query *combinators*.  Combinators are used to assemble elementary
+queries into complex query expressions.
+
+
+### Working with composite vectors
+
+In `DataKnots`, composite data is represented as a tree of vectors with regular
+`Vector` objects at the leaves and composite vectors such as `TupleVector` and
+`BlockVector` at the intermediate nodes.  We demonstrated how to create and
+transform regular vectors using `filler` and `lift`.  Now let us show how to do
+the same with composite vectors.
+
+`TupleVector` is a vector of tuples composed of a sequence of column vectors.
+Any collection of vectors could be used as columns as long as they all have the
+same length.  One way to obtain `N` columns for a `TupleVector` is to apply `N`
+queries to the same input vector.  This is precisely the query action of the
+`tuple_of` combinator.
+
+    q = tuple_of(:first => chain_of(lift(split), lift(first), lift(titlecase)),
+                 :last => lift(last))
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> @VectorTree (first = String, last = Char) [(first = "Jeffery", last = 'A') … ]
+
+In the opposite direction, the `column` constructor makes a query that extracts
+the specified column from the input `TupleVector`.
+
+    q = column(:salary)
+    q(@VectorTree (name=String, salary=Int) [("JEFFERY A", 101442), ("JAMES A", 103350), ("TERRY A", 93354)])
+    #-> [101442, 103350, 93354]
+
+`BlockVector` is a vector of vectors serialized as a partitioned vector of
+elements.  Any input vector could be transformed to a `BlockVector` by the
+query `wrap()`, which wraps the vector elements into one-element blocks.
+
+    q = wrap()
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> @VectorTree (1:1) × String ["GARRY M", "ANTHONY R", "DANA A"]
+
+Dual to `wrap()` is the query `flatten()`, which transforms a nested
+`BlockVector` by flattening its nested blocks.
+
+    q = flatten()
+    q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [[], ["JOSE S"], ["CHARLES S"]]])
+    #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
+
+The `distribute` constructor makes a query that rearranges a `TupleVector` with
+a `BlockVector` column.  Specifically, it takes each tuple, which should
+contain a block value, and transforms it to a block of tuples by distributing
+the block value over the tuple.
+
+    q = distribute(:employee)
+    q(@VectorTree (department = String, employee = [String]) [
+        "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
+        "FIRE"      ["JOSE S", "CHARLES S"]]) |> display
     #=>
-    │ department                                                                   …
-    ┼──────────────────────────────────────────────────────────────────────────────…
-    │ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…
+    @VectorTree of 2 × (0:N) × (department = String, employee = String):
+     [(department = "POLICE", employee = "GARRY M"), (department = "POLICE", employee = "ANTHONY R"), (department = "POLICE", employee = "DANA A")]
+     [(department = "FIRE", employee = "JOSE S"), (department = "FIRE", employee = "CHARLES S")]
+    =#
+
+Often we need to transform only a part of a composite vector, leaving the rest
+of the structure intact.  This can be achieved using `with_column` and
+`with_elements` combinators.  Specifically, `with_column` transforms a specific
+column of a `TupleVector` while `with_elements` transforms the vector of
+elements of a `BlockVector`.
+
+    q = with_column(:employee, with_elements(lift(titlecase)))
+    q(@VectorTree (department = String, employee = [String]) [
+        "POLICE"    ["GARRY M", "ANTHONY R", "DANA A"]
+        "FIRE"      ["JOSE S", "CHARLES S"]]) |> display
+    #=>
+    @VectorTree of 2 × (department = String, employee = (0:N) × String):
+     (department = "POLICE", employee = ["Garry M", "Anthony R", "Dana A"])
+     (department = "FIRE", employee = ["Jose S", "Charles S"])
     =#
 
 
-### Assembling pipelines
+### Specialized queries
 
-In DataKnots, we query data by assembling and running query *pipelines*.
-Pipeline are assembled algebraically: they either come a set of atomic
-*primitive* pipelines, or are built from other pipelines using pipeline
-*combinators*.
+Not every data transformation can be implemented with lifting.  `DataKnots`
+provide query constructors for some common transformation tasks.
 
-For example, consider the pipeline:
+For example, data filtering is implemented with the query `sieve()`.  As input,
+it expects a `TupleVector` of pairs containing a value and a `Bool` flag.
+`sieve()` transforms the input to a `BlockVector` containing 0- and 1-element
+blocks.  When the flag is `false`, it is mapped to an empty block, otherwise,
+it is mapped to a one-element block containing the data value.
 
-    Employees = Get(:department) >> Get(:employee)
-    #-> Get(:department) >> Get(:employee)
+    q = sieve()
+    q(@VectorTree (String, Bool) [("JEFFERY A", true), ("JAMES A", true), ("TERRY A", false)])
+    #-> @VectorTree (0:1) × String ["JEFFERY A", "JAMES A", missing]
 
-This pipeline traverses the dataset through fields *department* and *employee*.
-It is assembled from two primitive pipelines `Get(:department)` and
-`Get(:employee)` connected using the pipeline composition combinator `>>`.
+If `DataKnots` does not provide a specific transformation, it is easy to
+create a new one.  For example, let us create a query constructor `double`
+which makes a query that doubles the elements of the input vector.
 
-Since attribute traversal is very common, DataKnots provides a shorthand notation.
+We need to provide two definitions: to create a `Query` object and to perform
+the query action on the given input vector.
 
-    Employees = It.department.employee
-    #-> It.department.employee
+    double() = Query(double)
+    double(::Runtime, input::AbstractVector{<:Number}) = input .* 2
 
-To get the data from a pipeline, we use function `run()`.  This function takes
-the input dataset and a pipeline object, and produces the output dataset.
+    q = double()
+    q([260004, 185364, 170112])
+    #-> [520008, 370728, 340224]
 
-    run(db, Employees)
-    #=>
-      │ employee                                    │
-      │ name       position           salary  rate  │
-    ──┼─────────────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT           101442        │
-    2 │ NANCY A    POLICE OFFICER      80016        │
-    3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
-    4 │ DANIEL A   FIRE FIGHTER-EMT    95484        │
-    5 │ LAKENYA A  CROSSING GUARD             17.68 │
-    6 │ DORIS A    CROSSING GUARD             19.38 │
-    =#
+It is also easy to create new query combinators.  Let us create a combinator
+`twice`, which applies the given query to the input two times.
 
-Regular Julia values and functions could be used to create pipeline components.
-Specifically, any Julia value could be converted to a pipeline primitive, and
-any Julia function could be converted to a pipeline combinator.
+    twice(q) = Query(twice, q)
+    twice(rt::Runtime, input, q) = q(rt, q(rt, input))
 
-For example, let us find find employees whose salary is greater than \$100k.
-For this purpose, we need to construct a predicate pipeline that compares the
-*salary* field with a specific number.
-
-If we were constructing an ordinary predicate function, we would write:
-
-    emp -> emp.salary > 100000
-
-An equivalent pipeline is constructed as follows:
-
-    SalaryOver100K = Lift(>, (Get(:salary), Lift(100000)))
-    #-> Lift(>, (Get(:salary), Lift(100000)))
-
-This pipeline expression is assembled from two primitive components:
-`Get(:salary)` and `Lift(100000)`, which serve as parameters of the
-`Lift(>)` combinator.  Here, `Lift` is used twice.  `Lift` applied to a regular
-Julia value converts it to a *constant* pipeline primitive while `Lift` applied
-to a function *lifts* it to a pipeline combinator.
-
-As a shorthand notation for lifting functions and operators, DataKnots supports
-broadcasting syntax:
-
-    SalaryOver100K = It.salary .> 100000
-    #-> It.salary .> 100000
-
-To test this pipeline, we can append it to the `Employees` pipeline using the
-composition combinator.
-
-    run(db, Employees >> SalaryOver100K)
-    #=>
-      │ It    │
-    ──┼───────┼
-    1 │  true │
-    2 │ false │
-    3 │  true │
-    4 │ false │
-    =#
-
-However, this only gives us a list of bare Boolean values disconnected from the
-respective employees.  To improve this output, we can use the `Record`
-combinator.
-
-    run(db, Employees >> Record(It.name,
-                                It.salary,
-                                :salary_over_100k => SalaryOver100K))
-    #=>
-      │ employee                            │
-      │ name       salary  salary_over_100k │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  101442              true │
-    2 │ NANCY A     80016             false │
-    3 │ JAMES A    103350              true │
-    4 │ DANIEL A    95484             false │
-    5 │ LAKENYA A                           │
-    6 │ DORIS A                             │
-    =#
-
-To actually filter the data using this predicate pipeline, we need to use the
-`Filter` combinator.
-
-    EmployeesWithSalaryOver100K = Employees >> Filter(SalaryOver100K)
-    #-> It.department.employee >> Filter(It.salary .> 100000)
-
-    run(db, EmployeesWithSalaryOver100K)
-    #=>
-      │ employee                                   │
-      │ name       position           salary  rate │
-    ──┼────────────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT           101442       │
-    2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
-    =#
-
-DataKnots provides a number of useful pipeline constructors.  For example, to
-find the number of items produced by a pipeline, we can use the `Count`
-combinator.
-
-    run(db, Count(EmployeesWithSalaryOver100K))
-    #=>
-    │ It │
-    ┼────┼
-    │  2 │
-    =#
-
-In general, pipeline algebra forms an XPath-like domain-specific language.  It
-is designed to let the user construct pipelines incrementally, with each step
-being individually crafted and tested.  It also encourages the user to create
-reusable pipeline components and remix them in creative ways.
-
-
-### Principal queries
-
-In DataKnots, running a pipeline is a two-phase process.  First, the pipeline
-generates its *principal* query.  Second, the principal query transforms the
-input data to the output data.
-
-Let us elaborate on the role of queries and pipelines.  In DataKnots, queries
-are used to transform data, and pipelines are used to transform monadic
-queries.  That is, just as a query can be applied to some dataset to produce a
-new dataset, a pipeline can be applied to a monadic query to produce a new
-monadic query.
-
-Among all queries produced by a pipeline, we distinguish its principal query,
-which is obtained when the pipeline is applied to a *trivial* monadic query.
-
-To demonstrate how the principal query is constructed, let us use the pipeline
-`EmployeesWithSalaryOver100K` from the previous section.  Recall that it could
-be represented as follows:
-
-    Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)
-    #-> Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)
-
-The pipeline `P` is constructed using a composition combinator.  A composition
-transforms a query by sequentially applying its components.  Therefore, to find
-the principal query of `P`, we need to start with a trivial query and
-sequentially tranfrorm it with the pipelines `Get(:department)`,
-`Get(:employee)` and `Filter(SalaryOver100K)`.
-
-The trivial query is a monadic identity on the input dataset.
-
-    q0 = stub(db)
-    #-> wrap()
-
-To compile a pipeline to a query, we need to create application *environment*.
-Then we use the function `compile()`.
-
-    env = Environment()
-
-    q1 = compile(Get(:department), env, q0)
-    #-> chain_of(wrap(), with_elements(column(:department)), flatten())
-
-Here, the query `q1` is a monadic composition of `q0` with
-`column(:department)`.  Since `q0` is a monadic identity, this query is
-actually equivalent to `column(:department)`.
-
-In general, `Get(name)` maps a query to its monadic composition with
-`column(name)`.  For example, when we compile `Get(:employee)` to `q1`, we get
-`compose(q1, column(:employee))`.
-
-    q2 = compile(Get(:employee), env, q1)
-    #=>
-    chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
-             with_elements(column(:employee)),
-             flatten())
-    =#
-
-We conclude assembling the principal query by applying
-`Filter(SalaryOver100K)` to `q2`.  `Filter` acts on the input query as follows.
-First, it finds the principal query of the condition pipeline.  For that, we
-need a trivial monadic query on the output of `q2`.
-
-    qc0 = stub(q2)
-    #-> wrap()
-
-Passing `qc0` through `SalaryOver100K` gives us a query that generates
-the result of the condition.
-
-    qc1 = compile(SalaryOver100K, env, qc0)
-    #=>
-    chain_of(wrap(),
-             with_elements(
-                 chain_of(tuple_of(chain_of(wrap(),
-                                            with_elements(column(:salary)),
-                                            flatten()),
-                                   chain_of(wrap(),
-                                            with_elements(block_filler([100000],
-                                                                       x1to1)),
-                                            flatten())),
-                          tuple_lift(>),
-                          adapt_missing())),
-             flatten())
-    =#
-
-`Filter(SalaryOver100K)` then combines the outputs of `q2` and `qc1` using
-`sieve()`.
-
-    q3 = compile(Filter(SalaryOver100K), env, q2)
-    #=>
-    chain_of(
-        chain_of(chain_of(wrap(), with_elements(column(:department)), flatten()),
-                 with_elements(column(:employee)),
-                 flatten()),
-        with_elements(
-            chain_of(tuple_of(pass(),
-                              chain_of(chain_of(
-                                           wrap(),
-                                           with_elements(
-                                               chain_of(
-                                                   tuple_of(
-                                                       chain_of(wrap(),
-                                                                with_elements(
-                                                                    column(
-                                                                        :salary)),
-                                                                flatten()),
-                                                       chain_of(wrap(),
-                                                                with_elements(
-                                                                    block_filler(
-                                                                        [100000],
-                                                                        x1to1)),
-                                                                flatten())),
-                                                   tuple_lift(>),
-                                                   adapt_missing())),
-                                           flatten()),
-                                       block_any())),
-                     sieve())),
-        flatten())
-    =#
-
-The resulting query could be compacted by simplifying the query expression.
-
-    q = optimize(q3)
-    #=>
-    chain_of(column(:department),
-             with_elements(column(:employee)),
-             flatten(),
-             with_elements(chain_of(tuple_of(pass(),
-                                             chain_of(tuple_of(column(:salary),
-                                                               block_filler(
-                                                                   [100000],
-                                                                   x1to1)),
-                                                      tuple_lift(>),
-                                                      adapt_missing(),
-                                                      block_any())),
-                                    sieve())),
-             flatten())
-    =#
-
-Applying the principal query to the input data gives us the output of the
-pipeline.
-
-    input = elements(db)
-    output = q(input)
-
-    display(elements(output))
-    #=>
-    @VectorTree of 2 × (name = (1:1) × String,
-                        position = (1:1) × String,
-                        salary = (0:1) × Int,
-                        rate = (0:1) × Float64):
-     (name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing)
-     (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing)
-    =#
-
+    q = twice(double())
+    q([260004, 185364, 170112])
+    #-> [1040016, 741456, 680448]
 
 
 ## API Reference
+
 ```@autodocs
 Modules = [DataKnots]
-Pages = ["pipelines.jl"]
+Pages = ["queries.jl"]
 ```
 
 
 ## Test Suite
 
 
+### Lifting
+
+The `lift` constructor makes a query by vectorizing a unary function.
+
+    q = lift(titlecase)
+    #-> lift(titlecase)
+
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> ["Garry M", "Anthony R", "Dana A"]
+
+The `block_lift` constructor makes a query on block vectors by vectorizing a
+unary vector function.
+
+    q = block_lift(length)
+    #-> block_lift(length)
+
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
+    #-> [3, 2]
+
+Some vector functions may expect a non-empty vector as an argument.  In this
+case, we should provide the value to replace empty blocks.
+
+    q = block_lift(maximum, missing)
+    #-> block_lift(maximum, missing)
+
+    q(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])
+    #-> Union{Missing, Int}[260004, missing, 202728]
+
+The `tuple_lift` constructor makes a query on tuple vectors by vectorizing a
+function of several arguments.
+
+    q = tuple_lift(>)
+    #-> tuple_lift(>)
+
+    q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
+    #-> Bool[1, 0, 0]
+
+The `record_lift` constructor is used when the input is in the *record* layout
+(a tuple vector with block vector columns); `record_lift(f)` is a shortcut for
+`chain_of(distribute_all(),with_elements(tuple_lift(f)))`.
+
+    q = record_lift(>)
+    #-> record_lift(>)
+
+    q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
+    #-> @VectorTree (0:N) × Bool [[1, 0, 0], [], [1, 1, 0, 0]]
+
+With `record_lift`, the cardinality of the output is the upper bound of the
+column block cardinalities.
+
+    q(@VectorTree ((1:N)Int, (1:1)Int) [([260004, 185364, 170112], 200000)])
+    #-> @VectorTree (1:N) × Bool [[1, 0, 0]]
 
 
+### Fillers
+
+The query `filler(val)` ignores its input and produces a vector filled with
+`val`.
+
+    q = filler(200000)
+    #-> filler(200000)
+
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> [200000, 200000, 200000]
+
+The query `block_filler(blk, card)` produces a block vector filled with the
+given block.
+
+    q = block_filler(["POLICE", "FIRE"], x1toN)
+    #-> block_filler(["POLICE", "FIRE"], x1toN)
+
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> @VectorTree (1:N) × String [["POLICE", "FIRE"], ["POLICE", "FIRE"], ["POLICE", "FIRE"]]
+
+The query `null_filler()` produces a block vector with empty blocks.
+
+    q = null_filler()
+    #-> null_filler()
+
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> @VectorTree (0:1) × Union{} [missing, missing, missing]
 
 
+### Adapting row-oriented data
+
+The query `adapt_missing()` transforms a vector containing `missing` values to
+a block vector with `missing` replaced by an empty block and other values
+wrapped in 1-element block.
+
+    q = adapt_missing()
+    #-> adapt_missing()
+
+    q([260004, 185364, 170112, missing, 202728, 197736])
+    #-> @VectorTree (0:1) × Int [260004, 185364, 170112, missing, 202728, 197736]
+
+The query `adapt_vector()` transforms a vector of vectors to a block vector.
+
+    q = adapt_vector()
+    #-> adapt_vector()
+
+    q([[260004, 185364, 170112], Int[], [202728, 197736]])
+    #-> @VectorTree (0:N) × Int [[260004, 185364, 170112], [], [202728, 197736]]
+
+The query `adapt_tuple()` transforms a vector of tuples to a tuple vector.
+
+    q = adapt_tuple()
+    #-> adapt_tuple()
+
+    q([("GARRY M", 260004), ("ANTHONY R", 185364), ("DANA A", 170112)]) |> display
+    #=>
+    @VectorTree of 3 × (String, Int):
+     ("GARRY M", 260004)
+     ("ANTHONY R", 185364)
+     ("DANA A", 170112)
+    =#
+
+Vectors of named tuples are also supported.
+
+    q([(name="GARRY M", salary=260004), (name="ANTHONY R", salary=185364), (name="DANA A", salary=170112)]) |> display
+    #=>
+    @VectorTree of 3 × (name = String, salary = Int):
+     (name = "GARRY M", salary = 260004)
+     (name = "ANTHONY R", salary = 185364)
+     (name = "DANA A", salary = 170112)
+    =#
+
+
+### Composition
+
+The `chain_of` combinator composes a sequence of queries.
+
+    q = chain_of(lift(split), lift(first), lift(titlecase))
+    #-> chain_of(lift(split), lift(first), lift(titlecase))
+
+    q(["JEFFERY A", "JAMES A", "TERRY A"])
+    #-> ["Jeffery", "James", "Terry"]
+
+The empty chain `chain_of()` has an alias `pass()`.
+
+    q = pass()
+    #-> pass()
+
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    #-> ["GARRY M", "ANTHONY R", "DANA A"]
+
+
+### Tuple vectors
+
+The query `tuple_of(q₁, q₂ … qₙ)` produces a tuple vector, whose columns are
+generated by applying `q₁`, `q₂` … `qₙ` to the input vector.
+
+    q = tuple_of(:title => lift(titlecase), :last => lift(last))
+    #-> tuple_of(:title => lift(titlecase), :last => lift(last))
+
+    q(["GARRY M", "ANTHONY R", "DANA A"]) |> display
+    #=>
+    @VectorTree of 3 × (title = String, last = Char):
+     (title = "Garry M", last = 'M')
+     (title = "Anthony R", last = 'R')
+     (title = "Dana A", last = 'A')
+    =#
+
+The query `column(lbl)` extracts the specified column from a tuple vector.  The
+`column` constructor accepts either the column position or the column label.
+
+    q = column(1)
+    #-> column(1)
+
+    q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
+    #-> ["GARRY M", "ANTHONY R", "DANA A"]
+
+    q = column(:salary)
+    #-> column(:salary)
+
+    q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112])
+    #-> [260004, 185364, 170112]
+
+The `with_column` combinator lets us apply the given query to a selected column
+of a tuple vector.
+
+    q = with_column(:name, lift(titlecase))
+    #-> with_column(:name, lift(titlecase))
+
+    q(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]) |> display
+    #=>
+    @VectorTree of 3 × (name = String, salary = Int):
+     (name = "Garry M", salary = 260004)
+     (name = "Anthony R", salary = 185364)
+     (name = "Dana A", salary = 170112)
+    =#
+
+
+### Block vectors
+
+The query `wrap()` wraps the elements of the input vector to one-element blocks.
+
+    q = wrap()
+    #-> wrap()
+
+    q(["GARRY M", "ANTHONY R", "DANA A"])
+    @VectorTree (1:1) × String ["GARRY M", "ANTHONY R", "DANA A"]
+
+The query `flatten()` flattens a nested block vector.
+
+    q = flatten()
+    #-> flatten()
+
+    q(@VectorTree [[String]] [[["GARRY M"], ["ANTHONY R", "DANA A"]], [missing, ["JOSE S"], ["CHARLES S"]]])
+    @VectorTree (0:N) × String [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
+
+The `with_elements` combinator lets us apply the given query to transform the
+elements of a block vector.
+
+    q = with_elements(lift(titlecase))
+    #-> with_elements(lift(titlecase))
+
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]])
+    @VectorTree (0:N) × String [["Garry M", "Anthony R", "Dana A"], ["Jose S", "Charles S"]]
+
+The query `distribute(lbl)` transforms a tuple vector with a block column to a
+block vector of tuples by distributing the block elements over the tuple.
+
+    q = distribute(1)
+    #-> distribute(1)
+
+    q(@VectorTree ([Int], [Int]) [
+        [260004, 185364, 170112]    200000
+        missing                     200000
+        [202728, 197736]            [200000, 200000]]
+    ) |> display
+    #=>
+    @VectorTree of 3 × (0:N) × (Int, (0:N) × Int):
+     [(260004, [200000]), (185364, [200000]), (170112, [200000])]
+     []
+     [(202728, [200000, 200000]), (197736, [200000, 200000])]
+    =#
+
+The query `distribute_all()` takes a tuple vector with block columns and
+distribute all of the block columns.
+
+    q = distribute_all()
+    #-> distribute_all()
+
+    q(@VectorTree ([Int], [Int]) [
+        [260004, 185364, 170112]    200000
+        missing                     200000
+        [202728, 197736]            [200000, 200000]]
+    ) |> display
+    #=>
+    @VectorTree of 3 × (0:N) × (Int, Int):
+     [(260004, 200000), (185364, 200000), (170112, 200000)]
+     []
+     [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
+    =#
+
+This query is equivalent to
+`chain_of(distribute(1),with_elements(distribute(2),flatten())`.
+
+The query `block_length()` calculates the lengths of blocks in a block vector.
+
+    q = block_length()
+    #-> block_length()
+
+    q(@VectorTree [String] [missing, "GARRY M", ["ANTHONY R", "DANA A"]])
+    #-> [0, 1, 2]
+
+The query `block_any()` checks whether the blocks in a `Bool` block vector have
+any `true` values.
+
+    q = block_any()
+    #-> block_any()
+
+    q(@VectorTree [Bool] [missing, true, false, [true, false], [false, false], [false, true]])
+    #-> Bool[0, 1, 0, 1, 0, 1]
+
+
+### Filtering
+
+The query `sieve()` filters a vector of pairs by the second column.
+
+    q = sieve()
+    #-> sieve()
+
+    q(@VectorTree (Int, Bool) [260004 true; 185364 false; 170112 false])
+    #-> @VectorTree (0:1) × Int [260004, missing, missing]
+
+
+### Slicing
+
+The query `slice(N)` transforms a block vector by keeping the first `N`
+elements of each block.
+
+    q = slice(2)
+    #-> slice(2, false)
+
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
+    #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S", "CHARLES S"], []]
+
+When `N` is negative, `slice(N)` drops the last `N` elements of each block.
+
+    q = slice(-1)
+
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
+    #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S"], []]
+
+The query `slice(N, true)` drops the first `N` elements (or keeps the last `N`
+elements if `N` is negative).
+
+    q = slice(2, true)
+
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
+    #-> @VectorTree (0:N) × String [["DANA A"], [], []]
+
+    q = slice(-1, true)
+
+    q(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
+    #-> @VectorTree (0:N) × String [["DANA A"], ["CHARLES S"], []]
+
+A variant of this query `slice()` expects a tuple vector with two columns: the
+first column containing the blocks and the second column with the number of
+elements to keep.
+
+    q = slice()
+    #-> slice(false)
+
+    q(@VectorTree ([String], Int) [(["GARRY M", "ANTHONY R", "DANA A"], 1), (["JOSE S", "CHARLES S"], -1), (missing, 0)])
+    #-> @VectorTree (0:N) × String [["GARRY M"], ["JOSE S"], []]

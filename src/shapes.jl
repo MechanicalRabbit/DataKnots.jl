@@ -1,5 +1,5 @@
 #
-# Representing data shapes and query signatures.
+# Representing data shapes and pipeline signatures.
 #
 
 import Base:
@@ -369,13 +369,13 @@ shapeof(bv::BlockVector) =
 
 
 #
-# Signature of a query.
+# Signature of a pipeline.
 #
 
 """
     Signature(::InputShape, ::OutputShape)
 
-Shapes of a query input and output.
+Shapes of a pipeline input and output.
 """
 struct Signature
     ishp::AbstractShape

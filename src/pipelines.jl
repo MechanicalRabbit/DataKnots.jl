@@ -1,12 +1,12 @@
 #
-# Algebra of pipelines.
+# Combinator algebra of vectorized data transformations.
 #
 
 import Base:
-    convert,
-    run,
-    show,
-    >>
+    OneTo,
+    show
+
+using Base.Cartesian
 
 
 #
@@ -14,894 +14,898 @@ import Base:
 #
 
 """
+    Runtime()
+
+Runtime state for pipeline evaluation.
+"""
+mutable struct Runtime
+end
+
+"""
     Pipeline(op, args...)
 
-A pipeline is a query transformation.  Specifically, it takes a query that maps
-*origin* to *input* and generates a query that maps *origin* to *output*.
+A pipeline object represents a vectorized data transformation.
 
 Parameter `op` is a function that performs the transformation; `args` are extra
-arguments passed to the function.
+arguments to be passed to the function.
 
-The pipeline transforms an input query `q` by invoking `op` with the following
+The pipeline transforms any input vector by invoking `op` with the following
 arguments:
 
-    op(env::Environment, q::Query, args...)
+    op(rt::Runtime, input::AbstractVector, args...)
 
-The result of `op` must again be the output query.
+The result of `op` must be the output vector, which should be of the same
+length as the input vector.
 """
-struct Pipeline <: AbstractPipeline
+struct Pipeline
     op
     args::Vector{Any}
+    sig::Signature
 
-    Pipeline(op, args::Vector{Any}) =
-        new(op, args)
+    Pipeline(op, args::Vector{Any}, sig::Signature) =
+        new(op, args, sig)
 end
 
-Pipeline(op, args...) =
-    Pipeline(op, collect(Any, args))
+let NO_SIG = Signature()
 
-syntax(F::Pipeline) =
-    syntax(F.op, F.args)
+    global Pipeline
 
-show(io::IO, F::Pipeline) =
-    print_expr(io, syntax(F))
+    Pipeline(op, args...) =
+        Pipeline(op, collect(Any, args), NO_SIG)
+end
+
+"""
+    designate(::Pipeline, ::Signature) :: Pipeline
+    designate(::Pipeline, ::InputShape, ::OutputShape) :: Pipeline
+    p::Pipeline |> designate(::Signature) :: Pipeline
+    p::Pipeline |> designate(::InputShape, ::OutputShape) :: Pipeline
+
+Sets the pipeline signature.
+"""
+function designate end
+
+designate(p::Pipeline, sig::Signature) =
+    Pipeline(p.op, p.args, sig)
+
+designate(p::Pipeline, ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
+    Pipeline(p.op, p.args, Signature(ishp, shp))
+
+designate(sig::Signature) =
+    p::Pipeline -> designate(p, sig)
+
+designate(ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
+    p::Pipeline -> designate(p, Signature(ishp, shp))
+
+"""
+    signature(::Pipeline) :: Signature
+
+Returns the pipeline signature.
+"""
+signature(p::Pipeline) = p.sig
+
+shape(p::Pipeline) = shape(p.sig)
+
+ishape(p::Pipeline) = ishape(p.sig)
+
+function (p::Pipeline)(input::DataKnot)
+    #@assert fits(shape(input), ishape(p))
+    DataKnot(p(cell(input)), shape(p))
+end
+
+function (p::Pipeline)(input::AbstractVector)
+    rt = Runtime()
+    output = p(rt, input)
+end
+
+function (p::Pipeline)(rt::Runtime, input::AbstractVector)
+    p.op(rt, input, p.args...)
+end
+
+syntax(p::Pipeline) =
+    syntax(p.op, p.args)
+
+show(io::IO, p::Pipeline) =
+    print_expr(io, syntax(p))
+
+"""
+    optimize(::Pipeline) :: Pipeline
+
+Rewrites the pipeline to make it (hopefully) faster.
+"""
+optimize(p::Pipeline) =
+    simplify(p) |> designate(p.sig)
 
 
 #
-# Navigation sugar.
+# Vectorizing scalar functions.
 #
 
 """
-    It
+    lift(f) :: Pipeline
 
-Identity pipeline with respect to pipeline composition.
+`f` is any scalar unary function.
 
-    It.a.b.c
-
-Equivalent to `Get(:a) >> Get(:b) >> Get(:c)`.
+The pipeline applies `f` to each element of the input vector.
 """
-struct Navigation <: AbstractPipeline
-    __path::Tuple{Vararg{Symbol}}
-end
+lift(f) = Pipeline(lift, f)
 
-Base.getproperty(nav::Navigation, s::Symbol) =
-    let path = getfield(nav, :__path)
-        Navigation((path..., s))
-    end
-
-show(io::IO, nav::Navigation) =
-    let path = getfield(nav, :__path)
-        print(io, join((:It, path...), "."))
-    end
-
-const It = Navigation(())
-
-
-#
-# Running a pipeline.
-#
+lift(rt::Runtime, input::AbstractVector, f) =
+    f.(input)
 
 """
-    run(db::DataKnot, F::AbstractPipeline; params...)
+    tuple_lift(f) :: Pipeline
 
-Runs the pipeline with the given parameters.
+`f` is an n-ary function.
+
+The pipeline applies `f` to each row of an n-tuple vector.
 """
-run(db::DataKnot, F; params...) =
-    execute(db, Lift(F), sort(collect(Pair{Symbol,DataKnot}, params), by=first))
+tuple_lift(f) = Pipeline(tuple_lift, f)
 
-run(F::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}; params...) =
-    run(DataKnot(nothing), F; params...)
-
-function execute(db::DataKnot, F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
-    db = pack(db, params)
-    q = prepare(F, shape(db))
-    db′ = q(db)
-    return db′
+function tuple_lift(rt::Runtime, input::AbstractVector, f)
+    @assert input isa TupleVector
+    _tuple_lift(f, length(input), columns(input)...)
 end
 
-prepare(db::DataKnot, F::AbstractPipeline, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
-    prepare(F, shape(pack(db, params)))
-
-function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
-    !isempty(params) || return db
-    ctx_lbls = first.(params)
-    ctx_cols = collect(AbstractVector, cell.(last.(params)))
-    ctx_shps = collect(AbstractShape, shape.(last.(params)))
-    return DataKnot(TupleVector(1, AbstractVector[cell(db), TupleVector(ctx_lbls, 1, ctx_cols)]),
-                    TupleOf(shape(db), TupleOf(ctx_lbls, ctx_shps)) |> IsScope)
-end
-
-function prepare(F::AbstractPipeline, ishp::AbstractShape)
-    env = Environment()
-    q_i = adapt_input(ishp)
-    q_F = compile(Each(F), env, stub(q_i))
-    q_o = adapt_output(BlockOf(elements(shape(q_F)), cardinality(shape(q_i))|cardinality(shape(q_F))) |> IsFlow)
-    shp = shape(q_o)
-    return chain_of(q_i, with_elements(q_F), flatten(), q_o) |> designate(ishp, shp) |> optimize
-end
-
-adapt_input(ishp::IsScope) =
-    adapt_flow(ishp)
-
-function adapt_input(ishp::AbstractShape)
-    q = tuple_of(pass(), tuple_of())
-    shp = TupleOf(ishp, TupleOf()) |> IsScope
-    t = adapt_input(shp)
-    shp = shape(t)
-    chain_of(q, t) |> designate(ishp, shp)
-end
-
-function adapt_output(ishp::IsFlow)
-    q = adapt_output(elements(ishp))
-    lbl = nothing
-    shp = shape(q)
-    if shp isa HasLabel
-        lbl = label(shp)
-        shp = subject(shp)
+@generated function _tuple_lift(f, len::Int, cols::AbstractVector...)
+    D = length(cols)
+    return quote
+        I = Tuple{eltype.(cols)...}
+        O = Core.Compiler.return_type(f, I)
+        output = Vector{O}(undef, len)
+        @inbounds for k = 1:len
+            output[k] = @ncall $D f (d -> cols[d][k])
+        end
+        output
     end
-    shp = BlockOf(shp, cardinality(ishp))
-    if lbl !== nothing
-        shp = shp |> HasLabel(lbl)
-    end
-    with_elements(q) |> designate(ishp, shp)
 end
 
-adapt_output(ishp::IsScope) =
-    column(1) |> designate(ishp, column(ishp))
+"""
+    block_lift(f) :: Pipeline
+    block_lift(f, default) :: Pipeline
 
-adapt_output(ishp::AbstractShape) =
-    pass() |> designate(ishp, ishp)
+`f` is a function that expects a vector argument.
 
-adapt_flow(ishp::AbstractShape) =
-    wrap() |> designate(ishp, BlockOf(ishp, x1to1) |> IsFlow)
+The pipeline applies `f` to each block of the input block vector.  When a block
+is empty, `default` (if specified) is used as the output value.
+"""
+function block_lift end
 
-adapt_flow(ishp::BlockOf) =
-    pass() |> designate(ishp, ishp |> IsFlow)
+block_lift(f) = Pipeline(block_lift, f)
 
-function adapt_flow(ishp::ValueOf)
-    ty = eltype(ishp)
-    if ty <: AbstractVector
-        ty′ = eltype(ty)
-        adapt_vector() |> designate(ishp, BlockOf(ty′, x0toN) |> IsFlow)
-    elseif Missing <: ty
-        ty′ = Base.nonmissingtype(ty)
-        adapt_missing() |> designate(ishp, BlockOf(ty′, x0to1) |> IsFlow)
+function block_lift(rt::Runtime, input::AbstractVector, f)
+    @assert input isa BlockVector
+    _block_lift(f, input)
+end
+
+block_lift(f, default) = Pipeline(block_lift, f, default)
+
+function block_lift(rt::Runtime, input::AbstractVector, f, default)
+    @assert input isa BlockVector
+    _block_lift(f, default, input)
+end
+
+function _block_lift(f, input)
+    I = Tuple{typeof(cursor(input))}
+    O = Core.Compiler.return_type(f, I)
+    output = Vector{O}(undef, length(input))
+    @inbounds for cr in cursor(input)
+        output[cr.pos] = f(cr)
+    end
+    output
+end
+
+function _block_lift(f, default, input)
+    I = Tuple{typeof(cursor(input))}
+    O = Union{Core.Compiler.return_type(f, I), typeof(default)}
+    output = Vector{O}(undef, length(input))
+    @inbounds for cr in cursor(input)
+        output[cr.pos] = !isempty(cr) ? f(cr) : default
+    end
+    output
+end
+
+"""
+    filler(val) :: Pipeline
+
+This pipeline produces a vector filled with the given value.
+"""
+filler(val) = Pipeline(filler, val)
+
+filler(rt::Runtime, input::AbstractVector, val) =
+    fill(val, length(input))
+
+"""
+    null_filler() :: Pipeline
+
+This pipeline produces a block vector with empty blocks.
+"""
+null_filler() = Pipeline(null_filler)
+
+null_filler(rt::Runtime, input::AbstractVector) =
+    BlockVector(fill(1, length(input)+1), Union{}[], x0to1)
+
+"""
+    block_filler(block::AbstractVector, card::Cardinality) :: Pipeline
+
+This pipeline produces a block vector filled with the given block.
+"""
+block_filler(block, card::Cardinality=x0toN) = Pipeline(block_filler, block, card)
+
+function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector, card::Cardinality)
+    if isempty(input)
+        return BlockVector(:, block[[]], card)
+    elseif length(input) == 1
+        return BlockVector([1, length(block)+1], block, card)
     else
-        wrap() |> designate(ishp, BlockOf(ishp, x1to1) |> IsFlow)
+        len = length(input)
+        sz = length(block)
+        perm = Vector{Int}(undef, len*sz)
+        for k in eachindex(input)
+            copyto!(perm, 1 + sz * (k - 1), 1:sz)
+        end
+        return BlockVector(1:sz:(len*sz+1), block[perm], card)
     end
 end
-
-function adapt_flow(ishp::HasLabel)
-    q = adapt_flow(subject(ishp))
-    shp = with_elements(shape(q), HasLabel(label(ishp)))
-    q |> designate(ishp, shp)
-end
-
-adapt_flow(ishp::IsFlow) =
-    pass() |> designate(ishp, ishp)
-
-function adapt_flow(ishp::IsScope)
-    q = adapt_flow(column(ishp))
-    shp = shape(q)
-    shp = with_elements(shp, TupleOf(elements(shp), context(ishp)) |> IsScope)
-    if width(context(ishp)) > 0
-        chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
-    else
-        chain_of(column(1), q, with_elements(tuple_of(pass(), tuple_of()))) |> designate(ishp, shp)
-    end
-end
-
-function adapt_output(q::Query)
-    r = adapt_output(shape(q))
-    chain_of(q, r) |> designate(ishape(q), shape(r))
-end
-
-function adapt_flow(q::Query)
-    r = adapt_flow(shape(q))
-    chain_of(q, r) |> designate(ishape(q), shape(r))
-end
-
-function clone_context(ctx::TupleOf, q::Query)
-    ishp = TupleOf(ishape(q), ctx) |> IsScope
-    shp = with_elements(shape(q), elts -> TupleOf(elts, ctx) |> IsScope)
-    if width(ctx) > 0
-        chain_of(with_column(1, q), distribute(1)) |> designate(ishp, shp)
-    else
-        chain_of(column(1), q, with_elements(tuple_of(pass(), tuple_of()))) |> designate(ishp, shp)
-    end
-end
-
-function clone_context(q::Query)
-    ishp = ishape(q)
-    ctx = context(ishp)
-    shp = TupleOf(shape(q), ctx) |> IsScope
-    tuple_of(q, column(2)) |> designate(ishp, shp)
-end
-
 
 
 #
-# Applying a pipeline to a query.
+# Converting regular vectors to columnar vectors.
 #
 
 """
-    Environment()
+    adapt_missing() :: Pipeline
 
-Pipeline execution state.
+This pipeline transforms a vector that contains `missing` elements to a block
+vector with `missing` elements replaced by empty blocks.
 """
-mutable struct Environment
-end
+adapt_missing() = Pipeline(adapt_missing)
 
-compile(F, env::Environment, q::Query)::Query =
-    compile(Lift(F), env, q)
-
-function compile(db::DataKnot, env::Environment, q::Query)::Query
-    r = block_filler(cell(db), x1to1)
-    t = adapt_flow(shape(db))
-    r = chain_of(r, with_elements(t), flatten()) |> designate(AnyShape(), shape(t))
-    r = clone_context(context(elements(shape(q))), r)
-    compose(q, r)
-end
-
-compile(F::Pipeline, env::Environment, q::Query)::Query =
-    F.op(env, q, F.args...)
-
-function compile(nav::Navigation, env::Environment, q::Query)::Query
-    for fld in getfield(nav, :__path)
-        q = Get(env, q, fld)
+function adapt_missing(rt::Runtime, input::AbstractVector)
+    if !(Missing <: eltype(input))
+        return BlockVector(:, input, x0to1)
     end
-    q
-end
-
-
-#
-# Monadic composition.
-#
-
-function stub(ishp::AbstractShape)
-    @assert ishp isa IsScope
-    shp = BlockOf(ishp, x1to1) |> IsFlow
-    wrap() |> designate(ishp, shp)
-end
-
-function stub(q::Query)
-    shp = shape(q)
-    @assert shp isa IsFlow
-    stub(elements(shp))
-end
-
-function istub(q::Query)
-    stub(ishape(q))
-end
-
-compose(q::Query) = q
-
-compose(q1::Query, q2::Query, q3::Query, qs::Query...) =
-    foldl(compose, qs, init=compose(compose(q1, q2), q3))
-
-function compose(q1::Query, q2::Query)
-    ishp1 = ishape(q1)
-    shp1 = shape(q1)
-    ishp2 = ishape(q2)
-    shp2 = shape(q2)
-    @assert shp1 isa IsFlow && shp2 isa IsFlow
-    #@assert fits(elements(shp1), ishp2)
-    ishp = ishp1
-    shp = BlockOf(elements(shp2), cardinality(shp1)|cardinality(shp2)) |> IsFlow
-    chain_of(
-        q1,
-        with_elements(q2),
-        flatten(),
-    ) |> designate(ishp, shp)
-end
-
->>(X::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}, Xs...) =
-    Compose(X, Xs...)
-
-Compose(X, Xs...) =
-    Pipeline(Compose, X, Xs...)
-
-syntax(::typeof(Compose), args::Vector{Any}) =
-    syntax(>>, args)
-
-function Compose(env::Environment, q::Query, Xs...)
-    for X in Xs
-        q = compile(X, env, q)
+    sz = 0
+    for elt in input
+        if elt !== missing
+            sz += 1
+        end
     end
-    q
+    O = Base.nonmissingtype(eltype(input))
+    if sz == length(input)
+        return BlockVector(:, collect(O, input), x0to1)
+    end
+    offs = Vector{Int}(undef, length(input)+1)
+    elts = Vector{O}(undef, sz)
+    @inbounds offs[1] = top = 1
+    @inbounds for k in eachindex(input)
+        elt = input[k]
+        if elt !== missing
+            elts[top] = elt
+            top += 1
+        end
+        offs[k+1] = top
+    end
+    return BlockVector(offs, elts, x0to1)
 end
 
+"""
+    adapt_vector() :: Pipeline
 
-#
-# Record combinator.
-#
+This pipeline transforms a vector with vector elements to a block vector.
+"""
+adapt_vector() = Pipeline(adapt_vector)
 
-function monadic_record(q::Query, xs::Vector{Query})
+function adapt_vector(rt::Runtime, input::AbstractVector)
+    @assert eltype(input) <: AbstractVector
+    sz = 0
+    for v in input
+        sz += length(v)
+    end
+    O = eltype(eltype(input))
+    offs = Vector{Int}(undef, length(input)+1)
+    elts = Vector{O}(undef, sz)
+    @inbounds offs[1] = top = 1
+    @inbounds for k in eachindex(input)
+        v = input[k]
+        copyto!(elts, top, v)
+        top += length(v)
+        offs[k+1] = top
+    end
+    return BlockVector(offs, elts, x0toN)
+end
+
+"""
+    adapt_tuple() :: Pipeline
+
+This pipeline transforms a vector of tuples to a tuple vector.
+"""
+adapt_tuple() = Pipeline(adapt_tuple)
+
+function adapt_tuple(rt::Runtime, input::AbstractVector)
+    @assert eltype(input) <: Union{Tuple,NamedTuple}
     lbls = Symbol[]
-    cols = Query[]
-    seen = Dict{Symbol,Int}()
-    for (i, x) in enumerate(xs)
-        x = adapt_output(x)
-        shp = shape(x)
-        lbl = label(i)
-        if shp isa HasLabel
-            lbl = label(shp)
-            shp = subject(shp)
-            x = x |> designate(ishape(x), shp)
-        end
-        if lbl in keys(seen)
-            lbls[seen[lbl]] = label(seen[lbl])
-        end
-        seen[lbl] = i
-        push!(lbls, lbl)
-        push!(cols, x)
+    I = eltype(input)
+    if typeof(I) == DataType && I <: NamedTuple
+        lbls = collect(Symbol, I.parameters[1])
+        I = I.parameters[2]
     end
-    ishp = elements(shape(q))
-    shp = TupleOf(lbls, shape.(cols))
-    if column(ishp) isa HasLabel
-        shp = shp |> HasLabel(label(column(ishp)))
-    end
-    r = tuple_of(lbls, cols) |> designate(ishp, shp)
-    r = adapt_flow(clone_context(r))
-    compose(q, r)
+    Is = (I.parameters...,)
+    cols = _adapt_tuple(input, Is...)
+    TupleVector(lbls, length(input), cols)
 end
 
-"""
-    Record(Xs...)
-
-Creates a pipeline component for building a record.
-"""
-Record(Xs...) =
-    Pipeline(Record, Xs...)
-
-function Record(env::Environment, q::Query, Xs...)
-    xs = compile.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
-    monadic_record(q, xs)
+@generated function _adapt_tuple(input, Is...)
+    width = length(Is)
+    return quote
+        len = length(input)
+        cols = @ncall $width tuple j -> Vector{Is[j]}(undef, len)
+        @inbounds for k in eachindex(input)
+            t = input[k]
+            @nexprs $width j -> cols[j][k] = t[j]
+        end
+        collect(AbstractVector, cols)
+    end
 end
 
 
 #
-# Lifting Julia values and functions.
+# Identity and composition.
 #
 
-function monadic_lift(q::Query, f, xs::Vector{Query})
-    cols = Query[]
-    for x in xs
-        x = adapt_output(x)
-        push!(cols, x)
+"""
+    pass() :: Pipeline
+
+This pipeline returns its input unchanged.
+"""
+pass() = Pipeline(pass)
+
+pass(rt::Runtime, input::AbstractVector) =
+    input
+
+"""
+    chain_of(p₁::Pipeline, p₂::Pipeline … pₙ::Pipeline) :: Pipeline
+
+This pipeline sequentially applies `p₁`, `p₂` … `pₙ`.
+"""
+function chain_of end
+
+chain_of() = pass()
+
+chain_of(p) = p
+
+function chain_of(ps...)
+    ps′ = filter(p -> !(p isa Pipeline && p.op == pass), collect(ps))
+    isempty(ps′) ? pass() : length(ps′) == 1 ? ps′[1] : chain_of(ps′)
+end
+
+chain_of(ps::Vector) =
+    Pipeline(chain_of, ps)
+
+syntax(::typeof(chain_of), args::Vector{Any}) =
+    if length(args) == 1 && args[1] isa Vector
+        Expr(:call, chain_of, syntax.(args[1])...)
+    else
+        Expr(:call, chain_of, syntax.(args)...)
     end
-    ity = Tuple{eltype.(shape.(cols))...}
-    oty = Core.Compiler.return_type(f, ity)
-    oty != Union{} || error("cannot compile $f to $ity")
-    ishp = elements(shape(q))
-    shp = ValueOf(oty)
-    r = if length(cols) == 1
-            if (cardinality(shape(xs[1])) & x1toN == x1toN) && !(oty <: AbstractVector)
-                chain_of(cols[1], block_lift(f))
+
+function chain_of(rt::Runtime, input::AbstractVector, ps)
+    output = input
+    for p in ps
+        output = p(rt, output)
+    end
+    output
+end
+
+
+#
+# Operations on tuple vectors.
+#
+
+"""
+    tuple_of(p₁::Pipeline, p₂::Pipeline … pₙ::Pipeline) :: Pipeline
+
+This pipeline produces an n-tuple vector, whose columns are generated by
+applying `p₁`, `p₂` … `pₙ` to the input vector.
+"""
+tuple_of(ps...) =
+    tuple_of(Symbol[], collect(ps))
+
+tuple_of(lps::Pair{Symbol}...) =
+    tuple_of(collect(Symbol, first.(lps)), collect(last.(lps)))
+
+tuple_of(lbls::Vector{Symbol}, ps::Vector) = Pipeline(tuple_of, lbls, ps)
+
+syntax(::typeof(tuple_of), args::Vector{Any}) =
+    if length(args) == 2 && args[1] isa Vector{Symbol} && args[2] isa Vector
+        if isempty(args[1])
+            Expr(:call, tuple_of, syntax.(args[2])...)
+        else
+            Expr(:call, tuple_of, syntax.(args[1] .=> args[2])...)
+        end
+    else
+        Expr(:call, tuple_of, syntax.(args)...)
+    end
+
+function tuple_of(rt::Runtime, input::AbstractVector, lbls, ps)
+    len = length(input)
+    cols = AbstractVector[p(rt, input) for p in ps]
+    TupleVector(lbls, len, cols)
+end
+
+"""
+    column(lbl::Union{Int,Symbol}) :: Pipeline
+
+This pipeline extracts the specified column of a tuple vector.
+"""
+column(lbl::Union{Int,Symbol}) = Pipeline(column, lbl)
+
+function column(rt::Runtime, input::AbstractVector, lbl)
+    @assert input isa TupleVector
+    j = locate(input, lbl)
+    column(input, j)
+end
+
+"""
+    with_column(lbl::Union{Int,Symbol}, p::Pipeline) :: Pipeline
+
+This pipeline transforms a tuple vector by applying `p` to the specified
+column.
+"""
+with_column(lbl::Union{Int,Symbol}, p) = Pipeline(with_column, lbl, p)
+
+function with_column(rt::Runtime, input::AbstractVector, lbl, p)
+    @assert input isa TupleVector
+    j = locate(input, lbl)
+    cols′ = copy(columns(input))
+    cols′[j] = p(rt, cols′[j])
+    TupleVector(labels(input), length(input), cols′)
+end
+
+
+#
+# Operations on block vectors.
+#
+
+"""
+    wrap() :: Pipeline
+
+This pipeline produces a block vector with one-element blocks wrapping the
+values of the input vector.
+"""
+wrap() = Pipeline(wrap)
+
+wrap(rt::Runtime, input::AbstractVector) =
+    BlockVector(:, input, x1to1)
+
+
+"""
+    with_elements(p::Pipeline) :: Pipeline
+
+This pipeline transforms a block vector by applying `p` to its vector of
+elements.
+"""
+with_elements(p) = Pipeline(with_elements, p)
+
+function with_elements(rt::Runtime, input::AbstractVector, p)
+    @assert input isa BlockVector
+    BlockVector(offsets(input), p(rt, elements(input)), cardinality(input))
+end
+
+"""
+    flatten() :: Pipeline
+
+This pipeline flattens a nested block vector.
+"""
+flatten() = Pipeline(flatten)
+
+function flatten(rt::Runtime, input::AbstractVector)
+    @assert input isa BlockVector && elements(input) isa BlockVector
+    offs = offsets(input)
+    nested = elements(input)
+    nested_offs = offsets(nested)
+    elts = elements(nested)
+    card = cardinality(input)|cardinality(nested)
+    BlockVector(_flatten(offs, nested_offs), elts, card)
+end
+
+_flatten(offs1::AbstractVector{Int}, offs2::AbstractVector{Int}) =
+    Int[offs2[off] for off in offs1]
+
+_flatten(offs1::OneTo{Int}, offs2::OneTo{Int}) = offs1
+
+_flatten(offs1::OneTo{Int}, offs2::AbstractVector{Int}) = offs2
+
+_flatten(offs1::AbstractVector{Int}, offs2::OneTo{Int}) = offs1
+
+"""
+    distribute(lbl::Union{Int,Symbol}) :: Pipeline
+
+This pipeline transforms a tuple vector with a column of blocks to a block
+vector with tuple elements.
+"""
+distribute(lbl) = Pipeline(distribute, lbl)
+
+function distribute(rt::Runtime, input::AbstractVector, lbl)
+    @assert input isa TupleVector && column(input, lbl) isa BlockVector
+    j = locate(input, lbl)
+    len = length(input)
+    lbls = labels(input)
+    cols = columns(input)
+    col = cols[j]
+    card = cardinality(col)
+    offs = offsets(col)
+    col′ = elements(col)
+    cols′ = copy(cols)
+    if offs isa OneTo{Int}
+        cols′[j] = col′
+        return BlockVector(offs, TupleVector(lbls, len, cols′), card)
+    end
+    len′ = length(col′)
+    perm = Vector{Int}(undef, len′)
+    l = r = 1
+    @inbounds for k = 1:len
+        l = r
+        r = offs[k+1]
+        for n = l:r-1
+            perm[n] = k
+        end
+    end
+    for i in eachindex(cols′)
+        cols′[i] =
+            if i == j
+                col′
             else
-                chain_of(cols[1], lift(f))
+                cols′[i][perm]
             end
-        else
-            chain_of(tuple_of(Symbol[], cols), tuple_lift(f))
-        end |> designate(ishp, shp)
-    r = adapt_flow(clone_context(r))
-    compose(q, r)
+    end
+    return BlockVector(offs, TupleVector(lbls, len′, cols′), card)
 end
 
-Lift(X::AbstractPipeline) = X
-
 """
-    Lift(val)
+    distribute_all() :: Pipeline
 
-Converts a Julia value to a pipeline primitive.
+This pipeline transforms a tuple vector with block columns to a block vector
+with tuple elements.
 """
-Lift(val) =
-    Pipeline(Lift, val)
+distribute_all() = Pipeline(distribute_all)
 
-"""
-    Lift(f, Xs)
-
-Converts a Julia function to a pipeline combinator.
-"""
-Lift(f, Xs::Tuple) =
-    Pipeline(Lift, f, Xs)
-
-convert(::Type{AbstractPipeline}, val) =
-    Lift(val)
-
-convert(::Type{AbstractPipeline}, F::AbstractPipeline) =
-    F
-
-Lift(env::Environment, q::Query, val) =
-    compile(convert(DataKnot, val), env, q)
-
-function Lift(env::Environment, q::Query, f, Xs::Tuple)
-    xs = compile.(collect(AbstractPipeline, Xs), Ref(env), Ref(stub(q)))
-    monadic_lift(q, f, xs)
+function distribute_all(rt::Runtime, input::AbstractVector)
+    @assert input isa TupleVector && all(col isa BlockVector for col in columns(input))
+    cols = columns(input)
+    _distribute_all(labels(input), length(input), cols...)
 end
 
-# Broadcasting.
-
-struct PipelineStyle <: Base.BroadcastStyle
-end
-
-Base.BroadcastStyle(::Type{<:Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}}) = PipelineStyle()
-
-Base.BroadcastStyle(s::PipelineStyle, ::Broadcast.DefaultArrayStyle) = s
-
-Base.broadcastable(X::Union{AbstractPipeline,Pair{Symbol,<:AbstractPipeline}}) = X
-
-Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{PipelineStyle}) = bc
-
-Base.copy(bc::Broadcast.Broadcasted{PipelineStyle}) =
-    BroadcastLift(bc)
-
-BroadcastLift(bc::Broadcast.Broadcasted{PipelineStyle}) =
-    BroadcastLift(bc.f, (BroadcastLift.(bc.args)...,))
-
-BroadcastLift(val) = val
-
-BroadcastLift(f, Xs) = Pipeline(BroadcastLift, f, Xs)
-
-BroadcastLift(env::Environment, q::Query, args...) =
-    Lift(env, q, args...)
-
-syntax(::typeof(BroadcastLift), args::Vector{Any}) =
-    syntax(broadcast, Any[args[1], syntax.(args[2])...])
-
-Lift(bc::Broadcast.Broadcasted{PipelineStyle}) =
-    BroadcastLift(bc)
-
-
-#
-# Each combinator.
-#
-
-"""
-    Each(X)
-
-Makes `X` process its input elementwise.
-"""
-Each(X) = Pipeline(Each, X)
-
-Each(env::Environment, q::Query, X) =
-    compose(q, compile(X, env, stub(q)))
-
-
-#
-# Assigning labels.
-#
-
-replace_label(shp::AbstractShape, ::Nothing) =
-    shp
-
-replace_label(shp::AbstractShape, lbl::Symbol) =
-    shp |> HasLabel(lbl)
-
-replace_label(shp::HasLabel, ::Nothing) =
-    subject(shp)
-
-replace_label(shp::HasLabel, lbl::Symbol) =
-    subject(shp) |> HasLabel(lbl)
-
-replace_label(shp::IsFlow, ::Nothing) =
-    with_elements(shp, elts -> replace_label(elts, nothing))
-
-replace_label(shp::IsFlow, lbl::Symbol) =
-    with_elements(shp, elts -> replace_label(elts, lbl))
-
-replace_label(shp::IsScope, ::Nothing) =
-    with_column(shp, col -> replace_label(col, nothing))
-
-replace_label(shp::IsScope, lbl::Symbol) =
-    with_column(shp, col -> replace_label(col, lbl))
-
-"""
-    Label(lbl::Symbol)
-
-Assigns a label.
-"""
-Label(lbl::Symbol) =
-    Pipeline(Label, lbl)
-
-Label(env::Environment, q::Query, lbl::Symbol) =
-    q |> designate(ishape(q), replace_label(shape(q), lbl))
-
-Lift(p::Pair{Symbol}) =
-    Compose(p.second, Label(p.first))
-
-
-#
-# Assigning a name to a pipeline.
-#
-
-"""
-    Tag(name::Symbol, X)
-
-Assigns a name to a pipeline.
-"""
-Tag(name::Symbol, X) =
-    Pipeline(Tag, name, X)
-
-Tag(name::Symbol, args::Tuple, X) =
-    Pipeline(Tag, name, args, X)
-
-Tag(F::Union{Function,DataType}, args::Tuple, X) =
-    Tag(nameof(F), args, X)
-
-Tag(env::Environment, q::Query, name, X) =
-    compile(X, env, q)
-
-Tag(env::Environment, q::Query, name, args, X) =
-    compile(X, env, q)
-
-syntax(::typeof(Tag), args::Vector{Any}) =
-    syntax(Tag, args...)
-
-syntax(::typeof(Tag), name::Symbol, X) =
-    name
-
-syntax(::typeof(Tag), name::Symbol, args::Tuple, X) =
-    Expr(:call, name, syntax.(args)...)
-
-
-#
-# Attributes and parameters.
-#
-
-"""
-    Get(name)
-
-Finds an attribute or a parameter.
-"""
-Get(name) =
-    Pipeline(Get, name)
-
-function Get(env::Environment, q::Query, name)
-    shp = shape(q)
-    r = lookup(context(elements(shp)), name)
-    if r !== nothing
-        r = chain_of(column(2), r) |> designate(elements(shp), shape(r))
-    else
-        r = lookup(column(elements(shp)), name)
-        if r !== nothing
-            r = chain_of(column(1), r) |> designate(elements(shp), shape(r))
-        else
-            error("cannot find $name at\n$(sigsyntax(column(elements(shp))))")
+@generated function _distribute_all(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
+    D = length(cols)
+    CARD = |(x1to1, cardinality.(cols)...)
+    return quote
+        @nextract $D offs (d -> offsets(cols[d]))
+        @nextract $D elts (d -> elements(cols[d]))
+        if @nall $D (d -> offs_d isa OneTo{Int})
+            return BlockVector{$CARD}(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
         end
-    end
-    r = adapt_flow(clone_context(r))
-    compose(q, r)
-end
-
-const Lookup = Get
-
-lookup(::AbstractShape, ::Any) = nothing
-
-lookup(shp::HasLabel, name::Any) =
-    lookup(subject(shp), name)
-
-function lookup(lbls::Vector{Symbol}, name::Symbol)
-    j = findlast(isequal(name), lbls)
-    if j === nothing
-        j = findlast(isequal(Symbol("#$name")), lbls)
-    end
-    j
-end
-
-function lookup(ishp::TupleOf, name::Symbol)
-    lbls = labels(ishp)
-    if isempty(lbls)
-        lbls = Symbol[label(i) for i = 1:width(ishp)]
-    end
-    j = lookup(lbls, name)
-    j !== nothing || return nothing
-    shp = replace_label(column(ishp, j), name == lbls[j] ? name : nothing)
-    column(lbls[j]) |> designate(ishp, shp)
-end
-
-lookup(shp::ValueOf, name) =
-    lookup(shp.ty, name)
-
-lookup(::Type, ::Any) =
-    nothing
-
-function lookup(ity::Type{<:NamedTuple}, name::Symbol)
-    j = lookup(collect(Symbol, ity.parameters[1]), name)
-    j !== nothing || return nothing
-    oty = ity.parameters[2].parameters[j]
-    lift(t -> t[j]) |> designate(ValueOf(ity), ValueOf(oty) |> HasLabel(name))
-end
-
-
-#
-# Specifying parameters.
-#
-
-function monadic_keep(q::Query, p::Query)
-    p = adapt_output(p)
-    shp = shape(p)
-    shp isa HasLabel || error("parameter name is not specified")
-    name = label(shp)
-    shp = subject(shp)
-    ishp = ishape(p)
-    ctx = context(ishp)
-    lbls′ = Symbol[]
-    cols′ = AbstractShape[]
-    perm = Int[]
-    for j = 1:width(ctx)
-        lbl = label(ctx, j)
-        if lbl != name
-            push!(lbls′, lbl)
-            push!(cols′, column(ctx, j))
-            push!(perm, j)
+        len′ = 0
+        regular = true
+        @inbounds for k = 1:len
+            sz = @ncall $D (*) (d -> (offs_d[k+1] - offs_d[k]))
+            len′ += sz
+            regular = regular && sz == 1
         end
+        if regular
+            return BlockVector{$CARD}(:, TupleVector(lbls, len, AbstractVector[(@ntuple $D elts)...]))
+        end
+        offs′ = Vector{Int}(undef, len+1)
+        @nextract $D perm (d -> Vector{Int}(undef, len′))
+        @inbounds offs′[1] = top = 1
+        @inbounds for k = 1:len
+            @nloops $D n (d -> offs_{$D-d+1}[k]:offs_{$D-d+1}[k+1]-1) begin
+                @nexprs $D (d -> perm_{$D-d+1}[top] = n_d)
+                top += 1
+            end
+            offs′[k+1] = top
+        end
+        cols′ = @nref $D AbstractVector (d -> elts_d[perm_d])
+        return BlockVector{$CARD}(offs′, TupleVector(lbls, len′, cols′))
     end
-    push!(lbls′, name)
-    push!(cols′, shp)
-    ctx′ = TupleOf(lbls′, cols′)
-    ps = Query[chain_of(column(2), column(j)) for j in perm]
-    push!(ps, p)
-    shp = BlockOf(TupleOf(column(ishp), ctx′) |> IsScope, x1to1) |> IsFlow
-    r = chain_of(tuple_of(column(1),
-                          tuple_of(lbls′, ps)),
-                 wrap(),
-    ) |> designate(ishp, shp)
-    compose(q, r)
 end
 
 """
-    Keep(P)
+    block_length() :: Pipeline
 
-Specifies the parameter.
+This pipeline converts a block vector to a vector of block lengths.
 """
+block_length() = Pipeline(block_length)
 
-Keep(P, Qs...) =
-    Pipeline(Keep, P, Qs...)
+function block_length(rt::Runtime, input::AbstractVector)
+    @assert input isa BlockVector
+    _block_length(offsets(input))
+end
 
-Keep(env::Environment, q::Query, P, Qs...) =
-    Keep(env, Keep(env, q, P), Qs...)
+_block_length(offs::OneTo{Int}) =
+    fill(1, length(offs)-1)
 
-function Keep(env::Environment, q::Query, P)
-    p = compile(P, env, stub(q))
-    monadic_keep(q, p)
+function _block_length(offs::AbstractVector{Int})
+    len = length(offs) - 1
+    output = Vector{Int}(undef, len)
+    @inbounds for k = 1:len
+        output[k] = offs[k+1] - offs[k]
+    end
+    output
+end
+
+"""
+    block_any() :: Pipeline
+
+This pipeline applies `any` to a block vector with `Bool` elements.
+"""
+block_any() = Pipeline(block_any)
+
+function block_any(rt::Runtime, input::AbstractVector)
+    @assert input isa BlockVector && eltype(elements(input)) <: Bool
+    len = length(input)
+    offs = offsets(input)
+    elts = elements(input)
+    if offs isa OneTo
+        return elts
+    end
+    output = Vector{Bool}(undef, len)
+    l = r = 1
+    @inbounds for k = 1:len
+        val = false
+        l = r
+        r = offs[k+1]
+        for i = l:r-1
+            if elts[i]
+                val = true
+                break
+            end
+        end
+        output[k] = val
+    end
+    return output
 end
 
 
 #
-# Scope of parameters.
+# Filtering.
 #
 
-function monadic_given(q::Query, x::Query)
-    x = adapt_flow(clone_context(adapt_output(x)))
-    compose(q, x)
+"""
+    sieve() :: Pipeline
+
+This pipeline filters a vector of pairs by the second column.  It expects a
+pair vector, whose second column is a `Bool` vector, and produces a block
+vector with 0- or 1-element blocks containing the elements of the first column.
+"""
+sieve() = Pipeline(sieve)
+
+function sieve(rt::Runtime, input::AbstractVector)
+    @assert input isa TupleVector && eltype(column(input, 2)) <: Bool
+    len = length(input)
+    val_col, pred_col = columns(input)
+    sz = count(pred_col)
+    if sz == len
+        return BlockVector(:, val_col, x0to1)
+    elseif sz == 0
+        return BlockVector(fill(1, len+1), val_col[[]], x0to1)
+    end
+    offs = Vector{Int}(undef, len+1)
+    perm = Vector{Int}(undef, sz)
+    @inbounds offs[1] = top = 1
+    for k = 1:len
+        if pred_col[k]
+            perm[top] = k
+            top += 1
+        end
+        offs[k+1] = top
+    end
+    return BlockVector(offs, val_col[perm], x0to1)
+end
+
+
+#
+# Slicing.
+#
+
+"""
+    slice(N::Int, rev::Bool=false) :: Pipeline
+
+This pipeline transforms a block vector by keeping the first `N` elements of
+each block.  If `rev` is true, the pipeline drops the first `N` elements of
+each block.
+"""
+slice(N::Union{Missing,Int}, rev::Bool=false) =
+    Pipeline(slice, N, rev)
+
+function slice(rt::Runtime, input::AbstractVector, N::Missing, rev::Bool)
+    @assert input isa BlockVector
+    input
+end
+
+function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
+    @assert input isa BlockVector
+    len = length(input)
+    offs = offsets(input)
+    elts = elements(input)
+    sz = 0
+    R = 1
+    for k = 1:len
+        L = R
+        @inbounds R = offs[k+1]
+        (l, r) = _take_range(N, R-L, rev)
+        sz += r - l + 1
+    end
+    if sz == length(elts)
+        return input
+    end
+    offs′ = Vector{Int}(undef, len+1)
+    perm = Vector{Int}(undef, sz)
+    @inbounds offs′[1] = top = 1
+    R = 1
+    for k = 1:len
+        L = R
+        @inbounds R = offs[k+1]
+        (l, r) = _take_range(N, R-L, rev)
+        for j = (L + l - 1):(L + r - 1)
+            perm[top] = j
+            top += 1
+        end
+        offs′[k+1] = top
+    end
+    elts′ = elts[perm]
+    card = cardinality(input)|x0to1
+    return BlockVector(offs′, elts′, card)
 end
 
 """
-    Given(P, X)
+    slice(rev::Bool=false) :: Pipeline
 
-Specifies the parameter in a bounded scope.
+This pipeline takes a pair vector of blocks and integers, and returns the first
+column with blocks restricted by the second column.
 """
-Given(P, Qs...) =
-    Pipeline(Given, P, Qs...)
+slice(rev::Bool=false) =
+    Pipeline(slice, rev)
 
-Given(env::Environment, q::Query, Ps...) =
-    Given(env, q, Keep(Ps[1:end-1]...) >> Ps[end])
-
-function Given(env::Environment, q::Query, X)
-    x = compile(X, env, stub(q))
-    monadic_given(q, x)
+function slice(rt::Runtime, input::AbstractVector, rev::Bool)
+    @assert input isa TupleVector
+    cols = columns(input)
+    @assert length(cols) == 2
+    vals, Ns = cols
+    @assert vals isa BlockVector
+    @assert eltype(Ns) <: Union{Missing,Int}
+    len = length(input)
+    offs = offsets(vals)
+    elts = elements(vals)
+    R = 1
+    sz = 0
+    for k = 1:len
+        L = R
+        @inbounds N = Ns[k]
+        @inbounds R = offs[k+1]
+        (l, r) = _take_range(N, R-L, rev)
+        sz += r - l + 1
+    end
+    if sz == length(elts)
+        return vals
+    end
+    offs′ = Vector{Int}(undef, len+1)
+    perm = Vector{Int}(undef, sz)
+    @inbounds offs′[1] = top = 1
+    R = 1
+    for k = 1:len
+        L = R
+        @inbounds N = Ns[k]
+        @inbounds R = offs[k+1]
+        (l, r) = _take_range(N, R-L, rev)
+        for j = (L + l - 1):(L + r - 1)
+            perm[top] = j
+            top += 1
+        end
+        offs′[k+1] = top
+    end
+    elts′ = elts[perm]
+    card = cardinality(vals)|x0to1
+    return BlockVector(offs′, elts′, card)
 end
 
-
-#
-# Then sugar.
-#
-
-Then(q::Query) =
-    Pipeline(Then, q)
-
-Then(env::Environment, q::Query, q′::Query) =
-    compose(q, q′)
-
-Then(ctor) =
-    Pipeline(Then, ctor)
-
-Then(ctor, args::Tuple) =
-    Pipeline(Then, ctor, args)
-
-Then(env::Environment, q::Query, ctor, args::Tuple=()) =
-    compile(ctor(Then(q), args...), env, istub(q))
-
-
-#
-# Count and other aggregate combinators.
-#
-
-function monadic_count(q::Query)
-    q = adapt_output(q)
-    r = chain_of(q,
-                block_length(),
-                wrap(),
-    ) |> designate(ishape(q), ValueOf(Int))
-    adapt_flow(clone_context(r))
-end
-
-"""
-    Count(X)
-    X >> Count
-
-Counts the number of elements produced by `X`.
-"""
-Count(X) =
-    Pipeline(Count, X)
-
-Lift(::typeof(Count)) =
-    Then(Count)
-
-function Count(env::Environment, q::Query, X)
-    x = compile(X, env, stub(q))
-    compose(q, monadic_count(x))
-end
-
-function monadic_aggregate(f, q::Query, hasdefault=true)
-    ity = Tuple{AbstractVector{eltype(domain(q))}}
-    oty = Core.Compiler.return_type(f, ity)
-    oty != Union{} || error("cannot compile $f to $ity")
-    if hasdefault || !fits(x0to1, cardinality(q))
-        chain_of(
-            q,
-            block_lift(f),
-            wrap(),
-        ) |> designate(ishape(q), OutputShape(domain(q)))
+@inline _take_range(n::Int, l::Int, rev::Bool) =
+    if !rev
+        (1, n >= 0 ? min(l, n) : max(0, l + n))
     else
-        chain_of(
-            q,
-            block_lift(f, missing),
-            adapt_missing(),
-        ) |> designate(ishape(q), OutputShape(domain(q), x0to1))
+        (n >= 0 ? min(l + 1, n + 1) : max(1, l + n + 1), l)
+    end
+
+@inline _take_range(::Missing, l::Int, ::Bool) =
+    (1, l)
+
+
+#
+# Optimizing a pipeline expression.
+#
+
+function simplify(p::Pipeline)
+    ps = simplify_chain(p)
+    if isempty(ps)
+        return pass()
+    elseif length(ps) == 1
+        return ps[1]
+    else
+        return chain_of(ps)
     end
 end
 
-"""
-    Sum(X)
-    X >> Sum
+simplify(ps::Vector{Pipeline}) =
+    simplify.(ps)
 
-Sums the elements produced by `X`.
-"""
-Sum(X) =
-    Pipeline(Sum, X)
+simplify(other) = other
 
-Lift(::typeof(Sum)) =
-    Then(Sum)
-
-"""
-    Max(X)
-    X >> Max
-
-Finds the maximum.
-"""
-Max(X) =
-    Pipeline(Max, X)
-
-Lift(::typeof(Max)) =
-    Then(Max)
-
-"""
-    Min(X)
-    X >> Min
-
-Finds the minimum.
-"""
-Min(X) =
-    Pipeline(Min, X)
-
-Lift(::typeof(Min)) =
-    Then(Min)
-
-function Sum(env::Environment, q::Query, X)
-    x = compile(X, env, stub(q))
-    monadic_lift(q, sum, Query[x])
+function simplify_chain(p::Pipeline)
+    if p.op == pass
+        return Pipeline[]
+    elseif p.op == with_column && p.args[2].op == pass
+        return Pipeline[]
+    elseif p.op == with_elements && p.args[1].op == pass
+        return Pipeline[]
+    elseif p.op == chain_of
+        return simplify_block(vcat(simplify_chain.(p.args[1])...))
+    else
+        return [Pipeline(p.op, simplify.(p.args)...)]
+    end
 end
 
-maximum_missing(v) =
-    !isempty(v) ? maximum(v) : missing
-
-function Max(env::Environment, q::Query, X)
-    x = compile(X, env, stub(q))
-    optional = cardinality(shape(x)) & x0to1 == x0to1
-    monadic_lift(q, optional ? maximum_missing : maximum, Query[x])
+function simplify_block(ps)
+    simplified = true
+    while simplified
+        simplified = false
+        ps′ = Pipeline[]
+        k = 1
+        while k <= length(ps)
+            if ps[k].op == with_column && ps[k].args[2].op == pass
+                simplified = true
+                k += 1
+            elseif ps[k].op == with_elements && ps[k].args[1].op == pass
+                simplified = true
+                k += 1
+            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == wrap && ps[k+1].op == flatten
+                simplified = true
+                k += 2
+            elseif k <= length(ps)-2 && ps[k].op == wrap && ps[k+1].op == with_elements && ps[k+2].op == flatten
+                simplified = true
+                p = ps[k+1].args[1]
+                if p.op == pass
+                elseif p.op == chain_of
+                    append!(ps′, p.args[1])
+                else
+                    push!(ps′, p)
+                end
+                k += 3
+            elseif k <= length(ps)-2 && ps[k].op == with_elements && ps[k+1].op == flatten && ps[k+2].op == with_elements
+                simplified = true
+                p = with_elements(simplify(chain_of(ps[k].args[1], ps[k+2])))
+                push!(ps′, p)
+                push!(ps′, ps[k+1])
+                k += 3
+            elseif k <= length(ps)-1 && ps[k].op == tuple_of && ps[k+1].op == column && ps[k+1].args[1] isa Int
+                simplified = true
+                p = ps[k].args[2][ps[k+1].args[1]]
+                if p.op == pass
+                elseif p.op == chain_of
+                    append!(ps′, p.args[1])
+                else
+                    push!(ps′, p)
+                end
+                k += 2
+            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k+1].op == with_elements
+                simplified = true
+                p = with_elements(simplify(chain_of(ps[k].args[1], ps[k+1].args[1])))
+                push!(ps′, p)
+                k += 2
+            else
+                push!(ps′, ps[k])
+                k += 1
+            end
+        end
+        ps = ps′
+    end
+    ps
 end
-
-minimum_missing(v) =
-    !isempty(v) ? minimum(v) : missing
-
-function Min(env::Environment, q::Query, X)
-    x = compile(X, env, stub(q))
-    optional = cardinality(shape(x)) & x0to1 == x0to1
-    monadic_lift(q, optional ? minimum_missing : minimum, Query[x])
-end
-
-
-#
-# Filter combinator.
-#
-
-function monadic_filter(q::Query, p::Query)
-    p = adapt_output(p)
-    # fits(shape(p), BlockOf(ValueOf(Bool))) || error("expected a predicate")
-    r = chain_of(tuple_of(pass(),
-                          chain_of(p, block_any())),
-                 sieve(),
-    ) |> designate(ishape(p), BlockOf(ishape(p), x0to1) |> IsFlow)
-    compose(q, r)
-end
-
-"""
-    Filter(X)
-
-Filters the input by condition.
-"""
-Filter(X) =
-    Pipeline(Filter, X)
-
-function Filter(env::Environment, q::Query, X)
-    x = compile(X, env, stub(q))
-    monadic_filter(q, x)
-end
-
-
-#
-# Take and Drop combinators.
-#
-
-monadic_take(q::Query, n::Int, rev::Bool) =
-    chain_of(
-        q,
-        slice(n, rev),
-    ) |> designate(ishape(q),
-                   BlockOf(elements(shape(q)), cardinality(shape(q))|x0to1) |> IsFlow)
-
-function monadic_take(q::Query, n::Query, rev::Bool)
-    n = adapt_output(n)
-    #fits(elements(n), ValueOf(Int)) || error("expected an integer query")
-    ishp = ishape(q)
-    shp = BlockOf(elements(shape(q)), cardinality(shape(q))|x0to1) |> IsFlow
-    chain_of(
-        tuple_of(
-            q,
-            chain_of(n, fits(x0to1, cardinality(shape(n))) ? block_lift(first, missing) : block_lift(first))),
-        slice(rev),
-    ) |> designate(ishp, shp)
-end
-
-"""
-    Take(N)
-
-Takes the first `N` elements.
-"""
-Take(N) =
-    Pipeline(Take, N)
-
-"""
-    Drop(N)
-
-Drops the first `N` elements.
-"""
-Drop(N) =
-    Pipeline(Drop, N)
-
-Take(env::Environment, q::Query, ::Missing, rev::Bool=false) =
-    q
-
-Take(env::Environment, q::Query, n::Int, rev::Bool=false) =
-    monadic_take(q, n, rev)
-
-function Take(env::Environment, q::Query, N, rev::Bool=false)
-    n = compile(N, env, istub(q))
-    monadic_take(q, n, rev)
-end
-
-Drop(env::Environment, q::Query, N) =
-    Take(env, q, N, true)
-

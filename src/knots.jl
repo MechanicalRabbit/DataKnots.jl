@@ -5,22 +5,19 @@
 import Base:
     convert,
     get,
-    show,
-    typed_vcat
+    show
 
 
 #
 # Definition.
 #
 
-abstract type AbstractPipeline end
-
 """
     DataKnot(cell::AbstractVector, shp::AbstractShape)
 
 Encapsulates a data point in a column-oriented form.
 """
-struct DataKnot <: AbstractPipeline
+struct DataKnot
     cell::AbstractVector
     shp::AbstractShape
 
@@ -50,12 +47,6 @@ convert(::Type{DataKnot}, db::DataKnot) = db
 convert(::Type{DataKnot}, val) = DataKnot(val)
 
 get(db::DataKnot) = db.cell[1]
-
-getindex(db::DataKnot, P; kws...) = run(db, P; kws...)
-
-typed_vcat(db::DataKnot, Ps...) = run(db, >>(Ps...))
-
-(db::DataKnot)(P; kws...) = run(db, P; kws...)
 
 cell(db::DataKnot) = db.cell
 

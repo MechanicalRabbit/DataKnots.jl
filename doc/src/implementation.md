@@ -1,11 +1,11 @@
-# Implementation Guide
+# Implementation Notes
 
 ```@contents
 Pages = [
     "vectors.md",
-    "queries.md",
-    "shapes.md",
     "pipelines.md",
+    "shapes.md",
+    "queries.md",
 ]
 Depth = 3
 ```

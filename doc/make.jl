@@ -29,8 +29,10 @@ makedocs(
         "thinking.md",
         "reference.md",
         hide("implementation.md",
-             ["vectors.md", "queries.md", "shapes.md", 
-              "pipelines.md"]),
+             ["vectors.md",
+              "pipelines.md",
+              "shapes.md",
+              "queries.md"]),
         "simulation.md",
     ],
     modules = [DataKnots])
