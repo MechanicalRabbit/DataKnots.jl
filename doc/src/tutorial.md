@@ -59,8 +59,7 @@ The content of this knot could be accessed via `get` function.
 ### Navigation
 
 In this first query, `It` means "use the current input". The
-dotted notation lets one navigate the hierarchy. Let's list
-employee names next.
+dotted notation lets one navigate the hierarchy.
 
     chicago[It.department.employee.name]
     #=>
@@ -294,7 +293,7 @@ not be helpful.
     =#
 
 Let's define `GT100K` to check if an employee's salary is greater
-than 100K. The output of this query is also labeled.
+than 100K. The output of this query component is also labeled.
 
     GT100K =
         :gt100k =>
@@ -456,22 +455,17 @@ DataKnots reference.
 
 ## Query Combinators
 
-DataKnots is not just a convenient, path-oriented way to do data
-inspection. It is a complete query system that can be extended to
-encapsulate arbitrary data sources and custom transformations.
+We've seen how DataKnots' queries are assembled algebraically:
+they either come from a set of atomic *primitives* or are built
+from other queries using *combinators*. Query primitives include
+the identity (`It`), constant values (like `100000`), and data
+navigation via `Get(:Symbol)`. Besides composition (`>>`), query
+combinators include `Count()`, `Record()`, `Label()`, `Filter()`,
+`Tag()` and broadcast operators such as equality `(.==)` and
+greater than `(.>)`.
 
-Query *primitives* seen thus far include the identity (`It`) as
-well as data navigation via `Get(:Symbol)`. Further, you've also
-seen constant values be automatically lifted into queries.
-
-Query *combinators* are then used to construct new queries from
-existing ones. Thus far you've seen composition (`>>`), `Count()`,
-`Record()`, `Label()`, `Filter()`, and `Tag()`. Further, you've
-also seen broadcast operators (`.==` and `.>`) be automatically
-lifted into query combinators.
-
-This next section describes additional combinators and
-functionality that we've found useful to include.
+This next section describes additional combinators and primitives
+included with DataKnots' core library.
 
 ### Aggregate queries
 
@@ -490,8 +484,8 @@ and returns the size of its input.
     │  1 │
     =#
 
-Aggregate queries operate contextually. In the following example,
-`Count` is performed relative to each department.
+Aggregate query primitives operate contextually. In the following
+example, `Count` is performed relative to each department.
 
     chicago[
         It.department >>
@@ -531,8 +525,8 @@ combinator.
     2 │  1 │
     =#
 
-Naturally, we could use the `Count()` query combinator to
-get the same result.
+Naturally, we could use the `Count()` query combinator to get the
+same result.
 
     chicago[It.department >> Count(It.employee)]
     #=>
@@ -543,8 +537,8 @@ get the same result.
     =#
 
 Which form of an aggregate to use depends upon what is
-notationally convenient.  For incremental construction, being
-able to simply append `>> Count` is often very helpful.
+notationally convenient. For incremental construction, being able
+to simply append `>> Count` is often very helpful.
 
     our_query = It.department.employee
     chicago[our_query >> Count]
@@ -554,11 +548,12 @@ able to simply append `>> Count` is often very helpful.
     │  3 │
     =#
 
-### Lifting
+### Function broadcasting
 
 Besides broadcast operators, such as greater than (`.>`),
-arbitrary functions can also be used with the broadcast notation.
-Let's define a function to extract an employee's first name.
+arbitrary functions can also be used as a query combinator with
+the broadcast notation. Let's define a function to extract an
+employee's first name.
 
     fname(x) = titlecase(split(x)[1])
     fname("NANCY A")
@@ -596,9 +591,10 @@ Aggregate Julia functions, such as `mean`, can also be used.
     2 │ FIRE        95484.0 │
     =#
 
-The more general form of `Lift`, documented in the reference. How
-a lifted function is treated as a query combinator depends upon
-that function's input and output signature.
+The more general conversion of a function into a combinator is
+accomplished by `Lift`, as documented in the reference. How a
+lifted function is treated as a query combinator depends upon that
+function's input and output signature.
 
 ### Keeping Values
 
@@ -646,6 +642,10 @@ with a higher than average salary within their department.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
+In this last query, `mean` simply can't be moved into the scope of
+the `Filter` combinator, since its arguments are evaluated for
+*each* employee.
+
 ### Query Parameters
 
 Julia's index notation permits named parameters. Each argument
@@ -689,8 +689,8 @@ With a different threshold amount, the result may change.
 ### Parameterized Queries
 
 Suppose we want parameterized query that could take other queries
-as arguments. Using `Given`, we could build a function that
-returns `employee` records with `salary` over a given amount.
+as arguments. Using `Given`, we could build a query that returns
+`employee` records with `salary` over a given amount.
 
     EmployeesOver(X) =
         Given(:AMT => X,
@@ -741,7 +741,7 @@ be refined with further computation.
     2 │ DANIEL A  │
     =#
 
-Unlike it's cousin `Having`, `Given` doesn't leak its definitions.
+Unlike its cousin `Having`, `Given` doesn't leak its definitions.
 Specifically, `It.amt` is not available outside `EmployeesOver()`.
 
     chicago[EmployeesOver(AvgSalary) >> It.amt]
@@ -749,7 +749,7 @@ Specifically, `It.amt` is not available outside `EmployeesOver()`.
 
 ### More Aggregates
 
-There are other aggregate functions, such as `Min`, `Max`, and
+There are other aggregate combinators, such as `Min`, `Max`, and
 `Sum`. They could be used to create a statistical measure.
 
     using Statistics: mean
@@ -784,6 +784,42 @@ These statistics could be run by department.
     ──┼─────────────────────────────────────────┼
     1 │ POLICE  2, 90729, 80016, 101442, 181458 │
     2 │ FIRE    1, 95484, 95484, 95484, 95484   │
+    =#
+
+To inspect the definition of `Stats` you could build a query,
+`Stats(It)`.
+
+    Stats(It)
+    #=>
+    Record(:count => Count(It),
+           :mean => floor.(Int, mean.(It)),
+           :min => Min(It),
+           :max => Max(It),
+           :sum => Sum(It))
+    =#
+
+Parameterized queries, such as `Stats`, can also be tagged. Then,
+when they are displayed with an argument, the definition is
+suppressed.
+
+    Stats(X) =
+      Tag(:Stats, (X,),
+        Record(
+            :count => Count(X),
+            :mean => floor.(Int, mean.(X)),
+            :min => Min(X),
+            :max => Max(X),
+            :sum => Sum(X)))
+    Stats(It)
+    #-> Stats(It)
+
+Suppressing the definition of parameterized queries such as
+`Stats` makes the incremental composition easier to follow.
+
+    MyQuery = It.department
+    MyQuery >>= Stats(It.employee.salary)
+    #=>
+    It.department >> Stats(It.employee.salary)
     =#
 
 ### Paging Data
@@ -837,3 +873,30 @@ to the last item in the stream:
     ──┼────────────────────────────────────┼
     1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
     =#
+
+To return the 1st half of the employees in the database, we could
+use `Take` with an argument that computes how many to take.
+
+    chicago[Employee >> Take(Count(Employee) .÷ 2)]
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+This last query deserves a bit of explanation. The argument to
+`Take` is evaluated at the *origin* of its input. An equivalent
+could be written using `Keep` before `Employee`.
+
+    Employee = It.department.employee
+    chicago[
+        Keep(:no => Count(Employee) .÷ 2) >>
+        Each(Employee >> Take(It.no))]
+    #=>
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+

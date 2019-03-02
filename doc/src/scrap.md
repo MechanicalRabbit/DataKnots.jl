@@ -210,3 +210,76 @@ is returned for `POLICE` and zero names are returned for `FIRE`.
 
 In both of these cases, if `Take` evaluated its arguments
 *elementwise* then, `Halfway` would be an error.
+
+### Incorrect Query Discussion
+
+In cases thus far, query combinators evaluate their parameters in
+the *target* context of their input. Consider a query returning
+employees having salary greater than 100K.
+
+    chicago[It.department.employee >> 
+            Filter(It.salary .> 100000)]
+   
+Let's consider the `Input` and `Argument` separately.
+
+    Input = It.department.employee
+    Argument = It.salary .> 100000
+    chicago[Input >> Filter(Argument)]
+    #=>
+        │ employee                    │
+        │ name       position  salary │
+      ──┼─────────────────────────────┼
+      1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+The `Input`, `It.department.employee` can be seen as a mapping
+from an *origin*, the database as a whole, to a given *target*, 
+a list of employees. By convention, we display the output of the
+query when it is performed.
+
+    chicago[Input]
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ NANCY A    POLICE OFFICER     80016 │
+    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+The `Argument`, `It.salary .> 100000`, cannot be performed in the
+context of the database. It's input must have a `salary` slot.
+
+    chicago[Argument]
+    #-> ERROR: cannot find salary ⋮
+
+That said, `Input` and `Argument` could be combined, since the
+*target* of the `Input` query, employee records, has the required
+`salary` slot.
+
+    chicago[Input >> Argument]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │ false │
+    3 │ false │
+    =#
+
+It's this reason why we say that `Filter` is *elementwise*, that
+is, it evaluates its arguments in the target context of its input,
+producing zero or more rows for each input.
+
+    chicago[Input >> Filter(Argument)]
+    #=>
+        │ employee                    │
+        │ name       position  salary │
+      ──┼─────────────────────────────┼
+      1 │ JEFFERY A  SERGEANT  101442 │
+    =#
+
+Even the `Count()` combinator is elementwise. By department, let's
+show how many employees have a salary greater than 100K.
+
+    chicago[It.department >> Count(It.employee.salary .> 100000)]
+

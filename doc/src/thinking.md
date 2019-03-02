@@ -36,7 +36,7 @@ obtained using the `get()` function; here, we get `nothing`.
 Consider a *constant* query `Hello` that produces a string value,
 `"Hello World"` for each of its inputs. This query is built using
 the `Lift` primitive, which converts a native Julia value into a
-query component. 
+query component.
 
     Hello = Lift("Hello World")
 
@@ -71,7 +71,7 @@ integers from `3` to `5`.
 
 The underlying value of this knot can also be accessed via `get`.
 
-    get(void[Lift(3:5)]) 
+    get(void[Lift(3:5)])
     #-> 3:5
 
 DataKnots track each query's cardinality. Observe that the `Hello`
