@@ -8,7 +8,7 @@ transformations.  We will use the following definitions:
 
     using DataKnots:
         @VectorTree,
-        Query,
+        Pipeline,
         Runtime,
         adapt_missing,
         adapt_tuple,
@@ -222,7 +222,7 @@ which makes a query that doubles the elements of the input vector.
 We need to provide two definitions: to create a `Query` object and to perform
 the query action on the given input vector.
 
-    double() = Query(double)
+    double() = Pipeline(double)
     double(::Runtime, input::AbstractVector{<:Number}) = input .* 2
 
     q = double()
@@ -232,7 +232,7 @@ the query action on the given input vector.
 It is also easy to create new query combinators.  Let us create a combinator
 `twice`, which applies the given query to the input two times.
 
-    twice(q) = Query(twice, q)
+    twice(q) = Pipeline(twice, q)
     twice(rt::Runtime, input, q) = q(rt, q(rt, input))
 
     q = twice(double())
@@ -287,22 +287,6 @@ function of several arguments.
 
     q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
     #-> Bool[1, 0, 0]
-
-The `record_lift` constructor is used when the input is in the *record* layout
-(a tuple vector with block vector columns); `record_lift(f)` is a shortcut for
-`chain_of(distribute_all(),with_elements(tuple_lift(f)))`.
-
-    q = record_lift(>)
-    #-> record_lift(>)
-
-    q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-    #-> @VectorTree (0:N) × Bool [[1, 0, 0], [], [1, 1, 0, 0]]
-
-With `record_lift`, the cardinality of the output is the upper bound of the
-column block cardinalities.
-
-    q(@VectorTree ((1:N)Int, (1:1)Int) [([260004, 185364, 170112], 200000)])
-    #-> @VectorTree (1:N) × Bool [[1, 0, 0]]
 
 
 ### Fillers
