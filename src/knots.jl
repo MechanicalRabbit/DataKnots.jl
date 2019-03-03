@@ -104,7 +104,7 @@ _data_focus(d::TableData, pos) =
     _focus_tuple(_focus_block(d, pos), pos)
 
 function _focus_block(d::TableData, pos::Int)
-    col_fld = _prepare_focus_block(d.body[:, pos], d.flds[pos])
+    col_fld = _prepare_focus_block(column(d.body, pos), d.flds[pos])
     col_fld !== nothing || return d
     col, fld = col_fld
     offs = offsets(col)
@@ -118,7 +118,7 @@ function _focus_block(d::TableData, pos::Int)
             perm[n] = k
         end
     end
-    cols′ = copy(d.body[:])
+    cols′ = copy(columns(d.body))
     for i in eachindex(cols′)
         cols′[i] =
             if i == pos
@@ -131,7 +131,7 @@ function _focus_block(d::TableData, pos::Int)
     flds′ = copy(d.flds)
     flds′[pos] = fld[]
     idxs′ = !isempty(d.idxs) ? d.idxs[perm] :
-            isplural(fld) ? (1:length(elts)) : (1:0)
+            !issingular(cardinality(fld)) ? (1:length(elts)) : (1:0)
     return TableData(d.head, body′, flds′, idxs′, 0)
 end
 
@@ -142,7 +142,7 @@ _prepare_focus_block(col::AbstractVector, shp::AbstractShape) =
     nothing
 
 function _focus_tuple(d::TableData, pos::Int)
-    col_fld = _prepare_focus_tuple(d.body[:, pos], d.flds[pos])
+    col_fld = _prepare_focus_tuple(column(d.body, pos), d.flds[pos])
     col_fld !== nothing || return d
     col, fld = col_fld
     cw = max(1, width(col))
@@ -167,11 +167,11 @@ function _focus_tuple(d::TableData, pos::Int)
         text = String(label(fld, k))
         head′[hh′, col′] = (text, 1)
     end
-    cols′ = copy(d.body[:])
-    splice!(cols′, pos:pos, width(col) > 0 ? col[:] : [BlockVector(fill(1, length(col)+1), Union{}[], x0to1)])
+    cols′ = copy(columns(d.body))
+    splice!(cols′, pos:pos, width(col) > 0 ? columns(col) : [BlockVector(fill(1, length(col)+1), Union{}[], x0to1)])
     body′ = TupleVector(length(d.body), cols′)
     flds′ = copy(d.flds)
-    splice!(flds′, pos:pos, width(col) > 0 ? fld[:] : [NoShape()])
+    splice!(flds′, pos:pos, width(col) > 0 ? columns(fld) : [NoShape()])
     return TableData(head′, body′, flds′, d.idxs, d.tear)
 end
 
@@ -314,7 +314,7 @@ end
 function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int)
     buf = IOBuffer()
     comma = false
-    for i in eachindex(shp[:])
+    for i in eachindex(columns(shp))
         if comma
             print(buf, ", ")
             avail -= 2

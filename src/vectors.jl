@@ -23,7 +23,7 @@ import Base:
 """
     TupleVector([lbls::Vector{Symbol},] len::Int, cols::Vector{AbstractVector})
     TupleVector([lbls::Vector{Symbol},] idxs::AbstractVector{Int}, cols::Vector{AbstractVector})
-    TupleVector(lcols::Pair{<:Union{Symbol,String},<:AbstractVector}...)
+    TupleVector(lcols::Pair{<:Union{Symbol,AbstractString},<:AbstractVector}...)
 
 Vector of tuples stored as a collection of column vectors.
 
@@ -59,37 +59,37 @@ end
 @inline TupleVector(lbls::Vector{Symbol}, len::Int, cols::Vector{AbstractVector}) =
     TupleVector{OneTo{Int}}(lbls, len, cols)
 
-let NO_LBLS = Symbol[]
+@inline TupleVector(idxs::AbstractVector{Int}, cols::Vector{AbstractVector}) =
+    TupleVector(Symbol[], idxs, cols)
 
-    global TupleVector
+@inline TupleVector(len::Int, cols::Vector{AbstractVector}) =
+    TupleVector(Symbol[], len, cols)
 
-    @inline TupleVector(idxs::AbstractVector{Int}, cols::Vector{AbstractVector}) =
-        TupleVector(NO_LBLS, idxs, cols)
+@inline TupleVector(len::Int) =
+    TupleVector(Symbol[], len, AbstractVector[])
 
-    @inline TupleVector(len::Int, cols::Vector{AbstractVector}) =
-        TupleVector(NO_LBLS, len, cols)
-
-    @inline TupleVector(len::Int) =
-        TupleVector(NO_LBLS, len, AbstractVector[])
-end
-
-function TupleVector(lcol1::Pair{<:Union{Symbol,String},<:AbstractVector}, more::Pair{<:Union{Symbol,String},<:AbstractVector}...)
+function TupleVector(lcol1::Pair{<:Union{Symbol,AbstractString},<:AbstractVector},
+                     more::Pair{<:Union{Symbol,AbstractString},<:AbstractVector}...)
     len = length(lcol1.second)
     lcols = (lcol1, more...)
-    lbls = collect(Symbol.(first.(lcols)))
+    lbls = collect(Symbol, Symbol.(first.(lcols)))
     cols = collect(AbstractVector, last.(lcols))
     TupleVector(lbls, len, cols)
 end
 
-function _checktuple(lbls::Vector{Symbol}, idxs::AbstractVector{Int}, cols::Vector{AbstractVector})
+function _checklabels(lbls::Vector{Symbol}, width::Int)
     if !isempty(lbls)
-        length(lbls) == length(cols) || error("number of labels ≠ number of columns")
+        length(lbls) == width || error("number of labels ≠ number of columns")
         seen = Set{Symbol}()
         for lbl in lbls
             !(lbl in seen) || error("duplicate column label $(repr(lbl))")
             push!(seen, lbl)
         end
     end
+end
+
+function _checktuple(lbls::Vector{Symbol}, idxs::AbstractVector{Int}, cols::Vector{AbstractVector})
+    _checklabels(lbls, length(cols))
     if !isempty(idxs)
         m = maximum(idxs)
         for col in cols
@@ -99,14 +99,7 @@ function _checktuple(lbls::Vector{Symbol}, idxs::AbstractVector{Int}, cols::Vect
 end
 
 function _checktuple(lbls::Vector{Symbol}, len::Int, cols::Vector{AbstractVector})
-    if !isempty(lbls)
-        length(lbls) == length(cols) || error("number of labels ≠ number of columns")
-        seen = Set{Symbol}()
-        for lbl in lbls
-            !(lbl in seen) || error("duplicate column label $(repr(lbl))")
-            push!(seen, lbl)
-        end
-    end
+    _checklabels(lbls, length(cols))
     for col in cols
         length(col) == len || error("unexpected column height")
     end
@@ -187,18 +180,6 @@ Returns a new `TupleVector` with a subset of rows specified by indexes `ks`.
     tv′
 end
 
-@inline getindex(tv::TupleVector, ::Colon) =
-    columns(tv)
-
-@inline getindex(tv::TupleVector, ::Colon, j::Union{Int,Symbol}) =
-    column(tv, j)
-
-@inline function getindex(tv::TupleVector, ::Colon, js::AbstractVector)
-    @boundscheck checkbounds(tv.cols, js)
-    @inbounds tv′ = TupleVector(tv.lbls, tv.idxs, tv.cols[js])
-    tv′
-end
-
 
 #
 # Cardinality of a data block.
@@ -235,14 +216,11 @@ syntaxof(c::Cardinality) =
 
 # Predicates.
 
-isregular(c::Cardinality) =
-    c == x1to1
+ismandatory(c::Cardinality) =
+    c & x0to1 != x0to1
 
-isoptional(c::Cardinality) =
-    c & x0to1 == x0to1
-
-isplural(c::Cardinality) =
-    c & x1toN == x1toN
+issingular(c::Cardinality) =
+    c & x1toN != x1toN
 
 
 #
@@ -287,22 +265,22 @@ end
     BlockVector{card}(:, elts)
 
 function _checkblock(len::Int, offs::OneTo{Int}, ::Cardinality)
-    !isempty(offs) || error("partition must be non-empty")
-    offs[end] == len+1 || error("partition must enclose the elements")
+    !isempty(offs) || error("offsets must be non-empty")
+    offs[end] == len+1 || error("offsets must enclose the elements")
 end
 
 function _checkblock(len::Int, offs::AbstractVector{Int}, card::Cardinality)
-    !isempty(offs) || error("partition must be non-empty")
+    !isempty(offs) || error("offsets must be non-empty")
     @inbounds off = offs[1]
-    off == 1 || error("partition must start with 1")
+    off == 1 || error("offsets must start with 1")
     for k = 2:lastindex(offs)
         @inbounds off′ = offs[k]
-        off′ >= off || error("partition must be monotone")
-        isplural(card) || off′ <= off+1 || error("singular blocks must have at most one element")
-        isoptional(card) || off′ >= off+1 || error("mandatory blocks must have at least one element")
+        off′ >= off || error("offsets must be monotone")
+        !issingular(card) || off′ <= off+1 || error("singular blocks must have at most one element")
+        !ismandatory(card) || off′ >= off+1 || error("mandatory blocks must have at least one element")
         off = off′
     end
-    off == len+1 || error("partition must enclose the elements")
+    off == len+1 || error("offsets must enclose the elements")
 end
 
 # Printing.
@@ -323,18 +301,6 @@ show(io::IO, ::MIME"text/plain", bv::BlockVector) =
 
 @inline cardinality(::Type{<:BlockVector{CARD}}) where {CARD} = CARD
 
-@inline isregular(bv::BlockVector{CARD}) where {CARD} = isregular(CARD)
-
-@inline isregular(::Type{<:BlockVector{CARD}}) where {CARD} = isregular(CARD)
-
-@inline isplural(bv::BlockVector{CARD}) where {CARD} = isplural(CARD)
-
-@inline isplural(::Type{<:BlockVector{CARD}}) where {CARD} = isplural(CARD)
-
-@inline isoptional(bv::BlockVector{CARD}) where {CARD} = isoptional(CARD)
-
-@inline isoptional(::Type{<:BlockVector{CARD}}) where {CARD} = isoptional(CARD)
-
 # Vector interface.
 
 @inline size(bv::BlockVector) = (length(bv.offs)-1,)
@@ -342,7 +308,7 @@ show(io::IO, ::MIME"text/plain", bv::BlockVector) =
 IndexStyle(::Type{<:BlockVector}) = IndexLinear()
 
 eltype(bv::BlockVector) =
-    Vector{eltype(bv.elts)} # TODO: clarify
+    Vector{eltype(bv.elts)}
 
 eltype(bv::BlockVector{x0to1}) =
     Union{eltype(bv.elts),Missing}
@@ -499,9 +465,12 @@ end
 #
 
 summary(io::IO, v::Union{TupleVector,BlockVector}) =
-    pprint(io, pair_layout(literal("@VectorTree"),
-                           tile_expr(Expr(:call, :×, length(v), syntaxof(shapeof(v)))),
-                           sep=" of "))
+    pprint(io, summary_layout(v))
+
+summary_layout(v::AbstractVector) =
+    pair_layout(literal("@VectorTree"),
+                tile_expr(Expr(:call, :×, length(v), syntaxof(shapeof(v)))),
+                sep=" of ")
 
 Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
     if !get(io, :compact, false)::Bool
@@ -536,11 +505,11 @@ recursively:
 
 - Julia type `T` indicates a regular vector of type `T`.
 - Tuple `(col₁, col₂, ...)` indicates a `TupleVector` instance.
-- Named tuple `(lbl₁ = col₁, lbl₂ = col₂, ...)` indicates a `TupleVector` instance
-  with the given labels.
-- Prefixes `(*)`, `(+)`, `(-)`, `(1)` indicate a `BlockVector` instance with
-  the respective cardinality constraints (no constraints, mandatory, singular,
-  mandatory+singular).
+- Named tuple `(lbl₁ = col₁, lbl₂ = col₂, ...)` indicates a `TupleVector`
+  instance with the given labels.
+- Prefixes `(0:N)`, `(1:N)`, `(0:1)`, `(1:1)` indicate a `BlockVector` instance
+  with the respective cardinality constraints (no constraints, mandatory,
+  singular, mandatory+singular).
 
 The second parameter, `vec`, is a vector literal in row-oriented format:
 

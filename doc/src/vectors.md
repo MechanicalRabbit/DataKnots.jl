@@ -11,12 +11,12 @@ We will need the following definitions:
         BlockVector,
         Cardinality,
         TupleVector,
+        cardinality,
         column,
         columns,
         elements,
-        isoptional,
-        isplural,
-        isregular,
+        ismandatory,
+        issingular,
         labels,
         offsets,
         width,
@@ -62,7 +62,7 @@ The other option, "tuple of vectors" layout, is called a *column-oriented
 format*.  It is often used by analytical databases as it is more suited for
 processing complex analytical queries.
 
-The module `DataKnot` implements data structures to support column-oriented
+The `DataKnots` package implements data structures to support column-oriented
 data format.  In particular, tabular data is represented using `TupleVector`
 objects.
 
@@ -180,7 +180,7 @@ Element vectors are partitioned into table cells by offset vectors.
     salary_offs = [1, 2, 3, 4, 4]
     rate_offs = [1, 1, 1, 1, 2]
 
-The pairs of element of offset vectors are wrapped as `BlockVector` objects.
+The pairs of element and offset vectors are wrapped as `BlockVector` objects.
 
     salary_col = BlockVector(salary_offs, salary_elts, x0to1)
     rate_col = BlockVector(rate_offs, rate_elts, x0to1)
@@ -381,16 +381,13 @@ Cardinality values support bitwise operations.
     print(x1to1|x0to1|x1toN)    #-> x0toN
     print(x1toN&~x1toN)         #-> x1to1
 
-We can use predicates `isregular()`, `isoptional()`, `isplural()` to check
-cardinality values.
+We can use predicates `ismandatory()` and `issingular()` to check if a
+constraint is present.
 
-    isregular(x1to1)            #-> true
-    isregular(x0to1)            #-> false
-    isregular(x1toN)            #-> false
-    isoptional(x0to1)           #-> true
-    isoptional(x1toN)           #-> false
-    isplural(x1toN)             #-> true
-    isplural(x0to1)             #-> false
+    ismandatory(x0to1)          #-> false
+    ismandatory(x1toN)          #-> true
+    issingular(x1toN)           #-> false
+    issingular(x0to1)           #-> true
 
 
 ### `BlockVector`
@@ -427,22 +424,22 @@ offset vector.
 The `BlockVector` constructor verifies that the offset vector is well-formed.
 
     BlockVector(Base.OneTo(0), [])
-    #-> ERROR: partition must be non-empty
+    #-> ERROR: offsets must be non-empty
 
     BlockVector(Int[], [])
-    #-> ERROR: partition must be non-empty
+    #-> ERROR: offsets must be non-empty
 
     BlockVector([0], [])
-    #-> ERROR: partition must start with 1
+    #-> ERROR: offsets must start with 1
 
     BlockVector([1,2,2,1], ["HEALTH"])
-    #-> ERROR: partition must be monotone
+    #-> ERROR: offsets must be monotone
 
     BlockVector(Base.OneTo(4), ["HEALTH", "FINANCE"])
-    #-> ERROR: partition must enclose the elements
+    #-> ERROR: offsets must enclose the elements
 
     BlockVector([1,2,3,6], ["HEALTH", "FINANCE"])
-    #-> ERROR: partition must enclose the elements
+    #-> ERROR: offsets must enclose the elements
 
 The constructor also validates the cardinality constraint.
 
@@ -460,11 +457,8 @@ We can access individual components of the vector.
     elements(bv)
     #-> ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]
 
-    isplural(bv)
-    #-> true
-
-    isoptional(bv)
-    #-> true
+    cardinality(bv)
+    #-> x0toN::Cardinality = 3
 
 When indexed by a vector of indexes, an instance of `BlockVector` is returned.
 
@@ -542,7 +536,7 @@ block could be represented by the element itself; an empty block by `missing`.
     ]
     #-> @VectorTree (0:N) × String [["HEALTH"], ["FINANCE", "HUMAN RESOURCES"], [], ["POLICE", "FIRE"]]
 
-Ill-formed `@VectorTree` contructors are rejected.
+Ill-formed `@VectorTree` constructors are rejected.
 
     @VectorTree "String" ["POLICE", "FIRE"]
     #=>
