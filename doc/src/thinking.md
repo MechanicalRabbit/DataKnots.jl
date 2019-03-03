@@ -313,7 +313,7 @@ use `Then` to build a query that aggregates from its input.
 Second, we register a `Lift` to this query when the combinator's
 name is mentioned in a query expression.
 
-    DataKnots.Lift(::typeof(Mean)) = Then(Mean)
+    DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)
 
 Once these are done, one could take an average of sums as follows:
 
@@ -392,7 +392,7 @@ builds a query returning the first half of an input stream.
 
 Using `Then`, this combinator could be used as a query primitive.
 
-    DataKnots.Lift(::typeof(FirstHalf)) = Then(FirstHalf)
+    DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
     void[OneTo(6) >> FirstHalf]
     #=>
       │ It │

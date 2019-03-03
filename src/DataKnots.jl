@@ -23,7 +23,6 @@ export
     Sum,
     Tag,
     Take,
-    Then,
     x0to1,
     x0toN,
     x1to1,
