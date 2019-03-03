@@ -114,21 +114,11 @@ end
 
 # Printing.
 
-siglabel(lbl::Symbol) =
-    Base.isidentifier(lbl) ? lbl : string(lbl)
-
-sigsyntax(tv::TupleVector) =
-    if isempty(tv.lbls)
-        Expr(:tuple, sigsyntax.(tv.cols)...)
-    else
-        Expr(:tuple, sigsyntax.(siglabel.(tv.lbls) .=> tv.cols)...)
-    end
-
 show(io::IO, tv::TupleVector) =
-    show_columnar(io, tv)
+    show_vectortree(io, tv)
 
 show(io::IO, ::MIME"text/plain", tv::TupleVector) =
-    display_columnar(io, tv)
+    display_vectortree(io, tv)
 
 # Properties.
 
@@ -317,14 +307,11 @@ end
 
 # Printing.
 
-sigsyntax(bv::BlockVector{CARD}) where {CARD} =
-    Expr(:call, :×, sigsyntax(CARD), sigsyntax(bv.elts))
-
 show(io::IO, bv::BlockVector) =
-    show_columnar(io, bv)
+    show_vectortree(io, bv)
 
 show(io::IO, ::MIME"text/plain", bv::BlockVector) =
-    display_columnar(io, bv)
+    display_vectortree(io, bv)
 
 # Properties.
 
@@ -513,25 +500,20 @@ end
 
 summary(io::IO, v::Union{TupleVector,BlockVector}) =
     pprint(io, pair_layout(literal("@VectorTree"),
-                           tile_expr(Expr(:call, :×, length(v), sigsyntax(v))),
+                           tile_expr(Expr(:call, :×, length(v), sigsyntax(shapeof(v)))),
                            sep=" of "))
-
-sigsyntax(v::AbstractVector) = eltype(v)
-
-sigsyntax(p::Pair{<:Union{Symbol,String},<:AbstractVector}) =
-    Expr(:(=), p.first, sigsyntax(p.second))
 
 Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
     if !get(io, :compact, false)::Bool
-        "@VectorTree $(sigsyntax(cv)) "
+        "@VectorTree $(sigsyntax(shapeof(cv))) "
     else
         ""
     end
 
-show_columnar(io::IO, v::AbstractVector) =
+show_vectortree(io::IO, v::AbstractVector) =
     Base.show_vector(io, v)
 
-function display_columnar(io::IO, v::AbstractVector)
+function display_vectortree(io::IO, v::AbstractVector)
     summary(io, v)
     !isempty(v) || return
     println(io, ":")

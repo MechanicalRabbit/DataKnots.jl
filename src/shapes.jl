@@ -45,6 +45,9 @@ syntax(p::Pair{Symbol,<:AbstractShape}) =
 syntax_inner(shp::AbstractShape) =
     syntax(shp)
 
+siglabel(lbl::Symbol) =
+    Base.isidentifier(lbl) ? lbl : string(lbl)
+
 sigsyntax(shp::AbstractShape) =
     nameof(typeof(shp))
 
