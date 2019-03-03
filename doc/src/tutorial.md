@@ -709,21 +709,6 @@ use `Take` with an argument that computes how many to take.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-This last query deserves a bit of explanation, but the reference
-is a more appropriate place for this discussion. For now, we could
-say the query above is equivalent to the following.
-
-    Employee = It.department.employee
-    chicago[
-        Keep(:no => Count(Employee) .÷ 2) >>
-        Each(Employee >> Take(It.no))]
-    #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
-    =#
-
 ### Query Parameters
 
 Julia's index notation permits named parameters. Each argument
