@@ -14,16 +14,19 @@ using PrettyPrinting:
 print_expr(io::IO, ex) =
     pprint(io, tile_expr(ex))
 
-syntax(obj) =
+quoteof(obj) =
     obj
 
-syntax(ref::Base.RefValue) =
-    syntax(ref.x)
+quoteof_inner(obj) =
+    quoteof(obj)
 
-syntax(s::Symbol) =
+quoteof(ref::Base.RefValue) =
+    quoteof(ref.x)
+
+quoteof(s::Symbol) =
     QuoteNode(s)
 
-function syntax(f::Function)
+function quoteof(f::Function)
     s = nameof(f)
     if startswith(string(s), "#")
         ex = _reconstruct(f)
@@ -34,18 +37,18 @@ function syntax(f::Function)
     s
 end
 
-syntax(f::Union{Function,Type}, args::Vector{Any}) =
-    Expr(:call, nameof(f), syntax.(args)...)
+quoteof(f::Union{Function,Type}, args::Vector{Any}) =
+    Expr(:call, nameof(f), quoteof.(args)...)
 
-syntax(::typeof(broadcast), args::Vector{Any}) =
+quoteof(::typeof(broadcast), args::Vector{Any}) =
     if length(args) >= 1 && args[1] isa Function
-        syntax(broadcast, args[1], args[2:end])
+        quoteof(broadcast, args[1], args[2:end])
     else
-        Expr(:call, nameof(broadcast), syntax.(args)...)
+        Expr(:call, nameof(broadcast), quoteof.(args)...)
     end
 
-function syntax(::typeof(broadcast), f::Function, args::Vector{Any})
-    ex = syntax(f)
+function quoteof(::typeof(broadcast), f::Function, args::Vector{Any})
+    ex = quoteof(f)
     if Meta.isexpr(ex, :(->), 2)
         names =
             if Meta.isexpr(ex.args[1], :tuple)
@@ -84,11 +87,11 @@ function _broadcast(ex, repl)
     ex
 end
 
-syntax(v::Vector) =
-    Expr(:vect, syntax.(v)...)
+quoteof(v::Vector) =
+    Expr(:vect, quoteof.(v)...)
 
-syntax(p::Pair) =
-    Expr(:call, :(=>), syntax(p.first), syntax(p.second))
+quoteof(p::Pair) =
+    Expr(:call, :(=>), quoteof(p.first), quoteof(p.second))
 
 tile_expr(obj; precedence=0) =
     tile(obj)

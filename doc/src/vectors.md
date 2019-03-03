@@ -544,6 +544,11 @@ block could be represented by the element itself; an empty block by `missing`.
 
 Ill-formed `@VectorTree` contructors are rejected.
 
+    @VectorTree "String" ["POLICE", "FIRE"]
+    #=>
+    ERROR: expected a type; got "String"
+    =#
+
     @VectorTree (String, Int) ("GARRY M", 260004)
     #=>
     ERROR: LoadError: expected a vector literal; got :(("GARRY M", 260004))

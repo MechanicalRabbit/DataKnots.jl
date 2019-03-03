@@ -36,26 +36,23 @@ Represents the structure of column-oriented data.
 """
 abstract type AbstractShape end
 
-syntax(shp::AbstractShape) =
+quoteof(shp::AbstractShape) =
     Expr(:call, nameof(typeof(shp)))
 
-syntax(p::Pair{Symbol,<:AbstractShape}) =
-    Expr(:call, :(=>), syntax(siglabel(p.first)), syntax(p.second))
-
-syntax_inner(shp::AbstractShape) =
-    syntax(shp)
+quoteof(p::Pair{Symbol,<:AbstractShape}) =
+    Expr(:call, :(=>), quoteof(siglabel(p.first)), quoteof(p.second))
 
 siglabel(lbl::Symbol) =
     Base.isidentifier(lbl) ? lbl : string(lbl)
 
-sigsyntax(shp::AbstractShape) =
+syntaxof(shp::AbstractShape) =
     nameof(typeof(shp))
 
-sigsyntax(p::Pair{Symbol,<:AbstractShape}) =
-    Expr(:(=), siglabel(p.first), sigsyntax(p.second))
+syntaxof(p::Pair{Symbol,<:AbstractShape}) =
+    Expr(:(=), siglabel(p.first), syntaxof(p.second))
 
 show(io::IO, shp::AbstractShape) =
-    print_expr(io, syntax(shp))
+    print_expr(io, quoteof(shp))
 
 
 #
@@ -70,10 +67,10 @@ Nothing is known about the data.
 struct AnyShape <: AbstractShape
 end
 
-syntax_inner(::AnyShape) =
+quoteof_inner(::AnyShape) =
     :Any
 
-sigsyntax(::AnyShape) =
+syntaxof(::AnyShape) =
     :Any
 
 eltype(::AnyShape) = Any
@@ -86,8 +83,8 @@ Inconsistent constraints on the data.
 struct NoShape <: AbstractShape
 end
 
-sigsyntax(::NoShape) =
-    :None
+syntaxof(::NoShape) =
+    :Bottom
 
 eltype(::NoShape) = Union{}
 
@@ -110,13 +107,13 @@ ValueOf(::Type{Union{}}) =
 convert(::Type{AbstractShape}, ty::Type) =
     ValueOf(ty)
 
-syntax(shp::ValueOf) =
+quoteof(shp::ValueOf) =
     Expr(:call, nameof(ValueOf), shp.ty)
 
-syntax_inner(shp::ValueOf) =
+quoteof_inner(shp::ValueOf) =
     shp.ty
 
-sigsyntax(shp::ValueOf) = shp.ty
+syntaxof(shp::ValueOf) = shp.ty
 
 eltype(shp::ValueOf) = shp.ty
 
@@ -150,18 +147,18 @@ end
 @inline TupleOf(lcols::Pair{<:Union{Symbol,String},<:Union{AbstractShape,Type}}...) =
     TupleOf(collect(Symbol.(first.(lcols))), collect(AbstractShape, last.(lcols)))
 
-syntax(shp::TupleOf) =
+quoteof(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:call, nameof(TupleOf), syntax.(shp.cols)...)
+        Expr(:call, nameof(TupleOf), quoteof.(shp.cols)...)
     else
-        Expr(:call, nameof(TupleOf), syntax.(shp.lbls .=> shp.cols)...)
+        Expr(:call, nameof(TupleOf), quoteof.(shp.lbls .=> shp.cols)...)
     end
 
-sigsyntax(shp::TupleOf) =
+syntaxof(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:tuple, sigsyntax.(shp.cols)...)
+        Expr(:tuple, syntaxof.(shp.cols)...)
     else
-        Expr(:tuple, sigsyntax.(shp.lbls .=> shp.cols)...)
+        Expr(:tuple, syntaxof.(shp.lbls .=> shp.cols)...)
     end
 
 @inline labels(shp::TupleOf) = shp.lbls
@@ -229,15 +226,15 @@ end
 BlockOf(elts) =
     BlockOf(elts, x0toN)
 
-syntax(shp::BlockOf) =
+quoteof(shp::BlockOf) =
     if shp.card == x0toN
-        Expr(:call, nameof(BlockOf), syntax_inner(shp.elts))
+        Expr(:call, nameof(BlockOf), quoteof_inner(shp.elts))
     else
-        Expr(:call, nameof(BlockOf), syntax_inner(shp.elts), syntax(shp.card))
+        Expr(:call, nameof(BlockOf), quoteof_inner(shp.elts), quoteof(shp.card))
     end
 
-sigsyntax(shp::BlockOf) =
-    Expr(:call, :×, sigsyntax(shp.card), sigsyntax(shp.elts))
+syntaxof(shp::BlockOf) =
+    Expr(:call, :×, syntaxof(shp.card), syntaxof(shp.elts))
 
 @inline getindex(shp::BlockOf) = shp.elts
 
@@ -275,8 +272,8 @@ abstract type Annotation <: AbstractShape end
 
 @inline getindex(shp::Annotation) = shp.sub
 
-sigsyntax(shp::Annotation) =
-    sigsyntax(shp.sub)
+syntaxof(shp::Annotation) =
+    syntaxof(shp.sub)
 
 eltype(shp::Annotation) =
     eltype(subject(shp))
@@ -295,8 +292,8 @@ HasLabel(sub::Union{AbstractShape,Type}, lbl::Union{Symbol,String}) =
 HasLabel(lbl::Union{Symbol,String}) =
     sub -> HasLabel(sub, lbl)
 
-syntax(shp::HasLabel) =
-    Expr(:call, nameof(|>), syntax_inner(shp.sub), Expr(:call, nameof(HasLabel), syntax(siglabel(shp.lbl))))
+quoteof(shp::HasLabel) =
+    Expr(:call, nameof(|>), quoteof_inner(shp.sub), Expr(:call, nameof(HasLabel), quoteof(siglabel(shp.lbl))))
 
 subject(shp::HasLabel) = shp.sub
 
@@ -314,8 +311,8 @@ struct IsFlow <: Annotation
     sub::BlockOf
 end
 
-syntax(shp::IsFlow) =
-    Expr(:call, nameof(|>), syntax_inner(shp.sub), nameof(IsFlow))
+quoteof(shp::IsFlow) =
+    Expr(:call, nameof(|>), quoteof_inner(shp.sub), nameof(IsFlow))
 
 subject(shp::IsFlow) = shp.sub
 
@@ -339,8 +336,8 @@ struct IsScope <: Annotation
     sub::TupleOf
 end
 
-syntax(shp::IsScope) =
-    Expr(:call, nameof(|>), syntax_inner(shp.sub), nameof(IsScope))
+quoteof(shp::IsScope) =
+    Expr(:call, nameof(|>), quoteof_inner(shp.sub), nameof(IsScope))
 
 subject(shp::IsScope) = shp.sub
 
@@ -387,14 +384,14 @@ end
 
 Signature() = Signature(NoShape(), AnyShape())
 
-syntax(sig::Signature) =
-    Expr(:call, nameof(Signature), syntax(sig.ishp), syntax(sig.shp))
+quoteof(sig::Signature) =
+    Expr(:call, nameof(Signature), quoteof(sig.ishp), quoteof(sig.shp))
 
-sigsyntax(sig::Signature) =
-    Expr(:(->), sigsyntax(sig.ishp), sigsyntax(sig.shp))
+syntaxof(sig::Signature) =
+    Expr(:(->), syntaxof(sig.ishp), syntaxof(sig.shp))
 
 show(io::IO, sig::Signature) =
-    print_expr(io, syntax(sig))
+    print_expr(io, quoteof(sig))
 
 ishape(sig::Signature) = sig.ishp
 

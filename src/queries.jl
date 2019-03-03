@@ -43,11 +43,11 @@ end
 Query(op, args...) =
     Query(op, collect(Any, args))
 
-syntax(F::Query) =
-    syntax(F.op, F.args)
+quoteof(F::Query) =
+    quoteof(F.op, F.args)
 
 show(io::IO, F::Query) =
-    print_expr(io, syntax(F))
+    print_expr(io, quoteof(F))
 
 
 #
@@ -298,8 +298,8 @@ end
 Compose(X, Xs...) =
     Query(Compose, X, Xs...)
 
-syntax(::typeof(Compose), args::Vector{Any}) =
-    syntax(>>, args)
+quoteof(::typeof(Compose), args::Vector{Any}) =
+    quoteof(>>, args)
 
 function Compose(env::Environment, p::Pipeline, Xs...)
     for X in Xs
@@ -451,8 +451,8 @@ BroadcastLift(f, Xs) = Query(BroadcastLift, f, Xs)
 BroadcastLift(env::Environment, p::Pipeline, args...) =
     Lift(env, p, args...)
 
-syntax(::typeof(BroadcastLift), args::Vector{Any}) =
-    syntax(broadcast, Any[args[1], syntax.(args[2])...])
+quoteof(::typeof(BroadcastLift), args::Vector{Any}) =
+    quoteof(broadcast, Any[args[1], quoteof.(args[2])...])
 
 Lift(bc::Broadcast.Broadcasted{QueryStyle}) =
     BroadcastLift(bc)
@@ -540,14 +540,14 @@ Tag(env::Environment, p::Pipeline, name, X) =
 Tag(env::Environment, p::Pipeline, name, args, X) =
     compile(X, env, p)
 
-syntax(::typeof(Tag), args::Vector{Any}) =
-    syntax(Tag, args...)
+quoteof(::typeof(Tag), args::Vector{Any}) =
+    quoteof(Tag, args...)
 
-syntax(::typeof(Tag), name::Symbol, X) =
+quoteof(::typeof(Tag), name::Symbol, X) =
     name
 
-syntax(::typeof(Tag), name::Symbol, args::Tuple, X) =
-    Expr(:call, name, syntax.(args)...)
+quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
+    Expr(:call, name, quoteof.(args)...)
 
 
 #
@@ -572,7 +572,7 @@ function Get(env::Environment, p::Pipeline, name)
         if q !== nothing
             q = chain_of(column(1), q) |> designate(elements(shp), shape(q))
         else
-            error("cannot find $name at\n$(sigsyntax(column(elements(shp))))")
+            error("cannot find $name at\n$(syntaxof(column(elements(shp))))")
         end
     end
     q = adapt_flow(clone_context(q))

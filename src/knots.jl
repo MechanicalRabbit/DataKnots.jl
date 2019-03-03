@@ -52,7 +52,7 @@ cell(db::DataKnot) = db.cell
 
 shape(db::DataKnot) = db.shp
 
-syntax(db::DataKnot) =
+quoteof(db::DataKnot) =
     Symbol("DataKnot( … )")
 
 

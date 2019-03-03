@@ -101,11 +101,11 @@ function (p::Pipeline)(rt::Runtime, input::AbstractVector)
     p.op(rt, input, p.args...)
 end
 
-syntax(p::Pipeline) =
-    syntax(p.op, p.args)
+quoteof(p::Pipeline) =
+    quoteof(p.op, p.args)
 
 show(io::IO, p::Pipeline) =
-    print_expr(io, syntax(p))
+    print_expr(io, quoteof(p))
 
 """
     optimize(::Pipeline) :: Pipeline
@@ -381,11 +381,11 @@ end
 chain_of(ps::Vector) =
     Pipeline(chain_of, ps)
 
-syntax(::typeof(chain_of), args::Vector{Any}) =
+quoteof(::typeof(chain_of), args::Vector{Any}) =
     if length(args) == 1 && args[1] isa Vector
-        Expr(:call, chain_of, syntax.(args[1])...)
+        Expr(:call, chain_of, quoteof.(args[1])...)
     else
-        Expr(:call, chain_of, syntax.(args)...)
+        Expr(:call, chain_of, quoteof.(args)...)
     end
 
 function chain_of(rt::Runtime, input::AbstractVector, ps)
@@ -415,15 +415,15 @@ tuple_of(lps::Pair{Symbol}...) =
 
 tuple_of(lbls::Vector{Symbol}, ps::Vector) = Pipeline(tuple_of, lbls, ps)
 
-syntax(::typeof(tuple_of), args::Vector{Any}) =
+quoteof(::typeof(tuple_of), args::Vector{Any}) =
     if length(args) == 2 && args[1] isa Vector{Symbol} && args[2] isa Vector
         if isempty(args[1])
-            Expr(:call, tuple_of, syntax.(args[2])...)
+            Expr(:call, tuple_of, quoteof.(args[2])...)
         else
-            Expr(:call, tuple_of, syntax.(args[1] .=> args[2])...)
+            Expr(:call, tuple_of, quoteof.(args[1] .=> args[2])...)
         end
     else
-        Expr(:call, tuple_of, syntax.(args)...)
+        Expr(:call, tuple_of, quoteof.(args)...)
     end
 
 function tuple_of(rt::Runtime, input::AbstractVector, lbls, ps)

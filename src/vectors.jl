@@ -216,10 +216,10 @@ Cardinality
 
 @enum Cardinality::UInt8 x1to1 x0to1 x1toN x0toN
 
-syntax(c::Cardinality) =
+quoteof(c::Cardinality) =
     c == x1to1 ? :x1to1 : c == x0to1 ? :x0to1 : c == x1toN ? :x1toN : :x0toN
 
-sigsyntax(c::Cardinality) =
+syntaxof(c::Cardinality) =
     c == x1to1 ? :(1:1) : c == x0to1 ? :(0:1) : c == x1toN ? :(1:N) : :(0:N)
 
 # Bitwise operations.
@@ -500,12 +500,12 @@ end
 
 summary(io::IO, v::Union{TupleVector,BlockVector}) =
     pprint(io, pair_layout(literal("@VectorTree"),
-                           tile_expr(Expr(:call, :×, length(v), sigsyntax(shapeof(v)))),
+                           tile_expr(Expr(:call, :×, length(v), syntaxof(shapeof(v)))),
                            sep=" of "))
 
 Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
     if !get(io, :compact, false)::Bool
-        "@VectorTree $(sigsyntax(shapeof(cv))) "
+        "@VectorTree $(syntaxof(shapeof(cv))) "
     else
         ""
     end
@@ -588,7 +588,7 @@ function sig2mk(sig)
         card = CARD_MAP[sig.args[1]]
         return MakeBlockVector(elts_mk, card)
     else
-        ty = sig
+        ty = sig == :Bottom ? :(Union{}) : sig
         return MakeVector(ty)
     end
 end
@@ -686,5 +686,5 @@ _reconstruct(mk::MakeBlockVector) =
                 _reconstruct(mk.elts_mk))
 
 _reconstruct(mk::MakeVector) =
-    Expr(:ref, mk.ty, mk.vals...)
+    Expr(:ref, :(try $(mk.ty)::Type catch; error("expected a type; got $($(repr(mk.ty)))") end), mk.vals...)
 

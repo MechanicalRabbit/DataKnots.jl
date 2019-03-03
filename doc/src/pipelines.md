@@ -99,7 +99,7 @@ A variant of `block_filler` called `null_filler` makes a query that produces a
 
     q = null_filler()
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree (0:1) × Union{} [missing, missing, missing]
+    #-> @VectorTree (0:1) × Bottom [missing, missing, missing]
 
 
 ### Chaining queries
@@ -331,7 +331,7 @@ The query `null_filler()` produces a block vector with empty blocks.
     #-> null_filler()
 
     q(["GARRY M", "ANTHONY R", "DANA A"])
-    #-> @VectorTree (0:1) × Union{} [missing, missing, missing]
+    #-> @VectorTree (0:1) × Bottom [missing, missing, missing]
 
 
 ### Adapting row-oriented data
