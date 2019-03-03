@@ -563,11 +563,11 @@ const CARD_MAP = Dict(:(0:N) => x0toN,
                       :(1:1) => x1to1)
 
 function sig2mk(sig)
-    if sig isa Expr && sig.head == :tuple
+    if Meta.isexpr(sig, :tuple)
         lbls = Symbol[]
         col_mks = MakeAbstractVector[]
         for arg in sig.args
-            if arg isa Expr && arg.head in (:(=), :kw) && length(arg.args) == 2 && arg.args[1] isa Union{Symbol,String}
+            if Meta.isexpr(arg, (:(=), :kw), 2) && arg.args[1] isa Union{Symbol,String}
                 push!(lbls, Symbol(arg.args[1]))
                 push!(col_mks, sig2mk(arg.args[2]))
             else
@@ -575,15 +575,15 @@ function sig2mk(sig)
             end
         end
         return MakeTupleVector(lbls, col_mks)
-    elseif sig isa Expr && sig.head == :vect && length(sig.args) == 1
+    elseif Meta.isexpr(sig, :vect, 1)
         elts_mk = sig2mk(sig.args[1])
         return MakeBlockVector(elts_mk, x0toN)
-    elseif sig isa Expr && sig.head == :call && length(sig.args) == 3 &&
+    elseif Meta.isexpr(sig, :call, 3) &&
            sig.args[1] in (:×, :*) && sig.args[2] in keys(CARD_MAP)
         elts_mk = sig2mk(sig.args[3])
         card = CARD_MAP[sig.args[2]]
         return MakeBlockVector(elts_mk, card)
-    elseif sig isa Expr && sig.head == :call && length(sig.args) >= 1 && sig.args[1] in keys(CARD_MAP)
+    elseif Meta.isexpr(sig, :call) && length(sig.args) >= 1 && sig.args[1] in keys(CARD_MAP)
         elts_mk = sig2mk(Expr(:tuple, sig.args[2:end]...))
         card = CARD_MAP[sig.args[1]]
         return MakeBlockVector(elts_mk, card)
@@ -620,7 +620,7 @@ mutable struct MakeVector <: MakeAbstractVector
 end
 
 function vectorize(mk::MakeAbstractVector, ex)
-    if ex isa Expr && (ex.head == :vect || ex.head == :vcat)
+    if Meta.isexpr(ex, (:vect, :vcat))
         for arg in ex.args
             _rearrange!(mk, arg)
         end
@@ -631,10 +631,10 @@ function vectorize(mk::MakeAbstractVector, ex)
 end
 
 function _rearrange!(mk::MakeTupleVector, ex)
-    if ex isa Expr && (ex.head == :tuple || ex.head == :row)
+    if Meta.isexpr(ex, (:tuple, :row))
         if length(ex.args) == length(mk.col_mks)
             for (j, (arg, col_mk)) in enumerate(zip(ex.args, mk.col_mks))
-                if arg isa Expr && arg.head == :(=) && length(arg.args) == 2
+                if Meta.isexpr(arg, :(=), 2)
                     if j <= length(mk.lbls) && arg.args[1] == mk.lbls[j]
                         arg = arg.args[2]
                     elseif j < length(mk.lbls)
@@ -658,7 +658,7 @@ function _rearrange!(mk::MakeTupleVector, ex)
 end
 
 function _rearrange!(mk::MakeBlockVector, ex)
-    if ex isa Expr && (ex.head == :vect || ex.head == :vcat)
+    if Meta.isexpr(ex, (:vect, :vcat))
         for arg in ex.args
             _rearrange!(mk.elts_mk, arg)
             mk.top += 1

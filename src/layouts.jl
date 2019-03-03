@@ -46,9 +46,9 @@ syntax(::typeof(broadcast), args::Vector{Any}) =
 
 function syntax(::typeof(broadcast), f::Function, args::Vector{Any})
     ex = syntax(f)
-    if ex isa Expr && ex.head == :(->) && length(ex.args) == 2
+    if Meta.isexpr(ex, :(->), 2)
         names =
-            if ex.args[1] isa Expr && ex.args[1].head == :tuple
+            if Meta.isexpr(ex.args[1], :tuple)
                 ex.args[1].args
             else
                 [ex.args[1]]
@@ -137,7 +137,7 @@ function tile_expr(ex::Expr; precedence=0)
     elseif ex.head == :ref && length(ex.args) >= 1
         tile_expr(ex.args[1]) *
         list_layout(Layout[tile_expr(arg) for arg in ex.args[2:end]], par=("[", "]"))
-    elseif (ex.head == :(=) || ex.head == :(->) || ex.head == :(<:)) && length(ex.args) == 2
+    elseif ex.head in (:(=), :(->), :(<:)) && length(ex.args) == 2
         ilt = tile_expr(ex.args[1])
         olt = tile_expr(ex.args[2])
         pair_layout(ilt, olt, sep=(ex.head == :(<:) ? "$(ex.head)" : " $(ex.head) "))
@@ -154,7 +154,7 @@ function _flatten(func, args)
     end
     args′ = []
     for arg in args
-        if arg isa Expr && arg.head == :call && arg.args[1] == func
+        if Meta.isexpr(arg, :call) && arg.args[1] == func
             append!(args′, _flatten(func, arg.args[2:end]))
         else
             push!(args′, arg)
@@ -174,10 +174,10 @@ function _reconstruct(f::Function)
         if line === nothing
             continue
         end
-        if line isa Expr && line.head == :(=) && length(line.args) == 2 && line.args[1] isa Core.SSAValue
+        if Meta.isexpr(line, :(=), 2) && line.args[1] isa Core.SSAValue
             ex = _reconstruct(line.args[2], ssa, info.slotnames)
             push!(ssa, ex)
-        elseif line isa Expr && line.head == :return && length(line.args) == 1
+        elseif Meta.isexpr(line, :return, 1)
             body = _reconstruct(line.args[1], ssa, info.slotnames)
             if body === nothing
                 return
