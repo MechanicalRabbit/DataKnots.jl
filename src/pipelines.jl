@@ -329,21 +329,21 @@ function adapt_tuple(rt::Runtime, input::AbstractVector)
         lbls = collect(Symbol, I.parameters[1])
         I = I.parameters[2]
     end
-    Is = (I.parameters...,)
-    cols = _adapt_tuple(input, Is...)
+    cols = _adapt_tuple(input, Val(Tuple{I.parameters...}))
     TupleVector(lbls, length(input), cols)
 end
 
-@generated function _adapt_tuple(input, Is...)
-    width = length(Is)
+@generated function _adapt_tuple(input, vty)
+    Is = (vty.parameters[1].parameters...,)
+    D = length(Is)
     return quote
         len = length(input)
-        cols = @ncall $width tuple j -> Vector{Is[j]}(undef, len)
+        @nexprs $D j -> col_j = Vector{$Is[j]}(undef, len)
         @inbounds for k in eachindex(input)
             t = input[k]
-            @nexprs $width j -> cols[j][k] = t[j]
+            @nexprs $D j -> col_j[k] = t[j]
         end
-        collect(AbstractVector, cols)
+        @nref $D AbstractVector j -> col_j
     end
 end
 
@@ -528,17 +528,19 @@ distribute(lbl) = Pipeline(distribute, lbl)
 function distribute(rt::Runtime, input::AbstractVector, lbl)
     @assert input isa TupleVector && column(input, lbl) isa BlockVector
     j = locate(input, lbl)
-    len = length(input)
-    lbls = labels(input)
-    cols = columns(input)
-    col = cols[j]
+    _distribute(column(input, j), input, j)
+end
+
+function _distribute(col::BlockVector, tv::TupleVector, j)
+    lbls = labels(tv)
+    cols′ = copy(columns(tv))
+    len = length(col)
     card = cardinality(col)
     offs = offsets(col)
     col′ = elements(col)
-    cols′ = copy(cols)
     if offs isa OneTo{Int}
         cols′[j] = col′
-        return BlockVector(offs, TupleVector(lbls, len, cols′), card)
+        return BlockVector{card}(offs, TupleVector(lbls, len, cols′))
     end
     len′ = length(col′)
     perm = Vector{Int}(undef, len′)
@@ -558,7 +560,7 @@ function distribute(rt::Runtime, input::AbstractVector, lbl)
                 cols′[i][perm]
             end
     end
-    return BlockVector(offs, TupleVector(lbls, len′, cols′), card)
+    return BlockVector{card}(offs, TupleVector(lbls, len′, cols′))
 end
 
 """
@@ -681,25 +683,29 @@ sieve() = Pipeline(sieve)
 
 function sieve(rt::Runtime, input::AbstractVector)
     @assert input isa TupleVector && eltype(column(input, 2)) <: Bool
-    len = length(input)
     val_col, pred_col = columns(input)
-    sz = count(pred_col)
+    _sieve(val_col, pred_col)
+end
+
+function _sieve(@nospecialize(v), bv)
+    len = length(bv)
+    sz = count(bv)
     if sz == len
-        return BlockVector(:, val_col, x0to1)
+        return BlockVector(:, v, x0to1)
     elseif sz == 0
-        return BlockVector(fill(1, len+1), val_col[[]], x0to1)
+        return BlockVector(fill(1, len+1), v[[]], x0to1)
     end
     offs = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
     @inbounds offs[1] = top = 1
     for k = 1:len
-        if pred_col[k]
+        if bv[k]
             perm[top] = k
             top += 1
         end
         offs[k+1] = top
     end
-    return BlockVector(offs, val_col[perm], x0to1)
+    return BlockVector(offs, v[perm], x0to1)
 end
 
 
@@ -732,7 +738,7 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
     for k = 1:len
         L = R
         @inbounds R = offs[k+1]
-        (l, r) = _take_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, rev)
         sz += r - l + 1
     end
     if sz == length(elts)
@@ -745,7 +751,7 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
     for k = 1:len
         L = R
         @inbounds R = offs[k+1]
-        (l, r) = _take_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, rev)
         for j = (L + l - 1):(L + r - 1)
             perm[top] = j
             top += 1
@@ -773,20 +779,23 @@ function slice(rt::Runtime, input::AbstractVector, rev::Bool)
     vals, Ns = cols
     @assert vals isa BlockVector
     @assert eltype(Ns) <: Union{Missing,Int}
-    len = length(input)
-    offs = offsets(vals)
-    elts = elements(vals)
+    _slice(elements(vals), offsets(vals), cardinality(vals), Ns, rev)
+end
+
+function _slice(@nospecialize(elts), offs, card, Ns, rev)
+    card′ = card|x0to1
+    len = length(Ns)
     R = 1
     sz = 0
     for k = 1:len
         L = R
         @inbounds N = Ns[k]
         @inbounds R = offs[k+1]
-        (l, r) = _take_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, rev)
         sz += r - l + 1
     end
     if sz == length(elts)
-        return vals
+        return BlockVector(offs, elts, card′)
     end
     offs′ = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
@@ -796,7 +805,7 @@ function slice(rt::Runtime, input::AbstractVector, rev::Bool)
         L = R
         @inbounds N = Ns[k]
         @inbounds R = offs[k+1]
-        (l, r) = _take_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, rev)
         for j = (L + l - 1):(L + r - 1)
             perm[top] = j
             top += 1
@@ -804,18 +813,17 @@ function slice(rt::Runtime, input::AbstractVector, rev::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    card = cardinality(vals)|x0to1
-    return BlockVector(offs′, elts′, card)
+    return BlockVector(offs′, elts′, card′)
 end
 
-@inline _take_range(n::Int, l::Int, rev::Bool) =
+@inline _slice_range(n::Int, l::Int, rev::Bool) =
     if !rev
         (1, n >= 0 ? min(l, n) : max(0, l + n))
     else
         (n >= 0 ? min(l + 1, n + 1) : max(1, l + n + 1), l)
     end
 
-@inline _take_range(::Missing, l::Int, ::Bool) =
+@inline _slice_range(::Missing, l::Int, ::Bool) =
     (1, l)
 
 
