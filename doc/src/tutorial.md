@@ -39,8 +39,8 @@ To query this dataset, we convert it into a DataKnot.
 
 ### Our First Query
 
-Let's say we want to query a list of department names from this
-data source. We query this knot using Julia's index notation.
+Let's say we want to return the list of department names from this
+dataset. We query the `chicago` knot using Julia's index notation.
 
     department_names = chicago[It.department.name]
     #=>
@@ -50,16 +50,17 @@ data source. We query this knot using Julia's index notation.
     2 │ FIRE   │
     =#
 
-The output of this query, `department_names`, is also a DataKnot.
-The content of this knot could be accessed via `get` function.
+The output, `department_names`, is also a DataKnot. The content of
+this output knot could be accessed via `get` function.
 
     get(department_names)
     #-> ["POLICE", "FIRE"]
 
 ### Navigation
 
-In this first query, `It` means "use the current input". The
-dotted notation lets one navigate the hierarchy.
+In DataKnot queries, `It` means "use the current input". The
+dotted notation lets one navigate the hierarchy. Let's continue
+our dataset exploration by listing employee names.
 
     chicago[It.department.employee.name]
     #=>
@@ -78,7 +79,8 @@ can't be found, an appropriate error message is displayed.
     #-> ERROR: cannot find employee ⋮
 
 Instead, `employee` tuples can be queried by navigating though
-`department` tuples.
+`department` tuples. When tuples are returned, they is displayed
+with a tabular layout.
 
     chicago[It.department.employee]
     #=>
@@ -96,8 +98,8 @@ into a single output.
 ### Composition & Identity
 
 Dotted navigations, such as `It.department.name`, are a syntax
-shorthand for the `Get()` primitive together with query
-composition (`>>`).
+shorthand for the `Get()` primitive together with the query
+composition (`>>`) combinator.
 
     chicago[Get(:department) >> Get(:name)]
     #=>
@@ -107,9 +109,9 @@ composition (`>>`).
     2 │ FIRE   │
     =#
 
-The `Get()` query primitive reproduces contents from a named
-container. Query composition `>>` merges results from nested
-traversal. They can be used together creatively.
+The `Get()` primitive reproduces contents from a named container.
+Query composition (`>>`) chains two queries serially, with the
+output of its first query as the input to the second.
 
     chicago[Get(:department) >> Get(:employee)]
     #=>
@@ -121,9 +123,9 @@ traversal. They can be used together creatively.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-In this query algebra, `It` is the identity relative to query
-composition (`>>`). Since `It` can be mixed into any composition
-without changing the result, we can write:
+In this query algebra, `It` is the identity query. Since `It` can
+be mixed into any composition without changing the result, we can
+write:
 
     chicago[It >> Get(:department) >> Get(:name)]
     #=>
@@ -148,7 +150,7 @@ This query, `It.department.name`, could be equivalently written
 
 ### Context & Counting
 
-To return the number of departments in this Chicago dataset we
+To return the number of departments in this `chicago` dataset we
 write the query `Count(It.department)`. Observe that the argument
 provided to `Count()`, `It.department`, is itself a query.
 
@@ -334,14 +336,25 @@ as a list of employees. We're not going to run it, but we could.
     #-> It.department.employee
 
 Let's extend this query to compute if the salary is over 100k.
-Notice how query composition is tracked for us. We could run
-`our_query` also, if we wanted.
+Notice how query composition is tracked for us.
 
     GT100K = :gt100k => It.salary .> 100000
     our_query >>= Record(It.name, It.salary, GT100K)
     #=>
     It.department.employee >>
     Record(It.name, It.salary, :gt100k => It.salary .> 100000)
+    =#
+
+Let's run `our_query` against the `chicago` knot.
+
+    chicago[our_query]
+    #=>
+      │ employee                  │
+      │ name       salary  gt100k │
+    ──┼───────────────────────────┼
+    1 │ JEFFERY A  101442    true │
+    2 │ NANCY A     80016   false │
+    3 │ DANIEL A    95484   false │
     =#
 
 Since labeling permits direct Record access, we could further
@@ -354,7 +367,7 @@ extend `our_query` to filter unwanted rows.
     Filter(It.gt100k)
     =#
 
-Let's run `our_query` against the `chicago` knot.
+Let's run `our_query` again.
 
     chicago[our_query]
     #=>
@@ -457,14 +470,15 @@ DataKnots reference.
 
 We've seen how DataKnots' queries are assembled algebraically:
 they either come from a set of atomic *primitives* or are built
-from other queries using *combinators*. Query primitives include
-the identity (`It`), constant values (like `100000`), and data
-navigation via `Get(:Symbol)`. Besides composition (`>>`), query
-combinators include `Count()`, `Record()`, `Label()`, `Filter()`,
-`Tag()` and broadcast operators such as equality `(.==)` and
-greater than `(.>)`.
+from other queries using *combinators*.
 
-This next section describes additional combinators and primitives
+Query primitives include the identity (`It`), constant values
+(like `100000`), and data navigation via `Get(:Symbol)`. Besides
+query composition (`>>`), query combinators include `Count()`,
+`Record()`, `Label()`, `Filter()`, `Tag()` and broadcast operators
+such as equality `(.==)` and greater than `(.>)`.
+
+This next section describes additional primitives and combinators
 included with DataKnots' core library.
 
 ### Aggregate queries
@@ -503,8 +517,8 @@ example, `Count` is performed relative to each department.
     2 │ FIRE            0 │
     =#
 
-Note that in `It.department.employee >> Count`, the `Count`
-primitive aggregates the number of employees across all
+Note that in the query `It.department.employee >> Count`, the
+`Count` primitive aggregates the number of employees across all
 departments. This doesn't change even if we add parentheses:
 
     chicago[It.department >> (It.employee >> Count)]
@@ -514,8 +528,9 @@ departments. This doesn't change even if we add parentheses:
     │  3 │
     =#
 
-To count employees in *each* department, we use the `Each()` query
-combinator.
+To count employees in *each* department, we use `Each()`. This
+combinator applies its input *elementwise* to its argument.
+Therefore, we get two counts, one for each department.
 
     chicago[It.department >> Each(It.employee >> Count)]
     #=>
@@ -548,11 +563,21 @@ to simply append `>> Count` is often very helpful.
     │  3 │
     =#
 
+We could then refine the query, and run the exact same command.
+
+    our_query >>= Filter(It.salary .> 100000)
+    chicago[our_query >> Count]
+    #=>
+    │ It │
+    ┼────┼
+    │  1 │
+    =#
+
 ### Function broadcasting
 
-Besides broadcast operators, such as greater than (`.>`),
-arbitrary functions can also be used as a query combinator with
-the broadcast notation. Let's define a function to extract an
+Besides operators, such as greater than (`.>`), arbitrary
+functions can also be used as a query combinator with the
+broadcast notation. Let's define a function to extract an
 employee's first name.
 
     fname(x) = titlecase(split(x)[1])
@@ -591,10 +616,10 @@ Aggregate Julia functions, such as `mean`, can also be used.
     2 │ FIRE        95484.0 │
     =#
 
-The more general conversion of a function into a combinator is
-accomplished by `Lift`, as documented in the reference. How a
-lifted function is treated as a query combinator depends upon that
-function's input and output signature.
+The conversion of a function into a combinator is accomplished by
+`Lift`, as documented in the reference. How a lifted function is
+treated as a query combinator depends upon that function's input
+and output signature.
 
 ### Keeping Values
 
@@ -627,7 +652,7 @@ result, so that it is available within subsequent computations.
 
 This pattern also emerges with aggregate computations which need
 to be done in a parent scope. For example, let's compute employees
-with a higher than average salary within their department.
+with a higher than average salary for their department.
 
     using Statistics: mean
     chicago[
@@ -642,9 +667,8 @@ with a higher than average salary within their department.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-In this last query, `mean` simply can't be moved into the scope of
-the `Filter` combinator, since its arguments are evaluated for
-*each* employee.
+In this last query, `mean` simply can't be moved into `Filter`'s
+argument, since this argument is evaluated for *each* employee.
 
 ### Paging Data
 
@@ -674,7 +698,7 @@ To return up to the 2nd employee record, we use `Take`.
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
 
-A negative index can be used to count records from the end of the
+A negative index can be used, counting records from the end of the
 query's input. So, to return up to, but not including, the very
 last item in the stream, we could write:
 
@@ -794,7 +818,7 @@ We could then combine these two queries.
     =#
 
 Note that this combined expression is yet another query that could
-be refined with further computation.
+be further refined.
 
     chicago[EmployeesOver(AvgSalary) >> It.name]
     #=>
@@ -810,7 +834,7 @@ Specifically, `It.amt` is not available outside `EmployeesOver()`.
     chicago[EmployeesOver(AvgSalary) >> It.amt]
     #-> ERROR: cannot find amt ⋮
 
-### More Aggregates
+### Aggregate Combinators
 
 There are other aggregate combinators, such as `Min`, `Max`, and
 `Sum`. They could be used to create a statistical measure.
@@ -834,7 +858,7 @@ There are other aggregate combinators, such as `Min`, `Max`, and
     │     3  92314  80016  101442  276942 │
     =#
 
-These statistics could be run by department.
+These statistics could be computed for each department.
 
     chicago[
         It.department >>
@@ -850,7 +874,7 @@ These statistics could be run by department.
     =#
 
 To inspect the definition of `Stats` you could build a query,
-`Stats(It)`.
+`Stats(It)`, and show it.
 
     Stats(It)
     #=>
