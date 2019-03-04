@@ -31,44 +31,14 @@ using the `get()` function; and here, we get `nothing`.
     show(get(void))
     #-> nothing
 
-### Knot Cardinality
-
-DataKnots track cardinality. If a knot has at most one value, we
-say that it is *singular*, else, it is *plural*. Let's create a
-plural knot `twos` with exactly two values, `"One"` and `"Two"`.
-
-    twos = DataKnot(["One", "Two"])
-    #=>
-      │ It  │
-    ──┼─────┼
-    1 │ One │
-    2 │ Two │
-    =#
-
-It's possible for a knot to not have any values. Let's create a
-knot, `zero` with exactly zero values.
-
-    zero = DataKnot(missing)
-    #=>
-    │ It │
-    ┼────┼
-    =#
-
-In the output display of empty knots, there is a missing cell.
-For plural knots, indices are in the first column and values are
-in remaining columns.
-
 ### Constant Queries
 
 Consider a *constant* query `Hello` that outputs a string value,
-`"Hello World"`, for each of its inputs. We use `Lift` to
-construct constant queries.
+`"Hello World"`. We use `Lift` to construct constant queries.
 
     Hello = Lift("Hello World")
 
 To query `void` with `Hello` we use Julia's `getindex` syntax.
-Since `void` provides exactly one input, `nothing`, `Hello` will
-provide exactly one output, `"Hello World"`.
 
     void[Hello]
     #=>
@@ -77,41 +47,33 @@ provide exactly one output, `"Hello World"`.
     │ Hello World │
     =#
 
-If we query `twos` with `Hello`, we'll get the constant value
-`"Hello World"` repeated twice, once for each input.
+Consider another query, `Twos`, created by applying `Lift` to a
+vector having two values, `"One"` and `"Two"`. When we query
+`void` with `Twos` query we get two outputs. 
 
-    twos["Hello World"]
+    Twos = Lift(["One","Two"])
+    void[Twos]
     #=>
-      │ It          │
-    ──┼─────────────┼
-    1 │ Hello World │
-    2 │ Hello World │
-    =#
-
-Finally, if we query `zero` with `Hello`, we'll get back exactly
-zero copies of `"Hello World"`.
-
-    zero[Hello]
-    #=>
-    │ It │
-    ┼────┼
+      │ It  │
+    ──┼─────┼
+    1 │ One │
+    2 │ Two │
     =#
 
 In the context of a query invocation, `Lift` syntax can often be
-removed, permitting us to write:
+removed, permitting us to write queries more informally:
 
-    void["Hello World"]
+    void["Howdy!"]
     #=>
-    │ It          │
-    ┼─────────────┼
-    │ Hello World │
+    │ It     │
+    ┼────────┼
+    │ Howdy! │
     =#
 
-Consider another query created by applying `Lift` to `5:7`, a
-constant `UnitRange` value. For each input, this query produces a
-sequence of integers from `5` to `7`.
+When `void` is queried with the unit range `5:7`, the output
+includes values `5` though `7`.
 
-    void[Lift(5:7)]
+    void[5:7]
     #=>
       │ It │
     ──┼────┼
@@ -120,34 +82,19 @@ sequence of integers from `5` to `7`.
     3 │  7 │
     =#
 
-Within the context of a DataKnot, `Lift()` is optional.
+There is one specific value of note, `missing`.  The output of
+querying `void` with `missing` provides an empty knot.
 
-    void["Hello World"]
+    void[missing]
     #=>
-    │ It          │
-    ┼─────────────┼
-    │ Hello World │
+    │ It │
+    ┼────┼
     =#
 
-In fact, any knot can be used as a constant query.
-
-    void[twos]
-    #=>
-      │ It  │
-    ──┼─────┼
-    1 │ One │
-    2 │ Two │
-    =#
-
-It's trivially possible to chain query application.
-
-    void[1:2]["Hello"]
-    #=>
-      │ It    │
-    ──┼───────┼
-    1 │ Hello │
-    2 │ Hello │
-    =#
+DataKnots track cardinality. If a knot has at most one value, we
+say that it is *singular*, else, it is *plural*. In the output of
+plural knots, indices are in the first column and values are in
+remaining columns.
 
 ### Composition & Identity
 
