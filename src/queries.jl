@@ -92,12 +92,6 @@ Queries `db` with `F`.
 getindex(db::DataKnot, F; kws...) =
     execute(db, Lift(F), sort(collect(Pair{Symbol,DataKnot}, kws), by=first))
 
-Base.run(db::DataKnot, F; kws...) =
-    getindex(db, F; kws...)
-
-Base.run(F::Union{AbstractQuery,DataKnot,Pair{Symbol,<:Union{AbstractQuery,DataKnot}}}; kws...) =
-    run(DataKnot(), F; kws...)
-
 function execute(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     db = pack(db, params)
     q = prepare(F, shape(db))

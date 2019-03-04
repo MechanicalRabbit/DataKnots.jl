@@ -5,6 +5,7 @@
 import Base:
     IndexStyle,
     OneTo,
+    convert,
     eltype,
     getindex,
     iterate,
@@ -196,6 +197,10 @@ Cardinality constraints on a block of data.
 Cardinality
 
 @enum Cardinality::UInt8 x1to1 x0to1 x1toN x0toN
+
+convert(::Type{Cardinality}, c::Symbol) =
+    c == :x1to1 ? x1to1 : c == :x0to1 ? x0to1 : c == :x1toN ? x1toN : c ==:x0toN ? x0toN :
+    error("invalid cardinality literal: $c")
 
 quoteof(c::Cardinality) =
     c == x1to1 ? :x1to1 : c == x0to1 ? :x0to1 : c == x1toN ? :x1toN : :x0toN

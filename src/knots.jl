@@ -28,8 +28,9 @@ struct DataKnot
     end
 end
 
-DataKnot(elts::AbstractVector, card::Cardinality=x0toN) =
-    DataKnot(BlockVector([1, length(elts)+1], elts, card), BlockOf(shapeof(elts), card))
+DataKnot(elts::AbstractVector, card::Union{Cardinality,Symbol}=x0toN) =
+    DataKnot(BlockVector([1, length(elts)+1], elts, convert(Cardinality, card)),
+             BlockOf(shapeof(elts), convert(Cardinality, card)))
 
 DataKnot(::Missing) =
     DataKnot(Union{}[], x0to1)
