@@ -25,8 +25,8 @@ degenerate knot, `void` as our initial data source.
     =#
 
 This `void` knot has a single value, `nothing`, displayed as a
-empty output cell. The underlying value of any knot can be
-obtained using the `get()` function; here, we get `nothing`.
+empty output cell. The underlying value of a knot can be obtained
+using the `get()` function; here, we get `nothing`.
 
     show(get(void))
     #-> nothing
@@ -34,15 +34,11 @@ obtained using the `get()` function; here, we get `nothing`.
 ### Constant Queries
 
 Consider a *constant* query `Hello` that produces a string value,
-`"Hello World"` for each of its inputs. This query is built using
-the `Lift` primitive, which converts a native Julia value into a
-query component.
+`"Hello World"`. We use `Lift` to construct constant queries.
 
     Hello = Lift("Hello World")
 
-To query `void` with `Hello` we use Julia's index syntax. Observe
-that the single input value from the `void` input, `nothing`, is
-ignored and that the output contains the constant value instead.
+To query `void` with `Hello` we use Julia's `getindex` syntax.
 
     void[Hello]
     #=>
@@ -51,33 +47,30 @@ ignored and that the output contains the constant value instead.
     │ Hello World │
     =#
 
-We can `get` the underlying value of this output knot.
+The underlying value of this output knot is `"Hello World"`.
 
     get(void[Hello])
     #-> "Hello World"
 
-Consider another query created by applying `Lift` to `3:5`, a
-constant `UnitRange` value. This query emits a sequence of
-integers from `3` to `5`.
+Next, Consider a query `FiveToSeven` which outputs three values:
+`5`, `6` and `7`. This can also be constructed using `Lift`.
 
-    void[Lift(3:5)]
+    FiveToSeven = Lift(5:7)
+    void[FiveToSeven]
     #=>
       │ It │
     ──┼────┼
-    1 │  3 │
-    2 │  4 │
-    3 │  5 │
+    1 │  5 │
+    2 │  6 │
+    3 │  7 │
     =#
 
-The underlying value of this knot can also be accessed via `get`.
+In this output display, the 1st column are indices. Hence, the 2nd
+value of this output is the integer `6`.
 
-    get(void[Lift(3:5)])
-    #-> 3:5
+    get(void[Lift(5:7)])[2]
+    #-> 6
 
-DataKnots track each query's cardinality. Observe that the `Hello`
-query produces a *singular* value, while the `Lift(3:5)` query is
-*plural*. In the output notation for plural knots, indices are in
-the first column and values are in remaining columns.
 
 ### Composition & Identity
 
