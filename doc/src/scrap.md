@@ -300,3 +300,20 @@ say the query above is equivalent to the following.
     ──┼─────────────────────────────┼
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
+
+That
+said, it can be directly used in a straight-forward manner.
+
+    [dept[:name] for dept in vt]
+    #-> ["POLICE", "FIRE"]
+
+Use `collect` to convert a `@VectorTree` into a standard
+row-oriented structure.
+
+    display(collect(vt))
+    #=>
+    2-element Array{NamedTuple{(:name, :employee_count),…},1}:
+     (name = "POLICE", employee_count = 2)
+     (name = "FIRE", employee_count = 1)
+    =#
+

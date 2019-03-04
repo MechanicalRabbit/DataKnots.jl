@@ -2,12 +2,12 @@
 
 DataKnots is an embedded query language designed so that
 accidental programmers could more easily solve complex data
-analysis tasks. Specifically, DataKnots allows expert users to
-construct friendly yet semantically consistent domain-specific
-query languages having customized operations and data sources.
+analysis tasks.
 
-This tutorial is about the very basics. How mundane query
-operations are performed upon an in-memory data source.
+This tutorial shows how typical query operations can be performed
+upon a simplified in-memory dataset. For initial releases,
+DataKnots will not include have methods to read/write common data
+formats (such as CSV or DataFrames). Contributors are welcome.
 
 ## Getting Started
 
@@ -32,7 +32,7 @@ with an entry `:department`, which is a `Vector` department
 records, and so on. Notice that the label `name` occurs both
 within the context of a department and an employee record.
 
-To query this dataset, we convert it into a DataKnot.
+To query this dataset, we convert it into a `DataKnot`, or *knot*.
 
     using DataKnots
     chicago = DataKnot(chicago_data)
@@ -40,7 +40,8 @@ To query this dataset, we convert it into a DataKnot.
 ### Our First Query
 
 Let's say we want to return the list of department names from this
-dataset. We query the `chicago` knot using Julia's index notation.
+dataset. We query the `chicago` knot using Julia's index notation
+and the query `It.department.name`.
 
     department_names = chicago[It.department.name]
     #=>
@@ -98,8 +99,8 @@ into a single output.
 ### Composition & Identity
 
 Dotted navigations, such as `It.department.name`, are a syntax
-shorthand for the `Get()` primitive together with the query
-composition (`>>`) combinator.
+shorthand for the `Get()` primitive together with query
+composition (`>>`).
 
     chicago[Get(:department) >> Get(:name)]
     #=>
@@ -109,9 +110,9 @@ composition (`>>`) combinator.
     2 │ FIRE   │
     =#
 
-The `Get()` primitive reproduces contents from a named container.
+The `Get()` primitive returns values that match a given name.
 Query composition (`>>`) chains two queries serially, with the
-output of its first query as the input to the second.
+output of its first query as input to the second.
 
     chicago[Get(:department) >> Get(:employee)]
     #=>
@@ -123,9 +124,10 @@ output of its first query as the input to the second.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-In this query algebra, `It` is the identity query. Since `It` can
-be mixed into any composition without changing the result, we can
-write:
+In this query algebra, `It` is the identity query with respect to
+composition (`>>`). The query `It` simply reproduces for its
+output what it recieves as its input. Hence, `It` can be woven
+into any composition without changing the result.
 
     chicago[It >> Get(:department) >> Get(:name)]
     #=>
@@ -150,7 +152,7 @@ This query, `It.department.name`, could be equivalently written
 
 ### Context & Counting
 
-To return the number of departments in this `chicago` dataset we
+To count the number of departments in this `chicago` dataset we
 write the query `Count(It.department)`. Observe that the argument
 provided to `Count()`, `It.department`, is itself a query.
 
@@ -162,7 +164,7 @@ provided to `Count()`, `It.department`, is itself a query.
     =#
 
 Using query composition (`>>`), we can perform `Count` in a nested
-context; for this next example, let's count `employee` records
+context. For this next example, let's count `employee` records
 within each `department`.
 
     chicago[It.department >> Count(It.employee)]
@@ -434,7 +436,7 @@ For simple lists, `get` returns a typed `Vector`.
     get(chicago[It.department.employee.name])
     #-> ["JEFFERY A", "NANCY A", "DANIEL A"]
 
-For more complex outputs, `get` often returns a `@VectorTree`, a
+For more complex outputs, `get` may return a `@VectorTree`, a
 column-oriented storage for our `DataKnot` system.
 
     query = It.department >>
@@ -449,22 +451,8 @@ column-oriented storage for our `DataKnot` system.
      (name = "FIRE", employee_count = 1)
     =#
 
-This result type can be directly used quite naturally.
-
-    [dept[:name] for dept in vt]
-    #-> ["POLICE", "FIRE"]
-
-Or converted into a standard row-oriented vector structure.
-
-    display(collect(vt))
-    #=>
-    2-element Array{NamedTuple{(:name, :employee_count),…},1}:
-     (name = "POLICE", employee_count = 2)
-     (name = "FIRE", employee_count = 1)
-    =#
-
-Further information about `@VectorTree` can be found in the
-DataKnots reference.
+The `@VectorTree` datatype is considered an implemention detail,
+upon which specific input/output converters will be written.
 
 ## Query Combinators
 
@@ -763,15 +751,30 @@ so they standout from regular data labels.
     1 │ JEFFERY A │
     =#
 
-With a different threshold amount, the result may change.
+What if we want to return employee names who have a greater than
+average salary? This average could be computed first.
 
-    chicago[PaidOverAmt, AMT=85000]
+    using Statistics
+    mean_salary = chicago[mean.(It.department.employee.salary)]
+    #=>
+    │ It      │
+    ┼─────────┼
+    │ 92314.0 │
+    =#
+
+Then, this value could be used as a query parameter.
+
+    chicago[PaidOverAmt, AMT=mean_salary]
     #=>
       │ name      │
     ──┼───────────┼
     1 │ JEFFERY A │
     2 │ DANIEL A  │
     =#
+
+While this approach works, it performs composition outside of the
+query language. If the dataset changes, a new `mean_salary` would
+have to be computed before the query above could be performed.
 
 ### Parameterized Queries
 

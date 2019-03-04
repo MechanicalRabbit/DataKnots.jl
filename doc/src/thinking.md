@@ -14,8 +14,8 @@ To start working with DataKnots, we import the package:
 ## Constructing Queries
 
 A `DataKnot`, or just *knot*, is a container having structured,
-vectorized data. For this conceptual guide, we'll start with the
-degenerate knot, `void` as our initial data source.
+vectorized data. For this conceptual guide, we'll start with a
+trivial knot, `void` as our initial data source.
 
     void = DataKnot(nothing)
     #=>
@@ -26,19 +26,49 @@ degenerate knot, `void` as our initial data source.
 
 This `void` knot has a single value, `nothing`, displayed as a
 empty output cell. The underlying value of a knot can be obtained
-using the `get()` function; here, we get `nothing`.
+using the `get()` function; and here, we get `nothing`.
 
     show(get(void))
     #-> nothing
 
+### Knot Cardinality
+
+DataKnots track cardinality. If a knot has at most one value, we
+say that it is *singular*, else, it is *plural*. Let's create a
+plural knot `twos` with exactly two values, `"One"` and `"Two"`.
+
+    twos = DataKnot(["One", "Two"])
+    #=>
+      │ It  │
+    ──┼─────┼
+    1 │ One │
+    2 │ Two │
+    =#
+
+It's possible for a knot to not have any values. Let's create a
+knot, `zero` with exactly zero values.
+
+    zero = DataKnot(missing)
+    #=>
+    │ It │
+    ┼────┼
+    =#
+
+In the output display of empty knots, there is a missing cell.
+For plural knots, indices are in the first column and values are
+in remaining columns.
+
 ### Constant Queries
 
-Consider a *constant* query `Hello` that produces a string value,
-`"Hello World"`. We use `Lift` to construct constant queries.
+Consider a *constant* query `Hello` that outputs a string value,
+`"Hello World"`, for each of its inputs. We use `Lift` to
+construct constant queries.
 
     Hello = Lift("Hello World")
 
 To query `void` with `Hello` we use Julia's `getindex` syntax.
+Since `void` provides exactly one input, `nothing`, `Hello` will
+provide exactly one output, `"Hello World"`.
 
     void[Hello]
     #=>
@@ -47,16 +77,41 @@ To query `void` with `Hello` we use Julia's `getindex` syntax.
     │ Hello World │
     =#
 
-The underlying value of this output knot is `"Hello World"`.
+If we query `twos` with `Hello`, we'll get the constant value
+`"Hello World"` repeated twice, once for each input.
 
-    get(void[Hello])
-    #-> "Hello World"
+    twos["Hello World"]
+    #=>
+      │ It          │
+    ──┼─────────────┼
+    1 │ Hello World │
+    2 │ Hello World │
+    =#
 
-Next, Consider a query `FiveToSeven` which outputs three values:
-`5`, `6` and `7`. This can also be constructed using `Lift`.
+Finally, if we query `zero` with `Hello`, we'll get back exactly
+zero copies of `"Hello World"`.
 
-    FiveToSeven = Lift(5:7)
-    void[FiveToSeven]
+    zero[Hello]
+    #=>
+    │ It │
+    ┼────┼
+    =#
+
+In the context of a query invocation, `Lift` syntax can often be
+removed, permitting us to write:
+
+    void["Hello World"]
+    #=>
+    │ It          │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Consider another query created by applying `Lift` to `5:7`, a
+constant `UnitRange` value. For each input, this query produces a
+sequence of integers from `5` to `7`.
+
+    void[Lift(5:7)]
     #=>
       │ It │
     ──┼────┼
@@ -65,12 +120,34 @@ Next, Consider a query `FiveToSeven` which outputs three values:
     3 │  7 │
     =#
 
-In this output display, the 1st column are indices. Hence, the 2nd
-value of this output is the integer `6`.
+Within the context of a DataKnot, `Lift()` is optional.
 
-    get(void[Lift(5:7)])[2]
-    #-> 6
+    void["Hello World"]
+    #=>
+    │ It          │
+    ┼─────────────┼
+    │ Hello World │
+    =#
 
+In fact, any knot can be used as a constant query.
+
+    void[twos]
+    #=>
+      │ It  │
+    ──┼─────┼
+    1 │ One │
+    2 │ Two │
+    =#
+
+It's trivially possible to chain query application.
+
+    void[1:2]["Hello"]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │ Hello │
+    2 │ Hello │
+    =#
 
 ### Composition & Identity
 
