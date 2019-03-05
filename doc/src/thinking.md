@@ -14,13 +14,11 @@ To start working with DataKnots, we import the package:
 ## Constructing Queries
 
 A `DataKnot`, or just *knot*, is a container having structured,
-vectorized data. A *query* transforms one knot into another,
-*elementwise*. That is, for each input provided by the knot, a
-query will produce an output. 
+vectorized data. 
 
 For this conceptual guide, we'll start with a trivial knot, `void`
-as our initial data source. The `void` knot provides a single
-input having the value `nothing`.
+as our initial data source. The `void` knot provides our queries a
+single input flow with the value `nothing`.
 
     void = DataKnot(nothing)
     #=>
@@ -29,20 +27,9 @@ input having the value `nothing`.
     │    │
     =#
 
-The query `It` is the *identity*; `It` faithfully reproduces its
-input. To query `void` with `It` we use the index notation and
-write `void[It]`.
-
-    void[It]
-    #=>
-    │ It │
-    ┼────┼
-    │    │
-    =#
-
-The header in this output display, `"It"`, has really nothing to
-do with the identity query, `It`. This header is shown when an
-explicit header is not provided.
+A *query* transforms one knot into another, *elementwise*. That
+is, for each input provided by the knot, a query will produce an
+utput. Let's start with primitive queries.
 
 ### Constant Queries
 
@@ -76,9 +63,9 @@ constant query.
     =#
 
 Constant queries, such as `Hello` and `Lift(5:7)`, emit a fixed
-sequence of output values for *each* input they receive. Since
-`void` provides exactly one input, these queries produced ` and 3
-outputs respectively.
+output flow for *each* input they receive. Since `void` provides
+exactly one input, these queries produce 1 and 3 outputs
+respectively.
 
 ### Composition & Identity
 
