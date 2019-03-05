@@ -14,7 +14,7 @@ To start working with DataKnots, we import the package:
 ## Constructing Queries
 
 A `DataKnot`, or just *knot*, is a container having structured,
-vectorized data. 
+vectorized data.
 
 For this conceptual guide, we'll start with a trivial knot, `void`
 as our initial data source. The `void` knot encapsulates the value
@@ -30,15 +30,15 @@ as our initial data source. The `void` knot encapsulates the value
 ### Constant Queries
 
 Any Julia value could be converted to a *query* using the `Lift`
-query constructor. Constant queries discard their input and
-instead emit the given value. Consider the query `Hello`, lifted
-from the string value `"Hello World"`.
+query constructor. Queries constructed this way are constant: for
+each input they receive, they produce the given value. Consider
+the query `Hello`, lifted from the string value `"Hello World"`.
 
     Hello = Lift("Hello World")
 
 To query `void` with `Hello`, we use indexing notation
-`void[Hello]`. The input provided from `void` is discarded and
-`"Hello World"` is output.
+`void[Hello]`. In this case, `Hello` receives a `nothing` input
+from `void` and then produces the output, `"Hello World"`.
 
     void[Hello]
     #=>
@@ -47,9 +47,9 @@ To query `void` with `Hello`, we use indexing notation
     │ Hello World │
     =#
 
-A vector lifted to a constant query will emit plural output.
+A vector lifted to a constant query will produce plural output.
 Consider `Lift('a':'c')`, constructed by lifting a unit range to a
-constant query. 
+constant query.
 
     void[Lift('a':'c')]
     #=>
@@ -64,9 +64,8 @@ constant query.
 
 Two queries can be connected sequentially using the composition
 combinator (`>>`). Consider the composition, `Lift(1:3) >> Hello`.
-Since `Hello` emits a value for each input element it receives,
-preceding it with `Lift(1:3)` generates three copies of `"Hello
-World"`.
+Since `Hello` produces a value for each input element, preceding
+it with `Lift(1:3)` generates three copies of `"Hello World"`.
 
     void[Lift(1:3) >> Hello]
     #=>
