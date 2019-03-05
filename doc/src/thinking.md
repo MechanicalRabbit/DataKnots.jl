@@ -25,24 +25,19 @@ trivial knot, `void` as our initial data source.
     =#
 
 This `void` knot has a single element, `nothing`, displayed as a
-empty output cell. The underlying value of a knot can be obtained
-using the `get()` function; and here, we get `nothing`.
-
-    show(get(void))
-    #-> nothing
+empty output cell. 
 
 ### Constant Queries
 
-Constant queries are those that, for each input, produce a fixed
+Constant queries are those that, for *each* input, produce a fixed
 output. Using `Lift`, let's construct a query primitive `Hello`
 that would produce the string `"Hello World"`.
 
     Hello = Lift("Hello World")
 
-To query `void` with `Hello` we write `void[Hello]`. This notation
-performs the query, `Hello` with input from the knot `void`. Since
-`void` provides one input, `nothing`, the query `Hello` produces
-one corresponding output, `"Hello World"`.
+To query `void` with `Hello` we write `void[Hello]`. Since `void`
+provides one input, the query `Hello` produces one corresponding
+output, `"Hello World"`.
 
     void[Hello]
     #=>
@@ -51,12 +46,22 @@ one corresponding output, `"Hello World"`.
     │ Hello World │
     =#
 
+For contrast, a knot `zero` which as zero elements can be
+constructed by `DataKnot(missing)`. When `zero` is queried with
+`Hello`, no outputs are produced.
+
+    zero = DataKnot(missing)
+    zero[Hello]
+    #=>
+    │ It │
+    ┼────┼
+    =#
+
 Consider another query, `Twos`, constructed by lifting a vector
 having two elements, `"one"` and `"two"`. When we query `void`
 with `Twos`, a knot with two elements is produced.
 
     Twos = Lift(["one","two"])
-
     void[Twos]
     #=>
       │ It  │
@@ -65,57 +70,11 @@ with `Twos`, a knot with two elements is produced.
     2 │ two │
     =#
 
-So that we may write queries more ergonomically, scalar and vector
-values are automatically lifted to these constant queries.
+The result of querying a knot is a knot. Hence, we could create a
+knot `two` and query it with `Hello`.
 
-    void["Howdy!"]
-    #=>
-    │ It     │
-    ┼────────┼
-    │ Howdy! │
-    =#
-
-    void[5:7]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  5 │
-    2 │  6 │
-    3 │  7 │
-    =#
-
-DataKnots track cardinality. If a knot has at most one element, we
-say that it is *singular*, else, it is *plural*. In the display of
-plural knots, indices are in the first column and elements are
-shown in the remaining columns.
-
-### Elementwise Operation
-
-Most queries produce outputs for *each* input received. We call
-these *elementwise* queries. In the previous section we used a
-data source, `void`, that provided exactly one input. Hence, a
-constant query, such as `Hello` produced exactly one output.
-
-    void[Hello]
-    #=>
-    │ It          │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Let's construct a knot, `twos`, having two elements, `1` and `2`.
-Then, let's query this knot with `Hello`. Since `twos` provides
-two inputs, the query `Hello` produces two outputs.
-
-    twos = void[1:2]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    =#
-
-    twos[Hello]
+    two = void[Twos]
+    two[Hello]
     #=>
       │ It          │
     ──┼─────────────┼
@@ -123,36 +82,8 @@ two inputs, the query `Hello` produces two outputs.
     2 │ Hello World │
     =#
 
-It's also possible to construct a knot, `zero` having no elements.
-When `zero` is queried with `Hello`, there no outputs since there
-are no inputs.
-
-    zero = void[missing]
-    #=>
-    │ It │
-    ┼────┼
-    =#
-
-    zero[Hello]
-    #=>
-    │ It │
-    ┼────┼
-    =#
-
-When a plural query has a plural input, the results are flattened.
-
-    twos = void[1:2]
-    twos[7:9]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  7 │
-    2 │  8 │
-    3 │  9 │
-    4 │  7 │
-    5 │  8 │
-    6 │  9 │
-    =#
+Most queries produce outputs for *each* input received. We call
+these *elementwise* queries. 
 
 ### Composition & Identity
 
