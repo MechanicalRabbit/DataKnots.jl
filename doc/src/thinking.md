@@ -17,8 +17,8 @@ A `DataKnot`, or just *knot*, is a container having structured,
 vectorized data. 
 
 For this conceptual guide, we'll start with a trivial knot, `void`
-as our initial data source. The `void` knot provides our queries a
-single input flow with the value `nothing`.
+as our initial data source. The `void` knot encapsulates the value
+`nothing`, which will serve as the input for our queries.
 
     void = DataKnot(nothing)
     #=>
@@ -27,20 +27,18 @@ single input flow with the value `nothing`.
     │    │
     =#
 
-A *query* transforms one knot into another, *elementwise*. That
-is, for each input provided by the knot, a query will produce an
-utput. Let's start with primitive queries.
-
 ### Constant Queries
 
-Constant queries ignore the content of their input, emitting
-instead a fixed sequence of output values. Let's use `Lift` to
-construct a query `Hello` that emits the string `"Hello World"`.
+Any Julia value could be converted to a *query* using the `Lift`
+query constructor. Constant queries discard their input and
+instead emit the given value. Consider the query `Hello`, lifted
+from the string value `"Hello World"`.
 
     Hello = Lift("Hello World")
 
-To query `void` with `Hello` we write `void[Hello]`. Since the
-knot `void` provides one input, we get one output.
+To query `void` with `Hello`, we use indexing notation
+`void[Hello]`. The input provided from `void` is discarded and
+`"Hello World"` is output.
 
     void[Hello]
     #=>
@@ -50,30 +48,25 @@ knot `void` provides one input, we get one output.
     =#
 
 A vector lifted to a constant query will emit plural output.
-Consider `Lift(5:7)`, constructed by lifting a unit range to a
+Consider `Lift('a':'c')`, constructed by lifting a unit range to a
 constant query. 
 
-    void[Lift(5:7)]
+    void[Lift('a':'c')]
     #=>
       │ It │
     ──┼────┼
-    1 │  5 │
-    2 │  6 │
-    3 │  7 │
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
     =#
-
-Constant queries, such as `Hello` and `Lift(5:7)`, emit a fixed
-output flow for *each* input they receive. Since `void` provides
-exactly one input, these queries produce 1 and 3 outputs
-respectively.
 
 ### Composition & Identity
 
 Two queries can be connected sequentially using the composition
 combinator (`>>`). Consider the composition, `Lift(1:3) >> Hello`.
-Since `Lift(1:3)` emits 3 numbers and since `Hello` emits one
-output for each input, their composition emits three copies of
-`"Hello World"`.
+Since `Hello` emits a value for each input element it receives,
+preceding it with `Lift(1:3)` generates three copies of `"Hello
+World"`.
 
     void[Lift(1:3) >> Hello]
     #=>
@@ -85,18 +78,19 @@ output for each input, their composition emits three copies of
     =#
 
 Similarly, if we compose two plural queries, `Lift(1:2)` and
-`Lift(5:7)`, the composition will emit 2×3 = 6 numbers.
+`Lift('a':'c')`, the output will contain the elements of `'a':'c'`
+repeated twice.
 
-    void[Lift(1:2) >> Lift(5:7)]
+    void[Lift(1:2) >> Lift('a':'c')]
     #=>
       │ It │
     ──┼────┼
-    1 │  5 │
-    2 │  6 │
-    3 │  7 │
-    4 │  5 │
-    5 │  6 │
-    6 │  7 │
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
     =#
 
 The *identity* with respect to query composition is called `It`.
@@ -126,8 +120,6 @@ upon the output from previous processing.
 In DataKnots, queries are built algebraically, using query
 composition, identity and other combinators. This lets us define
 sophisticated query components and remix them in creative ways.
-
-
 
 ### Lifting Julia Functions
 
