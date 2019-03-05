@@ -24,19 +24,19 @@ trivial knot, `void` as our initial data source.
     │    │
     =#
 
-This `void` knot has a single element, `nothing`, displayed as a
-empty output cell. 
+This `void` knot has a single element, `nothing`, that is
+displayed as a empty output cell. 
 
 ### Constant Queries
 
-Constant queries are those that, for *each* input, produce a fixed
-output. Using `Lift`, let's construct a query primitive `Hello`
-that would produce the string `"Hello World"`.
+Constant queries are those that, for *each* input, emit a fixed
+output. Using `Lift`, let's construct a query `Hello` that would
+emit the string `"Hello World"`.
 
     Hello = Lift("Hello World")
 
 To query `void` with `Hello` we write `void[Hello]`. Since `void`
-provides one input, the query `Hello` produces one corresponding
+provides one input, the query `Hello` emits one corresponding
 output, `"Hello World"`.
 
     void[Hello]
@@ -46,51 +46,25 @@ output, `"Hello World"`.
     │ Hello World │
     =#
 
-For contrast, a knot `zero` which as zero elements can be
-constructed by `DataKnot(missing)`. When `zero` is queried with
-`Hello`, no outputs are produced.
+Consider `Lift(5:7)`, constructed by lifting a unit range to a
+constant query. Then, `void[Lift(5:7)]` produces three numbers,
+`5` though `7`.
 
-    zero = DataKnot(missing)
-    zero[Hello]
+    void[Lift(5:7)]
     #=>
-    │ It │
-    ┼────┼
+      │ It │
+    ──┼────┼
+    1 │  5 │
+    2 │  6 │
+    3 │  7 │
     =#
-
-Consider another query, `Twos`, constructed by lifting a vector
-having two elements, `"one"` and `"two"`. When we query `void`
-with `Twos`, a knot with two elements is produced.
-
-    Twos = Lift(["one","two"])
-    void[Twos]
-    #=>
-      │ It  │
-    ──┼─────┼
-    1 │ one │
-    2 │ two │
-    =#
-
-The result of querying a knot is a knot. Hence, we could create a
-knot `two` and query it with `Hello`.
-
-    two = void[Twos]
-    two[Hello]
-    #=>
-      │ It          │
-    ──┼─────────────┼
-    1 │ Hello World │
-    2 │ Hello World │
-    =#
-
-Most queries produce outputs for *each* input received. We call
-these *elementwise* queries. 
 
 ### Composition & Identity
 
 Two queries can be connected sequentially using the composition
-combinator (`>>`). Consider the composition `Lift(1:3) >> Hello`.
-Since `Lift(1:3)` emits 3 values and `Hello` emits `"Hello World"`
-for each of its inputs, their composition emits 3 copies of
+combinator (`>>`). Consider the composition, `Lift(1:3) >> Hello`.
+Since `Lift(1:3)` emits 3 numbers and since `Hello` emits one
+output for each input, their composition emits three copies of
 `"Hello World"`.
 
     void[Lift(1:3) >> Hello]
@@ -102,20 +76,20 @@ for each of its inputs, their composition emits 3 copies of
     3 │ Hello World │
     =#
 
-When queries that produce plural output are combined, the output
-is flattened into a single sequence. The following expression
-calculates `Lift(7:9)` twice and then flattens the output.
+When queries that emit plural output are combined, the output is
+flattened into a single sequence. The following expression
+calculates `Lift(5:7)` twice and then flattens the output.
 
-    void[Lift(1:2) >> Lift(7:9)]
+    void[Lift(1:2) >> Lift(5:7)]
     #=>
       │ It │
     ──┼────┼
-    1 │  7 │
-    2 │  8 │
-    3 │  9 │
-    4 │  7 │
-    5 │  8 │
-    6 │  9 │
+    1 │  5 │
+    2 │  6 │
+    3 │  7 │
+    4 │  5 │
+    5 │  6 │
+    6 │  7 │
     =#
 
 The *identity* with respect to query composition is called `It`.
