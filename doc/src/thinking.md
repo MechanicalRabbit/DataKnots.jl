@@ -24,7 +24,7 @@ trivial knot, `void` as our initial data source.
     │    │
     =#
 
-This `void` knot has a single value, `nothing`, displayed as a
+This `void` knot has a single element, `nothing`, displayed as a
 empty output cell. The underlying value of a knot can be obtained
 using the `get()` function; and here, we get `nothing`.
 
@@ -33,12 +33,16 @@ using the `get()` function; and here, we get `nothing`.
 
 ### Constant Queries
 
-Consider a *constant* query `Hello` that outputs a string value,
-`"Hello World"`. We use `Lift` to construct constant queries.
+Constant queries are those that, for each input, produce a fixed
+output. Using `Lift`, let's construct a query primitive `Hello`
+that would produce the string `"Hello World"`.
 
     Hello = Lift("Hello World")
 
-To query `void` with `Hello` we use Julia's `getindex` syntax.
+To query `void` with `Hello` we write `void[Hello]`. This notation
+performs the query, `Hello` with input from the knot `void`. Since
+`void` provides one input, `nothing`, the query `Hello` produces
+one corresponding output, `"Hello World"`.
 
     void[Hello]
     #=>
@@ -47,21 +51,22 @@ To query `void` with `Hello` we use Julia's `getindex` syntax.
     │ Hello World │
     =#
 
-Consider another query, `Twos`, created by applying `Lift` to a
-vector having two values, `"One"` and `"Two"`. When we query
-`void` with `Twos` query we get two outputs. 
+Consider another query, `Twos`, constructed by lifting a vector
+having two elements, `"one"` and `"two"`. When we query `void`
+with `Twos`, a knot with two elements is produced.
 
-    Twos = Lift(["One","Two"])
+    Twos = Lift(["one","two"])
+
     void[Twos]
     #=>
       │ It  │
     ──┼─────┼
-    1 │ One │
-    2 │ Two │
+    1 │ one │
+    2 │ two │
     =#
 
-In the context of a query invocation, `Lift` syntax can often be
-removed, permitting us to write queries more informally:
+So that we may write queries more ergonomically, scalar and vector
+values are automatically lifted to these constant queries.
 
     void["Howdy!"]
     #=>
@@ -69,9 +74,6 @@ removed, permitting us to write queries more informally:
     ┼────────┼
     │ Howdy! │
     =#
-
-When `void` is queried with the unit range `5:7`, the output
-includes values `5` though `7`.
 
     void[5:7]
     #=>
@@ -82,19 +84,75 @@ includes values `5` though `7`.
     3 │  7 │
     =#
 
-There is one specific value of note, `missing`.  The output of
-querying `void` with `missing` provides an empty knot.
+DataKnots track cardinality. If a knot has at most one element, we
+say that it is *singular*, else, it is *plural*. In the display of
+plural knots, indices are in the first column and elements are
+shown in the remaining columns.
 
-    void[missing]
+### Elementwise Operation
+
+Most queries produce outputs for *each* input received. We call
+these *elementwise* queries. In the previous section we used a
+data source, `void`, that provided exactly one input. Hence, a
+constant query, such as `Hello` produced exactly one output.
+
+    void[Hello]
+    #=>
+    │ It          │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Let's construct a knot, `twos`, having two elements, `1` and `2`.
+Then, let's query this knot with `Hello`. Since `twos` provides
+two inputs, the query `Hello` produces two outputs.
+
+    twos = void[1:2]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  2 │
+    =#
+
+    twos[Hello]
+    #=>
+      │ It          │
+    ──┼─────────────┼
+    1 │ Hello World │
+    2 │ Hello World │
+    =#
+
+It's also possible to construct a knot, `zero` having no elements.
+When `zero` is queried with `Hello`, there no outputs since there
+are no inputs.
+
+    zero = void[missing]
     #=>
     │ It │
     ┼────┼
     =#
 
-DataKnots track cardinality. If a knot has at most one value, we
-say that it is *singular*, else, it is *plural*. In the output of
-plural knots, indices are in the first column and values are in
-remaining columns.
+    zero[Hello]
+    #=>
+    │ It │
+    ┼────┼
+    =#
+
+When a plural query has a plural input, the results are flattened.
+
+    twos = void[1:2]
+    twos[7:9]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  7 │
+    2 │  8 │
+    3 │  9 │
+    4 │  7 │
+    5 │  8 │
+    6 │  9 │
+    =#
 
 ### Composition & Identity
 
