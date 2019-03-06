@@ -37,8 +37,8 @@ the query `Hello`, lifted from the string value `"Hello World"`.
     Hello = Lift("Hello World")
 
 To query `void` with `Hello`, we use indexing notation
-`void[Hello]`. In this case, `Hello` receives a `nothing` input
-from `void` and then produces the output, `"Hello World"`.
+`void[Hello]`. In this case, `Hello` receives `nothing` from
+`void` and produces the value, `"Hello World"`.
 
     void[Hello]
     #=>
@@ -122,9 +122,9 @@ sophisticated query components and remix them in creative ways.
 
 ### Lifting Julia Functions
 
-With DataKnots, any native Julia expression can be *lifted* to
-build a `Query`. Consider the Julia function `double()` that, when
-applied to a `Number`, produces a `Number`:
+Any Julia expression can be *lifted* to build a query. Consider
+the function `double(x)` that, when applied to a `Number`,
+produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
@@ -136,19 +136,7 @@ combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-When given an argument, the combinator `Double` can then be used
-to build a query that produces a doubled value.
-
-    void[Double(21)]
-    #=>
-    │ It │
-    ┼────┼
-    │ 42 │
-    =#
-
-In combinator form, `Double` can be used within query composition.
-To build a query component that doubles its input, the `Double`
-combinator could have `It` as its argument.
+Then, `Double(It)` is a query that would double its input.
 
     void[Lift(1:3) >> Double(It)]
     #=>
@@ -159,18 +147,15 @@ combinator could have `It` as its argument.
     3 │  6 │
     =#
 
-Since this use of native Julia functions as combinators is common
-enough, Julia's *broadcast* syntax (using a period) is overloaded
-to make translation convenient. Any native Julia function, such as
-`double`, can be used as a combinator as follows:
+Arguments to combinators constructed in this way are automatically
+lifted to queries. Therefore, `Double(21)` is actually the
+constant query `Double(Lift(21))`.
 
-    void[Lift(1:3) >> double.(It)]
+    void[Double(21)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
+    │ It │
+    ┼────┼
+    │ 42 │
     =#
 
 Automatic lifting also applies to built-in Julia operators. For
@@ -186,7 +171,9 @@ increments each one of its input values.
     3 │  4 │
     =#
 
-One can define combinators in terms of expressions.
+One can also define combinators as query expressions. When this
+is done, be mindful to wrap parameters, such as `N` below, with
+`Lift` so that arguments are automatically converted into queries.
 
     OneTo(N) = UnitRange.(1, Lift(N))
 
@@ -206,20 +193,12 @@ In DataKnots, query combinators can be constructed directly from
 native Julia functions. This lets us take advantage of Julia's
 rich statistical and data processing functions.
 
-### Aggregates
+### Aggregate Primitives & Combinators
 
-Some query combinators transform a plural query into a singular
-query; we call them *aggregate* combinators. Consider the
-operation of the `Count` combinator.
-
-    void[Count(OneTo(3))]
-    #=>
-    │ It │
-    ┼────┼
-    │  3 │
-    =#
-
-As a convenience, `Count` can also be used as a query primitive.
+Thus far our queries have been *elementwise*; that is, for each
+input element, they produce zero or more output elements.
+Consider now the `Count` primitive which produces output relative
+to its entire input. 
 
     void[OneTo(3) >> Count]
     #=>
@@ -228,22 +207,22 @@ As a convenience, `Count` can also be used as a query primitive.
     │  3 │
     =#
 
-It's possible to use aggregates within a plural query. In this
-example, as the outer `OneTo` goes from `1` to `3`, the `Sum`
-aggregate would calculate its output from `OneTo(1)`, `OneTo(2)`
-and `OneTo(3)`.
+This form of aggregation is helpful for extending compositions.
+Let's start with the query, `OneTo(3) >> OneTo(It)`.
 
-    void[OneTo(3) >> Sum(OneTo(It))]
+    void[OneTo(3) >> OneTo(It)]
     #=>
       │ It │
     ──┼────┼
     1 │  1 │
-    2 │  3 │
-    3 │  6 │
+    2 │  1 │
+    3 │  2 │
+    4 │  1 │
+    5 │  2 │
+    6 │  3 │
     =#
 
-However, if we rewrite the query to use `Sum` as a query
-primitive, we get a different result.
+By simply appending `>> Sum` we could aggregate the input.
 
     void[OneTo(3) >> OneTo(It) >> Sum]
     #=>
@@ -252,6 +231,7 @@ primitive, we get a different result.
     │ 10 │
     =#
 
+What if we wanted to produce sums by the outer query, `OneTo(3)`?
 Since query composition (`>>`) is associative, adding parenthesis
 around `OneTo(It) >> Sum` will not change the result.
 
@@ -262,9 +242,8 @@ around `OneTo(It) >> Sum` will not change the result.
     │ 10 │
     =#
 
-Instead of using parenthesis, we need to wrap `OneTo(It) >> Sum`
-with the `Each` combinator. This combinator builds a query that
-processes its input *elementwise*.
+Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
+`Each()` combinator, to process its input elementwise.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -275,9 +254,23 @@ processes its input *elementwise*.
     3 │  6 │
     =#
 
-Native Julia language aggregates, such as `mean`, can be easily
-lifted. DataKnots automatically converts a plural query into an
-input vector required by the native aggregate.
+There is a combinator variant of the `Sum` primitive, with the
+query to be aggregated as an argument. Observe that the `Sum()`
+combinator is evaluated elementwise, that is, it produces its
+outputs in correspondence with its inputs.
+
+    void[OneTo(3) >> Sum(OneTo(It))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  3 │
+    3 │  6 │
+    =#
+
+Julia language aggregates, such as `mean`, can be easily lifted.
+DataKnots automatically converts the plural query parameter into
+the vector argument required by the native aggregate.
 
     using Statistics
     Mean(X) = Lift(mean, (X,))
