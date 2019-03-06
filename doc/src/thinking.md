@@ -147,20 +147,21 @@ Then, `Double(It)` is a query that would double its input.
     3 │  6 │
     =#
 
-Arguments to combinators constructed in this way are automatically
-lifted to queries. Therefore, `Double(21)` is actually the
-constant query `Double(Lift(21))`.
+Using Julia's broadcast syntax, this lifting could be automated so
+that a `Lift` call to construct `Double(X)` isn't needed.
 
-    void[Double(21)]
+    void[Lift(1:3) >> double.(It)]
     #=>
-    │ It │
-    ┼────┼
-    │ 42 │
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  4 │
+    3 │  6 │
     =#
 
-Automatic lifting also applies to built-in Julia operators. For
-example, the expression `It .+ 1` is a query component that
-increments each one of its input values.
+Automatic lifting also applies to built-in Julia operators and
+values. As we demonstrated earlier, the expression `It .+ 1` is a
+query component that increments each one of its input values.
 
     void[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -198,7 +199,7 @@ rich statistical and data processing functions.
 Thus far our queries have been *elementwise*; that is, for each
 input element, they produce zero or more output elements.
 Consider now the `Count` primitive which produces output relative
-to its entire input. 
+to its entire input.
 
     void[OneTo(3) >> Count]
     #=>
@@ -256,8 +257,7 @@ Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
 
 There is a combinator variant of the `Sum` primitive, with the
 query to be aggregated as an argument. Observe that the `Sum()`
-combinator is evaluated elementwise, that is, it produces its
-outputs in correspondence with its inputs.
+combinator is evaluated elementwise.
 
     void[OneTo(3) >> Sum(OneTo(It))]
     #=>
@@ -273,7 +273,7 @@ DataKnots automatically converts the plural query parameter into
 the vector argument required by the native aggregate.
 
     using Statistics
-    Mean(X) = Lift(mean, (X,))
+    Mean(X) = mean.(X)
     void[Mean(OneTo(3) >> Sum(OneTo(It)))]
     #=>
     │ It      │
@@ -281,8 +281,8 @@ the vector argument required by the native aggregate.
     │ 3.33333 │
     =#
 
-To use `Mean` as a query primitive, there are two steps. First, we
-use `Then` to build a query that aggregates from its input.
+To use `Mean` as a query primitive, there are two steps. First,
+we use `Then` to build a query that aggregates from its input.
 Second, we register a `Lift` to this query when the combinator's
 name is mentioned in a query expression.
 
@@ -298,9 +298,9 @@ Once these are done, one could take an average of sums as follows:
     =#
 
 In DataKnots, aggregate operations are naturally expressed as
-query combinators. Moreover, custom aggregates can be easily
-constructed as native Julia functions and lifted into the query
-algebra.
+query primitives or query combinators. Moreover, custom aggregates
+can be easily constructed as native Julia functions and lifted
+into the query algebra.
 
 ## Filtering & Slicing Data
 
