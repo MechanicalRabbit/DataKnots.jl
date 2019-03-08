@@ -9,30 +9,14 @@ import Base:
     show
 
 
-# Ordering test.
-
-"""
-    fits(x::T, y::T) :: Bool
-
-Checks if constraint `x` implies constraint `y`.
-"""
-function fits end
-
 #
-# Order on cardinalities.
-#
-
-fits(c1::Cardinality, c2::Cardinality) = (c1 | c2) == c2
-
-
-#
-# Represents the shape of data.
+# Shapes of data.
 #
 
 """
     AbstractShape
 
-Represents the structure of column-oriented data.
+Describes the structure of column-oriented data.
 """
 abstract type AbstractShape end
 
@@ -40,16 +24,22 @@ quoteof(shp::AbstractShape) =
     Expr(:call, nameof(typeof(shp)))
 
 quoteof(p::Pair{Symbol,<:AbstractShape}) =
-    Expr(:call, :(=>), quoteof(siglabel(p.first)), quoteof(p.second))
+    Expr(:call, :(=>), labelquote(p.first), quoteof(p.second))
 
-siglabel(lbl::Symbol) =
-    Base.isidentifier(lbl) ? lbl : string(lbl)
+quoteof_inner(p::Pair{Symbol,<:AbstractShape}) =
+    Expr(:call, :(=>), labelquote(p.first), quoteof_inner(p.second))
+
+labelquote(lbl::Symbol) =
+    quoteof(labelsyntax(lbl))
 
 syntaxof(shp::AbstractShape) =
     nameof(typeof(shp))
 
 syntaxof(p::Pair{Symbol,<:AbstractShape}) =
-    Expr(:(=), siglabel(p.first), syntaxof(p.second))
+    Expr(:(=), labelsyntax(p.first), syntaxof(p.second))
+
+labelsyntax(lbl::Symbol) =
+    Base.isidentifier(lbl) ? lbl : string(lbl)
 
 show(io::IO, shp::AbstractShape) =
     print_expr(io, quoteof(shp))
@@ -59,12 +49,14 @@ show(io::IO, shp::AbstractShape) =
 # Concrete shapes.
 #
 
+abstract type DataShape <: AbstractShape end
+
 """
     AnyShape()
 
 Nothing is known about the data.
 """
-struct AnyShape <: AbstractShape
+struct AnyShape <: DataShape
 end
 
 quoteof_inner(::AnyShape) =
@@ -80,7 +72,7 @@ eltype(::AnyShape) = Any
 
 Inconsistent constraints on the data.
 """
-struct NoShape <: AbstractShape
+struct NoShape <: DataShape
 end
 
 syntaxof(::NoShape) =
@@ -91,10 +83,10 @@ eltype(::NoShape) = Union{}
 """
     ValueOf(::Type)
 
-Shape of an atomic Julia value.
+Regular Julia vector with elements of the given type.
 """
 
-struct ValueOf <: AbstractShape
+struct ValueOf <: DataShape
     ty::Type
 end
 
@@ -118,40 +110,35 @@ syntaxof(shp::ValueOf) = shp.ty
 eltype(shp::ValueOf) = shp.ty
 
 """
-    TupleOf([lbls::Vector{Symbol},] flds::Vector{AbstractShape})
-    TupleOf(flds::AbstractShape...)
-    TupleOf(lflds::Pair{<:Union{Symbol,String},<:AbstractShape}...)
+    TupleOf([lbls::Vector{Symbol},] cols::Vector{AbstractShape})
+    TupleOf(cols::AbstractShape...)
+    TupleOf(lcols::Pair{<:Union{Symbol,AbstractString},<:AbstractShape}...)
 
 Shape of a `TupleVector`.
 """
 
-struct TupleOf <: AbstractShape
+struct TupleOf <: DataShape
     lbls::Vector{Symbol}
     cols::Vector{AbstractShape}
 end
 
-let NO_LBLS = Symbol[]
+TupleOf() =
+    TupleOf(Symbol[], AbstractShape[])
 
-    global TupleOf
+TupleOf(cols::Vector{AbstractShape}) =
+    TupleOf(Symbol[], cols)
 
-    @inline TupleOf() =
-        TupleOf(NO_LBLS, AbstractShape[])
+TupleOf(cols::Union{AbstractShape,Type}...) =
+    TupleOf(Symbol[], collect(AbstractShape, cols))
 
-    @inline TupleOf(cols::Vector{AbstractShape}) =
-        TupleOf(NO_LBLS, cols)
-
-    @inline TupleOf(cols::Union{AbstractShape,Type}...) =
-        TupleOf(NO_LBLS, collect(AbstractShape, cols))
-end
-
-@inline TupleOf(lcols::Pair{<:Union{Symbol,String},<:Union{AbstractShape,Type}}...) =
+TupleOf(lcols::Pair{<:Union{Symbol,AbstractString},<:Union{AbstractShape,Type}}...) =
     TupleOf(collect(Symbol.(first.(lcols))), collect(AbstractShape, last.(lcols)))
 
 quoteof(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:call, nameof(TupleOf), quoteof.(shp.cols)...)
+        Expr(:call, nameof(TupleOf), quoteof_inner.(shp.cols)...)
     else
-        Expr(:call, nameof(TupleOf), quoteof.(shp.lbls .=> shp.cols)...)
+        Expr(:call, nameof(TupleOf), quoteof_inner.(shp.lbls .=> shp.cols)...)
     end
 
 syntaxof(shp::TupleOf) =
@@ -161,9 +148,9 @@ syntaxof(shp::TupleOf) =
         Expr(:tuple, syntaxof.(shp.lbls .=> shp.cols)...)
     end
 
-@inline labels(shp::TupleOf) = shp.lbls
+labels(shp::TupleOf) = shp.lbls
 
-function label(k::Int)
+function ordinal_label(k::Int)
     lbl = ""
     if k == 1
         lbl = 'A' * lbl
@@ -177,26 +164,19 @@ function label(k::Int)
 end
 
 function label(shp::TupleOf, k::Int)
-    !isempty(shp.lbls) ? shp.lbls[k] : label(k)
+    !isempty(shp.lbls) ? shp.lbls[k] : ordinal_label(k)
 end
 
-@inline getindex(shp::TupleOf, ::Colon) = shp.cols
+width(shp::TupleOf) = length(shp.cols)
 
-@inline getindex(shp::TupleOf, k::Int) = shp.cols[k]
+columns(shp::TupleOf) = shp.cols
 
-@inline getindex(shp::TupleOf, lbl::Union{Symbol,String}) =
-    shp[findfirst(isequal(Symbol(lbl)), shp.lbls)]
+column(shp::TupleOf, j::Int) = shp.cols[j]
 
-@inline width(shp::TupleOf) = length(shp.cols)
-
-@inline columns(shp::TupleOf) = shp.cols
-
-@inline column(shp::TupleOf, j::Int) = shp.cols[j]
-
-@inline column(shp::TupleOf, lbl::Symbol) =
+column(shp::TupleOf, lbl::Symbol) =
     column(shp, findfirst(isequal(lbl), shp.lbls))
 
-function with_column(shp::TupleOf, j::Int, f)
+function replace_column(shp::TupleOf, j::Int, f)
     col = shp.cols[j]
     col′ = f isa AbstractShape ? f : f(col)
     cols′ = copy(shp.cols)
@@ -214,11 +194,11 @@ function eltype(shp::TupleOf)
 end
 
 """
-    BlockOf(eshp::AbstractShape, card::Cardinality=x0toN)
+    BlockOf(elts::AbstractShape, card::Cardinality=x0toN)
 
 Shape of a `BlockVector`.
 """
-struct BlockOf <: AbstractShape
+struct BlockOf <: DataShape
     elts::AbstractShape
     card::Cardinality
 end
@@ -236,22 +216,18 @@ quoteof(shp::BlockOf) =
 syntaxof(shp::BlockOf) =
     Expr(:call, :×, syntaxof(shp.card), syntaxof(shp.elts))
 
-@inline getindex(shp::BlockOf) = shp.elts
+elements(shp::BlockOf) = shp.elts
 
-@inline elements(shp::BlockOf) = shp.elts
-
-function with_elements(shp::BlockOf, f)
+function replace_elements(shp::BlockOf, f)
     elts′ = f isa AbstractShape ? f : f(shp.elts)
     BlockOf(elts′, shp.card)
 end
 
-@inline cardinality(shp::BlockOf) = shp.card
+cardinality(shp::BlockOf) = shp.card
 
-@inline isregular(shp::BlockOf) = isregular(shp.card)
+ismandatory(shp::BlockOf) = ismandatory(shp.card)
 
-@inline isoptional(shp::BlockOf) = isoptional(shp.card)
-
-@inline isplural(shp::BlockOf) = isplural(shp.card)
+issingular(shp::BlockOf) = issingular(shp.card)
 
 function eltype(shp::BlockOf)
     t = eltype(shp.elts)
@@ -264,13 +240,12 @@ function eltype(shp::BlockOf)
     end
 end
 
+
 #
 # Annotations.
 #
 
 abstract type Annotation <: AbstractShape end
-
-@inline getindex(shp::Annotation) = shp.sub
 
 syntaxof(shp::Annotation) =
     syntaxof(shp.sub)
@@ -279,32 +254,36 @@ eltype(shp::Annotation) =
     eltype(subject(shp))
 
 """
-    shp |> HasLabel(::Symbol)
+    sub |> IsLabeled(::Symbol)
+
+The shape has an attached label.
 """
-struct HasLabel <: Annotation
+struct IsLabeled <: Annotation
     sub::AbstractShape
     lbl::Symbol
 end
 
-HasLabel(sub::Union{AbstractShape,Type}, lbl::Union{Symbol,String}) =
-    HasLabel(convert(AbstractShape, sub), Symbol(lbl))
+IsLabeled(sub::Union{AbstractShape,Type}, lbl::Union{Symbol,AbstractString}) =
+    IsLabeled(convert(AbstractShape, sub), Symbol(lbl))
 
-HasLabel(lbl::Union{Symbol,String}) =
-    sub -> HasLabel(sub, lbl)
+IsLabeled(lbl::Union{Symbol,AbstractString}) =
+    sub -> IsLabeled(sub, lbl)
 
-quoteof(shp::HasLabel) =
-    Expr(:call, nameof(|>), quoteof_inner(shp.sub), Expr(:call, nameof(HasLabel), quoteof(siglabel(shp.lbl))))
+quoteof(shp::IsLabeled) =
+    Expr(:call, nameof(|>), quoteof_inner(shp.sub), Expr(:call, nameof(IsLabeled), labelquote(shp.lbl)))
 
-subject(shp::HasLabel) = shp.sub
+subject(shp::IsLabeled) = shp.sub
 
-with_subject(shp::HasLabel, f) =
-    HasLabel(f isa AbstractShape ? f : f(shp.sub), shp.lbl)
+replace_subject(shp::IsLabeled, f) =
+    IsLabeled(f isa AbstractShape ? f : f(shp.sub), shp.lbl)
 
-label(shp::HasLabel, default=nothing) =
+label(shp::IsLabeled) =
     shp.lbl
 
 """
     sub |> IsFlow
+
+The annotated `BlockVector` holds the output flow.
 """
 
 struct IsFlow <: Annotation
@@ -316,20 +295,22 @@ quoteof(shp::IsFlow) =
 
 subject(shp::IsFlow) = shp.sub
 
-with_subject(shp::IsFlow, f) =
+replace_subject(shp::IsFlow, f) =
     IsFlow(f isa AbstractShape ? f : f(shp.sub))
 
 elements(shp::IsFlow) =
     elements(shp.sub)
 
-with_elements(shp::IsFlow, f) =
-    with_subject(shp, sub -> with_elements(sub, f))
+replace_elements(shp::IsFlow, f) =
+    replace_subject(shp, sub -> replace_elements(sub, f))
 
 cardinality(shp::IsFlow) =
-    cardinality(subject(shp))
+    cardinality(shp.sub)
 
 """
     sub |> IsScope
+
+The annotated `TupleVector` holds the scoping context.
 """
 
 struct IsScope <: Annotation
@@ -341,17 +322,70 @@ quoteof(shp::IsScope) =
 
 subject(shp::IsScope) = shp.sub
 
-with_subject(shp::IsScope, f) =
+replace_subject(shp::IsScope, f) =
     IsScope(f isa AbstractShape ? f : f(shp.sub))
 
 column(shp::IsScope) =
     column(shp.sub, 1)
 
-with_column(shp::IsScope, f) =
-    with_subject(shp, sub -> with_column(sub, 1, f))
+replace_column(shp::IsScope, f) =
+    replace_subject(shp, sub -> replace_column(sub, 1, f))
 
 context(shp::IsScope) =
     column(shp.sub, 2)
+
+
+#
+# Partial order on shapes.
+#
+
+"""
+    fits(x::T, y::T) :: Bool
+
+Checks if constraint `x` implies constraint `y`.
+"""
+function fits end
+
+fits(c1::Cardinality, c2::Cardinality) =
+    (c1 | c2) == c2
+
+fits(::AbstractShape, ::AbstractShape) = false
+
+fits(::DataShape, ::AnyShape) = true
+
+fits(::NoShape, ::DataShape) = true
+
+fits(::NoShape, ::AnyShape) = true
+
+fits(shp1::ValueOf, shp2::ValueOf) =
+    shp1.ty <: shp2.ty
+
+fits(shp1::TupleOf, shp2::TupleOf) =
+    length(shp1.cols) == length(shp2.cols) &&
+    all(fits.(shp1.cols, shp2.cols)) &&
+    (isempty(shp2.lbls) || shp1.lbls == shp2.lbls)
+
+fits(shp1::BlockOf, shp2::BlockOf) =
+    fits(shp1.elts, shp2.elts) &&
+    fits(shp1.card, shp2.card)
+
+fits(shp1::IsLabeled, shp2::IsLabeled) =
+    fits(shp1.sub, shp2.sub) && shp1.lbl == shp2.lbl
+
+fits(shp1::IsLabeled, shp2::AbstractShape) =
+    fits(shp1.sub, shp2)
+
+fits(shp1::IsFlow, shp2::IsFlow) =
+    fits(shp1.sub, shp2.sub)
+
+fits(shp1::IsFlow, shp2::AbstractShape) =
+    fits(shp1.sub, shp2)
+
+fits(shp1::IsScope, shp2::IsScope) =
+    fits(shp1.sub, shp2.sub)
+
+fits(shp1::IsScope, shp2::AbstractShape) =
+    fits(shp1.sub, shp2)
 
 
 #
@@ -367,13 +401,16 @@ shapeof(tv::TupleVector) =
 shapeof(bv::BlockVector) =
     BlockOf(shapeof(elements(bv)), cardinality(bv))
 
+fits(v::AbstractVector, shp::AbstractShape) =
+    fits(shapeof(v), shp)
+
 
 #
 # Signature of a pipeline.
 #
 
 """
-    Signature(::InputShape, ::OutputShape)
+    Signature(::AbstractShape, ::AbstractShape)
 
 Shapes of a pipeline input and output.
 """

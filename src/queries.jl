@@ -135,13 +135,13 @@ function adapt_output(ishp::IsFlow)
     p = adapt_output(elements(ishp))
     lbl = nothing
     shp = shape(p)
-    if shp isa HasLabel
+    if shp isa IsLabeled
         lbl = label(shp)
         shp = subject(shp)
     end
     shp = BlockOf(shp, cardinality(ishp))
     if lbl !== nothing
-        shp = shp |> HasLabel(lbl)
+        shp = shp |> IsLabeled(lbl)
     end
     with_elements(p) |> designate(ishp, shp)
 end
@@ -171,9 +171,9 @@ function adapt_flow(ishp::ValueOf)
     end
 end
 
-function adapt_flow(ishp::HasLabel)
+function adapt_flow(ishp::IsLabeled)
     p = adapt_flow(subject(ishp))
-    shp = with_elements(shape(p), HasLabel(label(ishp)))
+    shp = replace_elements(shape(p), IsLabeled(label(ishp)))
     p |> designate(ishp, shp)
 end
 
@@ -183,7 +183,7 @@ adapt_flow(ishp::IsFlow) =
 function adapt_flow(ishp::IsScope)
     p = adapt_flow(column(ishp))
     shp = shape(p)
-    shp = with_elements(shp, TupleOf(elements(shp), context(ishp)) |> IsScope)
+    shp = replace_elements(shp, TupleOf(elements(shp), context(ishp)) |> IsScope)
     if width(context(ishp)) > 0
         chain_of(with_column(1, p), distribute(1)) |> designate(ishp, shp)
     else
@@ -203,7 +203,7 @@ end
 
 function clone_context(ctx::TupleOf, p::Pipeline)
     ishp = TupleOf(ishape(p), ctx) |> IsScope
-    shp = with_elements(shape(p), elts -> TupleOf(elts, ctx) |> IsScope)
+    shp = replace_elements(shape(p), elts -> TupleOf(elts, ctx) |> IsScope)
     if width(ctx) > 0
         chain_of(with_column(1, p), distribute(1)) |> designate(ishp, shp)
     else
@@ -314,8 +314,8 @@ function monadic_record(p::Pipeline, xs::Vector{Pipeline})
     for (i, x) in enumerate(xs)
         x = adapt_output(x)
         shp = shape(x)
-        lbl = label(i)
-        if shp isa HasLabel
+        lbl = ordinal_label(i)
+        if shp isa IsLabeled
             lbl = label(shp)
             shp = subject(shp)
             x = x |> designate(ishape(x), shp)
@@ -329,8 +329,8 @@ function monadic_record(p::Pipeline, xs::Vector{Pipeline})
     end
     ishp = elements(shape(p))
     shp = TupleOf(lbls, shape.(cols))
-    if column(ishp) isa HasLabel
-        shp = shp |> HasLabel(label(column(ishp)))
+    if column(ishp) isa IsLabeled
+        shp = shp |> IsLabeled(label(column(ishp)))
     end
     q = tuple_of(lbls, cols) |> designate(ishp, shp)
     q = adapt_flow(clone_context(q))
@@ -475,25 +475,25 @@ replace_label(shp::AbstractShape, ::Nothing) =
     shp
 
 replace_label(shp::AbstractShape, lbl::Symbol) =
-    shp |> HasLabel(lbl)
+    shp |> IsLabeled(lbl)
 
-replace_label(shp::HasLabel, ::Nothing) =
+replace_label(shp::IsLabeled, ::Nothing) =
     subject(shp)
 
-replace_label(shp::HasLabel, lbl::Symbol) =
-    subject(shp) |> HasLabel(lbl)
+replace_label(shp::IsLabeled, lbl::Symbol) =
+    subject(shp) |> IsLabeled(lbl)
 
 replace_label(shp::IsFlow, ::Nothing) =
-    with_elements(shp, elts -> replace_label(elts, nothing))
+    replace_elements(shp, elts -> replace_label(elts, nothing))
 
 replace_label(shp::IsFlow, lbl::Symbol) =
-    with_elements(shp, elts -> replace_label(elts, lbl))
+    replace_elements(shp, elts -> replace_label(elts, lbl))
 
 replace_label(shp::IsScope, ::Nothing) =
-    with_column(shp, col -> replace_label(col, nothing))
+    replace_column(shp, col -> replace_label(col, nothing))
 
 replace_label(shp::IsScope, lbl::Symbol) =
-    with_column(shp, col -> replace_label(col, lbl))
+    replace_column(shp, col -> replace_label(col, lbl))
 
 """
     Label(lbl::Symbol)
@@ -575,7 +575,7 @@ end
 
 lookup(::AbstractShape, ::Any) = nothing
 
-lookup(shp::HasLabel, name::Any) =
+lookup(shp::IsLabeled, name::Any) =
     lookup(subject(shp), name)
 
 function lookup(lbls::Vector{Symbol}, name::Symbol)
@@ -607,7 +607,7 @@ function lookup(ity::Type{<:NamedTuple}, name::Symbol)
     j = lookup(collect(Symbol, ity.parameters[1]), name)
     j !== nothing || return nothing
     oty = ity.parameters[2].parameters[j]
-    lift(t -> t[j]) |> designate(ValueOf(ity), ValueOf(oty) |> HasLabel(name))
+    lift(t -> t[j]) |> designate(ValueOf(ity), ValueOf(oty) |> IsLabeled(name))
 end
 
 
@@ -618,7 +618,7 @@ end
 function monadic_keep(p::Pipeline, q::Pipeline)
     q = adapt_output(q)
     shp = shape(q)
-    shp isa HasLabel || error("parameter name is not specified")
+    shp isa IsLabeled || error("parameter name is not specified")
     name = label(shp)
     shp = subject(shp)
     ishp = ishape(q)

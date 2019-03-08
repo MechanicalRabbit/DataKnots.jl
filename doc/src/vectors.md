@@ -376,6 +376,11 @@ block.  There are four different cardinality constraints: *just one* `(1:1)`,
     x0toN = 0x03
     =#
 
+Cardinality values could be obtained from the matching symbols.
+
+    convert(Cardinality, :x1toN)
+    #-> x1toN::Cardinality = 2
+
 Cardinality values support bitwise operations.
 
     print(x1to1|x0to1|x1toN)    #-> x0toN

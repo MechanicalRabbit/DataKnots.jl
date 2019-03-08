@@ -90,7 +90,7 @@ TableData(head, body, flds) =
 function table_data(db::DataKnot, maxy::Int)
     shp = shape(db)
     title = ""
-    if shp isa HasLabel
+    if shp isa IsLabeled
         title = String(label(shp))
         shp = subject(shp)
     end
@@ -130,7 +130,7 @@ function _focus_block(d::TableData, pos::Int)
     end
     body′ = TupleVector(length(elts), cols′)
     flds′ = copy(d.flds)
-    flds′[pos] = fld[]
+    flds′[pos] = elements(fld)
     idxs′ = !isempty(d.idxs) ? d.idxs[perm] :
             !issingular(cardinality(fld)) ? (1:length(elts)) : (1:0)
     return TableData(d.head, body′, flds′, idxs′, 0)
@@ -321,7 +321,7 @@ function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int)
             avail -= 2
             comma = false
         end
-        cell = render_cell(shp[i], column(vals, i), idx, avail)
+        cell = render_cell(column(shp, i), column(vals, i), idx, avail)
         print(buf, cell.text)
         avail -= textwidth(cell.text)
         if avail < 0
@@ -375,7 +375,7 @@ function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int)
                 avail -= 2
                 comma = false
             end
-            cell = render_cell(shp[], elts, k, avail)
+            cell = render_cell(elements(shp), elts, k, avail)
             print(buf, cell.text)
             avail -= textwidth(cell.text)
             if avail < 0
@@ -387,7 +387,7 @@ function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int)
         end
         return TableCell(String(take!(buf)))
     else
-        return render_cell(shp[], elts, l, avail)
+        return render_cell(elements(shp), elts, l, avail)
     end
 end
 

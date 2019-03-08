@@ -88,7 +88,7 @@ shape(p::Pipeline) = shape(p.sig)
 ishape(p::Pipeline) = ishape(p.sig)
 
 function (p::Pipeline)(input::DataKnot)
-    #@assert fits(shape(input), ishape(p))
+    @assert fits(shape(input), ishape(p))
     DataKnot(p(cell(input)), shape(p))
 end
 
@@ -682,7 +682,7 @@ vector with 0- or 1-element blocks containing the elements of the first column.
 sieve() = Pipeline(sieve)
 
 function sieve(rt::Runtime, input::AbstractVector)
-    @assert input isa TupleVector && eltype(column(input, 2)) <: Bool
+    @assert input isa TupleVector && width(input) == 2 && eltype(column(input, 2)) <: Bool
     val_col, pred_col = columns(input)
     _sieve(val_col, pred_col)
 end

@@ -493,7 +493,7 @@ distribute all of the block columns.
     =#
 
 This pipeline is equivalent to
-`chain_of(distribute(1),with_elements(distribute(2),flatten())`.
+`chain_of(distribute(1), with_elements(distribute(2)), flatten())`.
 
 The pipeline `block_length()` calculates the lengths of blocks in a block vector.
 
@@ -535,7 +535,7 @@ elements of each block.
     p(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
     #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S", "CHARLES S"], []]
 
-When `N` is negative, `slice(N)` drops the last `N` elements of each block.
+When `N` is negative, `slice(N)` drops the last `-N` elements of each block.
 
     p = slice(-1)
 
@@ -543,7 +543,7 @@ When `N` is negative, `slice(N)` drops the last `N` elements of each block.
     #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S"], []]
 
 The pipeline `slice(N, true)` drops the first `N` elements (or keeps the last
-`N` elements if `N` is negative).
+`-N` elements if `N` is negative).
 
     p = slice(2, true)
 
