@@ -102,8 +102,8 @@ query's output.
     │ Hello World │
     =#
 
-The identity, `It`, can be used to construct queries which rely
-upon the output from previous processing.
+The identity primitive, `It`, can be used to construct queries
+which rely upon the output from previous processing.
 
     Increment = It .+ 1
     void[Lift(1:3) >> Increment]
@@ -115,13 +115,14 @@ upon the output from previous processing.
     3 │  4 │
     =#
 
-In DataKnots, queries are built algebraically, using query
-composition, identity and other combinators. This lets us define
-sophisticated query components and remix them in creative ways.
+In DataKnots, queries are built algebraically, starting with query
+primitives, such as constants (`Lift`) and identity (`It`), and
+then arranged with with combinators, such as composition (`>>`).
+This lets us define sophisticated query components and remix them
+in creative ways.
 
 ### Julia Functions
 
-Any Julia expression can be *lifted* to participate in a query.
 Consider the function `double(x)` that, when applied to a
 `Number`, produces a `Number`:
 
@@ -130,7 +131,7 @@ Consider the function `double(x)` that, when applied to a
 
 What we want is an analogue to `double` that, instead of operating
 on numbers, operates on queries. Such functions are called query
-combinators. We can convert any Julia function to a query
+*combinators*. We can convert any Julia function to a query
 combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
@@ -147,8 +148,7 @@ In particular, `Double(It)` is a query that doubles its input.
     3 │  6 │
     =#
 
-Using Julia's broadcast syntax, this lifting could be automated so
-that a `Lift` call to construct `Double(X)` isn't needed.
+Using Julia's broadcast syntax, this lifting could be automated.
 
     void[Lift(1:3) >> double.(It)]
     #=>
@@ -159,9 +159,9 @@ that a `Lift` call to construct `Double(X)` isn't needed.
     3 │  6 │
     =#
 
-Automatic lifting also applies to built-in Julia operators and
-values. The expression `It .+ 1` is a query component that
-increments each of it's input elements.
+Automatic lifting also applies to built-in Julia operators (`+`)
+and values (`1`). The expression `It .+ 1` is a query component
+that increments each of it's input elements.
 
     void[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -178,7 +178,7 @@ sure to cast each argument using `Lift`.
     OneTo(N) = UnitRange.(1, Lift(N))
 
 Note that this lifted function is vector-valued. Therefore, the
-result is treated as a plural value.
+result is a plural output.
 
     void[OneTo(3)]
     #=>
@@ -201,9 +201,9 @@ then it is *mandatory*; else, it is *optional*.
 | `Union{T, Missing}` | Yes      | No        |
 | `{T}`               | Yes      | Yes       |
 
-In DataKnots, query combinators can be automatically constructed
-from Julia functions. This lets us access Julia's rich statistical
-and data processing functions from our queries.
+Though this inspection, query combinators can be automatically
+constructed from Julia functions. This lets us access Julia's rich
+statistical and data processing functions from our queries.
 
 ## Query Combinators
 
@@ -213,13 +213,13 @@ and other internal details. We've met two of them, `Lift` itself
 and query composition (`>>`).
 
 Operations that cannot be lifted include navigation, filtering,
-sorting, grouping, paging, and others.
+sorting, grouping, paging, and many others.
 
 ### Aggregate Primitives & Combinators
 
 So far queries have been *elementwise*; that is, for each input
 element, they produce zero or more output elements. Consider now
-the `Count` primitive which produces output for its entire input.
+the `Count` primitive has a singular output for its entire input.
 
     void[OneTo(3) >> Count]
     #=>
@@ -228,7 +228,7 @@ the `Count` primitive which produces output for its entire input.
     │  3 │
     =#
 
-This form of aggregation is helpful for extending compositions.
+This form of aggregation is helpful when extending compositions.
 Let's start with the query, `OneTo(3) >> OneTo(It)`.
 
     void[OneTo(3) >> OneTo(It)]
@@ -264,7 +264,7 @@ around `OneTo(It) >> Sum` will not change the result.
     =#
 
 Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
-`Each` combinator, which evaluates its argument for each input.
+`Each` combinator, which evaluates its argument elementwise.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -319,7 +319,6 @@ query primitives or query combinators. Moreover, custom aggregates
 can be easily constructed as native Julia functions and lifted
 into the query algebra.
 
-
 ### Filtering
 
 The `Filter` combinator has one parameter, a predicate query that,
@@ -335,8 +334,8 @@ in the output.
     3 │  6 │
     =#
 
-Being a combinator, `Filter` returns a query component, which
-could then be composed with any data generating query.
+Being a combinator, `Filter` builds a query component, which could
+then be composed with any data generating query.
 
     KeepEven = Filter(iseven.(It))
     void[OneTo(6) >> KeepEven]
@@ -357,9 +356,9 @@ Filter can work in a nested context.
     1 │  3 │
     =#
 
-The `Filter` combinator is elementwise. That is, it's arguments
-are evaluated for each input element. If the predicate is `true`,
-then that element is reproduced, otherwise it is discarded.
+The `Filter` combinator is elementwise. That is, its arguments are
+evaluated for each input element. If the predicate is `true`, then
+that element is reproduced, otherwise it is discarded.
 
 ### Paging Data
 
@@ -375,6 +374,10 @@ to slice an input stream: `Drop` is used to skip over input, while
     2 │  5 │
     3 │  6 │
     =#
+
+However, unlike `Filter`, slicing combinators are not elementwise.
+
+
 
 However, what if you want to take the first half?  This next
 example, `FirstHalf` is a combinator that builds a query returning
