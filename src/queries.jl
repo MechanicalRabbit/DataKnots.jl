@@ -778,7 +778,7 @@ Given(P, Xs...) =
     Query(Given, P, Xs...)
 
 Given(env::Environment, p::Pipeline, Xs...) =
-    Given(env, p, Keep(Xs[1:end-1]...) >> Xs[end])
+    Given(env, p, Keep(Xs[1:end-1]...) >> Each(Xs[end]))
 
 function Given(env::Environment, p::Pipeline, X)
     q = compile(X, env, stub(p))
