@@ -76,9 +76,8 @@ it with `Lift(1:3)` generates three copies of `"Hello World"`.
     3 │ Hello World │
     =#
 
-Similarly, if we compose two plural queries, `Lift(1:2)` and
-`Lift('a':'c')`, the output will contain the elements of `'a':'c'`
-repeated twice.
+If we compose two plural queries, `Lift(1:2)` and `Lift('a':'c')`,
+the output will contain the elements of `'a':'c'` repeated twice.
 
     void[Lift(1:2) >> Lift('a':'c')]
     #=>
@@ -120,11 +119,11 @@ In DataKnots, queries are built algebraically, using query
 composition, identity and other combinators. This lets us define
 sophisticated query components and remix them in creative ways.
 
-### Lifting Julia Functions
+### Julia Functions
 
-Any Julia expression can be *lifted* to build a query. Consider
-the function `double(x)` that, when applied to a `Number`,
-produces a `Number`:
+Any Julia expression can be *lifted* to participate in a query.
+Consider the function `double(x)` that, when applied to a
+`Number`, produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
@@ -136,7 +135,8 @@ combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-Then, `Double(It)` is a query that would double its input.
+Once lifted, `Double` is a combinator that doubles its argument.
+In particular, `Double(It)` is a query that doubles its input.
 
     void[Lift(1:3) >> Double(It)]
     #=>
@@ -160,8 +160,8 @@ that a `Lift` call to construct `Double(X)` isn't needed.
     =#
 
 Automatic lifting also applies to built-in Julia operators and
-values. As we demonstrated earlier, the expression `It .+ 1` is a
-query component that increments each one of its input values.
+values. The expression `It .+ 1` is a query component that
+increments each of it's input elements.
 
     void[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -172,14 +172,13 @@ query component that increments each one of its input values.
     3 │  4 │
     =#
 
-One can also define combinators as query expressions. When this
-is done, be mindful to wrap parameters, such as `N` below, with
-`Lift` so that arguments are automatically converted into queries.
+One can also define combinators as query expressions. However, be
+sure to cast each argument using `Lift`.
 
     OneTo(N) = UnitRange.(1, Lift(N))
 
-When a lifted function is vector-valued, the resulting combinator
-builds plural queries.
+Note that this lifted function is vector-valued. Therefore, the
+result is treated as a plural value.
 
     void[OneTo(3)]
     #=>
@@ -190,16 +189,37 @@ builds plural queries.
     3 │  3 │
     =#
 
-In DataKnots, query combinators can be constructed directly from
-native Julia functions. This lets us take advantage of Julia's
-rich statistical and data processing functions.
+When Julia values and functions are lifted, the type signature is
+inspected to discover how it should interact with query flow. A
+flow is *singular* if it could have at most one element; else, it
+is *plural*. Furthermore, if a flow must have at least one element
+then it is *mandatory*; else, it is *optional*.
+
+| Type                | Singular | Mandatory |
+|---------------------|----------|-----------|
+| `Vector{T}`         | No       | No        |
+| `Union{T, Missing}` | Yes      | No        |
+| `{T}`               | Yes      | Yes       |
+
+In DataKnots, query combinators can be automatically constructed
+from Julia functions. This lets us access Julia's rich statistical
+and data processing functions from our queries.
+
+## Query Combinators
+
+There are operations which cannot be automatically lifted from
+Julia functions. These require knowledge DataKnot flows, context,
+and other internal details. We've met two of them, `Lift` itself
+and query composition (`>>`).
+
+Operations that cannot be lifted include navigation, filtering,
+sorting, grouping, paging, and others.
 
 ### Aggregate Primitives & Combinators
 
-Thus far our queries have been *elementwise*; that is, for each
-input element, they produce zero or more output elements.
-Consider now the `Count` primitive which produces output relative
-to its entire input.
+So far queries have been *elementwise*; that is, for each input
+element, they produce zero or more output elements. Consider now
+the `Count` primitive which produces output for its entire input.
 
     void[OneTo(3) >> Count]
     #=>
@@ -244,7 +264,7 @@ around `OneTo(It) >> Sum` will not change the result.
     =#
 
 Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
-`Each()` combinator, to process its input elementwise.
+`Each` combinator, which evaluates its argument for each input.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -255,9 +275,7 @@ Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
     3 │  6 │
     =#
 
-There is a combinator variant of the `Sum` primitive, with the
-query to be aggregated as an argument. Observe that the `Sum()`
-combinator is evaluated elementwise.
+Following is an equivalent query, using the `Sum` combinator.
 
     void[OneTo(3) >> Sum(OneTo(It))]
     #=>
@@ -281,10 +299,9 @@ the vector argument required by the native aggregate.
     │ 3.33333 │
     =#
 
-To use `Mean` as a query primitive, there are two steps. First,
-we use `Then` to build a query that aggregates from its input.
-Second, we register a `Lift` to this query when the combinator's
-name is mentioned in a query expression.
+To use `Mean` as a query primitive, we use `Then` to build a query
+that aggregates from its input. Next, we register this query so it
+is chosen when `Mean` is converted to a query via `Lift`.
 
     DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)
 
@@ -302,12 +319,12 @@ query primitives or query combinators. Moreover, custom aggregates
 can be easily constructed as native Julia functions and lifted
 into the query algebra.
 
-## Filtering & Slicing Data
 
-DataKnots comes with combinators for rearranging data. Consider
-`Filter`, which takes one parameter, a predicate query that for
-each input value decides if that value should be included in the
-output.
+### Filtering
+
+The `Filter` combinator has one parameter, a predicate query that,
+for each input element, decides if this element should be included
+in the output.
 
     void[OneTo(6) >> Filter(It .> 3)]
     #=>
@@ -318,13 +335,8 @@ output.
     3 │  6 │
     =#
 
-Contrast this with the built-in Julia function `filter()`.
-
-    filter(x -> x > 3, 1:6) #-> [4, 5, 6]
-
-Where `filter()` returns a filtered dataset, the `Filter`
-combinator returns a query component, which could then be composed
-with any data generating query.
+Being a combinator, `Filter` returns a query component, which
+could then be composed with any data generating query.
 
     KeepEven = Filter(iseven.(It))
     void[OneTo(6) >> KeepEven]
@@ -336,8 +348,23 @@ with any data generating query.
     3 │  6 │
     =#
 
+Filter can work in a nested context.
+
+    void[Lift(1:3) >> Filter(Sum(OneTo(It)) .> 5)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  3 │
+    =#
+
+The `Filter` combinator is elementwise. That is, it's arguments
+are evaluated for each input element. If the predicate is `true`,
+then that element is reproduced, otherwise it is discarded.
+
+### Paging Data
+
 Similar to `Filter`, the `Take` and `Drop` combinators can be used
-to slice an input stream: `Drop` is used to skip over input,
+to slice an input stream: `Drop` is used to skip over input, while
 `Take` ignores output past a particular point.
 
     void[OneTo(9) >> Drop(3) >> Take(3)]
@@ -349,9 +376,9 @@ to slice an input stream: `Drop` is used to skip over input,
     3 │  6 │
     =#
 
-Since `Take` is a combinator, its argument could also be a full
-blown query. This next example, `FirstHalf` is a combinator that
-builds a query returning the first half of an input stream.
+However, what if you want to take the first half?  This next
+example, `FirstHalf` is a combinator that builds a query returning
+the first half of an input stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
     void[FirstHalf(OneTo(6))]
@@ -375,10 +402,8 @@ Using `Then`, this combinator could be used as a query primitive.
     3 │  3 │
     =#
 
-In DataKnots, filtering and slicing are realized as query
-components. They are attached to data processing queries using the
-composition combinator. This brings common data processing
-concepts into our query algebra.
+The slicing combinators are different from filtering in that
+they evaluate their arguments at the *origin*.
 
 ### Query Parameters
 
@@ -451,9 +476,8 @@ can be used to remember values and reuse them.
 
 ### Records & Labels
 
-Internally, DataKnots use a column-oriented storage mechanism that
-handles hierarchies and graphs. Data objects in this model can be
-created using the `Record` combinator.
+Data objects in this model can be created using the `Record`
+combinator. Calculations could be performed on record sets.
 
     GM = Record(:name => "GARRY M", :salary => 260004)
     void[GM]
@@ -463,7 +487,18 @@ created using the `Record` combinator.
     │ GARRY M  260004 │
     =#
 
-Field access is also possible via `Get` or via the `It` shortcut.
+Field access is possible via `Get` query constructor, which takes
+a label's name. Here `Get(:name)` is a singular elementwise query
+that returns the value of a given label when found.
+
+    void[GM >> Get(:name)]
+    #=>
+    │ name    │
+    ┼─────────┼
+    │ GARRY M │
+    =#
+
+For syntactic convenience, `It` can be used for dotted access.
 
     void[GM >> It.name]
     #=>
@@ -472,10 +507,7 @@ Field access is also possible via `Get` or via the `It` shortcut.
     │ GARRY M │
     =#
 
-As seen in the output above, field names also act as display
-labels. It is possible to provide a name to any expression with
-the `Label` combinator. Labeling doesn't affect the actual output,
-only the field name given to the expression and its display.
+The `Label` combinator provides a name to any expression.
 
     void[Lift("Hello World") >> Label(:greeting)]
     #=>
@@ -487,22 +519,11 @@ only the field name given to the expression and its display.
 Alternatively, Julia's pair constructor (`=>`) and and a `Symbol`
 denoted by a colon (`:`) can be used to label an expression.
 
-    Hello = :greeting => Lift("Hello World")
+    Hello =
+      :greeting => Lift("Hello World")
+
     void[Hello]
     #=>
-    │ greeting    │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-When a record is created, it can use the label from which it
-originates. In this case, the `:greeting` label from the `Hello`
-is used to make the field label used within the `Record`. The
-record itself is also expressly labeled.
-
-    void[:seasons => Record(Hello)]
-    #=>
-    │ seasons     │
     │ greeting    │
     ┼─────────────┼
     │ Hello World │
@@ -520,7 +541,7 @@ Records can be plural. Here is a table of obvious statistics.
     3 │  3   9  27 │
     =#
 
-Calculations could be performed on record sets as follows:
+By accessing names, calculations can be performed on records.
 
     void[Lift(1:3) >> Stats >> (It.n² .+ It.n³)]
     #=>
@@ -534,10 +555,13 @@ Calculations could be performed on record sets as follows:
 Any values can be used within a Record, including other records
 and plural values.
 
-    void[:work_schedule =>
-     Record(:staff => Record(:name => "Jim Rockford",
-                             :phone => "555-2368"),
-            :workday => Lift(["Su", "M","Tu", "F"]))]
+    Schedule =
+        :work_schedule =>
+            Record(:staff => Record(:name => "Jim Rockford",
+                                    :phone => "555-2368"),
+                   :workday => Lift(["Su", "M","Tu", "F"]))
+
+    void[Schedule]
     #=>
     │ work_schedule                        │
     │ staff                   workday      │
@@ -545,9 +569,18 @@ and plural values.
     │ Jim Rockford, 555-2368  Su; M; Tu; F │
     =#
 
+Access to values via label also works hierarchical.
+
+    void[Schedule >> It.staff.name]
+    #=>
+    │ name         │
+    ┼──────────────┼
+    │ Jim Rockford │
+    =#
+
 In DataKnots, records are used to generate tabular data. Using
 nested records, it is possible to represent complex, hierarchical
-data.
+data. It is then possible to access and compute with this data.
 
 ## Working With Data
 
