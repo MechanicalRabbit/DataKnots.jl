@@ -375,12 +375,25 @@ to slice an input stream: `Drop` is used to skip over input, while
     3 │  6 │
     =#
 
-However, unlike `Filter`, slicing combinators are not elementwise.
+Unlike `Filter`, slicing combinators are not elementwise, even if
+they reproduce elements from the source. Further, the argument to
+`Take` is evaluated in the context of the input's *origin*. In the
+next example, `It` refers to elements of the outer loop, `OneTo`.
 
+    void[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ a  │
+    3 │ b  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
+    =#
 
-
-However, what if you want to take the first half?  This next
-example, `FirstHalf` is a combinator that builds a query returning
+What if we want to grab the 1st half of an input stream? Let's
+define `FirstHalf` as a combinator that builds a query returning
 the first half of an input stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
@@ -405,82 +418,13 @@ Using `Then`, this combinator could be used as a query primitive.
     3 │  3 │
     =#
 
-The slicing combinators are different from filtering in that
-they evaluate their arguments at the *origin*.
-
-### Query Parameters
-
-With DataKnots, parameters can be provided so that static data can
-be used within query expressions. By convention, we use upper
-case, singular labels for query parameters.
-
-    void["Hello " .* Get(:WHO), WHO="World"]
-    #=>
-    │ It          │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-To make `Get` convenient, `It` provides a shorthand syntax.
-
-    void["Hello " .* It.WHO, WHO="World"]
-    #=>
-    │ It          │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Query parameters are available anywhere in the query. They could,
-for example be used within a filter.
-
-    query = OneTo(6) >> Filter(It .> It.START)
-    void[query, START=3]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
-    =#
-
-Parameters can also be defined as part of a query using `Given`.
-This combinator takes set of pairs (`=>`) that map symbols
-(`:name`) onto query expressions. The subsequent argument is then
-evaluated in a naming context where the defined parameters are
-available for reuse.
-
-    void[Given(:WHO => "World", "Hello " .* Get(:WHO))]
-    #=>
-    │ It          │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Query parameters can be especially useful when managing
-aggregates, or with expressions that one may wish to repeat more
-than once.
-
-    GreaterThanAverage(X) =
-      Given(:AVG => Mean(X),
-            X >> Filter(It .> Get(:AVG)))
-
-    void[GreaterThanAverage(OneTo(6))]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
-    =#
-
-In DataKnots, query parameters permit external data to be used
-within query expressions. Parameters that are defined with `Given`
-can be used to remember values and reuse them.
+The slicing combinators are different from filtering in that they
+evaluate their arguments at the *origin*.
 
 ### Records & Labels
 
-Data objects in this model can be created using the `Record`
-combinator. Calculations could be performed on record sets.
+Data objects can be created using the `Record` combinator.
+Calculations could be performed on record sets.
 
     GM = Record(:name => "GARRY M", :salary => 260004)
     void[GM]
@@ -584,6 +528,76 @@ Access to values via label also works hierarchical.
 In DataKnots, records are used to generate tabular data. Using
 nested records, it is possible to represent complex, hierarchical
 data. It is then possible to access and compute with this data.
+
+### Query Parameters
+
+With DataKnots, parameters can be provided so that static data can
+be used within query expressions. By convention, we use upper
+case, singular labels for query parameters.
+
+    void["Hello " .* Get(:WHO), WHO="World"]
+    #=>
+    │ It          │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+To make `Get` convenient, `It` provides a shorthand syntax.
+
+    void["Hello " .* It.WHO, WHO="World"]
+    #=>
+    │ It          │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Query parameters are available anywhere in the query. They could,
+for example be used within a filter.
+
+    query = OneTo(6) >> Filter(It .> It.START)
+    void[query, START=3]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  4 │
+    2 │  5 │
+    3 │  6 │
+    =#
+
+Parameters can also be defined as part of a query using `Given`.
+This combinator takes set of pairs (`=>`) that map symbols
+(`:name`) onto query expressions. The subsequent argument is then
+evaluated in a naming context where the defined parameters are
+available for reuse.
+
+    void[Given(:WHO => "World", "Hello " .* Get(:WHO))]
+    #=>
+    │ It          │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Query parameters can be especially useful when managing
+aggregates, or with expressions that one may wish to repeat more
+than once.
+
+    GreaterThanAverage(X) =
+      Given(:AVG => Mean(X),
+            X >> Filter(It .> Get(:AVG)))
+
+    void[GreaterThanAverage(OneTo(6))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  4 │
+    2 │  5 │
+    3 │  6 │
+    =#
+
+In DataKnots, query parameters permit external data to be used
+within query expressions. Parameters that are defined with `Given`
+can be used to remember values and reuse them.
+
 
 ## Working With Data
 
