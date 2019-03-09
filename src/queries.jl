@@ -180,6 +180,9 @@ replace_domain(shp::IsScope, f) =
 
 # Finds the output label.
 
+getlabel(p::Pipeline, default) =
+    getlabel(shape(p), default)
+
 getlabel(shp::AbstractShape, default) =
     default
 
@@ -411,17 +414,15 @@ end
 # Record combinator.
 #
 
-function monadic_record(p::Pipeline, xs::Vector{Pipeline})
+function assemble_record(p::Pipeline, xs::Vector{Pipeline})
     lbls = Symbol[]
     cols = Pipeline[]
     seen = Dict{Symbol,Int}()
     for (i, x) in enumerate(xs)
         x = uncover(x)
-        shp = shape(x)
-        lbl = getlabel(shp, nothing)
+        lbl = getlabel(x, nothing)
         if lbl !== nothing
-            shp = relabel(shp, nothing)
-            x = x |> designate(ishape(x), shp)
+            x = relabel(x, nothing)
         else
             lbl = ordinal_label(i)
         end
@@ -434,7 +435,7 @@ function monadic_record(p::Pipeline, xs::Vector{Pipeline})
     end
     ishp = elements(shape(p))
     shp = TupleOf(lbls, shape.(cols))
-    lbl = getlabel(ishp, nothing)
+    lbl = getlabel(p, nothing)
     if lbl !== nothing
         shp = relabel(shp, lbl)
     end
@@ -453,7 +454,7 @@ Record(Xs...) =
 
 function Record(env::Environment, p::Pipeline, Xs...)
     xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(stub(p)))
-    monadic_record(p, xs)
+    assemble_record(p, xs)
 end
 
 
@@ -461,19 +462,16 @@ end
 # Lifting Julia values and functions.
 #
 
-function monadic_lift(p::Pipeline, f, xs::Vector{Pipeline})
-    cols = Pipeline[]
-    for x in xs
-        x = uncover(x)
-        push!(cols, x)
-    end
+function assemble_lift(p::Pipeline, f, xs::Vector{Pipeline})
+    cols = uncover.(xs)
     ity = Tuple{eltype.(shape.(cols))...}
     oty = Core.Compiler.return_type(f, ity)
     oty != Union{} || error("cannot apply $f to $ity")
     ishp = elements(shape(p))
     shp = ValueOf(oty)
     q = if length(cols) == 1
-            if (cardinality(shape(xs[1])) & x1toN == x1toN) && !(oty <: AbstractVector)
+            card = cardinality(shape(xs[1]))
+            if fits(x1toN, card) && !(oty <: AbstractVector)
                 chain_of(cols[1], block_lift(f))
             else
                 chain_of(cols[1], lift(f))
@@ -514,7 +512,7 @@ Lift(env::Environment, p::Pipeline, val) =
 
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
     xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(stub(p)))
-    monadic_lift(p, f, xs)
+    assemble_lift(p, f, xs)
 end
 
 function Lift(env::Environment, p::Pipeline, db::DataKnot)
@@ -527,13 +525,17 @@ end
 struct QueryStyle <: Base.BroadcastStyle
 end
 
-Base.BroadcastStyle(::Type{<:Union{AbstractQuery,DataKnot,Pair{Symbol,<:Union{AbstractQuery,DataKnot}}}}) = QueryStyle()
+Base.BroadcastStyle(::Type{<:Union{AbstractQuery,DataKnot,Pair{Symbol,<:Union{AbstractQuery,DataKnot}}}}) =
+    QueryStyle()
 
-Base.BroadcastStyle(s::QueryStyle, ::Broadcast.DefaultArrayStyle) = s
+Base.BroadcastStyle(s::QueryStyle, ::Broadcast.DefaultArrayStyle) =
+    s
 
-Base.broadcastable(X::Union{AbstractQuery,DataKnot,Pair{Symbol,<:Union{AbstractQuery,DataKnot}}}) = X
+Base.broadcastable(X::Union{AbstractQuery,DataKnot,Pair{Symbol,<:Union{AbstractQuery,DataKnot}}}) =
+    X
 
-Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{QueryStyle}) = bc
+Base.Broadcast.instantiate(bc::Broadcast.Broadcasted{QueryStyle}) =
+    bc
 
 Base.copy(bc::Broadcast.Broadcasted{QueryStyle}) =
     BroadcastLift(bc)
@@ -638,7 +640,7 @@ Get(name) =
 function Get(env::Environment, p::Pipeline, name)
     shp = shape(p)
     q = lookup(shp, name)
-    q !== nothing || error("cannot find $name at\n$(syntaxof(shp))")
+    q !== nothing || error("cannot find \"$name\" at\n$(syntaxof(shp))")
     q = cover(q)
     compose(p, q)
 end
@@ -670,7 +672,7 @@ end
 function lookup(ishp::TupleOf, name::Symbol)
     lbls = labels(ishp)
     if isempty(lbls)
-        lbls = Symbol[label(i) for i = 1:width(ishp)]
+        lbls = Symbol[ordinal_label(i) for i = 1:width(ishp)]
     end
     j = lookup(lbls, name)
     j !== nothing || return nothing
@@ -689,26 +691,34 @@ function lookup(ity::Type{<:NamedTuple}, name::Symbol)
     j = lookup(collect(Symbol, ity.parameters[1]), name)
     j !== nothing || return nothing
     oty = ity.parameters[2].parameters[j]
-    lift(t -> t[j]) |> designate(ValueOf(ity), ValueOf(oty) |> IsLabeled(name))
+    lift(getindex, j) |> designate(ValueOf(ity), ValueOf(oty) |> IsLabeled(name))
+end
+
+function lookup(ity::Type{<:Tuple}, name::Symbol)
+    lbls = Symbol[ordinal_label(i) for i = 1:length(ity.parameters)]
+    j = lookup(lbls, name)
+    j !== nothing || return nothing
+    oty = ity.parameters[j]
+    lift(getindex, j) |> designate(ValueOf(ity), ValueOf(oty))
 end
 
 
 #
-# Specifying parameters.
+# Specifying context parameters.
 #
 
-function monadic_keep(p::Pipeline, q::Pipeline)
+function assemble_keep(p::Pipeline, q::Pipeline)
     q = uncover(q)
     shp = shape(q)
     name = getlabel(shp, nothing)
     name !== nothing || error("parameter name is not specified")
     shp = relabel(shp, nothing)
+    lbls′ = Symbol[]
+    cols′ = AbstractShape[]
+    perm = Int[]
     ishp = ishape(q)
     if ishp isa IsScope
         ctx = context(ishp)
-        lbls′ = Symbol[]
-        cols′ = AbstractShape[]
-        perm = Int[]
         for j = 1:width(ctx)
             lbl = label(ctx, j)
             if lbl != name
@@ -717,27 +727,18 @@ function monadic_keep(p::Pipeline, q::Pipeline)
                 push!(perm, j)
             end
         end
-        push!(lbls′, name)
-        push!(cols′, shp)
-        ctx′ = TupleOf(lbls′, cols′)
-        qs = Pipeline[chain_of(column(2), column(j)) for j in perm]
-        push!(qs, q)
-        shp = BlockOf(TupleOf(column(ishp), ctx′) |> IsScope, x1to1) |> IsFlow
-        q = chain_of(tuple_of(column(1),
-                              tuple_of(lbls′, qs)),
-                     wrap(),
-        ) |> designate(ishp, shp)
-    else
-        lbls′ = Symbol[name]
-        cols′ = AbstractShape[shp]
-        ctx′ = TupleOf(lbls′, cols′)
-        qs = Pipeline[q]
-        shp = BlockOf(TupleOf(ishp, ctx′) |> IsScope, x1to1) |> IsFlow
-        q = chain_of(tuple_of(pass(),
-                              tuple_of(lbls′, qs)),
-                     wrap(),
-        ) |> designate(ishp, shp)
     end
+    push!(lbls′, name)
+    push!(cols′, shp)
+    ctx′ = TupleOf(lbls′, cols′)
+    qs = Pipeline[chain_of(column(2), column(j)) for j in perm]
+    push!(qs, q)
+    shp = BlockOf(TupleOf(ishp isa IsScope ? column(ishp) : ishp, ctx′) |> IsScope,
+                  x1to1) |> IsFlow
+    q = chain_of(tuple_of(ishp isa IsScope ? column(1) : pass(),
+                          tuple_of(lbls′, qs)),
+                 wrap(),
+    ) |> designate(ishp, shp)
     compose(p, q)
 end
 
@@ -755,15 +756,15 @@ Keep(env::Environment, p::Pipeline, P, Qs...) =
 
 function Keep(env::Environment, p::Pipeline, P)
     q = compile(P, env, stub(p))
-    monadic_keep(p, q)
+    assemble_keep(p, q)
 end
 
 
 #
-# Scope of parameters.
+# Setting the scope for context parameters.
 #
 
-function monadic_given(p::Pipeline, q::Pipeline)
+function assemble_given(p::Pipeline, q::Pipeline)
     q = cover(uncover(q))
     compose(p, q)
 end
@@ -771,7 +772,7 @@ end
 """
     Given(P, X)
 
-Specifies the parameter in a bounded scope.
+Specifies the parameter and bounds its scope.
 """
 Given(P, Xs...) =
     Query(Given, P, Xs...)
@@ -781,12 +782,12 @@ Given(env::Environment, p::Pipeline, Xs...) =
 
 function Given(env::Environment, p::Pipeline, X)
     q = compile(X, env, stub(p))
-    monadic_given(p, q)
+    assemble_given(p, q)
 end
 
 
 #
-# Then sugar.
+# Then assembly.
 #
 
 Then(q::Pipeline) =
@@ -809,11 +810,10 @@ Then(env::Environment, p::Pipeline, ctor, args::Tuple=()) =
 # Count and other aggregate combinators.
 #
 
-function monadic_count(p::Pipeline)
+function assemble_count(p::Pipeline)
     p = uncover(p)
     q = chain_of(p,
-                block_length(),
-                wrap(),
+                 block_length(),
     ) |> designate(ishape(p), ValueOf(Int))
     cover(q)
 end
@@ -832,7 +832,7 @@ Lift(::typeof(Count)) =
 
 function Count(env::Environment, p::Pipeline, X)
     x = compile(X, env, stub(p))
-    compose(p, monadic_count(x))
+    compose(p, assemble_count(x))
 end
 
 """
@@ -873,7 +873,7 @@ Lift(::typeof(Min)) =
 
 function Sum(env::Environment, p::Pipeline, X)
     x = compile(X, env, stub(p))
-    monadic_lift(p, sum, Pipeline[x])
+    assemble_lift(p, sum, Pipeline[x])
 end
 
 maximum_missing(v) =
@@ -881,8 +881,9 @@ maximum_missing(v) =
 
 function Max(env::Environment, p::Pipeline, X)
     x = compile(X, env, stub(p))
-    optional = cardinality(shape(x)) & x0to1 == x0to1
-    monadic_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
+    card = cardinality(shape(x))
+    optional = fits(x0to1, card)
+    assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
 end
 
 minimum_missing(v) =
@@ -890,8 +891,9 @@ minimum_missing(v) =
 
 function Min(env::Environment, p::Pipeline, X)
     x = compile(X, env, stub(p))
-    optional = cardinality(shape(x)) & x0to1 == x0to1
-    monadic_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
+    card = cardinality(shape(x))
+    optional = fits(x0to1, card)
+    assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
 end
 
 
@@ -899,9 +901,9 @@ end
 # Filter combinator.
 #
 
-function monadic_filter(p::Pipeline, x::Pipeline)
+function assemble_filter(p::Pipeline, x::Pipeline)
     x = uncover(x)
-    # fits(shape(p), BlockOf(ValueOf(Bool))) || error("expected a predicate")
+    fits(shape(x), BlockOf(ValueOf(Bool))) || error("expected a predicate")
     q = chain_of(tuple_of(pass(),
                           chain_of(x, block_any())),
                  sieve(),
@@ -919,7 +921,7 @@ Filter(X) =
 
 function Filter(env::Environment, p::Pipeline, X)
     x = compile(X, env, stub(p))
-    monadic_filter(p, x)
+    assemble_filter(p, x)
 end
 
 
@@ -927,23 +929,23 @@ end
 # Take and Drop combinators.
 #
 
-monadic_take(p::Pipeline, n::Int, rev::Bool) =
+function assemble_take(p::Pipeline, n::Int, rev::Bool)
+    elts = elements(shape(p))
+    card = cardinality(shape(p))|x0to1
     chain_of(
         p,
         slice(n, rev),
-    ) |> designate(ishape(p),
-                   BlockOf(elements(shape(p)), cardinality(shape(p))|x0to1) |> IsFlow)
+    ) |> designate(ishape(p), BlockOf(elts, card) |> IsFlow)
+end
 
-function monadic_take(p::Pipeline, n::Pipeline, rev::Bool)
+function assemble_take(p::Pipeline, n::Pipeline, rev::Bool)
     n_card = cardinality(shape(n))
     n = uncover(n)
-    #fits(elements(n), ValueOf(Int)) || error("expected an integer")
+    fits(shape(n), BlockOf(ValueOf(Int), x0to1)) || error("expected a singular integer")
     ishp = ishape(p)
     shp = BlockOf(elements(shape(p)), cardinality(shape(p))|x0to1) |> IsFlow
     chain_of(
-        tuple_of(
-            p,
-            chain_of(n, fits(x0to1, n_card) ? block_lift(first, missing) : block_lift(first))),
+        tuple_of(p, n),
         slice(rev),
     ) |> designate(ishp, shp)
 end
@@ -968,11 +970,11 @@ Take(env::Environment, p::Pipeline, ::Missing, rev::Bool=false) =
     p
 
 Take(env::Environment, p::Pipeline, n::Int, rev::Bool=false) =
-    monadic_take(p, n, rev)
+    assemble_take(p, n, rev)
 
 function Take(env::Environment, p::Pipeline, N, rev::Bool=false)
     n = compile(N, env, istub(p))
-    monadic_take(p, n, rev)
+    assemble_take(p, n, rev)
 end
 
 Drop(env::Environment, p::Pipeline, N) =

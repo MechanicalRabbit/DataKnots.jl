@@ -77,7 +77,7 @@ directly accessible from the root of the dataset. When a label
 can't be found, an appropriate error message is displayed.
 
     chicago[It.employee]
-    #-> ERROR: cannot find employee ⋮
+    #-> ERROR: cannot find "employee" ⋮
 
 Instead, `employee` tuples can be queried by navigating though
 `department` tuples. When tuples are returned, they is displayed
@@ -445,8 +445,7 @@ column-oriented storage for our `DataKnot` system.
     vt = get(chicago[query])
     display(vt)
     #=>
-    @VectorTree of 2 × (name = (1:1) × String,
-                        employee_count = (1:1) × (1:1) × Int):
+    @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
      (name = "POLICE", employee_count = 2)
      (name = "FIRE", employee_count = 1)
     =#
@@ -619,7 +618,7 @@ because `department` is not a label in the context of an employee.
         It.department >>
         It.employee >>
         Record(It.name, It.department.name)]
-    #-> ERROR: cannot find department ⋮
+    #-> ERROR: cannot find "department" ⋮
 
 This can be overcome by using `Keep` to label an expression's
 result, so that it is available within subsequent computations.
@@ -835,7 +834,7 @@ Unlike its cousin `Having`, `Given` doesn't leak its definitions.
 Specifically, `It.amt` is not available outside `EmployeesOver()`.
 
     chicago[EmployeesOver(AvgSalary) >> It.amt]
-    #-> ERROR: cannot find amt ⋮
+    #-> ERROR: cannot find "amt" ⋮
 
 ### Aggregate Combinators
 

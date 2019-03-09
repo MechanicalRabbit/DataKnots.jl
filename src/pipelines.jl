@@ -129,8 +129,13 @@ The pipeline applies `f` to each element of the input vector.
 """
 lift(f) = Pipeline(lift, f)
 
+lift(f, args...) = Pipeline(lift, f, args)
+
 lift(rt::Runtime, input::AbstractVector, f) =
     f.(input)
+
+lift(rt::Runtime, input::AbstractVector, f, args) =
+    f.(input, Ref.(args)...)
 
 """
     tuple_lift(f) :: Pipeline
