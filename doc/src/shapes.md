@@ -26,6 +26,7 @@ definitions.
         compose,
         context,
         designate,
+        domain,
         elements,
         fits,
         ishape,
@@ -170,7 +171,7 @@ On the other hand, these pipelines could be composed using the *monadic
 composition* combinator.
 
     dept_employee_rate = compose(dept_employee, emp_rate)
-    #-> chain_of(column(:employee), with_elements(column(:rate)), flatten())
+    #-> chain_of(column(:employee), chain_of(with_elements(column(:rate)), flatten()))
 
     dept_employee_rate(depts)
     #-> @VectorTree (0:N) × Float64 [[], [], [17.68, 19.38]]
@@ -240,29 +241,37 @@ To be able to use this pipeline in composition, we assign it its signature.
 When two monadic pipelines have compatible intermediate domains, they could be
 composed.
 
-    elements(shape(dept_employee_rate))
+    domain(shape(dept_employee_rate))
     #-> ValueOf(Float64)
 
-    column(ishape(round_it))
+    domain(ishape(round_it))
     #-> ValueOf(Float64)
 
     dept_employee_round_rate = compose(dept_employee_rate, round_it)
-    #=>
-    ...
-    =#
 
-The composition also has a signature assigned to it.
+The composition also has a signature assigned to it.  The input of the
+composition should contain the department data together with a parameter `P`.
 
     signature(dept_employee_round_rate)
     #=>
-    ...
+    Signature(TupleOf(TupleOf(:name => BlockOf(String, x1to1),
+                              :employee =>
+                                  BlockOf(TupleOf(
+                                              :name => BlockOf(String, x1to1),
+                                              :position => BlockOf(String, x1to1),
+                                              :salary => BlockOf(Int, x0to1),
+                                              :rate => BlockOf(Float64, x0to1)),
+                                          x1toN)),
+                      TupleOf(:P => Float64)) |>
+              IsScope,
+              BlockOf(Float64) |> IsFlow)
     =#
 
 To run this pipeline, we pack the input data together with parameters.
 
-    slot_data = @VectorTree (P = (1:1)Int,) [(P = 1,), (P = 1,), (P = 1,)]
+    slots = @VectorTree (P = Int,) [(P = 1,), (P = 1,), (P = 1,)]
 
-    input = TupleVector(:depts => depts, :slot_data => slot_data)
+    input = TupleVector(:depts => depts, :slots => slots)
 
     dept_employee_round_rate(input)
     #-> @VectorTree (0:N) × Float64 [[], [], [17.7, 19.4]]
