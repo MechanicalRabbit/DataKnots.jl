@@ -327,6 +327,9 @@ stub(ishp::IsFlow) =
 stub(ishp::AbstractShape) =
     cover(ishp)
 
+stub(db::DataKnot) =
+    cover(shape(db))
+
 # Align pipelines for composition.
 
 realign(p::Pipeline, ::AbstractShape) =
@@ -427,7 +430,7 @@ function assemble_record(p::Pipeline, xs::Vector{Pipeline})
             lbl = ordinal_label(i)
         end
         if lbl in keys(seen)
-            lbls[seen[lbl]] = label(seen[lbl])
+            lbls[seen[lbl]] = ordinal_label(seen[lbl])
         end
         seen[lbl] = i
         push!(lbls, lbl)
