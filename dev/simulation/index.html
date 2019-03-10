@@ -1,63 +1,25 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial: Simulated Data · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../start/">Getting Started</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li class="current"><a class="toctext" href>Tutorial: Simulated Data</a><ul class="internal"><li><a class="toctext" href="#Lifted-Functions-1">Lifted Functions</a></li><li><a class="toctext" href="#Building-a-Patient-Record-1">Building a Patient Record</a></li><li><a class="toctext" href="#Implemention-Comparison-1">Implemention Comparison</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Tutorial: Simulated Data</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/simulation.jl"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Tutorial: Simulated Data</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Tutorial:-Simulated-Data-1" href="#Tutorial:-Simulated-Data-1">Tutorial: Simulated Data</a></h1><p>In this tutorial we simulate a random patient population from a health clinic dealing with hypertension and type 2 diabetes. We assume the reader has read &quot;Thinking in Combinators&quot; and wishes to use <code>DataKnots</code> for this simulation.</p><div><pre><code class="language-julia">using DataKnots</code></pre></div><h2><a class="nav-anchor" id="Lifted-Functions-1" href="#Lifted-Functions-1">Lifted Functions</a></h2><p>Before we start generating data, there are a few combinators that are specific to this application area we should define first. Let&#39;s start with <code>OneTo</code> that wraps Julia&#39;s <code>UnitRange</code>.</p><div><pre><code class="language-julia">OneTo(N) = Lift(UnitRange, (1, N))
-run(OneTo(3))</code></pre><pre><code class="language-julia">  │ It │
-──┼────┼
-1 │  1 │
-2 │  2 │
-3 │  3 │</code></pre></div><p>Known data is boring in a simulation. Instead we need pseudorandom data. To make that data repeatable, let&#39;s fix the <code>seed</code>. We can then lift the <code>rand</code> function to a DataKnot combinator and use it to pick a random number from 3 to 5.</p><div><pre><code class="language-julia">using Random: seed!, rand
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial: Simulated Data · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../tutorial/">DataKnots Tutorial</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a></li><li class="current"><a class="toctext" href>Tutorial: Simulated Data</a><ul class="internal"><li><a class="toctext" href="#Lifted-Functions-1">Lifted Functions</a></li><li><a class="toctext" href="#Building-a-Patient-Record-1">Building a Patient Record</a></li><li><a class="toctext" href="#Implemention-Comparison-1">Implemention Comparison</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Tutorial: Simulated Data</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/simulation.jl"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Tutorial: Simulated Data</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Tutorial:-Simulated-Data-1" href="#Tutorial:-Simulated-Data-1">Tutorial: Simulated Data</a></h1><p>In this tutorial we simulate a random patient population from a health clinic dealing with hypertension and type 2 diabetes. We assume the reader has read &quot;Thinking in Combinators&quot; and wishes to use <code>DataKnots</code> for this simulation.</p><div><pre><code class="language-julia">using DataKnots</code></pre></div><h2><a class="nav-anchor" id="Lifted-Functions-1" href="#Lifted-Functions-1">Lifted Functions</a></h2><p>Before we start generating data, there are a few combinators that are specific to this application area we should define first. Let&#39;s start with <code>OneTo</code> that wraps Julia&#39;s <code>UnitRange</code>.</p><pre><code class="language-">OneTo(N) = Lift(UnitRange, (1, N))
+run(OneTo(3))</code></pre><p>Known data is boring in a simulation. Instead we need pseudorandom data. To make that data repeatable, let&#39;s fix the <code>seed</code>. We can then lift the <code>rand</code> function to a DataKnot combinator and use it to pick a random number from 3 to 5.</p><pre><code class="language-">using Random: seed!, rand
 seed!(1)
 Rand(r::AbstractVector) = Lift(rand, (r,))
-run(Rand(3:5))</code></pre><pre><code class="language-julia">│ It │
-┼────┼
-│  5 │</code></pre></div><p>Combining <code>OneTo</code> and <code>Rand</code> we could make an easy way to build several rows of a given value.</p><div><pre><code class="language-julia">Several = OneTo(Rand(2:5))
-run(Several &gt;&gt; &quot;Hello World&quot;)</code></pre><pre><code class="language-julia">  │ It          │
-──┼─────────────┼
-1 │ Hello World │
-2 │ Hello World │
-3 │ Hello World │
-4 │ Hello World │</code></pre></div><p>Julia&#39;s <code>Distributions</code> has <code>Categorical</code> and <code>TruncatedNormal</code> to make sure they work with DataKnots, we need another lift.</p><div><pre><code class="language-julia">using Distributions
+run(Rand(3:5))</code></pre><p>Combining <code>OneTo</code> and <code>Rand</code> we could make an easy way to build several rows of a given value.</p><pre><code class="language-">Several = OneTo(Rand(2:5))
+run(Several &gt;&gt; &quot;Hello World&quot;)</code></pre><p>Julia&#39;s <code>Distributions</code> has <code>Categorical</code> and <code>TruncatedNormal</code> to make sure they work with DataKnots, we need another lift.</p><pre><code class="language-">using Distributions
 Rand(d::Distribution) = Lift(rand, (d,))
-run(Rand(Categorical([.492, .508])))</code></pre><pre><code class="language-julia">│ It │
-┼────┼
-│  1 │</code></pre></div><p>Sometimes it&#39;s helpful to truncate a floating point value, as chosen from an age distribution, to an integer value.  Here we lift <code>Trunc</code>.</p><div><pre><code class="language-julia">Trunc(X) = Int.(floor.(X))
-run(Trunc(Rand(TruncatedNormal(60,20,18,104))))</code></pre><pre><code class="language-julia">│ It │
-┼────┼
-│ 59 │</code></pre></div><p>Translating a value, such as an index to a reference height, is also common. Here we define a <code>switch</code> function and then lift it.</p><div><pre><code class="language-julia">switch(x) = error();
+run(Rand(Categorical([.492, .508])))</code></pre><p>Sometimes it&#39;s helpful to truncate a floating point value, as chosen from an age distribution, to an integer value.  Here we lift <code>Trunc</code>.</p><pre><code class="language-">Trunc(X) = Int.(floor.(X))
+run(Trunc(Rand(TruncatedNormal(60,20,18,104))))</code></pre><p>Translating a value, such as an index to a reference height, is also common. Here we define a <code>switch</code> function and then lift it.</p><pre><code class="language-">switch(x) = error();
 switch(x, p, qs...) = x == p.first ? p.second : switch(x, qs...)
 Switch(X, QS...) = Lift(switch, (X, QS...))
-run(Switch(1, 1=&gt;177, 2=&gt;163))</code></pre><pre><code class="language-julia">│ It  │
-┼─────┼
-│ 177 │</code></pre></div><h2><a class="nav-anchor" id="Building-a-Patient-Record-1" href="#Building-a-Patient-Record-1">Building a Patient Record</a></h2><p>Let&#39;s incrementally construct a set of patient records. Let&#39;s start with assigning a random 5-digit Medical Record Number (&quot;MRN&quot;).</p><div><pre><code class="language-julia">RandPatient = Record(:mrn =&gt; Rand(10000:99999))
-run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><pre><code class="language-julia">  │ patient │
-  │ mrn     │
-──┼─────────┼
-1 │   27646 │
-2 │   22882 │
-3 │   29379 │</code></pre></div><p>To assign an age to patients, we use Julia&#39;s truncated normal distribution. Since we wish whole-numbered ages, we truncate to the nearest integer value.</p><div><pre><code class="language-julia">RandPatient &gt;&gt;= Record(It.mrn,
+run(Switch(1, 1=&gt;177, 2=&gt;163))</code></pre><h2><a class="nav-anchor" id="Building-a-Patient-Record-1" href="#Building-a-Patient-Record-1">Building a Patient Record</a></h2><p>Let&#39;s incrementally construct a set of patient records. Let&#39;s start with assigning a random 5-digit Medical Record Number (&quot;MRN&quot;).</p><pre><code class="language-">RandPatient = Record(:mrn =&gt; Rand(10000:99999))
+run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><p>To assign an age to patients, we use Julia&#39;s truncated normal distribution. Since we wish whole-numbered ages, we truncate to the nearest integer value.</p><pre><code class="language-">RandPatient &gt;&gt;= Record(It.mrn,
   :age =&gt; Trunc(Rand(TruncatedNormal(60,20,18,104))))
-run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><pre><code class="language-julia">  │ patient    │
-  │ mrn    age │
-──┼────────────┼
-1 │ 30068   79 │
-2 │ 40416   69 │</code></pre></div><p>Let&#39;s assign each patient a random Sex. Here we use a categorical distribution plus enumerated values for male/female.</p><div><pre><code class="language-julia">@enum Sex male=1 female=2
+run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><p>Let&#39;s assign each patient a random Sex. Here we use a categorical distribution plus enumerated values for male/female.</p><pre><code class="language-">@enum Sex male=1 female=2
 RandPatient &gt;&gt;= Record(It.mrn, It.age,
   :sex =&gt; Lift(Sex, (Rand(Categorical([.492, .508])),)))
-run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><pre><code class="language-julia">  │ patient            │
-  │ mrn    age  sex    │
-──┼────────────────────┼
-1 │ 90666   62  male   │
-2 │ 42715   44  female │
-3 │ 22169   25  female │</code></pre></div><p>Next, let&#39;s define the patient&#39;s height based upon the U.S. average of 177cm for males and 163cm for females with distribution of 7cm.</p><div><pre><code class="language-julia">RandPatient &gt;&gt;= Record(It.mrn, It.age, It.sex,
+run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><p>Next, let&#39;s define the patient&#39;s height based upon the U.S. average of 177cm for males and 163cm for females with distribution of 7cm.</p><pre><code class="language-">RandPatient &gt;&gt;= Record(It.mrn, It.age, It.sex,
   :height =&gt; Trunc(Switch(It.sex, male =&gt; 177, female =&gt; 163)
                    .+ Rand(TruncatedNormal(0,7,-40,40))))
-run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><pre><code class="language-julia">  │ patient                    │
-  │ mrn    age  sex     height │
-──┼────────────────────────────┼
-1 │ 89431   58  female     163 │
-2 │ 97241   84  male       179 │
-3 │ 99563   71  female     175 │
-4 │ 75775   75  female     172 │
-5 │ 11437   67  male       178 │</code></pre></div><h2><a class="nav-anchor" id="Implemention-Comparison-1" href="#Implemention-Comparison-1">Implemention Comparison</a></h2><p>How could this patient sample be implemented directly in Julia?</p><div><pre><code class="language-julia">@enum Sex male=1 female=2
+run(:patient =&gt; Several &gt;&gt; RandPatient)</code></pre><h2><a class="nav-anchor" id="Implemention-Comparison-1" href="#Implemention-Comparison-1">Implemention Comparison</a></h2><p>How could this patient sample be implemented directly in Julia?</p><div><pre><code class="language-julia">@enum Sex male=1 female=2
 function rand_patient()
    sex = Sex(rand(Categorical([.492,.508])))
    return (
@@ -66,10 +28,11 @@ function rand_patient()
       height = trunc(Int, (sex == male ? 177 : 163)
                           + rand(TruncatedNormal(0,7,-40,40))))
 end
-[rand_patient() for i in 1:rand(2:5)]</code></pre><pre><code class="language-julia">3-element Array{NamedTuple{(:mrn, :sex, :age, :height),Tuple{Int64,Main.ex-simulation.Sex,Int64,Int64}},1}:
- (mrn = 60662, sex = male::Sex = 1, age = 33, height = 185)
- (mrn = 81835, sex = male::Sex = 1, age = 19, height = 173)
- (mrn = 82671, sex = female::Sex = 2, age = 49, height = 156)</code></pre></div><p>Omitting the boilerplate <em>lifting</em> of <code>Rand</code>, <code>Trunc</code>, and <code>Switch</code>, the combinator variant can also be constructed succinctly.</p><div><pre><code class="language-julia">@enum Sex male=1 female=2
+[rand_patient() for i in 1:rand(2:5)]</code></pre><pre><code class="language-julia">4-element Array{NamedTuple{(:mrn, :sex, :age, :height),Tuple{Int64,Main.ex-simulation.Sex,Int64,Int64}},1}:
+ (mrn = 27646, sex = male::Sex = 1, age = 70, height = 180)
+ (mrn = 23482, sex = male::Sex = 1, age = 69, height = 173)
+ (mrn = 42715, sex = male::Sex = 1, age = 46, height = 164)
+ (mrn = 18345, sex = male::Sex = 1, age = 25, height = 182)</code></pre></div><p>Omitting the boilerplate <em>lifting</em> of <code>Rand</code>, <code>Trunc</code>, and <code>Switch</code>, the combinator variant can also be constructed succinctly.</p><pre><code class="language-">@enum Sex male=1 female=2
 RandPatient = Given(
   :sex =&gt; Lift(Sex, (Rand(Categorical([.492, .508])),)),
   Record(
@@ -77,9 +40,4 @@ RandPatient = Given(
     :age =&gt; Trunc(Rand(TruncatedNormal(60,20,18,104))),
     :height =&gt; Trunc(Switch(It.sex, male =&gt; 177, female =&gt; 163)
                      .+ Rand(TruncatedNormal(0,7,-40,40)))))
-run(:patient =&gt; OneTo(Rand(2:5)) &gt;&gt; RandPatient)</code></pre><pre><code class="language-julia">  │ patient                    │
-  │ mrn    sex     age  height │
-──┼────────────────────────────┼
-1 │ 90516  male     80     165 │
-2 │ 60641  male     83     173 │
-3 │ 72069  female   33     171 │</code></pre></div><p>That said, as complexity builds, the more incremental approach as shown in the previous section may prove to be more desireable.</p><footer><hr/><a class="previous" href="../pipelines/"><span class="direction">Previous</span><span class="title">Pipeline Algebra</span></a></footer></article></body></html>
+run(:patient =&gt; OneTo(Rand(2:5)) &gt;&gt; RandPatient)</code></pre><p>That said, as complexity builds, the more incremental approach as shown in the previous section may prove to be more desireable.</p><footer><hr/><a class="previous" href="../queries/"><span class="direction">Previous</span><span class="title">Query Algebra</span></a></footer></article></body></html>

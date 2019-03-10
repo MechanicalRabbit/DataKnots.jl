@@ -1,184 +1,264 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Thinking in Combinators · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../start/">Getting Started</a></li><li class="current"><a class="toctext" href>Thinking in Combinators</a><ul class="internal"><li><a class="toctext" href="#Constructing-Pipelines-1">Constructing Pipelines</a></li><li><a class="toctext" href="#Filtering-and-Slicing-Data-1">Filtering &amp; Slicing Data</a></li><li><a class="toctext" href="#Working-With-Data-1">Working With Data</a></li><li><a class="toctext" href="#Quirks-1">Quirks</a></li></ul></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Thinking in Combinators</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/thinking.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Thinking in Combinators</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Thinking-in-Combinators-1" href="#Thinking-in-Combinators-1">Thinking in Combinators</a></h1><p>DataKnots are a Julia library for building data processing pipelines. In DataKnots, pipelines are assembled algebraically: they either come from a set of atomic <em>primitives</em> or are built from other pipelines using <em>combinators</em>. In this tutorial, we show how to build pipelines starting from smaller components and then combining them algebraically to implement complex processing tasks.</p><p>To start working with DataKnots, we import the package:</p><pre><code class="language-julia">using DataKnots</code></pre><h2><a class="nav-anchor" id="Constructing-Pipelines-1" href="#Constructing-Pipelines-1">Constructing Pipelines</a></h2><p>Consider a pipeline <code>Hello</code> that produces a string value, <code>&quot;Hello World&quot;</code>. It is built using the <code>Lift</code> primitive, which converts a Julia value into a pipeline component. This pipeline can then be <code>run()</code> to produce its output.</p><pre><code class="language-julia">Hello = Lift(&quot;Hello World&quot;)
-run(Hello)
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Thinking in Combinators · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../tutorial/">DataKnots Tutorial</a></li><li class="current"><a class="toctext" href>Thinking in Combinators</a><ul class="internal"><li><a class="toctext" href="#Constructing-Queries-1">Constructing Queries</a></li><li><a class="toctext" href="#Query-Combinators-1">Query Combinators</a></li><li><a class="toctext" href="#Working-With-Data-1">Working With Data</a></li><li><a class="toctext" href="#Quirks-1">Quirks</a></li></ul></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Thinking in Combinators</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/thinking.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Thinking in Combinators</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Thinking-in-Combinators-1" href="#Thinking-in-Combinators-1">Thinking in Combinators</a></h1><p>DataKnots is a Julia library for building database queries. In DataKnots, queries are assembled algebraically: they either come from a set of atomic <em>primitives</em> or are built from other queries using <em>combinators</em>. In this conceptual guide, we show how to build queries starting from smaller components and then combining them algebraically to implement complex processing tasks.</p><p>To start working with DataKnots, we import the package:</p><pre><code class="language-julia">using DataKnots</code></pre><h2><a class="nav-anchor" id="Constructing-Queries-1" href="#Constructing-Queries-1">Constructing Queries</a></h2><p>A <code>DataKnot</code>, or just <em>knot</em>, is a container having structured, vectorized data.</p><p>For this conceptual guide, we&#39;ll start with a trivial knot, <code>void</code> as our initial data source. The <code>void</code> knot encapsulates the value <code>nothing</code>, which will serve as the input for our queries.</p><pre><code class="language-julia">void = DataKnot(nothing)
+#=&gt;
+│ It │
+┼────┼
+│    │
+=#</code></pre><h3><a class="nav-anchor" id="Constant-Queries-1" href="#Constant-Queries-1">Constant Queries</a></h3><p>Any Julia value could be converted to a <em>query</em> using the <code>Lift</code> query constructor. Queries constructed this way are constant: for each input they receive, they produce the given value. Consider the query <code>Hello</code>, lifted from the string value <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia">Hello = Lift(&quot;Hello World&quot;)</code></pre><p>To query <code>void</code> with <code>Hello</code>, we use indexing notation <code>void[Hello]</code>. In this case, <code>Hello</code> receives <code>nothing</code> from <code>void</code> and produces the value, <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia">void[Hello]
 #=&gt;
 │ It          │
 ┼─────────────┼
 │ Hello World │
-=#</code></pre><p>The output of the pipeline is encapsulated in a <code>DataKnot</code>, which is a container holding structured, vectorized data. We can get the corresponding Julia value using <code>get()</code>.</p><pre><code class="language-julia">get(run(Hello)) #-&gt; &quot;Hello World&quot;</code></pre><p>Consider another pipeline created by applying <code>Lift</code> to <code>3:5</code>, a native <code>UnitRange</code> value. When <code>run()</code>, this pipeline emits a sequence of integers from <code>3</code> to <code>5</code>.</p><pre><code class="language-julia">run(Lift(3:5))
+=#</code></pre><p>A vector lifted to a constant query will produce plural output. Consider <code>Lift(&#39;a&#39;:&#39;c&#39;)</code>, constructed by lifting a unit range to a constant query.</p><pre><code class="language-julia">void[Lift(&#39;a&#39;:&#39;c&#39;)]
 #=&gt;
   │ It │
 ──┼────┼
-1 │  3 │
-2 │  4 │
-3 │  5 │
-=#</code></pre><p>The output of this knot can also be converted back to native Julia.</p><pre><code class="language-julia">get(run(Lift(3:5))) #-&gt; 3:5</code></pre><p>DataKnots track each pipeline&#39;s cardinality. Observe that the <code>Hello</code> pipeline produces a <em>singular</em> value, while the <code>Lift(3:5)</code> pipeline is <em>plural</em>. In the output notation for plural knots, indices are in the first column and values are in remaining columns.</p><h3><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h3><p>Two pipelines can be connected sequentially using the composition combinator (<code>&gt;&gt;</code>). Consider the composition <code>Lift(1:3) &gt;&gt; Hello</code>. Since <code>Lift(1:3)</code> emits 3 values and <code>Hello</code> emits <code>&quot;Hello World&quot;</code> regardless of its input, their composition emits 3 copies of <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; Hello)
+1 │ a  │
+2 │ b  │
+3 │ c  │
+=#</code></pre><h3><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h3><p>Two queries can be connected sequentially using the composition combinator (<code>&gt;&gt;</code>). Consider the composition, <code>Lift(1:3) &gt;&gt; Hello</code>. Since <code>Hello</code> produces a value for each input element, preceding it with <code>Lift(1:3)</code> generates three copies of <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Hello]
 #=&gt;
   │ It          │
 ──┼─────────────┼
 1 │ Hello World │
 2 │ Hello World │
 3 │ Hello World │
-=#</code></pre><p>When pipelines that produce plural values are combined, the output is flattened into a single sequence. The following expression calculates <code>Lift(7:9)</code> twice and then flattens the outputs.</p><pre><code class="language-julia">run(Lift(1:2) &gt;&gt; Lift(7:9))
+=#</code></pre><p>If we compose two plural queries, <code>Lift(1:2)</code> and <code>Lift(&#39;a&#39;:&#39;c&#39;)</code>, the output will contain the elements of <code>&#39;a&#39;:&#39;c&#39;</code> repeated twice.</p><pre><code class="language-julia">void[Lift(1:2) &gt;&gt; Lift(&#39;a&#39;:&#39;c&#39;)]
 #=&gt;
   │ It │
 ──┼────┼
-1 │  7 │
-2 │  8 │
-3 │  9 │
-4 │  7 │
-5 │  8 │
-6 │  9 │
-=#</code></pre><p>The <em>identity</em> with respect to pipeline composition is called <code>It</code>.  This primitive can be composed with any pipeline without changing the pipeline&#39;s output.</p><pre><code class="language-julia">run(Hello &gt;&gt; It)
+1 │ a  │
+2 │ b  │
+3 │ c  │
+4 │ a  │
+5 │ b  │
+6 │ c  │
+=#</code></pre><p>The <em>identity</em> with respect to query composition is called <code>It</code>. This primitive can be composed with any query without changing the query&#39;s output.</p><pre><code class="language-julia">void[Hello &gt;&gt; It]
 #=&gt;
 │ It          │
 ┼─────────────┼
 │ Hello World │
-=#</code></pre><p>The identity, <code>It</code>, can be used to construct pipelines which rely upon the output from previous processing.</p><pre><code class="language-julia">Increment = It .+ 1
-run(Lift(1:3) &gt;&gt; Increment)
+=#</code></pre><p>The identity primitive, <code>It</code>, can be used to construct queries which rely upon the output from previous processing.</p><pre><code class="language-julia">Increment = It .+ 1
+void[Lift(1:3) &gt;&gt; Increment]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  3 │
 3 │  4 │
-=#</code></pre><p>In DataKnots, pipelines are built algebraically, using pipeline composition, identity and other combinators. This lets us define sophisticated pipeline components and remix them in creative ways.</p><h3><a class="nav-anchor" id="Lifting-Julia-Functions-1" href="#Lifting-Julia-Functions-1">Lifting Julia Functions</a></h3><p>With DataKnots, any native Julia expression can be <em>lifted</em> to build a <code>Pipeline</code>. Consider the Julia function <code>double()</code> that, when applied to a <code>Number</code>, produces a <code>Number</code>:</p><pre><code class="language-julia">double(x) = 2x
-double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> that, instead of operating on numbers, operates on pipelines. Such functions are called pipeline combinators. We can convert any Julia function to a pipeline combinator by passing to <code>Lift</code> the function and its arguments.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>When given an argument, the combinator <code>Double</code> can then be used to build a pipeline that produces a doubled value.</p><pre><code class="language-julia">run(Double(21))
-#=&gt;
-│ It │
-┼────┼
-│ 42 │
-=#</code></pre><p>In combinator form, <code>Double</code> can be used within pipeline composition.  To build a pipeline component that doubles its input, the <code>Double</code> combinator could have <code>It</code> as its argument.</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; Double(It))
+=#</code></pre><p>In DataKnots, queries are built algebraically, starting with query primitives, such as constants (<code>Lift</code>) and identity (<code>It</code>), and then arranged with with combinators, such as composition (<code>&gt;&gt;</code>). This lets us define sophisticated query components and remix them in creative ways.</p><h3><a class="nav-anchor" id="Julia-Functions-1" href="#Julia-Functions-1">Julia Functions</a></h3><p>Consider the function <code>double(x)</code> that, when applied to a <code>Number</code>, produces a <code>Number</code>:</p><pre><code class="language-julia">double(x) = 2x
+double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> that, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any Julia function to a query combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>Once lifted, <code>Double</code> is a combinator that doubles its argument. In particular, <code>Double(It)</code> is a query that doubles its input.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Double(It)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Since this use of native Julia functions as combinators is common enough, Julia&#39;s <em>broadcast</em> syntax (using a period) is overloaded to make translation convenient. Any native Julia function, such as <code>double</code>, can be used as a combinator as follows:</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; double.(It))
+=#</code></pre><p>Using Julia&#39;s broadcast syntax, this lifting could be automated.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; double.(It)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Automatic lifting also applies to built-in Julia operators. For example, the expression <code>It .+ 1</code> is a pipeline component that increments each one of its input values.</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; (It .+ 1))
+=#</code></pre><p>Automatic lifting also applies to built-in Julia operators (<code>+</code>) and values (<code>1</code>). The expression <code>It .+ 1</code> is a query component that increments each of it&#39;s input elements.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; (It .+ 1)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  3 │
 3 │  4 │
-=#</code></pre><p>One can define combinators in terms of expressions.</p><pre><code class="language-julia">OneTo(N) = UnitRange.(1, Lift(N))</code></pre><p>When a lifted function is vector-valued, the resulting combinator builds plural pipelines.</p><pre><code class="language-julia">run(OneTo(3))
+=#</code></pre><p>One can also define combinators as query expressions. However, be sure to cast each argument using <code>Lift</code>.</p><pre><code class="language-julia">OneTo(N) = UnitRange.(1, Lift(N))</code></pre><p>Note that this lifted function is vector-valued. Therefore, the result is a plural output.</p><pre><code class="language-julia">void[OneTo(3)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><p>In DataKnots, pipeline combinators can be constructed directly from native Julia functions. This lets us take advantage of Julia&#39;s rich statistical and data processing functions.</p><h3><a class="nav-anchor" id="Aggregates-1" href="#Aggregates-1">Aggregates</a></h3><p>Some pipeline combinators transform a plural pipeline into a singular pipeline; we call them <em>aggregate</em> combinators. Consider the operation of the <code>Count</code> combinator.</p><pre><code class="language-julia">run(Count(OneTo(3)))
+=#</code></pre><p>When Julia values and functions are lifted, the type signature is inspected to discover how it should interact with query flow. A flow is <em>singular</em> if it could have at most one element; else, it is <em>plural</em>. Furthermore, if a flow must have at least one element then it is <em>mandatory</em>; else, it is <em>optional</em>.</p><table><tr><th>Type</th><th>Singular</th><th>Mandatory</th></tr><tr><td><code>Vector{T}</code></td><td>No</td><td>No</td></tr><tr><td><code>Union{T, Missing}</code></td><td>Yes</td><td>No</td></tr><tr><td><code>{T}</code></td><td>Yes</td><td>Yes</td></tr></table><p>Though this inspection, query combinators can be automatically constructed from Julia functions. This lets us access Julia&#39;s rich statistical and data processing functions from our queries.</p><h2><a class="nav-anchor" id="Query-Combinators-1" href="#Query-Combinators-1">Query Combinators</a></h2><p>There are operations which cannot be automatically lifted from Julia functions. These require knowledge DataKnot flows, context, and other internal details. We&#39;ve met two of them, <code>Lift</code> itself and query composition (<code>&gt;&gt;</code>).</p><p>Operations that cannot be lifted include navigation, filtering, sorting, grouping, paging, and many others.</p><h3><a class="nav-anchor" id="Aggregate-Primitives-and-Combinators-1" href="#Aggregate-Primitives-and-Combinators-1">Aggregate Primitives &amp; Combinators</a></h3><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider now the <code>Count</code> primitive has a singular output for its entire input.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Count]
 #=&gt;
 │ It │
 ┼────┼
 │  3 │
-=#</code></pre><p>As a convenience, <code>Count</code> can also be used as a pipeline primitive.</p><pre><code class="language-julia">run(OneTo(3) &gt;&gt; Count)
+=#</code></pre><p>This form of aggregation is helpful when extending compositions. Let&#39;s start with the query, <code>OneTo(3) &gt;&gt; OneTo(It)</code>.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; OneTo(It)]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  1 │
+2 │  1 │
+3 │  2 │
+4 │  1 │
+5 │  2 │
+6 │  3 │
+=#</code></pre><p>By simply appending <code>&gt;&gt; Sum</code> we could aggregate the input.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; OneTo(It) &gt;&gt; Sum]
 #=&gt;
 │ It │
 ┼────┼
-│  3 │
-=#</code></pre><p>It&#39;s possible to use aggregates within a plural pipeline. In this example, as the outer <code>OneTo</code> goes from <code>1</code> to <code>3</code>, the <code>Sum</code> aggregate would calculate its output from <code>OneTo(1)</code>, <code>OneTo(2)</code> and <code>OneTo(3)</code>.</p><pre><code class="language-julia">run(OneTo(3) &gt;&gt; Sum(OneTo(It)))
+│ 10 │
+=#</code></pre><p>What if we wanted to produce sums by the outer query, <code>OneTo(3)</code>? Since query composition (<code>&gt;&gt;</code>) is associative, adding parenthesis around <code>OneTo(It) &gt;&gt; Sum</code> will not change the result.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; (OneTo(It) &gt;&gt; Sum)]
+#=&gt;
+│ It │
+┼────┼
+│ 10 │
+=#</code></pre><p>Instead of using parenthesis, we wrap <code>OneTo(It) &gt;&gt; Sum</code> with the <code>Each</code> combinator, which evaluates its argument elementwise.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  1 │
 2 │  3 │
 3 │  6 │
-=#</code></pre><p>However, if we rewrite the pipeline to use <code>Sum</code> as a pipeline primitive, we get a different result.</p><pre><code class="language-julia">run(OneTo(3) &gt;&gt; OneTo(It) &gt;&gt; Sum)
-#=&gt;
-│ It │
-┼────┼
-│ 10 │
-=#</code></pre><p>Since pipeline composition (<code>&gt;&gt;</code>) is associative, adding parenthesis around <code>OneTo(It) &gt;&gt; Sum</code> will not change the result.</p><pre><code class="language-julia">run(OneTo(3) &gt;&gt; (OneTo(It) &gt;&gt; Sum))
-#=&gt;
-│ It │
-┼────┼
-│ 10 │
-=#</code></pre><p>Instead of using parenthesis, we need to wrap <code>OneTo(It) &gt;&gt; Sum</code> with the <code>Each</code> combinator. This combinator builds a pipeline that processes its input elementwise.</p><pre><code class="language-julia">run(OneTo(3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum))
+=#</code></pre><p>Following is an equivalent query, using the <code>Sum</code> combinator.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Sum(OneTo(It))]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  1 │
 2 │  3 │
 3 │  6 │
-=#</code></pre><p>Native Julia language aggregates, such as <code>sum</code>, can be automatically lifted. DataKnots automatically converts a plural pipeline into an input vector required by the native aggregate.</p><pre><code class="language-julia">using Statistics
-Mean(X) = Lift(mean, (X,))
-run(Mean(OneTo(3) &gt;&gt; Sum(OneTo(It))))
+=#</code></pre><p>Julia language aggregates, such as <code>mean</code>, can be easily lifted. DataKnots automatically converts the plural query parameter into the vector argument required by the native aggregate.</p><pre><code class="language-julia">using Statistics
+Mean(X) = mean.(X)
+void[Mean(OneTo(3) &gt;&gt; Sum(OneTo(It)))]
 #=&gt;
 │ It      │
 ┼─────────┼
 │ 3.33333 │
-=#</code></pre><p>To use <code>Mean</code> as a pipeline primitive, there are two steps. First, we use <code>Then</code> to build a pipeline that aggregates from its input. Second, we register a <code>Lift</code> to this pipeline when the combinator&#39;s name is mentioned in a pipeline expression.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(Mean)) = Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean)
+=#</code></pre><p>To use <code>Mean</code> as a query primitive, we use <code>Then</code> to build a query that aggregates from its input. Next, we register this query so it is chosen when <code>Mean</code> is converted to a query via <code>Lift</code>.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean]
 #=&gt;
 │ It      │
 ┼─────────┼
 │ 3.33333 │
-=#</code></pre><p>In DataKnots, aggregate operations are naturally expressed as pipeline combinators. Moreover, custom aggregates can be easily constructed as native Julia functions and lifted into the pipeline algebra.</p><h2><a class="nav-anchor" id="Filtering-and-Slicing-Data-1" href="#Filtering-and-Slicing-Data-1">Filtering &amp; Slicing Data</a></h2><p>DataKnots comes with combinators for rearranging data. Consider <code>Filter</code>, which takes one parameter, a predicate pipeline that for each input value decides if that value should be included in the output.</p><pre><code class="language-julia">run(OneTo(6) &gt;&gt; Filter(It .&gt; 3))
+=#</code></pre><p>In DataKnots, aggregate operations are naturally expressed as query primitives or query combinators. Moreover, custom aggregates can be easily constructed as native Julia functions and lifted into the query algebra.</p><h3><a class="nav-anchor" id="Filtering-1" href="#Filtering-1">Filtering</a></h3><p>The <code>Filter</code> combinator has one parameter, a predicate query that, for each input element, decides if this element should be included in the output.</p><pre><code class="language-julia">void[OneTo(6) &gt;&gt; Filter(It .&gt; 3)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  4 │
 2 │  5 │
 3 │  6 │
-=#</code></pre><p>Contrast this with the built-in Julia function <code>filter()</code>.</p><pre><code class="language-julia">filter(x -&gt; x &gt; 3, 1:6) #-&gt; [4, 5, 6]</code></pre><p>Where <code>filter()</code> returns a filtered dataset, the <code>Filter</code> combinator returns a pipeline component, which could then be composed with any data generating pipeline.</p><pre><code class="language-julia">KeepEven = Filter(iseven.(It))
-run(OneTo(6) &gt;&gt; KeepEven)
+=#</code></pre><p>Being a combinator, <code>Filter</code> builds a query component, which could then be composed with any data generating query.</p><pre><code class="language-julia">KeepEven = Filter(iseven.(It))
+void[OneTo(6) &gt;&gt; KeepEven]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Similar to <code>Filter</code>, the <code>Take</code> and <code>Drop</code> combinators can be used to slice an input stream: <code>Drop</code> is used to skip over input, <code>Take</code> ignores output past a particular point.</p><pre><code class="language-julia">run(OneTo(9) &gt;&gt; Drop(3) &gt;&gt; Take(3))
+=#</code></pre><p>Filter can work in a nested context.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Filter(Sum(OneTo(It)) .&gt; 5)]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  3 │
+=#</code></pre><p>The <code>Filter</code> combinator is elementwise. That is, its arguments are evaluated for each input element. If the predicate is <code>true</code>, then that element is reproduced, otherwise it is discarded.</p><h3><a class="nav-anchor" id="Paging-Data-1" href="#Paging-Data-1">Paging Data</a></h3><p>Similar to <code>Filter</code>, the <code>Take</code> and <code>Drop</code> combinators can be used to slice an input stream: <code>Drop</code> is used to skip over input, while <code>Take</code> ignores output past a particular point.</p><pre><code class="language-julia">void[OneTo(9) &gt;&gt; Drop(3) &gt;&gt; Take(3)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  4 │
 2 │  5 │
 3 │  6 │
-=#</code></pre><p>Since <code>Take</code> is a combinator, its argument could also be a full blown pipeline. This next example, <code>FirstHalf</code> is a combinator that builds a pipeline returning the first half of an input stream.</p><pre><code class="language-julia">FirstHalf(X) = Each(X &gt;&gt; Take(Count(X) .÷ 2))
-run(FirstHalf(OneTo(6)))
+=#</code></pre><p>Unlike <code>Filter</code>, slicing combinators are not elementwise, even if they reproduce elements from the source. Further, the argument to <code>Take</code> is evaluated in the context of the input&#39;s <em>origin</em>. In the next example, <code>It</code> refers to elements of the outer loop, <code>OneTo</code>.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
+#=&gt;
+  │ It │
+──┼────┼
+1 │ a  │
+2 │ a  │
+3 │ b  │
+4 │ a  │
+5 │ b  │
+6 │ c  │
+=#</code></pre><p>What if we want to grab the 1st half of an input stream? Let&#39;s define <code>FirstHalf</code> as a combinator that builds a query returning the first half of an input stream.</p><pre><code class="language-julia">FirstHalf(X) = Each(X &gt;&gt; Take(Count(X) .÷ 2))
+void[FirstHalf(OneTo(6))]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><p>Using <code>Then</code>, this combinator could be used with pipeline composition:</p><pre><code class="language-julia">run(OneTo(6) &gt;&gt; Then(FirstHalf))
+=#</code></pre><p>Using <code>Then</code>, this combinator could be used as a query primitive.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
+void[OneTo(6) &gt;&gt; FirstHalf]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><p>In DataKnots, filtering and slicing are realized as pipeline components. They are attached to data processing pipelines using the composition combinator. This brings common data processing concepts into our pipeline algebra.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* Get(:WHO), WHO=&quot;World&quot;)
+=#</code></pre><p>The slicing combinators are different from filtering in that they evaluate their arguments at the <em>origin</em>.</p><h3><a class="nav-anchor" id="Records-and-Labels-1" href="#Records-and-Labels-1">Records &amp; Labels</a></h3><p>Data objects can be created using the <code>Record</code> combinator. Calculations could be performed on record sets.</p><pre><code class="language-julia">GM = Record(:name =&gt; &quot;GARRY M&quot;, :salary =&gt; 260004)
+void[GM]
+#=&gt;
+│ name     salary │
+┼─────────────────┼
+│ GARRY M  260004 │
+=#</code></pre><p>Field access is possible via <code>Get</code> query constructor, which takes a label&#39;s name. Here <code>Get(:name)</code> is a singular elementwise query that returns the value of a given label when found.</p><pre><code class="language-julia">void[GM &gt;&gt; Get(:name)]
+#=&gt;
+│ name    │
+┼─────────┼
+│ GARRY M │
+=#</code></pre><p>For syntactic convenience, <code>It</code> can be used for dotted access.</p><pre><code class="language-julia">void[GM &gt;&gt; It.name]
+#=&gt;
+│ name    │
+┼─────────┼
+│ GARRY M │
+=#</code></pre><p>The <code>Label</code> combinator provides a name to any expression.</p><pre><code class="language-julia">void[Lift(&quot;Hello World&quot;) &gt;&gt; Label(:greeting)]
+#=&gt;
+│ greeting    │
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>Alternatively, Julia&#39;s pair constructor (<code>=&gt;</code>) and and a <code>Symbol</code> denoted by a colon (<code>:</code>) can be used to label an expression.</p><pre><code class="language-julia">Hello =
+  :greeting =&gt; Lift(&quot;Hello World&quot;)
+
+void[Hello]
+#=&gt;
+│ greeting    │
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>Records can be plural. Here is a table of obvious statistics.</p><pre><code class="language-julia">Stats = Record(:n¹=&gt;It, :n²=&gt;It.*It, :n³=&gt;It.*It.*It)
+void[Lift(1:3) &gt;&gt; Stats]
+#=&gt;
+  │ n¹  n²  n³ │
+──┼────────────┼
+1 │  1   1   1 │
+2 │  2   4   8 │
+3 │  3   9  27 │
+=#</code></pre><p>By accessing names, calculations can be performed on records.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Stats &gt;&gt; (It.n² .+ It.n³)]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  2 │
+2 │ 12 │
+3 │ 36 │
+=#</code></pre><p>Any values can be used within a Record, including other records and plural values.</p><pre><code class="language-julia">Schedule =
+    :work_schedule =&gt;
+        Record(:staff =&gt; Record(:name =&gt; &quot;Jim Rockford&quot;,
+                                :phone =&gt; &quot;555-2368&quot;),
+               :workday =&gt; Lift([&quot;Su&quot;, &quot;M&quot;,&quot;Tu&quot;, &quot;F&quot;]))
+
+void[Schedule]
+#=&gt;
+│ work_schedule                        │
+│ staff                   workday      │
+┼──────────────────────────────────────┼
+│ Jim Rockford, 555-2368  Su; M; Tu; F │
+=#</code></pre><p>Access to values via label also works hierarchical.</p><pre><code class="language-julia">void[Schedule &gt;&gt; It.staff.name]
+#=&gt;
+│ name         │
+┼──────────────┼
+│ Jim Rockford │
+=#</code></pre><p>In DataKnots, records are used to generate tabular data. Using nested records, it is possible to represent complex, hierarchical data. It is then possible to access and compute with this data.</p><h3><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h3><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">void[&quot;Hello &quot; .* Get(:WHO), WHO=&quot;World&quot;]
 #=&gt;
 │ It          │
 ┼─────────────┼
 │ Hello World │
-=#</code></pre><p>To make <code>Get</code> convenient, <code>It</code> provides a shorthand syntax.</p><pre><code class="language-julia">run(&quot;Hello &quot; .* It.WHO, WHO=&quot;World&quot;)
+=#</code></pre><p>To make <code>Get</code> convenient, <code>It</code> provides a shorthand syntax.</p><pre><code class="language-julia">void[&quot;Hello &quot; .* It.WHO, WHO=&quot;World&quot;]
 #=&gt;
 │ It          │
 ┼─────────────┼
 │ Hello World │
 =#</code></pre><p>Query parameters are available anywhere in the query. They could, for example be used within a filter.</p><pre><code class="language-julia">query = OneTo(6) &gt;&gt; Filter(It .&gt; It.START)
-run(query, START=3)
+void[query, START=3]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  4 │
 2 │  5 │
 3 │  6 │
-=#</code></pre><p>Parameters can also be defined as part of a query using <code>Given</code>. This combinator takes set of pairs (<code>=&gt;</code>) that map symbols (<code>:name</code>) onto query expressions. The subsequent argument is then evaluated in a naming context where the defined parameters are available for reuse.</p><pre><code class="language-julia">run(Given(:WHO =&gt; &quot;World&quot;,
-    &quot;Hello &quot; .* Get(:WHO)))
+=#</code></pre><p>Parameters can also be defined as part of a query using <code>Given</code>. This combinator takes set of pairs (<code>=&gt;</code>) that map symbols (<code>:name</code>) onto query expressions. The subsequent argument is then evaluated in a naming context where the defined parameters are available for reuse.</p><pre><code class="language-julia">void[Given(:WHO =&gt; &quot;World&quot;, &quot;Hello &quot; .* Get(:WHO))]
 #=&gt;
 │ It          │
 ┼─────────────┼
@@ -187,70 +267,18 @@ run(query, START=3)
   Given(:AVG =&gt; Mean(X),
         X &gt;&gt; Filter(It .&gt; Get(:AVG)))
 
-run(GreaterThanAverage(OneTo(6)))
+void[GreaterThanAverage(OneTo(6))]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  4 │
 2 │  5 │
 3 │  6 │
-=#</code></pre><p>In DataKnots, query parameters passed in to the <code>run</code> command permit external data to be used within query expressions. Parameters that are defined with <code>Given</code> can be used to remember values and reuse them.</p><h3><a class="nav-anchor" id="Records-and-Labels-1" href="#Records-and-Labels-1">Records &amp; Labels</a></h3><p>Internally, DataKnots use a column-oriented storage mechanism that handles hierarchies and graphs. Data objects in this model can be created using the <code>Record</code> combinator.</p><pre><code class="language-julia">GM = Record(:name =&gt; &quot;GARRY M&quot;, :salary =&gt; 260004)
-run(GM)
-#=&gt;
-│ name     salary │
-┼─────────────────┼
-│ GARRY M  260004 │
-=#</code></pre><p>Field access is also possible via <code>Get</code> or via the <code>It</code> shortcut.</p><pre><code class="language-julia">run(GM &gt;&gt; It.name)
-#=&gt;
-│ name    │
-┼─────────┼
-│ GARRY M │
-=#</code></pre><p>As seen in the output above, field names also act as display labels.  It is possible to provide a name to any expression with the <code>Label</code> combinator. Labeling doesn&#39;t affect the actual output, only the field name given to the expression and its display.</p><pre><code class="language-julia">run(Lift(&quot;Hello World&quot;) &gt;&gt; Label(:greeting))
-#=&gt;
-│ greeting    │
-┼─────────────┼
-│ Hello World │
-=#</code></pre><p>Alternatively, Julia&#39;s pair constructor (<code>=&gt;</code>) and and a <code>Symbol</code> denoted by a colon (<code>:</code>) can be used to label an expression.</p><pre><code class="language-julia">Hello = :greeting =&gt; Lift(&quot;Hello World&quot;)
-run(Hello)
-#=&gt;
-│ greeting    │
-┼─────────────┼
-│ Hello World │
-=#</code></pre><p>When a record is created, it can use the label from which it originates. In this case, the <code>:greeting</code> label from the <code>Hello</code> is used to make the field label used within the <code>Record</code>. The record itself is also expressly labeled.</p><pre><code class="language-julia">run(:seasons =&gt; Record(Hello))
-#=&gt;
-│ seasons     │
-│ greeting    │
-┼─────────────┼
-│ Hello World │
-=#</code></pre><p>Records can be plural. Here is a table of obvious statistics.</p><pre><code class="language-julia">Stats = Record(:n¹=&gt;It, :n²=&gt;It.*It, :n³=&gt;It.*It.*It)
-run(Lift(1:3) &gt;&gt; Stats)
-#=&gt;
-  │ n¹  n²  n³ │
-──┼────────────┼
-1 │  1   1   1 │
-2 │  2   4   8 │
-3 │  3   9  27 │
-=#</code></pre><p>Calculations could be run on record sets as follows:</p><pre><code class="language-julia">run(Lift(1:3) &gt;&gt; Stats &gt;&gt; (It.n² .+ It.n³))
-#=&gt;
-  │ It │
-──┼────┼
-1 │  2 │
-2 │ 12 │
-3 │ 36 │
-=#</code></pre><p>Any values can be used within a Record, including other records and plural values.</p><pre><code class="language-julia">run(:work_schedule =&gt;
- Record(:staff =&gt; Record(:name =&gt; &quot;Jim Rockford&quot;,
-                         :phone =&gt; &quot;555-2368&quot;),
-        :workday =&gt; Lift([&quot;Su&quot;, &quot;M&quot;,&quot;Tu&quot;, &quot;F&quot;])))
-#=&gt;
-│ work_schedule                        │
-│ staff                   workday      │
-┼──────────────────────────────────────┼
-│ Jim Rockford, 555-2368  Su; M; Tu; F │
-=#</code></pre><p>In DataKnots, records are used to generate tabular data. Using nested records, it is possible to represent complex, hierarchical data.</p><h2><a class="nav-anchor" id="Working-With-Data-1" href="#Working-With-Data-1">Working With Data</a></h2><p>Arrays of named tuples can be wrapped with <code>Lift</code> in order to provide a series of tuples. Since DataKnots works fluidly with Julia, any sort of Julia object may be used. In this case, <code>NamedTuple</code> has special support so that it prints well.</p><pre><code class="language-julia">DATA = Lift([(name = &quot;GARRY M&quot;, salary = 260004),
+=#</code></pre><p>In DataKnots, query parameters permit external data to be used within query expressions. Parameters that are defined with <code>Given</code> can be used to remember values and reuse them.</p><h2><a class="nav-anchor" id="Working-With-Data-1" href="#Working-With-Data-1">Working With Data</a></h2><p>Arrays of named tuples can be wrapped with <code>Lift</code> in order to provide a series of tuples. Since DataKnots works fluidly with Julia, any sort of Julia object may be used. In this case, <code>NamedTuple</code> has special support so that it prints well.</p><pre><code class="language-julia">DATA = Lift([(name = &quot;GARRY M&quot;, salary = 260004),
               (name = &quot;ANTHONY R&quot;, salary = 185364),
               (name = &quot;DANA A&quot;, salary = 170112)])
 
-run(:staff =&gt; DATA)
+void[:staff =&gt; DATA]
 #=&gt;
   │ staff             │
   │ name       salary │
@@ -258,46 +286,46 @@ run(:staff =&gt; DATA)
 1 │ GARRY M    260004 │
 2 │ ANTHONY R  185364 │
 3 │ DANA A     170112 │
-=#</code></pre><p>Access to slots in a <code>NamedTuple</code> is also supported by <code>Get</code>.</p><pre><code class="language-julia">run(DATA &gt;&gt; Get(:name))
+=#</code></pre><p>Access to slots in a <code>NamedTuple</code> is also supported by <code>Get</code>.</p><pre><code class="language-julia">void[DATA &gt;&gt; Get(:name)]
 #=&gt;
   │ name      │
 ──┼───────────┼
 1 │ GARRY M   │
 2 │ ANTHONY R │
 3 │ DANA A    │
-=#</code></pre><p>Together with previous combinators, DataKnots could be used to create readable queries, such as &quot;who has the greatest salary&quot;?</p><pre><code class="language-julia">run(:highest_salary =&gt;
+=#</code></pre><p>Together with previous combinators, DataKnots could be used to create readable queries, such as &quot;who has the greatest salary&quot;?</p><pre><code class="language-julia">void[:highest_salary =&gt;
   Given(:MAX =&gt; Max(DATA &gt;&gt; It.salary),
-        DATA &gt;&gt; Filter(It.salary .== Get(:MAX))))
+        DATA &gt;&gt; Filter(It.salary .== Get(:MAX)))]
 #=&gt;
   │ highest_salary  │
   │ name     salary │
 ──┼─────────────────┼
 1 │ GARRY M  260004 │
 =#</code></pre><p>Records can even contain lists of subordinate records.</p><pre><code class="language-julia">DB =
-  run(:department =&gt;
+  void[:department =&gt;
     Record(:name =&gt; &quot;FIRE&quot;, :staff =&gt; It.FIRE),
     FIRE=[(name = &quot;JOSE S&quot;, salary = 202728),
-          (name = &quot;CHARLES S&quot;, salary = 197736)])
+          (name = &quot;CHARLES S&quot;, salary = 197736)]]
 #=&gt;
 │ department                              │
 │ name  staff                             │
 ┼─────────────────────────────────────────┼
 │ FIRE  JOSE S, 202728; CHARLES S, 197736 │
-=#</code></pre><p>These subordinate records can then be summarized.</p><pre><code class="language-julia">run(:statistics =&gt;
+=#</code></pre><p>These subordinate records can then be summarized.</p><pre><code class="language-julia">void[:statistics =&gt;
   DB &gt;&gt; Record(:dept =&gt; It.name,
-               :count =&gt; Count(It.staff)))
+               :count =&gt; Count(It.staff))]
 #=&gt;
 │ statistics  │
 │ dept  count │
 ┼─────────────┼
 │ FIRE      2 │
-=#</code></pre><h2><a class="nav-anchor" id="Quirks-1" href="#Quirks-1">Quirks</a></h2><p>By <em>quirks</em> we mean unexpected consequences of embedding DataKnots in Julia. They are not necessarily bugs, nor could they be easily fixed.</p><p>Using the broadcast syntax to lift combinators is a clever shortcut, but it doesn&#39;t always work out. If an argument to the broadcast isn&#39;t a <code>Pipeline</code> then a regular broadcast will happen. For example, <code>rand.(1:3)</code> is an array of arrays containing random numbers. Wrapping an argument in <code>Lift</code> will address this challenge. The following will generate 3 random numbers from <code>1</code> to <code>3</code>.</p><pre><code class="language-julia">using Random: seed!, rand
+=#</code></pre><h2><a class="nav-anchor" id="Quirks-1" href="#Quirks-1">Quirks</a></h2><p>By <em>quirks</em> we mean unexpected consequences of embedding DataKnots in Julia. They are not necessarily bugs, nor could they be easily fixed.</p><p>Using the broadcast syntax to lift combinators is a clever shortcut, but it doesn&#39;t always work out. If an argument to the broadcast isn&#39;t a <code>Query</code> then a regular broadcast will happen. For example, <code>rand.(1:3)</code> is an array of arrays containing random numbers. Wrapping an argument in <code>Lift</code> will address this challenge. The following will generate 3 random numbers from <code>1</code> to <code>3</code>.</p><pre><code class="language-julia">using Random: seed!, rand
 seed!(0)
-run(Lift(1:3) &gt;&gt; rand.(Lift(7:9)))
+void[Lift(1:3) &gt;&gt; rand.(Lift(7:9))]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  7 │
 2 │  9 │
 3 │  8 │
-=#</code></pre><footer><hr/><a class="previous" href="../start/"><span class="direction">Previous</span><span class="title">Getting Started</span></a><a class="next" href="../reference/"><span class="direction">Next</span><span class="title">Reference</span></a></footer></article></body></html>
+=#</code></pre><footer><hr/><a class="previous" href="../tutorial/"><span class="direction">Previous</span><span class="title">DataKnots Tutorial</span></a><a class="next" href="../reference/"><span class="direction">Next</span><span class="title">Reference</span></a></footer></article></body></html>

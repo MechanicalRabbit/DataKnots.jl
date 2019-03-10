@@ -1,251 +1,158 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../start/">Getting Started</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Guide</a><ul><li class="current"><a class="toctext" href>Query Algebra</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li></ul></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Guide</a></li><li><a href>Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/queries.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><h2><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h2><p>This section describes the <code>Query</code> interface of vectorized data transformations.  We will use the following definitions:</p><pre><code class="language-julia">using DataKnots:
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><a class="toctext" href="../tutorial/">DataKnots Tutorial</a></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a><ul><li class="current"><a class="toctext" href>Query Algebra</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li></ul></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="../implementation/">Implementation Notes</a></li><li><a href>Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/queries.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><h2><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h2><p>In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.</p><pre><code class="language-julia">using DataKnots:
     @VectorTree,
-    Query,
-    Runtime,
-    adapt_missing,
-    adapt_tuple,
-    adapt_vector,
-    block_any,
-    block_filler,
-    block_length,
-    block_lift,
-    chain_of,
-    column,
-    distribute,
-    distribute_all,
-    filler,
-    flatten,
-    lift,
-    null_filler,
-    pass,
-    record_lift,
-    sieve,
-    slice,
-    tuple_lift,
-    tuple_of,
-    with_column,
-    with_elements,
-    wrap,
-    x1toN</code></pre><h3><a class="nav-anchor" id="Lifting-and-fillers-1" href="#Lifting-and-fillers-1">Lifting and fillers</a></h3><p><code>DataKnots</code> stores structured data in a column-oriented format, serialized using specialized composite vector types.  Consequently, operations on data must also be adapted to the column-oriented format.</p><p>In <code>DataKnots</code>, operations on column-oriented data are called <em>queries</em>.  A query is a vectorized transformation: it takes a vector of input values and produces a vector of the same size containing output values.</p><p>Any unary scalar function could be vectorized, which gives us a simple method for creating new queries.  Consider, for example, function <code>titlecase()</code>, which transforms the input string by capitalizing the first letter of each word and converting every other character to lowercase.</p><pre><code class="language-julia">titlecase(&quot;JEFFERY A&quot;)      #-&gt; &quot;Jeffery A&quot;</code></pre><p>This function can be converted to a query, or <em>lifted</em>, using the <code>lift</code> query constructor.</p><pre><code class="language-julia">q = lift(titlecase)
-q([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
-#-&gt; [&quot;Jeffery A&quot;, &quot;James A&quot;, &quot;Terry A&quot;]</code></pre><p>A scalar function with <code>N</code> arguments could be lifted by <code>tuple_lift</code> to make a query that transforms a <code>TupleVector</code> with <code>N</code> columns.  For example, a binary predicate <code>&gt;</code> gives rise to a query <code>tuple_lift(&gt;)</code> that transforms a <code>TupleVector</code> with two columns into a Boolean vector.</p><pre><code class="language-julia">q = tuple_lift(&gt;)
-q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
-#-&gt; Bool[1, 0, 0]</code></pre><p>In a similar manner, a function with a vector argument can be lifted by <code>block_lift</code> to make a query that expects a <code>BlockVector</code> input.  For example, function <code>length()</code>, which returns the length of a vector, could be converted to a query <code>block_lift(length)</code> that transforms a block vector to an integer vector containing block lengths.</p><pre><code class="language-julia">q = block_lift(length)
-q(@VectorTree [String] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;]])
-#-&gt; [2, 1]</code></pre><p>Not just functions, but also regular values could give rise to queries.  The <code>filler</code> constructor makes a query from any scalar value.  This query maps any input vector to a vector filled with the given scalar.</p><pre><code class="language-julia">q = filler(200000)
-q([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
-#-&gt; [200000, 200000, 200000]</code></pre><p>Similarly, <code>block_filler</code> makes a query from any vector value.  This query produces a <code>BlockVector</code> filled with the given vector.</p><pre><code class="language-julia">q = block_filler([&quot;POLICE&quot;, &quot;FIRE&quot;])
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree (0:N) × String [[&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>A variant of <code>block_filler</code> called <code>null_filler</code> makes a query that produces a <code>BlockVector</code> filled with empty blocks.</p><pre><code class="language-julia">q = null_filler()
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree (0:1) × Union{} [missing, missing, missing]</code></pre><h3><a class="nav-anchor" id="Chaining-queries-1" href="#Chaining-queries-1">Chaining queries</a></h3><p>Given a series of queries, the <code>chain_of</code> constructor creates their <em>composition</em> query, which transforms the input vector by sequentially applying the given queries.</p><pre><code class="language-julia">q = chain_of(lift(split), lift(first), lift(titlecase))
-q([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
-#-&gt; [&quot;Jeffery&quot;, &quot;James&quot;, &quot;Terry&quot;]</code></pre><p>The degenerate composition of an empty sequence of queries has its own name, <code>pass()</code>. It passes its input to the output unchanged.</p><pre><code class="language-julia">chain_of()
-#-&gt; pass()
+    Count,
+    DataKnot,
+    Drop,
+    Environment,
+    Filter,
+    Get,
+    Given,
+    It,
+    Lift,
+    Max,
+    Min,
+    Record,
+    Take,
+    compile,
+    elements,
+    optimize,
+    stub,
+    uncover,
+    x1to1</code></pre><p>As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.</p><pre><code class="language-julia">chicago_data =
+    @VectorTree (department = [(name     = (1:1)String,
+                                employee = [(name     = (1:1)String,
+                                             position = (1:1)String,
+                                             salary   = (0:1)Int,
+                                             rate     = (0:1)Float64)])],) [
+        (department = [
+            (name     = &quot;POLICE&quot;,
+             employee = [&quot;JEFFERY A&quot;  &quot;SERGEANT&quot;           101442   missing
+                         &quot;NANCY A&quot;    &quot;POLICE OFFICER&quot;     80016    missing]),
+            (name     = &quot;FIRE&quot;,
+             employee = [&quot;JAMES A&quot;    &quot;FIRE ENGINEER-EMT&quot;  103350   missing
+                         &quot;DANIEL A&quot;   &quot;FIRE FIGHTER-EMT&quot;   95484    missing]),
+            (name     = &quot;OEMC&quot;,
+             employee = [&quot;LAKENYA A&quot;  &quot;CROSSING GUARD&quot;     missing  17.68
+                         &quot;DORIS A&quot;    &quot;CROSSING GUARD&quot;     missing  19.38])],
+        )
+    ]
 
-q = pass()
-q([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
-#-&gt; [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;]</code></pre><p>In general, query constructors that take one or more queries as arguments are called query <em>combinators</em>.  Combinators are used to assemble elementary queries into complex query expressions.</p><h3><a class="nav-anchor" id="Working-with-composite-vectors-1" href="#Working-with-composite-vectors-1">Working with composite vectors</a></h3><p>In <code>DataKnots</code>, composite data is represented as a tree of vectors with regular <code>Vector</code> objects at the leaves and composite vectors such as <code>TupleVector</code> and <code>BlockVector</code> at the intermediate nodes.  We demonstrated how to create and transform regular vectors using <code>filler</code> and <code>lift</code>.  Now let us show how to do the same with composite vectors.</p><p><code>TupleVector</code> is a vector of tuples composed of a sequence of column vectors. Any collection of vectors could be used as columns as long as they all have the same length.  One way to obtain <code>N</code> columns for a <code>TupleVector</code> is to apply <code>N</code> queries to the same input vector.  This is precisely the query action of the <code>tuple_of</code> combinator.</p><pre><code class="language-julia">q = tuple_of(:first =&gt; chain_of(lift(split), lift(first), lift(titlecase)),
-             :last =&gt; lift(last))
-q([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
-#-&gt; @VectorTree (first = String, last = Char) [(first = &quot;Jeffery&quot;, last = &#39;A&#39;) … ]</code></pre><p>In the opposite direction, the <code>column</code> constructor makes a query that extracts the specified column from the input <code>TupleVector</code>.</p><pre><code class="language-julia">q = column(:salary)
-q(@VectorTree (name=String, salary=Int) [(&quot;JEFFERY A&quot;, 101442), (&quot;JAMES A&quot;, 103350), (&quot;TERRY A&quot;, 93354)])
-#-&gt; [101442, 103350, 93354]</code></pre><p><code>BlockVector</code> is a vector of vectors serialized as a partitioned vector of elements.  Any input vector could be transformed to a <code>BlockVector</code> by the query <code>wrap()</code>, which wraps the vector elements into one-element blocks.</p><pre><code class="language-julia">q = wrap()
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree (1:1) × String [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>Dual to <code>wrap()</code> is the query <code>flatten()</code>, which transforms a nested <code>BlockVector</code> by flattening its nested blocks.</p><pre><code class="language-julia">q = flatten()
-q(@VectorTree [[String]] [[[&quot;GARRY M&quot;], [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]], [[], [&quot;JOSE S&quot;], [&quot;CHARLES S&quot;]]])
-#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]</code></pre><p>The <code>distribute</code> constructor makes a query that rearranges a <code>TupleVector</code> with a <code>BlockVector</code> column.  Specifically, it takes each tuple, which should contain a block value, and transforms it to a block of tuples by distributing the block value over the tuple.</p><pre><code class="language-julia">q = distribute(:employee)
-q(@VectorTree (department = String, employee = [String]) [
-    &quot;POLICE&quot;    [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
-    &quot;FIRE&quot;      [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]) |&gt; display
+chicago = DataKnot(chicago_data, x1to1)
 #=&gt;
-@VectorTree of 2 × (0:N) × (department = String, employee = String):
- [(department = &quot;POLICE&quot;, employee = &quot;GARRY M&quot;), (department = &quot;POLICE&quot;, employee = &quot;ANTHONY R&quot;), (department = &quot;POLICE&quot;, employee = &quot;DANA A&quot;)]
- [(department = &quot;FIRE&quot;, employee = &quot;JOSE S&quot;), (department = &quot;FIRE&quot;, employee = &quot;CHARLES S&quot;)]
-=#</code></pre><p>Often we need to transform only a part of a composite vector, leaving the rest of the structure intact.  This can be achieved using <code>with_column</code> and <code>with_elements</code> combinators.  Specifically, <code>with_column</code> transforms a specific column of a <code>TupleVector</code> while <code>with_elements</code> transforms the vector of elements of a <code>BlockVector</code>.</p><pre><code class="language-julia">q = with_column(:employee, with_elements(lift(titlecase)))
-q(@VectorTree (department = String, employee = [String]) [
-    &quot;POLICE&quot;    [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
-    &quot;FIRE&quot;      [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]) |&gt; display
+│ department                                                                   …
+┼──────────────────────────────────────────────────────────────────────────────…
+│ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…
+=#</code></pre><h3><a class="nav-anchor" id="Assembling-queries-1" href="#Assembling-queries-1">Assembling queries</a></h3><p>In DataKnots, we query data by assembling and running <code>Query</code> objects.  Queries are assembled algebraically: they either come a set of atomic <em>primitive</em> queries, or are built from other queries using query <em>combinators</em>.</p><p>For example, consider the query:</p><pre><code class="language-julia">Employees = Get(:department) &gt;&gt; Get(:employee)
+#-&gt; Get(:department) &gt;&gt; Get(:employee)</code></pre><p>This query traverses the dataset through fields <em>department</em> and <em>employee</em>. It is assembled from two primitive queries <code>Get(:department)</code> and <code>Get(:employee)</code> connected using the query composition combinator <code>&gt;&gt;</code>.</p><p>Since attribute traversal is so common, DataKnots provides a shorthand notation.</p><pre><code class="language-julia">Employees = It.department.employee
+#-&gt; It.department.employee</code></pre><p>To apply a query to a <code>DataKnot</code>, we use indexing notation.  The output of a query is also a <code>DataKnot</code>.</p><pre><code class="language-julia">chicago[Employees]
 #=&gt;
-@VectorTree of 2 × (department = String, employee = (0:N) × String):
- (department = &quot;POLICE&quot;, employee = [&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;])
- (department = &quot;FIRE&quot;, employee = [&quot;Jose S&quot;, &quot;Charles S&quot;])
-=#</code></pre><h3><a class="nav-anchor" id="Specialized-queries-1" href="#Specialized-queries-1">Specialized queries</a></h3><p>Not every data transformation can be implemented with lifting.  <code>DataKnots</code> provide query constructors for some common transformation tasks.</p><p>For example, data filtering is implemented with the query <code>sieve()</code>.  As input, it expects a <code>TupleVector</code> of pairs containing a value and a <code>Bool</code> flag. <code>sieve()</code> transforms the input to a <code>BlockVector</code> containing 0- and 1-element blocks.  When the flag is <code>false</code>, it is mapped to an empty block, otherwise, it is mapped to a one-element block containing the data value.</p><pre><code class="language-julia">q = sieve()
-q(@VectorTree (String, Bool) [(&quot;JEFFERY A&quot;, true), (&quot;JAMES A&quot;, true), (&quot;TERRY A&quot;, false)])
-#-&gt; @VectorTree (0:1) × String [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, missing]</code></pre><p>If <code>DataKnots</code> does not provide a specific transformation, it is easy to create a new one.  For example, let us create a query constructor <code>double</code> which makes a query that doubles the elements of the input vector.</p><p>We need to provide two definitions: to create a <code>Query</code> object and to perform the query action on the given input vector.</p><pre><code class="language-julia">double() = Query(double)
-double(::Runtime, input::AbstractVector{&lt;:Number}) = input .* 2
-
-q = double()
-q([260004, 185364, 170112])
-#-&gt; [520008, 370728, 340224]</code></pre><p>It is also easy to create new query combinators.  Let us create a combinator <code>twice</code>, which applies the given query to the input two times.</p><pre><code class="language-julia">twice(q) = Query(twice, q)
-twice(rt::Runtime, input, q) = q(rt, q(rt, input))
-
-q = twice(double())
-q([260004, 185364, 170112])
-#-&gt; [1040016, 741456, 680448]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query object represents a vectorized data transformation.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments to be passed to the function.</p><p>The query transforms any input vector by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(rt::Runtime, input::AbstractVector, args...)</code></pre><p>The result of <code>op</code> must be the output vector, which should be of the same length as the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L24-L39">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Runtime" href="#DataKnots.Runtime"><code>DataKnots.Runtime</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Runtime()</code></pre><p>Runtime state for query evaluation.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L16-L20">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.adapt_missing-Tuple{}" href="#DataKnots.adapt_missing-Tuple{}"><code>DataKnots.adapt_missing</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">adapt_missing() :: Query</code></pre><p>This query transforms a vector that contains <code>missing</code> elements to a block vector with <code>missing</code> elements replaced by empty blocks.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L306-L311">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.adapt_tuple-Tuple{}" href="#DataKnots.adapt_tuple-Tuple{}"><code>DataKnots.adapt_tuple</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">adapt_tuple() :: Query</code></pre><p>This query transforms a vector of tuples to a tuple vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L368-L372">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.adapt_vector-Tuple{}" href="#DataKnots.adapt_vector-Tuple{}"><code>DataKnots.adapt_vector</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">adapt_vector() :: Query</code></pre><p>This query transforms a vector with vector elements to a block vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L342-L346">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_any-Tuple{}" href="#DataKnots.block_any-Tuple{}"><code>DataKnots.block_any</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">block_any() :: Query</code></pre><p>This query applies <code>any</code> to a block vector with <code>Bool</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L685-L689">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_filler" href="#DataKnots.block_filler"><code>DataKnots.block_filler</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">block_filler(block::AbstractVector, card::Cardinality) :: Query</code></pre><p>This query produces a block vector filled with the given block.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L278-L282">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_length-Tuple{}" href="#DataKnots.block_length-Tuple{}"><code>DataKnots.block_length</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">block_length() :: Query</code></pre><p>This query converts a block vector to a vector of block lengths.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L661-L665">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_lift" href="#DataKnots.block_lift"><code>DataKnots.block_lift</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">block_lift(f) :: Query
-block_lift(f, default) :: Query</code></pre><p><code>f</code> is a function that expects a vector argument.</p><p>The query applies <code>f</code> to each block of the input block vector.  When a block is empty, <code>default</code> (if specified) is used as the output value.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L162-L170">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.chain_of" href="#DataKnots.chain_of"><code>DataKnots.chain_of</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">chain_of(q₁::Query, q₂::Query … qₙ::Query) :: Query</code></pre><p>This query sequentially applies <code>q₁</code>, <code>q₂</code> … <code>qₙ</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L416-L420">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.column-Tuple{Union{Int64, Symbol}}" href="#DataKnots.column-Tuple{Union{Int64, Symbol}}"><code>DataKnots.column</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">column(lbl::Union{Int,Symbol}) :: Query</code></pre><p>This query extracts the specified column of a tuple vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L486-L490">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.designate" href="#DataKnots.designate"><code>DataKnots.designate</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">designate(::Query, ::Signature) :: Query
-designate(::Query, ::InputShape, ::OutputShape) :: Query
-q::Query |&gt; designate(::Signature) :: Query
-q::Query |&gt; designate(::InputShape, ::OutputShape) :: Query</code></pre><p>Sets the query signature.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L57-L64">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.distribute-Tuple{Any}" href="#DataKnots.distribute-Tuple{Any}"><code>DataKnots.distribute</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">distribute(lbl::Union{Int,Symbol}) :: Query</code></pre><p>This query transforms a tuple vector with a column of blocks to a block vector with tuple elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L569-L574">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.distribute_all-Tuple{}" href="#DataKnots.distribute_all-Tuple{}"><code>DataKnots.distribute_all</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">distribute_all() :: Query</code></pre><p>This query transforms a tuple vector with block columns to a block vector with tuple elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L613-L618">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.filler-Tuple{Any}" href="#DataKnots.filler-Tuple{Any}"><code>DataKnots.filler</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">filler(val) :: Query</code></pre><p>This query produces a vector filled with the given value.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L258-L262">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.flatten-Tuple{}" href="#DataKnots.flatten-Tuple{}"><code>DataKnots.flatten</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">flatten() :: Query</code></pre><p>This query flattens a nested block vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L543-L547">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.lift-Tuple{Any}" href="#DataKnots.lift-Tuple{Any}"><code>DataKnots.lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">lift(f) :: Query</code></pre><p><code>f</code> is any scalar unary function.</p><p>The query applies <code>f</code> to each element of the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L123-L129">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.null_filler-Tuple{}" href="#DataKnots.null_filler-Tuple{}"><code>DataKnots.null_filler</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">null_filler() :: Query</code></pre><p>This query produces a block vector with empty blocks.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L268-L272">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.optimize-Tuple{DataKnots.Query}" href="#DataKnots.optimize-Tuple{DataKnots.Query}"><code>DataKnots.optimize</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">optimize(::Query) :: Query</code></pre><p>Rewrites the query to make it (hopefully) faster.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L110-L114">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.pass-Tuple{}" href="#DataKnots.pass-Tuple{}"><code>DataKnots.pass</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">pass() :: Query</code></pre><p>This query returns its input unchanged.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L406-L410">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.record_lift-Tuple{Any}" href="#DataKnots.record_lift-Tuple{Any}"><code>DataKnots.record_lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">record_lift(f) :: Query</code></pre><p><code>f</code> is an n-ary function.</p><p>This query expects the input to be an n-tuple vector with each column being a block vector.  The query produces a block vector, where each block is generated by applying <code>f</code> to every combination of values from the input blocks.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L207-L215">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.sieve-Tuple{}" href="#DataKnots.sieve-Tuple{}"><code>DataKnots.sieve</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">sieve() :: Query</code></pre><p>This query filters a vector of pairs by the second column.  The query expects a pair vector, whose second column is a <code>Bool</code> vector.  It produces a block vector with 0-element or 1-element blocks containing the elements of the first column.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L722-L729">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.signature-Tuple{DataKnots.Query}" href="#DataKnots.signature-Tuple{DataKnots.Query}"><code>DataKnots.signature</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">signature(::Query) :: Signature</code></pre><p>Returns the query signature.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L79-L83">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.slice" href="#DataKnots.slice"><code>DataKnots.slice</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">slice(N::Int, rev::Bool=false) :: Query</code></pre><p>This query transforms a block vector by keeping the first <code>N</code> elements of each block.  If <code>rev</code> is true, the query drops the first <code>N</code> elements of each block.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L760-L765">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.slice" href="#DataKnots.slice"><code>DataKnots.slice</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">slice(rev::Bool=false) :: Query</code></pre><p>This query takes a pair vector of blocks and integers, and returns the first column with blocks restricted by the second column.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L809-L814">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.tuple_lift-Tuple{Any}" href="#DataKnots.tuple_lift-Tuple{Any}"><code>DataKnots.tuple_lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">tuple_lift(f) :: Query</code></pre><p><code>f</code> is an n-ary function.</p><p>The query applies <code>f</code> to each row of an n-tuple vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L135-L141">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.tuple_of-Tuple" href="#DataKnots.tuple_of-Tuple"><code>DataKnots.tuple_of</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">tuple_of(q₁::Query, q₂::Query … qₙ::Query) :: Query</code></pre><p>This query produces an n-tuple vector, whose columns are generated by applying <code>q₁</code>, <code>q₂</code> … <code>qₙ</code> to the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L455-L460">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.with_column-Tuple{Union{Int64, Symbol},Any}" href="#DataKnots.with_column-Tuple{Union{Int64, Symbol},Any}"><code>DataKnots.with_column</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">with_column(lbl::Union{Int,Symbol}, q::Query) :: Query</code></pre><p>This query transforms a tuple vector by applying <code>q</code> to the specified column.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L499-L503">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.with_elements-Tuple{Any}" href="#DataKnots.with_elements-Tuple{Any}"><code>DataKnots.with_elements</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">with_elements(q::Query) :: Query</code></pre><p>This query transforms a block vector by applying <code>q</code> to its vector of elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L531-L535">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.wrap-Tuple{}" href="#DataKnots.wrap-Tuple{}"><code>DataKnots.wrap</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">wrap() :: Query</code></pre><p>This query produces a block vector with one-element blocks wrapping the values of the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/a9ab0d5a6b85b6d9c3472e183424124251aa781f/src/queries.jl#L519-L524">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Lifting-1" href="#Lifting-1">Lifting</a></h3><p>The <code>lift</code> constructor makes a query by vectorizing a unary function.</p><pre><code class="language-julia">q = lift(titlecase)
-#-&gt; lift(titlecase)
-
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; [&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;]</code></pre><p>The <code>block_lift</code> constructor makes a query on block vectors by vectorizing a unary vector function.</p><pre><code class="language-julia">q = block_lift(length)
-#-&gt; block_lift(length)
-
-q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
-#-&gt; [3, 2]</code></pre><p>Some vector functions may expect a non-empty vector as an argument.  In this case, we should provide the value to replace empty blocks.</p><pre><code class="language-julia">q = block_lift(maximum, missing)
-#-&gt; block_lift(maximum, missing)
-
-q(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])
-#-&gt; Union{Missing, Int}[260004, missing, 202728]</code></pre><p>The <code>tuple_lift</code> constructor makes a query on tuple vectors by vectorizing a function of several arguments.</p><pre><code class="language-julia">q = tuple_lift(&gt;)
-#-&gt; tuple_lift(&gt;)
-
-q(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
-#-&gt; Bool[1, 0, 0]</code></pre><p>The <code>record_lift</code> constructor is used when the input is in the <em>record</em> layout (a tuple vector with block vector columns); <code>record_lift(f)</code> is a shortcut for <code>chain_of(distribute_all(),with_elements(tuple_lift(f)))</code>.</p><pre><code class="language-julia">q = record_lift(&gt;)
-#-&gt; record_lift(&gt;)
-
-q(@VectorTree ([Int], [Int]) [[260004, 185364, 170112] 200000; missing 200000; [202728, 197736] [200000, 200000]])
-#-&gt; @VectorTree (0:N) × Bool [[1, 0, 0], [], [1, 1, 0, 0]]</code></pre><p>With <code>record_lift</code>, the cardinality of the output is the upper bound of the column block cardinalities.</p><pre><code class="language-julia">q(@VectorTree ((1:N)Int, (1:1)Int) [([260004, 185364, 170112], 200000)])
-#-&gt; @VectorTree (1:N) × Bool [[1, 0, 0]]</code></pre><h3><a class="nav-anchor" id="Fillers-1" href="#Fillers-1">Fillers</a></h3><p>The query <code>filler(val)</code> ignores its input and produces a vector filled with <code>val</code>.</p><pre><code class="language-julia">q = filler(200000)
-#-&gt; filler(200000)
-
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; [200000, 200000, 200000]</code></pre><p>The query <code>block_filler(blk, card)</code> produces a block vector filled with the given block.</p><pre><code class="language-julia">q = block_filler([&quot;POLICE&quot;, &quot;FIRE&quot;], x1toN)
-#-&gt; block_filler([&quot;POLICE&quot;, &quot;FIRE&quot;], x1toN)
-
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree (1:N) × String [[&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>The query <code>null_filler()</code> produces a block vector with empty blocks.</p><pre><code class="language-julia">q = null_filler()
-#-&gt; null_filler()
-
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; @VectorTree (0:1) × Union{} [missing, missing, missing]</code></pre><h3><a class="nav-anchor" id="Adapting-row-oriented-data-1" href="#Adapting-row-oriented-data-1">Adapting row-oriented data</a></h3><p>The query <code>adapt_missing()</code> transforms a vector containing <code>missing</code> values to a block vector with <code>missing</code> replaced by an empty block and other values wrapped in 1-element block.</p><pre><code class="language-julia">q = adapt_missing()
-#-&gt; adapt_missing()
-
-q([260004, 185364, 170112, missing, 202728, 197736])
-#-&gt; @VectorTree (0:1) × Int [260004, 185364, 170112, missing, 202728, 197736]</code></pre><p>The query <code>adapt_vector()</code> transforms a vector of vectors to a block vector.</p><pre><code class="language-julia">q = adapt_vector()
-#-&gt; adapt_vector()
-
-q([[260004, 185364, 170112], Int[], [202728, 197736]])
-#-&gt; @VectorTree (0:N) × Int [[260004, 185364, 170112], [], [202728, 197736]]</code></pre><p>The query <code>adapt_tuple()</code> transforms a vector of tuples to a tuple vector.</p><pre><code class="language-julia">q = adapt_tuple()
-#-&gt; adapt_tuple()
-
-q([(&quot;GARRY M&quot;, 260004), (&quot;ANTHONY R&quot;, 185364), (&quot;DANA A&quot;, 170112)]) |&gt; display
+  │ employee                                    │
+  │ name       position           salary  rate  │
+──┼─────────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT           101442        │
+2 │ NANCY A    POLICE OFFICER      80016        │
+3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+4 │ DANIEL A   FIRE FIGHTER-EMT    95484        │
+5 │ LAKENYA A  CROSSING GUARD             17.68 │
+6 │ DORIS A    CROSSING GUARD             19.38 │
+=#</code></pre><p>Regular Julia values and functions could be used to create query components. Specifically, any Julia value could be converted to a query primitive, and any Julia function could be converted to a query combinator.</p><p>For example, let us find find employees whose salary is greater than $100k. For this purpose, we need to construct a predicate query that compares the <em>salary</em> field with a specific number.</p><p>If we were constructing an ordinary predicate function, we would write:</p><pre><code class="language-julia">salary_over_100k(emp) = emp.salary &gt; 100000</code></pre><p>An equivalent query is constructed as follows:</p><pre><code class="language-julia">SalaryOver100K = Lift(&gt;, (Get(:salary), Lift(100000)))
+#-&gt; Lift(&gt;, (Get(:salary), Lift(100000)))</code></pre><p>This query expression is assembled from two primitive components: <code>Get(:salary)</code> and <code>Lift(100000)</code>, which serve as parameters of the <code>Lift(&gt;)</code> combinator.  Here, <code>Lift</code> is used twice.  <code>Lift</code> applied to a regular Julia value converts it to a <em>constant</em> query primitive while <code>Lift</code> applied to a function <em>lifts</em> it to a query combinator.</p><p>As a shorthand notation for lifting functions and operators, DataKnots supports broadcasting syntax:</p><pre><code class="language-julia">SalaryOver100K = It.salary .&gt; 100000
+#-&gt; It.salary .&gt; 100000</code></pre><p>To test this query, we can append it to the <code>Employees</code> query using the composition combinator.</p><pre><code class="language-julia">chicago[Employees &gt;&gt; SalaryOver100K]
 #=&gt;
-@VectorTree of 3 × (String, Int):
- (&quot;GARRY M&quot;, 260004)
- (&quot;ANTHONY R&quot;, 185364)
- (&quot;DANA A&quot;, 170112)
-=#</code></pre><p>Vectors of named tuples are also supported.</p><pre><code class="language-julia">q([(name=&quot;GARRY M&quot;, salary=260004), (name=&quot;ANTHONY R&quot;, salary=185364), (name=&quot;DANA A&quot;, salary=170112)]) |&gt; display
+  │ It    │
+──┼───────┼
+1 │  true │
+2 │ false │
+3 │  true │
+4 │ false │
+=#</code></pre><p>However, this only gives us a list of bare Boolean values disconnected from the respective employees.  To contextualize this output, we can use the <code>Record</code> combinator.</p><pre><code class="language-julia">chicago[Employees &gt;&gt; Record(It.name,
+                            It.salary,
+                            :salary_over_100k =&gt; SalaryOver100K)]
 #=&gt;
-@VectorTree of 3 × (name = String, salary = Int):
- (name = &quot;GARRY M&quot;, salary = 260004)
- (name = &quot;ANTHONY R&quot;, salary = 185364)
- (name = &quot;DANA A&quot;, salary = 170112)
-=#</code></pre><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>The <code>chain_of</code> combinator composes a sequence of queries.</p><pre><code class="language-julia">q = chain_of(lift(split), lift(first), lift(titlecase))
-#-&gt; chain_of(lift(split), lift(first), lift(titlecase))
+  │ employee                            │
+  │ name       salary  salary_over_100k │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  101442              true │
+2 │ NANCY A     80016             false │
+3 │ JAMES A    103350              true │
+4 │ DANIEL A    95484             false │
+5 │ LAKENYA A                           │
+6 │ DORIS A                             │
+=#</code></pre><p>To actually filter the data using this predicate query, we need to use the <code>Filter</code> combinator.</p><pre><code class="language-julia">EmployeesWithSalaryOver100K = Employees &gt;&gt; Filter(SalaryOver100K)
+#-&gt; It.department.employee &gt;&gt; Filter(It.salary .&gt; 100000)
 
-q([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
-#-&gt; [&quot;Jeffery&quot;, &quot;James&quot;, &quot;Terry&quot;]</code></pre><p>The empty chain <code>chain_of()</code> has an alias <code>pass()</code>.</p><pre><code class="language-julia">q = pass()
-#-&gt; pass()
-
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-#-&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><h3><a class="nav-anchor" id="Tuple-vectors-1" href="#Tuple-vectors-1">Tuple vectors</a></h3><p>The query <code>tuple_of(q₁, q₂ … qₙ)</code> produces a tuple vector, whose columns are generated by applying <code>q₁</code>, <code>q₂</code> … <code>qₙ</code> to the input vector.</p><pre><code class="language-julia">q = tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
-#-&gt; tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
-
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]) |&gt; display
+chicago[EmployeesWithSalaryOver100K]
 #=&gt;
-@VectorTree of 3 × (title = String, last = Char):
- (title = &quot;Garry M&quot;, last = &#39;M&#39;)
- (title = &quot;Anthony R&quot;, last = &#39;R&#39;)
- (title = &quot;Dana A&quot;, last = &#39;A&#39;)
-=#</code></pre><p>The query <code>column(lbl)</code> extracts the specified column from a tuple vector.  The <code>column</code> constructor accepts either the column position or the column label.</p><pre><code class="language-julia">q = column(1)
-#-&gt; column(1)
-
-q(@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112])
-#-&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
-
-q = column(:salary)
-#-&gt; column(:salary)
-
-q(@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112])
-#-&gt; [260004, 185364, 170112]</code></pre><p>The <code>with_column</code> combinator lets us apply the given query to a selected column of a tuple vector.</p><pre><code class="language-julia">q = with_column(:name, lift(titlecase))
-#-&gt; with_column(:name, lift(titlecase))
-
-q(@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]) |&gt; display
+  │ employee                                   │
+  │ name       position           salary  rate │
+──┼────────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT           101442       │
+2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+=#</code></pre><p>DataKnots provides a number of useful query constructors.  For example, to find the number of items produced by a query, we can use the <code>Count</code> combinator.</p><pre><code class="language-julia">chicago[Count(EmployeesWithSalaryOver100K)]
 #=&gt;
-@VectorTree of 3 × (name = String, salary = Int):
- (name = &quot;Garry M&quot;, salary = 260004)
- (name = &quot;Anthony R&quot;, salary = 185364)
- (name = &quot;Dana A&quot;, salary = 170112)
-=#</code></pre><h3><a class="nav-anchor" id="Block-vectors-1" href="#Block-vectors-1">Block vectors</a></h3><p>The query <code>wrap()</code> wraps the elements of the input vector to one-element blocks.</p><pre><code class="language-julia">q = wrap()
+│ It │
+┼────┼
+│  2 │
+=#</code></pre><p>In general, query algebra forms an XPath-like domain-specific language.  It is designed to let the user construct queries incrementally, with each step being individually crafted and tested.  It also encourages the user to create reusable query components and remix them in creative ways.</p><h3><a class="nav-anchor" id="Compiling-queries-1" href="#Compiling-queries-1">Compiling queries</a></h3><p>In DataKnots, applying a query to the input data is a two-phase process. First, the query is compiled to a pipeline.  Second, this pipeline transforms the input data to the output data.</p><p>Let us elaborate on the role of pipelines and queries.  In DataKnots, just like pipelines are used to transform data, a query can transform pipelines.  That is, a query can be applied to a pipeline to produce a new pipeline.</p><p>To run a query on the given data, we apply the query to a <em>trivial</em> pipeline. The generated pipeline is used to actually transform the data.</p><p>To demonstrate how to compile a query, let us use <code>EmployeesWithSalaryOver100K</code> from the previous section.  Recall that it could be represented as follows:</p><pre><code class="language-julia">Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Filter(Get(:salary) .&gt; 100000)
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Filter(Get(:salary) .&gt; 100000)</code></pre><p>This query is constructed using a composition combinator.  A query composition transforms a pipeline by sequentially applying the component queries. Therefore, to find the pipeline of <code>EmployeesWithSalaryOver100K</code>, we need to start with a trivial pipeline and sequentially tranfrorm it with the queries <code>Get(:department)</code>, <code>Get(:employee)</code> and <code>Filter(SalaryOver100K)</code>.</p><p>The trivial pipeline can be obtained from the input data.</p><pre><code class="language-julia">p0 = stub(chicago)
+#-&gt; pass()</code></pre><p>We use the function <code>compile()</code> to apply a query to a pipeline.  To run <code>compile()</code> we need to create the <em>environment</em> object.</p><pre><code class="language-julia">env = Environment()
+
+p1 = compile(Get(:department), env, p0)
+#-&gt; chain_of(with_elements(column(:department)), flatten())</code></pre><p>The pipeline <code>p1</code> fetches the attribute <em>department</em> from the input data.  In general, <code>Get(name)</code> maps a pipeline to its monadic composition with <code>column(name)</code>.  For example, when we apply <code>Get(:employee)</code> to <code>p1</code>, what we get is the result of <code>compose(p1, column(:employee))</code>.</p><pre><code class="language-julia">p2 = compile(Get(:employee), env, p1)
+#=&gt;
+chain_of(chain_of(with_elements(column(:department)), flatten()),
+         chain_of(with_elements(column(:employee)), flatten()))
+=#</code></pre><p>To finish assembling the pipeline, we apply <code>Filter(SalaryOver100K)</code> to <code>p2</code>. <code>Filter</code> acts on the input pipeline as follows.  First, it compiles the predicate query using the trivial pipeline on the output of <code>p2</code>.</p><pre><code class="language-julia">pc0 = stub(p2)
 #-&gt; wrap()
 
-q([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
-@VectorTree (1:1) × String [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>The query <code>flatten()</code> flattens a nested block vector.</p><pre><code class="language-julia">q = flatten()
-#-&gt; flatten()
-
-q(@VectorTree [[String]] [[[&quot;GARRY M&quot;], [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]], [missing, [&quot;JOSE S&quot;], [&quot;CHARLES S&quot;]]])
-@VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]</code></pre><p>The <code>with_elements</code> combinator lets us apply the given query to transform the elements of a block vector.</p><pre><code class="language-julia">q = with_elements(lift(titlecase))
-#-&gt; with_elements(lift(titlecase))
-
-q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
-@VectorTree (0:N) × String [[&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;], [&quot;Jose S&quot;, &quot;Charles S&quot;]]</code></pre><p>The query <code>distribute(lbl)</code> transforms a tuple vector with a block column to a block vector of tuples by distributing the block elements over the tuple.</p><pre><code class="language-julia">q = distribute(1)
-#-&gt; distribute(1)
-
-q(@VectorTree ([Int], [Int]) [
-    [260004, 185364, 170112]    200000
-    missing                     200000
-    [202728, 197736]            [200000, 200000]]
-) |&gt; display
+pc1 = compile(SalaryOver100K, env, pc0)
 #=&gt;
-@VectorTree of 3 × (0:N) × (Int, (0:N) × Int):
- [(260004, [200000]), (185364, [200000]), (170112, [200000])]
- []
- [(202728, [200000, 200000]), (197736, [200000, 200000])]
-=#</code></pre><p>The query <code>distribute_all()</code> takes a tuple vector with block columns and distribute all of the block columns.</p><pre><code class="language-julia">q = distribute_all()
-#-&gt; distribute_all()
-
-q(@VectorTree ([Int], [Int]) [
-    [260004, 185364, 170112]    200000
-    missing                     200000
-    [202728, 197736]            [200000, 200000]]
-) |&gt; display
+chain_of(wrap(),
+         chain_of(
+             with_elements(
+                 chain_of(
+                     chain_of(
+                         ⋮
+                         tuple_lift(&gt;)),
+                     adapt_missing())),
+             flatten()))
+=#</code></pre><p><code>Filter(SalaryOver100K)</code> then combines the pipelines <code>p2</code> and <code>pc1</code> using the pipeline primitive <code>sieve()</code>.</p><pre><code class="language-julia">p3 = compile(Filter(SalaryOver100K), env, p2)
 #=&gt;
-@VectorTree of 3 × (0:N) × (Int, Int):
- [(260004, 200000), (185364, 200000), (170112, 200000)]
- []
- [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
-=#</code></pre><p>This query is equivalent to <code>chain_of(distribute(1),with_elements(distribute(2),flatten())</code>.</p><p>The query <code>block_length()</code> calculates the lengths of blocks in a block vector.</p><pre><code class="language-julia">q = block_length()
-#-&gt; block_length()
-
-q(@VectorTree [String] [missing, &quot;GARRY M&quot;, [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]])
-#-&gt; [0, 1, 2]</code></pre><p>The query <code>block_any()</code> checks whether the blocks in a <code>Bool</code> block vector have any <code>true</code> values.</p><pre><code class="language-julia">q = block_any()
-#-&gt; block_any()
-
-q(@VectorTree [Bool] [missing, true, false, [true, false], [false, false], [false, true]])
-#-&gt; Bool[0, 1, 0, 1, 0, 1]</code></pre><h3><a class="nav-anchor" id="Filtering-1" href="#Filtering-1">Filtering</a></h3><p>The query <code>sieve()</code> filters a vector of pairs by the second column.</p><pre><code class="language-julia">q = sieve()
-#-&gt; sieve()
-
-q(@VectorTree (Int, Bool) [260004 true; 185364 false; 170112 false])
-#-&gt; @VectorTree (0:1) × Int [260004, missing, missing]</code></pre><h3><a class="nav-anchor" id="Slicing-1" href="#Slicing-1">Slicing</a></h3><p>The query <code>slice(N)</code> transforms a block vector by keeping the first <code>N</code> elements of each block.</p><pre><code class="language-julia">q = slice(2)
-#-&gt; slice(2, false)
-
-q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
-#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], []]</code></pre><p>When <code>N</code> is negative, <code>slice(N)</code> drops the last <code>N</code> elements of each block.</p><pre><code class="language-julia">q = slice(-1)
-
-q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
-#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;], [&quot;JOSE S&quot;], []]</code></pre><p>The query <code>slice(N, true)</code> drops the first <code>N</code> elements (or keeps the last <code>N</code> elements if <code>N</code> is negative).</p><pre><code class="language-julia">q = slice(2, true)
-
-q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
-#-&gt; @VectorTree (0:N) × String [[&quot;DANA A&quot;], [], []]
-
-q = slice(-1, true)
-
-q(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
-#-&gt; @VectorTree (0:N) × String [[&quot;DANA A&quot;], [&quot;CHARLES S&quot;], []]</code></pre><p>A variant of this query <code>slice()</code> expects a tuple vector with two columns: the first column containing the blocks and the second column with the number of elements to keep.</p><pre><code class="language-julia">q = slice()
-#-&gt; slice(false)
-
-q(@VectorTree ([String], Int) [([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], 1), ([&quot;JOSE S&quot;, &quot;CHARLES S&quot;], -1), (missing, 0)])
-#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;], [&quot;JOSE S&quot;], []]</code></pre><footer><hr/><a class="previous" href="../vectors/"><span class="direction">Previous</span><span class="title">Column Store</span></a><a class="next" href="../shapes/"><span class="direction">Next</span><span class="title">Monadic Signature</span></a></footer></article></body></html>
+chain_of(
+    chain_of(chain_of(with_elements(column(:department)), flatten()),
+             chain_of(with_elements(column(:employee)), flatten())),
+    chain_of(
+        with_elements(
+            chain_of(
+                ⋮
+                sieve())),
+        flatten()))
+=#</code></pre><p>The resulting pipeline could be compacted by simplifying the pipeline expression.</p><pre><code class="language-julia">p = optimize(uncover(p3))
+#=&gt;
+chain_of(with_elements(chain_of(column(:department),
+                                with_elements(column(:employee)))),
+         flatten(),
+         flatten(),
+         with_elements(chain_of(tuple_of(pass(),
+                                         chain_of(tuple_of(column(:salary),
+                                                           chain_of(
+                                                               filler(100000),
+                                                               wrap())),
+                                                  tuple_lift(&gt;),
+                                                  adapt_missing(),
+                                                  block_any())),
+                                sieve())),
+         flatten())
+=#</code></pre><p>Applying this pipeline to the input data gives us the output of the query.</p><pre><code class="language-julia">p(chicago)
+#=&gt;
+  │ employee                                   │
+  │ name       position           salary  rate │
+──┼────────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT           101442       │
+2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Count-Tuple{Any}" href="#DataKnots.Count-Tuple{Any}"><code>DataKnots.Count</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Count(X)
+X &gt;&gt; Count</code></pre><p>Counts the number of elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L824-L829">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Drop-Tuple{Any}" href="#DataKnots.Drop-Tuple{Any}"><code>DataKnots.Drop</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Drop(N)</code></pre><p>Drops the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L964-L968">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Each-Tuple{Any}" href="#DataKnots.Each-Tuple{Any}"><code>DataKnots.Each</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Each(X)</code></pre><p>Makes <code>X</code> process its input elementwise.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L567-L571">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Filter-Tuple{Any}" href="#DataKnots.Filter-Tuple{Any}"><code>DataKnots.Filter</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Filter(X)</code></pre><p>Filters the input by condition.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L917-L921">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Get-Tuple{Any}" href="#DataKnots.Get-Tuple{Any}"><code>DataKnots.Get</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Get(name)</code></pre><p>Finds an attribute or a parameter.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L635-L639">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}" href="#DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}"><code>DataKnots.Given</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Given(P, X)</code></pre><p>Specifies the parameter and bounds its scope.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L775-L779">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Label-Tuple{Symbol}" href="#DataKnots.Label-Tuple{Symbol}"><code>DataKnots.Label</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Label(lbl::Symbol)</code></pre><p>Assigns a label.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L582-L586">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any,Tuple}" href="#DataKnots.Lift-Tuple{Any,Tuple}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(f, Xs)</code></pre><p>Converts a Julia function to a query combinator.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L499-L503">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any}" href="#DataKnots.Lift-Tuple{Any}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(val)</code></pre><p>Converts a Julia value to a query primitive.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L491-L495">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Max-Tuple{Any}" href="#DataKnots.Max-Tuple{Any}"><code>DataKnots.Max</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Max(X)
+X &gt;&gt; Max</code></pre><p>Finds the maximum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L853-L858">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Min-Tuple{Any}" href="#DataKnots.Min-Tuple{Any}"><code>DataKnots.Min</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Min(X)
+X &gt;&gt; Min</code></pre><p>Finds the minimum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L865-L870">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Record-Tuple" href="#DataKnots.Record-Tuple"><code>DataKnots.Record</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Record(Xs...)</code></pre><p>Creates a query component for building a record.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L450-L454">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Sum-Tuple{Any}" href="#DataKnots.Sum-Tuple{Any}"><code>DataKnots.Sum</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Sum(X)
+X &gt;&gt; Sum</code></pre><p>Sums the elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L841-L846">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Tag-Tuple{Symbol,Any}" href="#DataKnots.Tag-Tuple{Symbol,Any}"><code>DataKnots.Tag</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Tag(name::Symbol, X)</code></pre><p>Assigns a name to a query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L601-L605">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Take-Tuple{Any}" href="#DataKnots.Take-Tuple{Any}"><code>DataKnots.Take</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Take(N)</code></pre><p>Takes the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L956-L960">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L129-L133">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Navigation" href="#DataKnots.Navigation"><code>DataKnots.Navigation</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">It</code></pre><p>Identity query with respect to the query composition.</p><pre><code class="language-julia">It.a.b.c</code></pre><p>Equivalent to <code>Get(:a) &gt;&gt; Get(:b) &gt;&gt; Get(:c)</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L57-L65">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation.  Specifically, a query takes a pipeline that maps <em>origin</em> to <em>input</em> and generates a pipeline that maps <em>origin</em> to <em>output</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L18-L34">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52ac69eb30b8ff6b734c1a01b20196c3ce34a08a/src/queries.jl#L87-L91">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../simulation/"><span class="direction">Next</span><span class="title">Tutorial: Simulated Data</span></a></footer></article></body></html>
