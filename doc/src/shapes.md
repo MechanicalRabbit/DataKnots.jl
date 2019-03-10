@@ -193,13 +193,13 @@ least upper bound of the flow cardinalities is the cardinality of the fused
 flow.
 
     dept_employee_card = cardinality(shape(dept_employee))
-    #-> x1toN::Cardinality = 2
+    #-> x1toN
 
     emp_rate_card = cardinality(shape(emp_rate))
-    #-> x0to1::Cardinality = 1
+    #-> x0to1
 
     dept_employee_rate_card = cardinality(shape(dept_employee_rate))
-    #-> x0toN::Cardinality = 3
+    #-> x0toN
 
     dept_employee_card|emp_rate_card == dept_employee_rate_card
     #-> true
@@ -315,7 +315,7 @@ The structure of a `BlockVector` object is described using `BlockOf` shape.
     rate_shp = BlockOf(Float64, x0to1)
     #-> BlockOf(Float64, x0to1)
 
-    print(cardinality(rate_shp))
+    cardinality(rate_shp)
     #-> x0to1
 
     elements(rate_shp)

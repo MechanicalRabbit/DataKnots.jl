@@ -379,12 +379,12 @@ block.  There are four different cardinality constraints: *just one* `(1:1)`,
 Cardinality values could be obtained from the matching symbols.
 
     convert(Cardinality, :x1toN)
-    #-> x1toN::Cardinality = 2
+    #-> x1toN
 
 Cardinality values support bitwise operations.
 
-    print(x1to1|x0to1|x1toN)    #-> x0toN
-    print(x1toN&~x1toN)         #-> x1to1
+    x1to1|x0to1|x1toN           #-> x0toN
+    x1toN&~x1toN                #-> x1to1
 
 We can use predicates `ismandatory()` and `issingular()` to check if a
 constraint is present.
@@ -463,7 +463,7 @@ We can access individual components of the vector.
     #-> ["JEFFERY A", "NANCY A", "JAMES A", "DANIEL A", "LAKENYA A", "DORIS A"]
 
     cardinality(bv)
-    #-> x0toN::Cardinality = 3
+    #-> x0toN
 
 When indexed by a vector of indexes, an instance of `BlockVector` is returned.
 
