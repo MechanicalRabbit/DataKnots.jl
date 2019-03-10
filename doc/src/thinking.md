@@ -16,9 +16,9 @@ To start working with DataKnots, we import the package:
 A `DataKnot`, or just *knot*, is a container having structured,
 vectorized data.
 
-For this conceptual guide, we'll start with a trivial knot, `void`
-as our initial data source. The `void` knot encapsulates the value
-`nothing`, which will serve as the input for our queries.
+For this guide, we'll use a trivial knot, `void` as our data
+source. The `void` knot encapsulates the value `nothing`, which
+will serve as the input for our queries.
 
     void = DataKnot(nothing)
     #=>
@@ -30,9 +30,9 @@ as our initial data source. The `void` knot encapsulates the value
 ### Constant Queries
 
 Any Julia value could be converted to a *query* using the `Lift`
-query constructor. Queries constructed this way are constant: for
-each input they receive, they produce the given value. Consider
-the query `Hello`, lifted from the string value `"Hello World"`.
+constructor. Queries constructed this way are constant: for each
+input they receive, they produce the given value.  Consider the
+query `Hello`, lifted from the string value `"Hello World"`.
 
     Hello = Lift("Hello World")
 
@@ -60,9 +60,13 @@ constant query.
     3 │ c  │
     =#
 
+We call queries constructed this way *primitives* as they do not
+rely upon any other query. There are also combinators, which build
+new queries from existing ones.
+
 ### Composition & Identity
 
-Two queries can be connected sequentially using the composition
+Two queries can be connected sequentially using the *composition*
 combinator (`>>`). Consider the composition, `Lift(1:3) >> Hello`.
 Since `Hello` produces a value for each input element, preceding
 it with `Lift(1:3)` generates three copies of `"Hello World"`.
@@ -177,8 +181,8 @@ sure to cast each argument using `Lift`.
 
     OneTo(N) = UnitRange.(1, Lift(N))
 
-Note that this lifted function is vector-valued. Therefore, the
-result is a plural output.
+Note that the unit range constructor is vector-valued. Therefore,
+the resulting combinator builds queries with plural output.
 
     void[OneTo(3)]
     #=>
@@ -201,21 +205,19 @@ then it is *mandatory*; else, it is *optional*.
 | `Union{T, Missing}` | Yes      | No        |
 | `{T}`               | Yes      | Yes       |
 
-Though this inspection, query combinators can be automatically
+Through this inspection, query combinators can be automatically
 constructed from Julia functions. This lets us access Julia's rich
 statistical and data processing functions from our queries.
 
 ## Query Combinators
 
-There are operations which cannot be automatically lifted from
-Julia functions. These require knowledge DataKnot flows, context,
-and other internal details. We've met two of them, `Lift` itself
-and query composition (`>>`).
+There are query operations which cannot be automatically lifted
+from Julia functions. These require knowledge DataKnot storage,
+flows, context, and other internal details. We've met two of them,
+`Lift` itself and query composition (`>>`). There are many others
+involving aggregation, filtering, paging and others.
 
-Operations that cannot be lifted include navigation, filtering,
-sorting, grouping, paging, and many others.
-
-### Aggregate Primitives & Combinators
+### Aggregate Queries
 
 So far queries have been *elementwise*; that is, for each input
 element, they produce zero or more output elements. Consider now
@@ -228,8 +230,9 @@ the `Count` primitive has a singular output for its entire input.
     │  3 │
     =#
 
-This form of aggregation is helpful when extending compositions.
-Let's start with the query, `OneTo(3) >> OneTo(It)`.
+We call these kinds of queries *aggregates*. While aggregate
+queries may reflect the elements of their input, the output is
+relative to the input as whole. Consider `OneTo(3) >> OneTo(It)`.
 
     void[OneTo(3) >> OneTo(It)]
     #=>
@@ -263,8 +266,9 @@ around `OneTo(It) >> Sum` will not change the result.
     │ 10 │
     =#
 
-Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
-`Each` combinator, which evaluates its argument elementwise.
+What we need is the `Each` combinator, which acts as a barrier for
+an aggregate query. For each of its input elements, `Each`
+evaluates its argument and collects the outputs.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -276,6 +280,8 @@ Instead of using parenthesis, we wrap `OneTo(It) >> Sum` with the
     =#
 
 Following is an equivalent query, using the `Sum` combinator.
+While `Sum(X)` performs a numerical aggregation, it is not an
+aggregate query since it treats its input elementwise.
 
     void[OneTo(3) >> Sum(OneTo(It))]
     #=>
@@ -286,9 +292,9 @@ Following is an equivalent query, using the `Sum` combinator.
     3 │  6 │
     =#
 
-Julia language aggregates, such as `mean`, can be easily lifted.
-DataKnots automatically converts the plural query parameter into
-the vector argument required by the native aggregate.
+Julia functions taking a vector argument, such as `mean`, can be
+easily lifted. DataKnots automatically converts a plural query
+parameter into the vector argument.
 
     using Statistics
     Mean(X) = mean.(X)
@@ -301,7 +307,7 @@ the vector argument required by the native aggregate.
 
 To use `Mean` as a query primitive, we use `Then` to build a query
 that aggregates from its input. Next, we register this query so it
-is chosen when `Mean` is converted to a query via `Lift`.
+is chosen when `Mean` is implicitly converted to a query.
 
     DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)
 
@@ -314,10 +320,10 @@ Once these are done, one could take an average of sums as follows:
     │ 3.33333 │
     =#
 
-In DataKnots, aggregate operations are naturally expressed as
-query primitives or query combinators. Moreover, custom aggregates
-can be easily constructed as native Julia functions and lifted
-into the query algebra.
+In DataKnots, summary operations are naturally expressed as
+aggregate query primitives or as query combinators. Moreover,
+custom aggregates can be constructed from native Julia functions
+and lifted into the query algebra.
 
 ### Filtering
 
@@ -362,9 +368,9 @@ that element is reproduced, otherwise it is discarded.
 
 ### Paging Data
 
-Similar to `Filter`, the `Take` and `Drop` combinators can be used
-to slice an input stream: `Drop` is used to skip over input, while
-`Take` ignores output past a particular point.
+Like `Filter`, the `Take` and `Drop` combinators can be used to
+choose elements from its input stream: `Drop` is used to skip over
+input, while `Take` ignores output past a particular point.
 
     void[OneTo(9) >> Drop(3) >> Take(3)]
     #=>
@@ -375,10 +381,10 @@ to slice an input stream: `Drop` is used to skip over input, while
     3 │  6 │
     =#
 
-Unlike `Filter`, slicing combinators are not elementwise, even if
-they reproduce elements from the source. Further, the argument to
-`Take` is evaluated in the context of the input's *origin*. In the
-next example, `It` refers to elements of the outer loop, `OneTo`.
+Unlike `Filter`, the argument to `Take` is evaluated once, in the
+context of the input's *origin*. In this next example, `Take` is
+performed three times, and each time, `It` refers to the integer
+elements of the outer loop, `OneTo`.
 
     void[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
@@ -409,6 +415,7 @@ the first half of an input stream.
 Using `Then`, this combinator could be used as a query primitive.
 
     DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
+
     void[OneTo(6) >> FirstHalf]
     #=>
       │ It │
@@ -418,13 +425,33 @@ Using `Then`, this combinator could be used as a query primitive.
     3 │  3 │
     =#
 
-The slicing combinators are different from filtering in that they
-evaluate their arguments at the *origin*.
+Paging operations highlight a diversity of query operations. When
+a query processes its input an element at a time, we call it
+*elementwise*; else, it is *aggregate*. Further, when the argument
+of a combinator uses the input's origin, we call it *origin-aware*.
+
+| Query       | Elementwise | Origin-Aware |
+|-------------|-------------|--------------|
+| `Count`     | No          | No           |
+| `Take(N)`   | No          | Yes          |
+| `Count(X)`  | Yes         | No           |
+| `Filter(P)` | Yes         | No           |
+
+Since both `Filter` and `Count` combinators are elementwise and
+not origin-aware, they behave in quite similar ways. Conversely,
+the `Take` combinator behaves more like the `Count` aggregate,
+with its argument being origin-aware.
+
+## Structuring Data
+
+Thus far we've seen how queries can be composed in heavily nested
+environments. DataKnots also supports nested data and contexts.
 
 ### Records & Labels
 
-Data objects can be created using the `Record` combinator.
-Calculations could be performed on record sets.
+Data objects can be created using the `Record` combinator. Values
+can be labeled using Julia's `Pair` syntax. The entire result as a
+whole may also be named.
 
     GM = Record(:name => "GARRY M", :salary => 260004)
     void[GM]
@@ -435,8 +462,8 @@ Calculations could be performed on record sets.
     =#
 
 Field access is possible via `Get` query constructor, which takes
-a label's name. Here `Get(:name)` is a singular elementwise query
-that returns the value of a given label when found.
+a label's name. Here `Get(:name)` is an elementwise query that
+returns the value of a given label when found.
 
     void[GM >> Get(:name)]
     #=>
@@ -490,43 +517,16 @@ Records can be plural. Here is a table of obvious statistics.
 
 By accessing names, calculations can be performed on records.
 
-    void[Lift(1:3) >> Stats >> (It.n² .+ It.n³)]
+    void[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │ 12 │
-    3 │ 36 │
+    1 │  3 │
+    2 │ 14 │
+    3 │ 39 │
     =#
 
-Any values can be used within a Record, including other records
-and plural values.
-
-    Schedule =
-        :work_schedule =>
-            Record(:staff => Record(:name => "Jim Rockford",
-                                    :phone => "555-2368"),
-                   :workday => Lift(["Su", "M","Tu", "F"]))
-
-    void[Schedule]
-    #=>
-    │ work_schedule                        │
-    │ staff                   workday      │
-    ┼──────────────────────────────────────┼
-    │ Jim Rockford, 555-2368  Su; M; Tu; F │
-    =#
-
-Access to values via label also works hierarchical.
-
-    void[Schedule >> It.staff.name]
-    #=>
-    │ name         │
-    ┼──────────────┼
-    │ Jim Rockford │
-    =#
-
-In DataKnots, records are used to generate tabular data. Using
-nested records, it is possible to represent complex, hierarchical
+Using records, it is possible to represent complex, hierarchical
 data. It is then possible to access and compute with this data.
 
 ### Query Parameters
@@ -597,7 +597,6 @@ than once.
 In DataKnots, query parameters permit external data to be used
 within query expressions. Parameters that are defined with `Given`
 can be used to remember values and reuse them.
-
 
 ## Working With Data
 
@@ -670,19 +669,49 @@ These subordinate records can then be summarized.
     │ FIRE      2 │
     =#
 
-## Quirks
+## Quirks & Hints
 
-By *quirks* we mean unexpected consequences of embedding DataKnots
-in Julia. They are not necessarily bugs, nor could they be easily
-fixed.
+By *quirks* we mean perhaps unexpected consequences of embedding
+DataKnots in Julia or deviations from how other languages work.
+They are not necessarily bugs, nor could they be easily fixed.
 
-Using the broadcast syntax to lift combinators is a clever
-shortcut, but it doesn't always work out. If an argument to the
-broadcast isn't a `Query` then a regular broadcast will happen.
-For example, `rand.(1:3)` is an array of arrays containing random
-numbers. Wrapping an argument in `Lift` will address this
-challenge. The following will generate 3 random numbers from `1`
-to `3`.
+The query `Count` is not the same as the query `Count(It)`. The
+former is an aggregate that consumes its entire input, the latter
+is an elementwise query that considers one input a time. Since it
+could only receive one input element at a time, `Count(It)` is
+always `1`. This is clearly less than ideal.
+
+    void[OneTo(3) >> Count(It)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  1 │
+    3 │  1 │
+    =#
+
+The `Count` aggregate only considers the number of elements in the
+input. It does not check for values that are truthy.
+
+    void[OneTo(5) >> iseven.(It) >> Count]
+    #=>
+    │ It │
+    ┼────┼
+    │  5 │
+    =#
+
+    void[OneTo(5) >> Filter(iseven.(It)) >> Count]
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
+Using the broadcast syntax to lift combinators is clever, but it
+doesn't always work out. If an argument to the broadcast isn't a
+`Query` then a regular broadcast will happen. For example,
+`rand.(1:3)` is an array of arrays containing random numbers.
+Wrapping an argument in `Lift` will address this challenge.
 
     using Random: seed!, rand
     seed!(0)
