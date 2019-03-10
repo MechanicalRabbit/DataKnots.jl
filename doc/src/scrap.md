@@ -83,11 +83,12 @@ For another example, consider how random `"yes"`/`"no"` generation
 could be easily incorporated into a DataKnots' processing pipeline.
 
     using DataKnots
+    void = DataKnot()
     using Random: seed!, rand
     seed!(0)
     Range(N) = Lift(:, (1, N))
     YesOrNo = Lift(() -> rand(Bool) ? "yes" : "no", ())
-    run(Range(3) >> YesOrNo)
+    void[Range(3) >> YesOrNo]
     #=>
       │ It  │
     ──┼─────┼
@@ -97,7 +98,7 @@ could be easily incorporated into a DataKnots' processing pipeline.
     =#
 
 
-`run(Range(3) >> (Const("Item #") .* string.(It)))`
+`void[Range(3) >> (Const("Item #") .* string.(It))]`
 
 
 For example, given a function `f(x)`, an analogous *combinator* `F` is
@@ -109,7 +110,7 @@ it's an aggregate.
 
     fst(v) = isempty(v) ? missing : v[1]
     Fst(V) = Lift(fst, (V,))
-    run(Fst(Lift([1,2,3])))
+    void[Fst(Lift([1,2,3]))]
 
 ### Parameter Evaluation
 
@@ -120,9 +121,24 @@ once and produce zero or more outputs.
 
 For example, `Record` produces exactly one output per input.
 
-    run(ChicagoData, 
-        It.department 
-        >> Record(It.name))
+    chicago_data =
+      (department = [
+        (name = "POLICE",
+         employee = [
+          (name = "JEFFERY A", position = "SERGEANT",
+           salary = 101442),
+          (name = "NANCY A", position = "POLICE OFFICER",
+           salary = 80016)]),
+        (name = "FIRE",
+         employee = [
+          (name = "DANIEL A", position = "FIRE FIGHTER-EMT",
+           salary = 95484)])],);
+
+    chicago = DataKnot(chicago_data)
+
+    chicago[ 
+        It.department >>
+        Record(It.name)]
     #=>
       │ department │
       │ name       │
@@ -136,9 +152,9 @@ input, it evaluates its argument and produces an output. In this
 example, `Count()` gets one input per department and produces the
 count of employees in each of those departments.
 
-    run(ChicagoData, 
-        It.department 
-        >> Count(It.employee))
+    chicago[ 
+        It.department >>
+        Count(It.employee)]
     #=>
       │ It │
     ──┼────┼
@@ -150,9 +166,9 @@ By contrast, *aggregate* pipeline primitives are not elementwise.
 For example, `Count` consumes its entire input to produce exactly
 one output. 
 
-    run(ChicagoData, 
-        It.department 
-        >> Count)
+    chicago[
+        It.department >>
+        Count]
     #=>
     │ It │
     ┼────┼
@@ -163,10 +179,10 @@ The `A >> B` pipeline composition operator has it's own logic, it
 passes the output of `A` as the input of `B`, and merges each
 output from `B` into a single stream.
 
-    run(ChicagoData, 
-        It.department 
-        >> It.employee 
-        >> It.name)
+    chicago[
+        It.department >>
+        It.employee >>
+        It.name]
     #=>
       │ name      │
     ──┼───────────┼
@@ -182,7 +198,7 @@ next example, only the first name is returned since `3÷2` is `1`.
 
     Names = It.department.employee.name
     Halfway = Count(Names) .÷ 2
-    run(ChicagoData, Names >> Take(Halfway))
+    chicago[Names >> Take(Halfway)]
     #=>
       │ name      │
     ──┼───────────┼
@@ -195,11 +211,11 @@ is returned for `POLICE` and zero names are returned for `FIRE`.
 
     Names = :employee_names => It.employee.name
     Halfway = Count(Names) .÷ 2
-    run(ChicagoData, 
-        It.department
-        >> Record(
-             :dept_name => It.name,
-             Names >> Take(Halfway)))
+    chicago[
+        It.department >>
+        Record(
+            :dept_name => It.name,
+            Names >> Take(Halfway))]
     #=>
       │ department                │
       │ dept_name  employee_names │
@@ -226,10 +242,10 @@ Let's consider the `Input` and `Argument` separately.
     Argument = It.salary .> 100000
     chicago[Input >> Filter(Argument)]
     #=>
-        │ employee                    │
-        │ name       position  salary │
-      ──┼─────────────────────────────┼
-      1 │ JEFFERY A  SERGEANT  101442 │
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
 The `Input`, `It.department.employee` can be seen as a mapping
@@ -251,7 +267,7 @@ The `Argument`, `It.salary .> 100000`, cannot be performed in the
 context of the database. It's input must have a `salary` slot.
 
     chicago[Argument]
-    #-> ERROR: cannot find salary ⋮
+    #-> ERROR: cannot find "salary" ⋮
 
 That said, `Input` and `Argument` could be combined, since the
 *target* of the `Input` query, employee records, has the required
@@ -272,16 +288,16 @@ producing zero or more rows for each input.
 
     chicago[Input >> Filter(Argument)]
     #=>
-        │ employee                    │
-        │ name       position  salary │
-      ──┼─────────────────────────────┼
-      1 │ JEFFERY A  SERGEANT  101442 │
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
 Even the `Count()` combinator is elementwise. By department, let's
 show how many employees have a salary greater than 100K.
 
-    chicago[It.department >> Count(It.employee.salary .> 100000)]
+    chicago[It.department >> Count(It.employee >> Filter(It.salary .> 100000))]
 
 
 ### Thoughts on Take
@@ -304,16 +320,20 @@ say the query above is equivalent to the following.
 That
 said, it can be directly used in a straight-forward manner.
 
-    [dept[:name] for dept in vt]
-    #-> ["POLICE", "FIRE"]
+```julia
+[dept[:name] for dept in vt]
+#-> ["POLICE", "FIRE"]
+```
 
 Use `collect` to convert a `@VectorTree` into a standard
 row-oriented structure.
 
-    display(collect(vt))
-    #=>
-    2-element Array{NamedTuple{(:name, :employee_count),…},1}:
-     (name = "POLICE", employee_count = 2)
-     (name = "FIRE", employee_count = 1)
-    =#
+```julia
+display(collect(vt))
+#=>
+2-element Array{NamedTuple{(:name, :employee_count),…},1}:
+ (name = "POLICE", employee_count = 2)
+ (name = "FIRE", employee_count = 1)
+=#
+```
 

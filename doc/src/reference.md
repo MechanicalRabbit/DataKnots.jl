@@ -53,9 +53,9 @@ pipeline can then be `run` on the `ChicagoData` knot.
     using DataKnots
     MaxSalary = :max_salary => Max(It.employee.salary)
     DeptStats = Record(It.name, MaxSalary)
-    ChicagoData = DataKnot(chicago_data)
+    chicago = DataKnot(chicago_data)
 
-    run(ChicagoData, It.department >> DeptStats)
+    chicago[It.department >> DeptStats]
     #=>
       │ department         │
       │ name    max_salary │
@@ -70,8 +70,8 @@ The `MaxSalary` pipeline is context-aware: it assumes a list of
 used independently by first extracting a particular department.
 
      FindDept(X) = It.department >> Filter(It.name .== X)
-     PoliceData = run(ChicagoData, FindDept("POLICE"))
-     run(PoliceData, DeptStats)
+     police = chicago[FindDept("POLICE")]
+     police[DeptStats]
     #=>
       │ department         │
       │ name    max_salary │
@@ -337,28 +337,28 @@ argument to the method can be automatically converted to a
 
 Therefore, we can write the following examples.
 
-    run(DataKnot("Hello World"))
+    DataKnot("Hello World")
     #=>
     │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
 
-    run(:greeting => DataKnot("Hello World"))
+    DataKnot("Hello World")[:greeting => It]
     #=>
     │ greeting    │
     ┼─────────────┼
     │ Hello World │
     =#
 
-    run(DataKnot("Hello World"), It)
+    DataKnot("Hello World")[It]
     #=>
     │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
 
-    run(DataKnot(), "Hello World")
+    DataKnot()["Hello World"]
     #=>
     │ It          │
     ┼─────────────┼
@@ -369,14 +369,14 @@ Named arguments to `run()` become additional values that are
 accessible via `It`. Those arguments are converted into a
 `DataKnot` if they are not already.
 
-    run(It.hello, hello=DataKnot("Hello World"))
+    DataKnot()[It.hello, hello=DataKnot("Hello World")]
     #=>
     │ hello       │
     ┼─────────────┼
     │ Hello World │
     =#
 
-    run(It.a .* (It.b .+ It.c), a=7, b=7, c=-1)
+    DataKnot()[It.a .* (It.b .+ It.c), a=7, b=7, c=-1]
     #=>
     │ It │
     ┼────┼
@@ -386,7 +386,7 @@ accessible via `It`. Those arguments are converted into a
 Once a pipeline is `run()` the resulting `DataKnot` value can be
 retrieved via `get()`.
 
-    get(run(DataKnot(1), It .+ 1))
+    get(DataKnot(1)[It .+ 1])
     #=>
     2
     =#
