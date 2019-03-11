@@ -15,7 +15,7 @@ import Base:
 """
     DataKnot(cell::AbstractVector, shp::AbstractShape)
 
-Encapsulates a data point in a column-oriented form.
+Encapsulates a data cell serialized in a column-oriented form.
 """
 struct DataKnot
     cell::AbstractVector
@@ -23,7 +23,6 @@ struct DataKnot
 
     function DataKnot(cell::AbstractVector, shp::AbstractShape)
         @assert length(cell) == 1
-        #@assert fits(shapeof(cell), shp)
         new(cell, shp)
     end
 end
@@ -76,77 +75,92 @@ function render_dataknot(maxx::Int, maxy::Int, db::DataKnot)
     return lines!(c)
 end
 
+# Mapping data to tabular form.
+
 struct TableData
     head::Array{Tuple{String,Int},2}
     body::TupleVector
-    flds::Vector{AbstractShape}
+    shp::TupleOf
     idxs::AbstractVector{Int}
     tear::Int
 end
 
-TableData(head, body, flds) =
-    TableData(head, body, flds, 1:0, 0)
+TableData(head, body, shp) =
+    TableData(head, body, shp, 1:0, 0)
+
+TableData(d::TableData; head=nothing, body=nothing, shp=nothing, idxs=nothing, tear=nothing) =
+    TableData(head !== nothing ? head : d.head,
+              body !== nothing ? body : d.body,
+              shp !== nothing ? shp : d.shp,
+              idxs !== nothing ? idxs : d.idxs,
+              tear !== nothing ? tear : d.tear)
 
 function table_data(db::DataKnot, maxy::Int)
     shp = shape(db)
-    title = ""
-    if shp isa IsLabeled
-        title = String(label(shp))
-        shp = subject(shp)
-    end
+    title = String(getlabel(shp, ""))
+    shp = relabel(shp, nothing)
     head = fill((title, 1), (title != "" ? 1 : 0, 1))
     body = TupleVector(1, AbstractVector[cell(db)])
-    flds = AbstractShape[shp]
-    d = TableData(head, body, flds)
-    return _data_tear(_default_header(_data_focus(d, 1)), maxy)
+    shp = TupleOf(shp)
+    d = TableData(head, body, shp)
+    return tear_data(default_data_header(focus_data(d, 1)), maxy)
 end
 
-_data_focus(d::TableData, pos) =
-    _focus_tuple(_focus_block(d, pos), pos)
+focus_data(d::TableData, pos) =
+    focus_tuples(focus_blocks(d, pos), pos)
 
-function _focus_block(d::TableData, pos::Int)
-    col_fld = _prepare_focus_block(column(d.body, pos), d.flds[pos])
-    col_fld !== nothing || return d
-    col, fld = col_fld
-    offs = offsets(col)
-    elts = elements(col)
-    perm = Vector{Int}(undef, length(elts))
-    l = r = 1
-    @inbounds for k = 1:length(col)
-        l = r
-        r = offs[k+1]
-        for n = l:r-1
-            perm[n] = k
+function focus_blocks(d::TableData, pos::Int)
+    col_shp = column(d.shp, pos)
+    p = as_blocks(col_shp)
+    p !== nothing || return d
+    blks = chain_of(p, distribute(pos))(d.body)
+    body′ = elements(blks)
+    col_shp′ = elements(shape(p))
+    shp′ = replace_column(d.shp, pos, col_shp′)
+    card = cardinality(shape(p))
+    idxs′ =
+        if !isempty(d.idxs)
+            elements(chain_of(distribute(2), column(1))(TupleVector(:idxs => d.idxs, :blks => blks)))
+        elseif !issingular(card)
+            1:length(body′)
+        else
+            1:0
         end
-    end
-    cols′ = copy(columns(d.body))
-    for i in eachindex(cols′)
-        cols′[i] =
-            if i == pos
-                elts
-            else
-                cols′[i][perm]
-            end
-    end
-    body′ = TupleVector(length(elts), cols′)
-    flds′ = copy(d.flds)
-    flds′[pos] = elements(fld)
-    idxs′ = !isempty(d.idxs) ? d.idxs[perm] :
-            !issingular(cardinality(fld)) ? (1:length(elts)) : (1:0)
-    return TableData(d.head, body′, flds′, idxs′, 0)
+    TableData(d, body=body′, shp=shp′, idxs=idxs′)
 end
 
-_prepare_focus_block(col::BlockVector, shp::BlockOf) =
-    (col, shp)
-
-_prepare_focus_block(col::AbstractVector, shp::AbstractShape) =
+as_blocks(::AbstractShape) =
     nothing
 
-function _focus_tuple(d::TableData, pos::Int)
-    col_fld = _prepare_focus_tuple(column(d.body, pos), d.flds[pos])
-    col_fld !== nothing || return d
-    col, fld = col_fld
-    cw = max(1, width(col))
+as_blocks(ishp::BlockOf) =
+    pass() |> designate(ishp, ishp)
+
+as_blocks(ishp::ValueOf) =
+    as_blocks(eltype(ishp))
+
+as_blocks(::Type) =
+    nothing
+
+as_blocks(ity::Type{<:AbstractVector}) =
+    adapt_vector() |> designate(ValueOf(ity), BlockOf(eltype(ity)))
+
+as_blocks(ity::Type{>:Missing}) =
+    adapt_missing() |> designate(ValueOf(ity), BlockOf(Base.nonmissingtype(ity), x0to1))
+
+function focus_tuples(d::TableData, pos::Int)
+    col_shp = column(d.shp, pos)
+    p = as_tuples(col_shp)
+    p !== nothing || return d
+    col′ = p(column(d.body, pos))
+    width(col′) > 0 || return d
+    cols′ = copy(columns(d.body))
+    splice!(cols′, pos:pos, columns(col′))
+    body′ = TupleVector(length(d.body), cols′)
+    col_shp′ = shape(p)
+    col_shps′ = copy(columns(d.shp))
+    splice!(col_shps′, pos:pos, columns(col_shp′))
+    shp′ = TupleOf(col_shps′)
+    cw = width(col′)
     hh, hw = size(d.head)
     hh′ = hh + 1
     hw′ = hw + cw - 1
@@ -165,48 +179,42 @@ function _focus_tuple(d::TableData, pos::Int)
     end
     for k = 1:cw
         col′ = pos + k - 1
-        text = String(label(fld, k))
+        text = String(label(col_shp′, k))
         head′[hh′, col′] = (text, 1)
     end
-    cols′ = copy(columns(d.body))
-    splice!(cols′, pos:pos, width(col) > 0 ? columns(col) : [BlockVector(fill(1, length(col)+1), Union{}[], x0to1)])
-    body′ = TupleVector(length(d.body), cols′)
-    flds′ = copy(d.flds)
-    splice!(flds′, pos:pos, width(col) > 0 ? columns(fld) : [NoShape()])
-    return TableData(head′, body′, flds′, d.idxs, d.tear)
+    TableData(d, head=head′, body=body′, shp=shp′)
 end
 
-_prepare_focus_tuple(col::TupleVector, shp::TupleOf) =
-    width(shp) > 0 ? (col, shp) : nothing
-
-function _prepare_focus_tuple(v::AbstractVector, shp::ValueOf)
-    ty = eltype(shp)
-    ty <: NamedTuple || return nothing
-    lbls = collect(Symbol, ty.parameters[1])
-    length(lbls) > 0 || return nothing
-    shps = AbstractShape[]
-    cols = AbstractVector[]
-    for j = 1:length(lbls)
-        cty = ty.parameters[2].parameters[j]
-        push!(shps, ValueOf(cty))
-        col = cty[e[j] for e in v]
-        push!(cols, col)
-    end
-    return (TupleVector(lbls, length(v), cols), TupleOf(lbls, shps))
-end
-
-_prepare_focus_tuple(::AbstractVector, AbstractShape) =
+as_tuples(::AbstractShape) =
     nothing
 
-function _default_header(d::TableData)
+as_tuples(ishp::TupleOf) =
+    pass() |> designate(ishp, ishp)
+
+as_tuples(ishp::ValueOf) =
+    as_tuples(eltype(ishp))
+
+as_tuples(::Type) =
+    nothing
+
+as_tuples(ity::Type{<:NamedTuple}) =
+    adapt_tuple() |> designate(ValueOf(ity),
+                               TupleOf(collect(Symbol, ity.parameters[1]),
+                                       collect(AbstractShape, ity.parameters[2].parameters)))
+
+as_tuples(ity::Type{<:Tuple}) =
+    adapt_tuple() |> designate(ValueOf(ity),
+                               TupleOf(collect(AbstractShape, ity.parameters)))
+
+function default_data_header(d::TableData)
     hh, hw = size(d.head)
     hh == 0 && hw > 0 || return d
     head′ = fill(("", 0), (1, hw))
     head′[1, 1] = ("It", hw)
-    return TableData(head′, d.body, d.flds, d.idxs, d.tear)
+    TableData(d, head=head′)
 end
 
-function _data_tear(d::TableData, maxy::Int)
+function tear_data(d::TableData, maxy::Int)
     L = length(d.body)
     avail = max(3, maxy - size(d.head, 1) - 4)
     avail < L || return d
@@ -214,8 +222,10 @@ function _data_tear(d::TableData, maxy::Int)
     perm = [1:tear; L-avail+tear+2:L]
     body′ = d.body[perm]
     idxs′ = !isempty(d.idxs) ? d.idxs[perm] : d.idxs
-    return TableData(d.head, body′, d.flds, idxs′, tear)
+    TableData(d, body=body′, idxs=idxs′, tear=tear)
 end
+
+# Rendering table cells.
 
 struct TableCell
     text::String
@@ -256,21 +266,21 @@ function populate_body!(d::TableData, l::TableLayout, maxx::Int)
         avail = populate_column!(l, col, ValueOf(Int), d.idxs, avail)
         col += 1
     end
-    for (fld, vals) in zip(d.flds, columns(d.body))
+    for (shp, vals) in zip(columns(d.shp), columns(d.body))
         if avail < 0
             break
         end
-        avail = populate_column!(l, col, fld, vals, avail)
+        avail = populate_column!(l, col, shp, vals, avail)
         col += 1
     end
 end
 
-function populate_column!(l::TableLayout, col::Int, dom::AbstractShape, vals::AbstractVector, avail::Int)
+function populate_column!(l::TableLayout, col::Int, shp::AbstractShape, vals::AbstractVector, avail::Int)
     row = l.head_rows + 1
     sz = 0
     rsz = 0
     for i in eachindex(vals)
-        l.cells[row,col] = cell = render_cell(dom, vals, i, avail)
+        l.cells[row,col] = cell = render_cell(shp, vals, i, avail)
         tw = textwidth(cell.text)
         if cell.align > 0
             rtw = textwidth(cell.text[end-cell.align+2:end])
@@ -312,7 +322,7 @@ function populate_head!(d::TableData, l::TableLayout)
     end
 end
 
-function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int)
+function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int, depth::Int=0)
     buf = IOBuffer()
     comma = false
     for i in eachindex(columns(shp))
@@ -321,7 +331,7 @@ function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int)
             avail -= 2
             comma = false
         end
-        cell = render_cell(column(shp, i), column(vals, i), idx, avail)
+        cell = render_cell(column(shp, i), column(vals, i), idx, avail, 2)
         print(buf, cell.text)
         avail -= textwidth(cell.text)
         if avail < 0
@@ -331,42 +341,26 @@ function render_cell(shp::TupleOf, vals::AbstractVector, idx::Int, avail::Int)
             comma = true
         end
     end
-    return TableCell(String(take!(buf)))
-end
-
-function render_cell(::ValueOf, vals::AbstractVector{<:Union{Tuple,NamedTuple}}, idx::Int, avail::Int)
-    ty = eltype(vals)
-    w = length(ty <: Tuple ? ty.parameters : ty.parameters[2].parameters)
-    buf = IOBuffer()
-    comma = false
-    for i in 1:w
-        if comma
-            print(buf, ", ")
-            avail -= 2
-            comma = false
-        end
-        val = vals[idx][i]
-        cell = render_cell(typeof(val), val, avail)
-        print(buf, cell.text)
-        avail -= textwidth(cell.text)
-        if avail < 0
-            break
-        end
-        if !isempty(cell.text)
-            comma = true
-        end
+    text = String(take!(buf))
+    if depth >= 2
+        text = "(" * text * ")"
     end
-    return TableCell(String(take!(buf)))
+    return TableCell(text)
 end
 
-function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int)
+function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int, depth::Int=0)
     offs = offsets(vals)
     elts = elements(vals)
     l = offs[idx]
     r = offs[idx+1]-1
-    if l > r
-        return TableCell()
-    elseif fits(x1toN, cardinality(shp))
+    card = cardinality(shp)
+    if issingular(card)
+        if l > r
+            return depth >= 1 ? TableCell("missing") : TableCell()
+        else
+            return render_cell(elements(shp), elts, l, avail, depth)
+        end
+    else
         buf = IOBuffer()
         comma = false
         for k = l:r
@@ -375,7 +369,7 @@ function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int)
                 avail -= 2
                 comma = false
             end
-            cell = render_cell(elements(shp), elts, k, avail)
+            cell = render_cell(elements(shp), elts, k, avail, 1)
             print(buf, cell.text)
             avail -= textwidth(cell.text)
             if avail < 0
@@ -385,45 +379,46 @@ function render_cell(shp::BlockOf, vals::AbstractVector, idx::Int, avail::Int)
                 comma = true
             end
         end
-        return TableCell(String(take!(buf)))
-    else
-        return render_cell(elements(shp), elts, l, avail)
+        text = String(take!(buf))
+        if depth >= 1
+            text = "[" * text * "]"
+        end
+        return TableCell(text)
     end
 end
 
-render_cell(shp::ValueOf, vals::AbstractVector, idx::Int, avail::Int) =
-    render_cell(shp.ty, vals[idx], avail)
+function render_cell(shp::AbstractShape, vals::AbstractVector, idx::Int, avail::Int, depth::Int=0)
+    p = as_blocks(shp)
+    p === nothing || return render_cell(shape(p), p(vals[idx:idx]), 1, avail, depth)
+    p = as_tuples(shp)
+    p === nothing || return render_cell(shape(p), p(vals[idx:idx]), 1, avail, depth)
+    render_cell(vals[idx], avail)
+end
 
-const render_context = :compact => true
-
-function render_cell(::Type, val, avail::Int)
+function render_value(val)
     buf = IOBuffer()
     io = IOContext(buf, :compact => true, :limit => true)
     print(io, val)
-    text = escape_string(String(take!(buf)))
-    return TableCell(text)
+    escape_string(String(take!(buf)))
 end
 
-render_cell(::Type{Nothing}, ::Nothing, ::Int) =
+render_cell(val, ::Int) =
+    TableCell(render_value(val))
+
+render_cell(::Nothing, ::Int) =
     TableCell("")
 
-function render_cell(::Type{<:Integer}, val, avail::Int)
-    buf = IOBuffer()
-    io = IOContext(buf, :compact => true, :limit => true)
-    print(io, val)
-    text = escape_string(String(take!(buf)))
-    return TableCell(text, 1)
-end
+render_cell(val::Integer, ::Int) =
+    TableCell(render_value(val), 1)
 
-function render_cell(::Type{<:Real}, val, avail::Int)
-    buf = IOBuffer()
-    io = IOContext(buf, :compact => true, :limit => true)
-    print(io, val)
-    text = escape_string(String(take!(buf)))
+function render_cell(val::Real, ::Int)
+    text = render_value(val)
     m = match(r"^(.*?)((?:[\.eE].*)?)$", text)
     alignment = m === nothing ? 1 : length(m.captures[2])+1
     return TableCell(text, alignment)
 end
+
+# Serializing table.
 
 struct TableCanvas
     maxx::Int

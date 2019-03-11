@@ -32,6 +32,7 @@ makedocs(
              ["vectors.md",
               "pipelines.md",
               "shapes.md",
+              "knots.md",
               "queries.md"]),
         "simulation.md",
     ],
