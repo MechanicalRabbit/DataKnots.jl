@@ -36,12 +36,12 @@ struct Query <: AbstractQuery
     op
     args::Vector{Any}
 
-    Query(op, args::Vector{Any}) =
+    Query(op; args::Vector{Any}=Any[]) =
         new(op, args)
 end
 
 Query(op, args...) =
-    Query(op, collect(Any, args))
+    Query(op; args=collect(Any, args))
 
 quoteof(F::Query) =
     quoteof(F.op, F.args)

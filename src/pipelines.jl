@@ -42,17 +42,12 @@ struct Pipeline
     args::Vector{Any}
     sig::Signature
 
-    Pipeline(op, args::Vector{Any}, sig::Signature) =
+    Pipeline(op; args::Vector{Any}=Any[], sig::Signature=Signature()) =
         new(op, args, sig)
 end
 
-let NO_SIG = Signature()
-
-    global Pipeline
-
-    Pipeline(op, args...) =
-        Pipeline(op, collect(Any, args), NO_SIG)
-end
+Pipeline(op, args...) =
+    Pipeline(op, args=collect(Any, args))
 
 """
     designate(::Pipeline, ::Signature) :: Pipeline
@@ -65,10 +60,10 @@ Sets the pipeline signature.
 function designate end
 
 designate(p::Pipeline, sig::Signature) =
-    Pipeline(p.op, p.args, sig)
+    Pipeline(p.op, args=p.args, sig=sig)
 
 designate(p::Pipeline, ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
-    Pipeline(p.op, p.args, Signature(ishp, shp))
+    Pipeline(p.op, args=p.args, sig=Signature(ishp, shp))
 
 designate(sig::Signature) =
     p::Pipeline -> designate(p, sig)
