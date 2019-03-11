@@ -120,7 +120,7 @@ which rely upon the output from previous processing.
     =#
 
 In DataKnots, queries are built algebraically, starting with query
-primitives, such as constants (`Lift`) and identity (`It`), and
+primitives, such as constants (`Lift`) or the identity (`It`), and
 then arranged with with combinators, such as composition (`>>`).
 This lets us define sophisticated query components and remix them
 in creative ways.
@@ -133,15 +133,16 @@ Consider the function `double(x)` that, when applied to a
     double(x) = 2x
     double(3) #-> 6
 
-What we want is an analogue to `double` that, instead of operating
+What we want is an analogue to `double` which, instead of operating
 on numbers, operates on queries. Such functions are called query
 *combinators*. We can convert any Julia function to a query
 combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-Once lifted, `Double` is a combinator that doubles its argument.
-In particular, `Double(It)` is a query that doubles its input.
+The query `Double(X)` evaluates `X` and then runs its output
+through `double`. So, to do nothing else but double the current
+input, we could write `Double(It)`.
 
     void[Lift(1:3) >> Double(It)]
     #=>
@@ -194,7 +195,7 @@ the resulting combinator builds queries with plural output.
     =#
 
 When Julia values and functions are lifted, the type signature is
-inspected to discover how it should interact with query flow. A
+inspected to discover how it should interact with query's flow. A
 flow is *singular* if it could have at most one element; else, it
 is *plural*. Furthermore, if a flow must have at least one element
 then it is *mandatory*; else, it is *optional*.
@@ -205,23 +206,21 @@ then it is *mandatory*; else, it is *optional*.
 | `Union{T, Missing}` | Yes      | No        |
 | `{T}`               | Yes      | Yes       |
 
-Through this inspection, query combinators can be automatically
-constructed from Julia functions. This lets us access Julia's rich
-statistical and data processing functions from our queries.
+This automated conversion lets us access Julia's rich statistical
+and data processing functions from our queries.
 
 ## Query Combinators
 
-There are query operations which cannot be automatically lifted
-from Julia functions. These require knowledge DataKnot storage,
-flows, context, and other internal details. We've met two of them,
-`Lift` itself and query composition (`>>`). There are many others
-involving aggregation, filtering, paging and others.
+There are query operations which cannot be lifted from Julia
+functions. We've met a few already, including the identity (`It`)
+and query composition (`>>`). There are many others involving
+aggregation, filtering, and paging.
 
 ### Aggregate Queries
 
 So far queries have been *elementwise*; that is, for each input
 element, they produce zero or more output elements. Consider now
-the `Count` primitive has a singular output for its entire input.
+the `Count` primitive which returns the number of input elements.
 
     void[OneTo(3) >> Count]
     #=>
@@ -230,9 +229,9 @@ the `Count` primitive has a singular output for its entire input.
     │  3 │
     =#
 
-We call these kinds of queries *aggregates*. While aggregate
-queries may reflect the elements of their input, the output is
-relative to the input as whole. Consider `OneTo(3) >> OneTo(It)`.
+An *aggregate* query such as `Count` is relative to the input as a
+whole, even if it might consider input elements. Let's consider
+the query `OneTo(3) >> OneTo(It)`.
 
     void[OneTo(3) >> OneTo(It)]
     #=>
@@ -266,9 +265,9 @@ around `OneTo(It) >> Sum` will not change the result.
     │ 10 │
     =#
 
-What we need is the `Each` combinator, which acts as a barrier for
-an aggregate query. For each of its input elements, `Each`
-evaluates its argument and collects the outputs.
+We need the `Each` combinator, which acts as a barrier for an
+aggregate query. For each input element, `Each` evaluates its
+argument; then, it then collects the outputs.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -293,8 +292,8 @@ aggregate query since it treats its input elementwise.
     =#
 
 Julia functions taking a vector argument, such as `mean`, can be
-easily lifted. DataKnots automatically converts a plural query
-parameter into the vector argument.
+lifted to a combinator taking a plural query. When performed, the
+plural output is converted into the function's vector argument.
 
     using Statistics
     Mean(X) = mean.(X)
@@ -307,7 +306,7 @@ parameter into the vector argument.
 
 To use `Mean` as a query primitive, we use `Then` to build a query
 that aggregates from its input. Next, we register this query so it
-is chosen when `Mean` is implicitly converted to a query.
+is used when `Mean` is treated as a query.
 
     DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)
 
@@ -369,8 +368,8 @@ that element is reproduced, otherwise it is discarded.
 ### Paging Data
 
 Like `Filter`, the `Take` and `Drop` combinators can be used to
-choose elements from its input stream: `Drop` is used to skip over
-input, while `Take` ignores output past a particular point.
+choose elements from an input: `Drop` is used to skip over input,
+while `Take` ignores input past a particular point.
 
     void[OneTo(9) >> Drop(3) >> Take(3)]
     #=>
@@ -383,7 +382,7 @@ input, while `Take` ignores output past a particular point.
 
 Unlike `Filter`, the argument to `Take` is evaluated once, in the
 context of the input's *origin*. In this next example, `Take` is
-performed three times, and each time, `It` refers to the integer
+performed three times. Each time, `It` refers to the integer
 elements of the outer loop, `OneTo`.
 
     void[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
@@ -398,9 +397,9 @@ elements of the outer loop, `OneTo`.
     6 │ c  │
     =#
 
-What if we want to grab the 1st half of an input stream? Let's
-define `FirstHalf` as a combinator that builds a query returning
-the first half of an input stream.
+How do we grab the 1st half of an input stream? Let's define
+`FirstHalf` as a combinator that builds a query returning the first
+half of an input stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
     void[FirstHalf(OneTo(6))]
@@ -428,7 +427,8 @@ Using `Then`, this combinator could be used as a query primitive.
 Paging operations highlight a diversity of query operations. When
 a query processes its input an element at a time, we call it
 *elementwise*; else, it is *aggregate*. Further, when the argument
-of a combinator uses the input's origin, we call it *origin-aware*.
+of a combinator uses the input's origin, we call it
+*origin-aware*.
 
 | Query       | Elementwise | Origin-Aware |
 |-------------|-------------|--------------|
