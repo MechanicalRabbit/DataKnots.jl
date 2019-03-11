@@ -177,8 +177,8 @@ function _reconstruct(f::Function)
         if line === nothing
             continue
         end
-        if Meta.isexpr(line, :(=), 2) && line.args[1] isa Core.SSAValue
-            ex = _reconstruct(line.args[2], ssa, info.slotnames)
+        if Meta.isexpr(line, :call)
+            ex = _reconstruct(line, ssa, info.slotnames)
             push!(ssa, ex)
         elseif Meta.isexpr(line, :return, 1)
             body = _reconstruct(line.args[1], ssa, info.slotnames)
@@ -195,9 +195,9 @@ function _reconstruct(f::Function)
 end
 
 function _reconstruct(ex, ssa, slots)
-    if ex isa Core.SSAValue
-        ex = ssa[ex.id+1]
-    elseif ex isa Core.SlotNumber
+    if ex isa Core.SSAValue && checkbounds(Bool, ssa, ex.id)
+        ex = ssa[ex.id]
+    elseif ex isa Core.SlotNumber && checkbounds(Bool, slots, ex.id)
         s = slots[ex.id]
         if startswith(string(s), "#")
             s = Symbol("_$(ex.id-1)")
