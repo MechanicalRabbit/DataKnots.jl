@@ -4,22 +4,24 @@
     Count,
     DataKnot,
     Drop,
+    Each,
     Environment,
     Filter,
     Get,
     Given,
     It,
+    Label,
     Lift,
     Max,
     Min,
     Record,
+    Tag,
     Take,
     compile,
     elements,
     optimize,
     stub,
-    uncover,
-    x1to1</code></pre><p>As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.</p><pre><code class="language-julia">chicago_data =
+    uncover</code></pre><p>As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.</p><pre><code class="language-julia">chicago_data =
     @VectorTree (department = [(name     = (1:1)String,
                                 employee = [(name     = (1:1)String,
                                              position = (1:1)String,
@@ -38,7 +40,7 @@
         )
     ]
 
-chicago = DataKnot(chicago_data, x1to1)
+chicago = DataKnot(chicago_data, :x1to1)
 #=&gt;
 │ department                                                                   …
 ┼──────────────────────────────────────────────────────────────────────────────…
@@ -152,7 +154,293 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 =#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Count-Tuple{Any}" href="#DataKnots.Count-Tuple{Any}"><code>DataKnots.Count</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Count(X)
-X &gt;&gt; Count</code></pre><p>Counts the number of elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L824-L829">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Drop-Tuple{Any}" href="#DataKnots.Drop-Tuple{Any}"><code>DataKnots.Drop</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Drop(N)</code></pre><p>Drops the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L964-L968">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Each-Tuple{Any}" href="#DataKnots.Each-Tuple{Any}"><code>DataKnots.Each</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Each(X)</code></pre><p>Makes <code>X</code> process its input elementwise.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L567-L571">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Filter-Tuple{Any}" href="#DataKnots.Filter-Tuple{Any}"><code>DataKnots.Filter</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Filter(X)</code></pre><p>Filters the input by condition.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L917-L921">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Get-Tuple{Any}" href="#DataKnots.Get-Tuple{Any}"><code>DataKnots.Get</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Get(name)</code></pre><p>Finds an attribute or a parameter.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L635-L639">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}" href="#DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}"><code>DataKnots.Given</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Given(P, X)</code></pre><p>Specifies the parameter and bounds its scope.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L775-L779">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Label-Tuple{Symbol}" href="#DataKnots.Label-Tuple{Symbol}"><code>DataKnots.Label</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Label(lbl::Symbol)</code></pre><p>Assigns a label.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L582-L586">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any,Tuple}" href="#DataKnots.Lift-Tuple{Any,Tuple}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(f, Xs)</code></pre><p>Converts a Julia function to a query combinator.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L499-L503">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any}" href="#DataKnots.Lift-Tuple{Any}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(val)</code></pre><p>Converts a Julia value to a query primitive.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L491-L495">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Max-Tuple{Any}" href="#DataKnots.Max-Tuple{Any}"><code>DataKnots.Max</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Max(X)
-X &gt;&gt; Max</code></pre><p>Finds the maximum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L853-L858">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Min-Tuple{Any}" href="#DataKnots.Min-Tuple{Any}"><code>DataKnots.Min</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Min(X)
-X &gt;&gt; Min</code></pre><p>Finds the minimum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L865-L870">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Record-Tuple" href="#DataKnots.Record-Tuple"><code>DataKnots.Record</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Record(Xs...)</code></pre><p>Creates a query component for building a record.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L450-L454">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Sum-Tuple{Any}" href="#DataKnots.Sum-Tuple{Any}"><code>DataKnots.Sum</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Sum(X)
-X &gt;&gt; Sum</code></pre><p>Sums the elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L841-L846">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Tag-Tuple{Symbol,Any}" href="#DataKnots.Tag-Tuple{Symbol,Any}"><code>DataKnots.Tag</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Tag(name::Symbol, X)</code></pre><p>Assigns a name to a query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L601-L605">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Take-Tuple{Any}" href="#DataKnots.Take-Tuple{Any}"><code>DataKnots.Take</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Take(N)</code></pre><p>Takes the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L956-L960">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L129-L133">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Navigation" href="#DataKnots.Navigation"><code>DataKnots.Navigation</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">It</code></pre><p>Identity query with respect to the query composition.</p><pre><code class="language-julia">It.a.b.c</code></pre><p>Equivalent to <code>Get(:a) &gt;&gt; Get(:b) &gt;&gt; Get(:c)</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L57-L65">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation.  Specifically, a query takes a pipeline that maps <em>origin</em> to <em>input</em> and generates a pipeline that maps <em>origin</em> to <em>output</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L18-L34">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/14829cb1d4931dc4e8f94f31b49350aab2632136/src/queries.jl#L87-L91">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><footer><hr/><a class="previous" href="../knots/"><span class="direction">Previous</span><span class="title">Data Knots</span></a><a class="next" href="../simulation/"><span class="direction">Next</span><span class="title">Tutorial: Simulated Data</span></a></footer></article></body></html>
+X &gt;&gt; Count</code></pre><p>Counts the number of elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L825-L830">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Drop-Tuple{Any}" href="#DataKnots.Drop-Tuple{Any}"><code>DataKnots.Drop</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Drop(N)</code></pre><p>Drops the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L965-L969">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Each-Tuple{Any}" href="#DataKnots.Each-Tuple{Any}"><code>DataKnots.Each</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Each(X) :: Query</code></pre><p>This query evaluates <code>X</code> elementwise.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L568-L572">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Filter-Tuple{Any}" href="#DataKnots.Filter-Tuple{Any}"><code>DataKnots.Filter</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Filter(X)</code></pre><p>Filters the input by condition.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L918-L922">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Get-Tuple{Any}" href="#DataKnots.Get-Tuple{Any}"><code>DataKnots.Get</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Get(name)</code></pre><p>Finds an attribute or a parameter.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L637-L641">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}" href="#DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}"><code>DataKnots.Given</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Given(P, X)</code></pre><p>Specifies the parameter and bounds its scope.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L776-L780">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Keep-Tuple{Any,Vararg{Any,N} where N}" href="#DataKnots.Keep-Tuple{Any,Vararg{Any,N} where N}"><code>DataKnots.Keep</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Keep(P)</code></pre><p>Specifies the parameter.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L750-L754">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Label-Tuple{Symbol}" href="#DataKnots.Label-Tuple{Symbol}"><code>DataKnots.Label</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Label(lbl::Symbol) :: Query</code></pre><p>Assigns a label to the output.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L583-L587">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any,Tuple}" href="#DataKnots.Lift-Tuple{Any,Tuple}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(f, (X₁, X₂ … Xₙ)) :: Query</code></pre><p>This query uses the outputs of <code>X₁</code>, <code>X₂</code> … <code>Xₙ</code> as arguments of <code>f</code>.  The output of <code>f</code> is emitted.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L499-L504">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Lift-Tuple{Any}" href="#DataKnots.Lift-Tuple{Any}"><code>DataKnots.Lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Lift(val) :: Query</code></pre><p>This query emits the given value.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L491-L495">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Max-Tuple{Any}" href="#DataKnots.Max-Tuple{Any}"><code>DataKnots.Max</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Max(X)
+X &gt;&gt; Max</code></pre><p>Finds the maximum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L854-L859">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Min-Tuple{Any}" href="#DataKnots.Min-Tuple{Any}"><code>DataKnots.Min</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Min(X)
+X &gt;&gt; Min</code></pre><p>Finds the minimum.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L866-L871">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Record-Tuple" href="#DataKnots.Record-Tuple"><code>DataKnots.Record</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Record(X₁, X₂ … Xₙ) :: Query</code></pre><p>This query emits records, whose fields are generated by <code>X₁</code>, <code>X₂</code> … <code>Xₙ</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L450-L454">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Sum-Tuple{Any}" href="#DataKnots.Sum-Tuple{Any}"><code>DataKnots.Sum</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Sum(X)
+X &gt;&gt; Sum</code></pre><p>Sums the elements produced by <code>X</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L842-L847">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Tag-Tuple{Symbol,Any}" href="#DataKnots.Tag-Tuple{Symbol,Any}"><code>DataKnots.Tag</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Tag(name::Symbol, F) :: Query
+Tag(name::Symbol, (X₁, X₂ … Xₙ), F) :: Query</code></pre><p>Assigns a name to a query.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L602-L607">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Take-Tuple{Any}" href="#DataKnots.Take-Tuple{Any}"><code>DataKnots.Take</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">Take(N)</code></pre><p>Takes the first <code>N</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L957-L961">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L129-L133">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Navigation" href="#DataKnots.Navigation"><code>DataKnots.Navigation</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">It</code></pre><p>Identity query with respect to the query composition.</p><pre><code class="language-julia">It.a.b.c</code></pre><p>Equivalent to <code>Get(:a) &gt;&gt; Get(:b) &gt;&gt; Get(:c)</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L57-L65">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation.  Specifically, a query takes a pipeline that maps <em>origin</em> to <em>input</em> and generates a pipeline that maps <em>origin</em> to <em>output</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L18-L34">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ba3f8a2fabe25b39d87f6b823c4c4b5bdb78c11f/src/queries.jl#L87-L91">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>Any parameters to the query should be be passed as keyword arguments.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Filter(Count(It.employee &gt;&gt; Filter(It.salary .&gt; It.AMT)) .&gt;= It.SZ) &gt;&gt;
+    Count
+
+chicago[Q, AMT=100000, SZ=1]
+#=&gt;
+│ It │
+┼────┼
+│  2 │
+=#</code></pre><p>We can use the function <code>compile()</code> to see the query plan.</p><pre><code class="language-julia">p = compile(chicago, Count(It.department))
+#=&gt;
+chain_of(with_elements(chain_of(column(:department), block_length(), wrap())),
+         flatten())
+=#
+
+p(chicago)
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>Queries can be composed sequentially using the <code>&gt;&gt;</code> combinator.</p><pre><code class="language-julia">Q = Lift(3) &gt;&gt; (It .+ 4) &gt;&gt; (It .* 6)
+#-&gt; Lift(3) &gt;&gt; (It .+ 4) &gt;&gt; It .* 6
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+│ 42 │
+=#</code></pre><p>The <code>It</code> query primitive is the identity with respect to <code>&gt;&gt;</code>.</p><pre><code class="language-julia">Q = It &gt;&gt; Q &gt;&gt; It
+#-&gt; It &gt;&gt; Lift(3) &gt;&gt; (It .+ 4) &gt;&gt; It .* 6 &gt;&gt; It
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+│ 42 │
+=#</code></pre><h3><a class="nav-anchor" id="Record-1" href="#Record-1"><code>Record</code></a></h3><p>The query <code>Record(X₁, X₂ … Xₙ)</code> emits records with the fields generated by <code>X₁</code>, <code>X₂</code> … <code>Xₙ</code>.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Record(It.name,
+           :size =&gt; Count(It.employee))
+#-&gt; It.department &gt;&gt; Record(It.name, :size =&gt; Count(It.employee))
+
+chicago[Q]
+#=&gt;
+  │ department   │
+  │ name    size │
+──┼──────────────┼
+1 │ POLICE     2 │
+2 │ FIRE       2 │
+3 │ OEMC       2 │
+=#</code></pre><p>If a field has no label, an ordinal label (<code>#A</code>, <code>#B</code> … <code>#AA</code>, <code>#AB</code> …) is assigned.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Record(It.name, Count(It.employee))
+#-&gt; It.department &gt;&gt; Record(It.name, Count(It.employee))
+
+chicago[Q]
+#=&gt;
+  │ department │
+  │ name    #B │
+──┼────────────┼
+1 │ POLICE   2 │
+2 │ FIRE     2 │
+3 │ OEMC     2 │
+=#</code></pre><p>Similarly, when there are duplicate labels, only the last one survives.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Record(It.name, It.employee.name)
+#-&gt; It.department &gt;&gt; Record(It.name, It.employee.name)
+
+chicago[Q]
+#=&gt;
+  │ department                 │
+  │ #A      name               │
+──┼────────────────────────────┼
+1 │ POLICE  JEFFERY A; NANCY A │
+2 │ FIRE    JAMES A; DANIEL A  │
+3 │ OEMC    LAKENYA A; DORIS A │
+=#</code></pre><h3><a class="nav-anchor" id="Lift-1" href="#Lift-1"><code>Lift</code></a></h3><p>The <code>Lift</code> constructor is used to convert Julia values and functions to queries.</p><p><code>Lift(val)</code> makes a query primitive from a Julia value.</p><pre><code class="language-julia">Q = Lift(&quot;Hello World!&quot;)
+#-&gt; Lift(&quot;Hello World!&quot;)
+
+chicago[Q]
+#=&gt;
+│ It           │
+┼──────────────┼
+│ Hello World! │
+=#</code></pre><p>Lifting <code>missing</code> produces no output.</p><pre><code class="language-julia">Q = Lift(missing)
+#-&gt; Lift(missing)
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+=#</code></pre><p>Lifting a vector produces plural output.</p><pre><code class="language-julia">Q = Lift(&#39;a&#39;:&#39;c&#39;)
+#-&gt; Lift(&#39;a&#39;:1:&#39;c&#39;)
+
+chicago[Q]
+#=&gt;
+  │ It │
+──┼────┼
+1 │ a  │
+2 │ b  │
+3 │ c  │
+=#</code></pre><p><code>Lift</code> can also convert Julia functions to query combinators.</p><pre><code class="language-julia">Inc(X) = Lift(x -&gt; x+1, (X,))
+
+Q = Lift(0) &gt;&gt; Inc(It)
+#-&gt; Lift(0) &gt;&gt; Lift(x -&gt; x + 1, (It,))
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+│  1 │
+=#</code></pre><p>Functions of multiple arguments are also supported.</p><pre><code class="language-julia">GT(X, Y) = Lift(&gt;, (X, Y))
+
+Q = It.department.employee &gt;&gt;
+    Record(It.name, It.salary, GT(It.salary, 100000))
+#=&gt;
+It.department.employee &gt;&gt;
+Record(It.name, It.salary, Lift(&gt;, (It.salary, 100000)))
+=#
+
+chicago[Q]
+#=&gt;
+  │ employee                 │
+  │ name       salary  #C    │
+──┼──────────────────────────┼
+1 │ JEFFERY A  101442   true │
+2 │ NANCY A     80016  false │
+3 │ JAMES A    103350   true │
+4 │ DANIEL A    95484  false │
+5 │ LAKENYA A                │
+6 │ DORIS A                  │
+=#</code></pre><p>Just as functions with no arguments.</p><pre><code class="language-julia">using Random: seed!
+
+seed!(0)
+
+Q = Lift(rand, ())
+#-&gt; Lift(rand, ())
+
+chicago[Q]
+#=&gt;
+│ It       │
+┼──────────┼
+│ 0.823648 │
+=#</code></pre><p>Functions with vector arguments are supported.</p><pre><code class="language-julia">using Statistics: mean
+
+Mean(X) = Lift(mean, (X,))
+
+Q = Mean(It.department.employee.salary)
+#-&gt; Lift(mean, (It.department.employee.salary,))
+
+chicago[Q]
+#=&gt;
+│ It      │
+┼─────────┼
+│ 95073.0 │
+=#</code></pre><p>Just like with regular values, <code>missing</code> and vector results are interpreted as no and plural output.</p><pre><code class="language-julia">Q = Inc(missing)
+#-&gt; Lift(x -&gt; x + 1, (missing,))
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+=#
+
+OneTo(N) = Lift(UnitRange, (1, N))
+
+Q = OneTo(3)
+#-&gt; Lift(UnitRange, (1, 3))
+
+chicago[Q]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  1 │
+2 │  2 │
+3 │  3 │
+=#</code></pre><p>Julia functions are lifted when they are broadcasted over queries.</p><pre><code class="language-julia">Q = mean.(It.department.employee.salary)
+#-&gt; mean.(It.department.employee.salary)
+
+chicago[Q]
+#=&gt;
+│ It      │
+┼─────────┼
+│ 95073.0 │
+=#</code></pre><h3><a class="nav-anchor" id="Each-1" href="#Each-1"><code>Each</code></a></h3><p><code>Each</code> serves as a barrier for aggregate queries.</p><pre><code class="language-julia">Q = It.department &gt;&gt; (It.employee &gt;&gt; Count)
+#-&gt; It.department &gt;&gt; It.employee &gt;&gt; Count
+
+chicago[Q]
+#=&gt;
+│ It │
+┼────┼
+│  6 │
+=#
+
+Q = It.department &gt;&gt; Each(It.employee &gt;&gt; Count)
+#-&gt; It.department &gt;&gt; Each(It.employee &gt;&gt; Count)
+
+chicago[Q]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  2 │
+2 │  2 │
+3 │  2 │
+=#</code></pre><p>Note that <code>Record</code> and <code>Lift</code> also serve as natural barriers for aggregate queries.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Record(It.name, It.employee &gt;&gt; Count)
+#-&gt; It.department &gt;&gt; Record(It.name, It.employee &gt;&gt; Count)
+
+chicago[Q]
+#=&gt;
+  │ department │
+  │ name    #B │
+──┼────────────┼
+1 │ POLICE   2 │
+2 │ FIRE     2 │
+3 │ OEMC     2 │
+=#
+
+Q = It.department &gt;&gt;
+    (1 .* (It.employee &gt;&gt; Count))
+#-&gt; It.department &gt;&gt; 1 .* (It.employee &gt;&gt; Count)
+
+chicago[Q]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  2 │
+2 │  2 │
+3 │  2 │
+=#</code></pre><h3><a class="nav-anchor" id="Label-1" href="#Label-1"><code>Label</code></a></h3><p>We use the <code>Label()</code> primitive to assign a label to the output.</p><pre><code class="language-julia">Q = Count(It.department) &gt;&gt; Label(:num_dept)
+#-&gt; Count(It.department) &gt;&gt; Label(:num_dept)
+
+chicago[Q]
+#=&gt;
+│ num_dept │
+┼──────────┼
+│        3 │
+=#</code></pre><p>As a shorthand, we can use <code>=&gt;</code>.</p><pre><code class="language-julia">Q = :num_dept =&gt; Count(It.department)
+#-&gt; :num_dept =&gt; Count(It.department)
+
+chicago[Q]
+#=&gt;
+│ num_dept │
+┼──────────┼
+│        3 │
+=#</code></pre><h3><a class="nav-anchor" id="Tag-1" href="#Tag-1"><code>Tag</code></a></h3><p>We use <code>Tag()</code> constructor to assign a name to a query.</p><pre><code class="language-julia">DeptSize = Count(It.employee) &gt;&gt; Label(:dept_size)
+#-&gt; Count(It.employee) &gt;&gt; Label(:dept_size)
+
+DeptSize = Tag(:DeptSize, DeptSize)
+#-&gt; DeptSize
+
+Q = It.department &gt;&gt; Record(It.name, DeptSize)
+#-&gt; It.department &gt;&gt; Record(It.name, DeptSize)
+
+chicago[Q]
+#=&gt;
+  │ department        │
+  │ name    dept_size │
+──┼───────────────────┼
+1 │ POLICE          2 │
+2 │ FIRE            2 │
+3 │ OEMC            2 │
+=#</code></pre><p><code>Tag()</code> is also used to assign a name to a query combinator.</p><pre><code class="language-julia">SalaryOver(X) = It.salary .&gt; X
+
+SalaryOver(100000)
+#-&gt; It.salary .&gt; 100000
+
+SalaryOver(X) = Tag(SalaryOver, (X,), It.salary .&gt; X)
+
+SalaryOver(100000)
+#-&gt; SalaryOver(100000)
+
+Q = It.department.employee &gt;&gt;
+    Filter(SalaryOver(100000))
+#-&gt; It.department.employee &gt;&gt; Filter(SalaryOver(100000))
+
+chicago[Q]
+#=&gt;
+  │ employee                                   │
+  │ name       position           salary  rate │
+──┼────────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT           101442       │
+2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+=#</code></pre><footer><hr/><a class="previous" href="../knots/"><span class="direction">Previous</span><span class="title">Data Knots</span></a><a class="next" href="../simulation/"><span class="direction">Next</span><span class="title">Tutorial: Simulated Data</span></a></footer></article></body></html>

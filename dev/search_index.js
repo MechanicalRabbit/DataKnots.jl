@@ -1181,7 +1181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "Overview",
     "category": "section",
-    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Take,\n    compile,\n    elements,\n    optimize,\n    stub,\n    uncover,\n    x1to1As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(chicago_data, x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
+    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Each,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Label,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Tag,\n    Take,\n    compile,\n    elements,\n    optimize,\n    stub,\n    uncoverAs a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(chicago_data, :x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
 },
 
 {
@@ -1221,7 +1221,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Each",
     "category": "method",
-    "text": "Each(X)\n\nMakes X process its input elementwise.\n\n\n\n\n\n"
+    "text": "Each(X) :: Query\n\nThis query evaluates X elementwise.\n\n\n\n\n\n"
 },
 
 {
@@ -1249,11 +1249,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "queries/#DataKnots.Keep-Tuple{Any,Vararg{Any,N} where N}",
+    "page": "Query Algebra",
+    "title": "DataKnots.Keep",
+    "category": "method",
+    "text": "Keep(P)\n\nSpecifies the parameter.\n\n\n\n\n\n"
+},
+
+{
     "location": "queries/#DataKnots.Label-Tuple{Symbol}",
     "page": "Query Algebra",
     "title": "DataKnots.Label",
     "category": "method",
-    "text": "Label(lbl::Symbol)\n\nAssigns a label.\n\n\n\n\n\n"
+    "text": "Label(lbl::Symbol) :: Query\n\nAssigns a label to the output.\n\n\n\n\n\n"
 },
 
 {
@@ -1261,7 +1269,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Lift",
     "category": "method",
-    "text": "Lift(f, Xs)\n\nConverts a Julia function to a query combinator.\n\n\n\n\n\n"
+    "text": "Lift(f, (X₁, X₂ … Xₙ)) :: Query\n\nThis query uses the outputs of X₁, X₂ … Xₙ as arguments of f.  The output of f is emitted.\n\n\n\n\n\n"
 },
 
 {
@@ -1269,7 +1277,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Lift",
     "category": "method",
-    "text": "Lift(val)\n\nConverts a Julia value to a query primitive.\n\n\n\n\n\n"
+    "text": "Lift(val) :: Query\n\nThis query emits the given value.\n\n\n\n\n\n"
 },
 
 {
@@ -1293,7 +1301,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Record",
     "category": "method",
-    "text": "Record(Xs...)\n\nCreates a query component for building a record.\n\n\n\n\n\n"
+    "text": "Record(X₁, X₂ … Xₙ) :: Query\n\nThis query emits records, whose fields are generated by X₁, X₂ … Xₙ.\n\n\n\n\n\n"
 },
 
 {
@@ -1309,7 +1317,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Tag",
     "category": "method",
-    "text": "Tag(name::Symbol, X)\n\nAssigns a name to a query.\n\n\n\n\n\n"
+    "text": "Tag(name::Symbol, F) :: Query\nTag(name::Symbol, (X₁, X₂ … Xₙ), F) :: Query\n\nAssigns a name to a query.\n\n\n\n\n\n"
 },
 
 {
@@ -1366,6 +1374,62 @@ var documenterSearchIndex = {"docs": [
     "title": "Test Suite",
     "category": "section",
     "text": ""
+},
+
+{
+    "location": "queries/#Querying-1",
+    "page": "Query Algebra",
+    "title": "Querying",
+    "category": "section",
+    "text": "A Query is applied to a DataKnot using the array indexing syntax.Q = Count(It.department)\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#Any parameters to the query should be be passed as keyword arguments.Q = It.department >>\n    Filter(Count(It.employee >> Filter(It.salary .> It.AMT)) .>= It.SZ) >>\n    Count\n\nchicago[Q, AMT=100000, SZ=1]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#We can use the function compile() to see the query plan.p = compile(chicago, Count(It.department))\n#=>\nchain_of(with_elements(chain_of(column(:department), block_length(), wrap())),\n         flatten())\n=#\n\np(chicago)\n#=>\n│ It │\n┼────┼\n│  3 │\n=#"
+},
+
+{
+    "location": "queries/#Composition-1",
+    "page": "Query Algebra",
+    "title": "Composition",
+    "category": "section",
+    "text": "Queries can be composed sequentially using the >> combinator.Q = Lift(3) >> (It .+ 4) >> (It .* 6)\n#-> Lift(3) >> (It .+ 4) >> It .* 6\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n│ 42 │\n=#The It query primitive is the identity with respect to >>.Q = It >> Q >> It\n#-> It >> Lift(3) >> (It .+ 4) >> It .* 6 >> It\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n│ 42 │\n=#"
+},
+
+{
+    "location": "queries/#Record-1",
+    "page": "Query Algebra",
+    "title": "Record",
+    "category": "section",
+    "text": "The query Record(X₁, X₂ … Xₙ) emits records with the fields generated by X₁, X₂ … Xₙ.Q = It.department >>\n    Record(It.name,\n           :size => Count(It.employee))\n#-> It.department >> Record(It.name, :size => Count(It.employee))\n\nchicago[Q]\n#=>\n  │ department   │\n  │ name    size │\n──┼──────────────┼\n1 │ POLICE     2 │\n2 │ FIRE       2 │\n3 │ OEMC       2 │\n=#If a field has no label, an ordinal label (#A, #B … #AA, #AB …) is assigned.Q = It.department >> Record(It.name, Count(It.employee))\n#-> It.department >> Record(It.name, Count(It.employee))\n\nchicago[Q]\n#=>\n  │ department │\n  │ name    #B │\n──┼────────────┼\n1 │ POLICE   2 │\n2 │ FIRE     2 │\n3 │ OEMC     2 │\n=#Similarly, when there are duplicate labels, only the last one survives.Q = It.department >> Record(It.name, It.employee.name)\n#-> It.department >> Record(It.name, It.employee.name)\n\nchicago[Q]\n#=>\n  │ department                 │\n  │ #A      name               │\n──┼────────────────────────────┼\n1 │ POLICE  JEFFERY A; NANCY A │\n2 │ FIRE    JAMES A; DANIEL A  │\n3 │ OEMC    LAKENYA A; DORIS A │\n=#"
+},
+
+{
+    "location": "queries/#Lift-1",
+    "page": "Query Algebra",
+    "title": "Lift",
+    "category": "section",
+    "text": "The Lift constructor is used to convert Julia values and functions to queries.Lift(val) makes a query primitive from a Julia value.Q = Lift(\"Hello World!\")\n#-> Lift(\"Hello World!\")\n\nchicago[Q]\n#=>\n│ It           │\n┼──────────────┼\n│ Hello World! │\n=#Lifting missing produces no output.Q = Lift(missing)\n#-> Lift(missing)\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n=#Lifting a vector produces plural output.Q = Lift(\'a\':\'c\')\n#-> Lift(\'a\':1:\'c\')\n\nchicago[Q]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n=#Lift can also convert Julia functions to query combinators.Inc(X) = Lift(x -> x+1, (X,))\n\nQ = Lift(0) >> Inc(It)\n#-> Lift(0) >> Lift(x -> x + 1, (It,))\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n│  1 │\n=#Functions of multiple arguments are also supported.GT(X, Y) = Lift(>, (X, Y))\n\nQ = It.department.employee >>\n    Record(It.name, It.salary, GT(It.salary, 100000))\n#=>\nIt.department.employee >>\nRecord(It.name, It.salary, Lift(>, (It.salary, 100000)))\n=#\n\nchicago[Q]\n#=>\n  │ employee                 │\n  │ name       salary  #C    │\n──┼──────────────────────────┼\n1 │ JEFFERY A  101442   true │\n2 │ NANCY A     80016  false │\n3 │ JAMES A    103350   true │\n4 │ DANIEL A    95484  false │\n5 │ LAKENYA A                │\n6 │ DORIS A                  │\n=#Just as functions with no arguments.using Random: seed!\n\nseed!(0)\n\nQ = Lift(rand, ())\n#-> Lift(rand, ())\n\nchicago[Q]\n#=>\n│ It       │\n┼──────────┼\n│ 0.823648 │\n=#Functions with vector arguments are supported.using Statistics: mean\n\nMean(X) = Lift(mean, (X,))\n\nQ = Mean(It.department.employee.salary)\n#-> Lift(mean, (It.department.employee.salary,))\n\nchicago[Q]\n#=>\n│ It      │\n┼─────────┼\n│ 95073.0 │\n=#Just like with regular values, missing and vector results are interpreted as no and plural output.Q = Inc(missing)\n#-> Lift(x -> x + 1, (missing,))\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n=#\n\nOneTo(N) = Lift(UnitRange, (1, N))\n\nQ = OneTo(3)\n#-> Lift(UnitRange, (1, 3))\n\nchicago[Q]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  2 │\n3 │  3 │\n=#Julia functions are lifted when they are broadcasted over queries.Q = mean.(It.department.employee.salary)\n#-> mean.(It.department.employee.salary)\n\nchicago[Q]\n#=>\n│ It      │\n┼─────────┼\n│ 95073.0 │\n=#"
+},
+
+{
+    "location": "queries/#Each-1",
+    "page": "Query Algebra",
+    "title": "Each",
+    "category": "section",
+    "text": "Each serves as a barrier for aggregate queries.Q = It.department >> (It.employee >> Count)\n#-> It.department >> It.employee >> Count\n\nchicago[Q]\n#=>\n│ It │\n┼────┼\n│  6 │\n=#\n\nQ = It.department >> Each(It.employee >> Count)\n#-> It.department >> Each(It.employee >> Count)\n\nchicago[Q]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  2 │\n3 │  2 │\n=#Note that Record and Lift also serve as natural barriers for aggregate queries.Q = It.department >>\n    Record(It.name, It.employee >> Count)\n#-> It.department >> Record(It.name, It.employee >> Count)\n\nchicago[Q]\n#=>\n  │ department │\n  │ name    #B │\n──┼────────────┼\n1 │ POLICE   2 │\n2 │ FIRE     2 │\n3 │ OEMC     2 │\n=#\n\nQ = It.department >>\n    (1 .* (It.employee >> Count))\n#-> It.department >> 1 .* (It.employee >> Count)\n\nchicago[Q]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  2 │\n3 │  2 │\n=#"
+},
+
+{
+    "location": "queries/#Label-1",
+    "page": "Query Algebra",
+    "title": "Label",
+    "category": "section",
+    "text": "We use the Label() primitive to assign a label to the output.Q = Count(It.department) >> Label(:num_dept)\n#-> Count(It.department) >> Label(:num_dept)\n\nchicago[Q]\n#=>\n│ num_dept │\n┼──────────┼\n│        3 │\n=#As a shorthand, we can use =>.Q = :num_dept => Count(It.department)\n#-> :num_dept => Count(It.department)\n\nchicago[Q]\n#=>\n│ num_dept │\n┼──────────┼\n│        3 │\n=#"
+},
+
+{
+    "location": "queries/#Tag-1",
+    "page": "Query Algebra",
+    "title": "Tag",
+    "category": "section",
+    "text": "We use Tag() constructor to assign a name to a query.DeptSize = Count(It.employee) >> Label(:dept_size)\n#-> Count(It.employee) >> Label(:dept_size)\n\nDeptSize = Tag(:DeptSize, DeptSize)\n#-> DeptSize\n\nQ = It.department >> Record(It.name, DeptSize)\n#-> It.department >> Record(It.name, DeptSize)\n\nchicago[Q]\n#=>\n  │ department        │\n  │ name    dept_size │\n──┼───────────────────┼\n1 │ POLICE          2 │\n2 │ FIRE            2 │\n3 │ OEMC            2 │\n=#Tag() is also used to assign a name to a query combinator.SalaryOver(X) = It.salary .> X\n\nSalaryOver(100000)\n#-> It.salary .> 100000\n\nSalaryOver(X) = Tag(SalaryOver, (X,), It.salary .> X)\n\nSalaryOver(100000)\n#-> SalaryOver(100000)\n\nQ = It.department.employee >>\n    Filter(SalaryOver(100000))\n#-> It.department.employee >> Filter(SalaryOver(100000))\n\nchicago[Q]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#"
 },
 
 {
