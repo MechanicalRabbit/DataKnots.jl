@@ -1113,6 +1113,54 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "knots/#",
+    "page": "Data Knots",
+    "title": "Data Knots",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "knots/#Data-Knots-1",
+    "page": "Data Knots",
+    "title": "Data Knots",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "knots/#Overview-1",
+    "page": "Data Knots",
+    "title": "Overview",
+    "category": "section",
+    "text": "A DataKnot object represents a single data cell serialized in a column-oriented format.using DataKnots:\n    DataKnot"
+},
+
+{
+    "location": "knots/#DataKnots.DataKnot",
+    "page": "Data Knots",
+    "title": "DataKnots.DataKnot",
+    "category": "type",
+    "text": "DataKnot(cell::AbstractVector, shp::AbstractShape)\n\nEncapsulates a data cell serialized in a column-oriented form.\n\n\n\n\n\n"
+},
+
+{
+    "location": "knots/#API-Reference-1",
+    "page": "Data Knots",
+    "title": "API Reference",
+    "category": "section",
+    "text": "Modules = [DataKnots]\nPages = [\"knots.jl\"]"
+},
+
+{
+    "location": "knots/#Test-Suite-1",
+    "page": "Data Knots",
+    "title": "Test Suite",
+    "category": "section",
+    "text": ""
+},
+
+{
     "location": "queries/#",
     "page": "Query Algebra",
     "title": "Query Algebra",
@@ -1133,7 +1181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "Overview",
     "category": "section",
-    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Take,\n    compile,\n    elements,\n    optimize,\n    stub,\n    uncover,\n    x1to1As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(chicago_data, x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, JEFFERY A, SERGEANT, 101442, ; NANCY A, POLICE OFFICER, 80016, ; FIRE…\n=#"
+    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Take,\n    compile,\n    elements,\n    optimize,\n    stub,\n    uncover,\n    x1to1As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(chicago_data, x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
 },
 
 {
