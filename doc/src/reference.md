@@ -80,7 +80,7 @@ used independently by first extracting a particular department.
     =#
 
 When the `MaxSalary` pipeline is invoked, it sees employee data
-having an *origin* relative to each department. This is what we
+having a *source* relative to each department. This is what we
 mean by DataKnots being context-aware. In the `DeptStats` pipeline,
 after each `MaxSalary` is computed, the results are integrated
 to provide output of the `DeptStats` pipeline.

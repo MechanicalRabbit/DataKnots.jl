@@ -51,9 +51,9 @@ Pipeline(op, args...) =
 
 """
     designate(::Pipeline, ::Signature) :: Pipeline
-    designate(::Pipeline, ::InputShape, ::OutputShape) :: Pipeline
+    designate(::Pipeline, ::AbstractShape, ::AbstractShape) :: Pipeline
     p::Pipeline |> designate(::Signature) :: Pipeline
-    p::Pipeline |> designate(::InputShape, ::OutputShape) :: Pipeline
+    p::Pipeline |> designate(::AbstractShape, ::AbstractShape) :: Pipeline
 
 Sets the pipeline signature.
 """
@@ -62,14 +62,14 @@ function designate end
 designate(p::Pipeline, sig::Signature) =
     Pipeline(p.op, args=p.args, sig=sig)
 
-designate(p::Pipeline, ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
-    Pipeline(p.op, args=p.args, sig=Signature(ishp, shp))
+designate(p::Pipeline, src::Union{AbstractShape,Type}, tgt::Union{AbstractShape,Type}) =
+    Pipeline(p.op, args=p.args, sig=Signature(src, tgt))
 
 designate(sig::Signature) =
     p::Pipeline -> designate(p, sig)
 
-designate(ishp::Union{AbstractShape,Type}, shp::Union{AbstractShape,Type}) =
-    p::Pipeline -> designate(p, Signature(ishp, shp))
+designate(src::Union{AbstractShape,Type}, tgt::Union{AbstractShape,Type}) =
+    p::Pipeline -> designate(p, Signature(src, tgt))
 
 """
     signature(::Pipeline) :: Signature
@@ -78,13 +78,13 @@ Returns the pipeline signature.
 """
 signature(p::Pipeline) = p.sig
 
-shape(p::Pipeline) = shape(p.sig)
+source(p::Pipeline) = source(p.sig)
 
-ishape(p::Pipeline) = ishape(p.sig)
+target(p::Pipeline) = target(p.sig)
 
 function (p::Pipeline)(input::DataKnot)
-    @assert fits(shape(input), ishape(p))
-    DataKnot(p(cell(input)), shape(p))
+    @assert fits(shape(input), source(p))
+    DataKnot(p(cell(input)), target(p))
 end
 
 function (p::Pipeline)(input::AbstractVector)

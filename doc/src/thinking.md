@@ -414,7 +414,7 @@ while `Take` ignores input past a particular point.
     =#
 
 Unlike `Filter`, the argument to `Take` is evaluated once, in the
-context of the input's *origin*. To explain, let's first consider
+context of the input's *source*. To explain, let's first consider
 how a vector packed within a tuple could be listed.
 
     void[Lift((x='a':'c', n=2)) >> It.x]
@@ -493,25 +493,25 @@ could be treated.
 | `Lift(1:N)` | Elementwise | Plural   / Optional  |
 
 In this processing model, query input and output are pipelines
-with two sides: an *origin* and a *target*, where each element in
-the origin is mapped to zero or more target elements.
+with two endpoints: a *source* and a *target*, where each element
+in the source is mapped to zero or more target elements.
 
-For any `origin -> target` pipeline, we can create two trivial
-pipelines, `origin_pipe`: `origin -> origin`, and `target_pipe`:
+For any `source -> target` pipeline, we can create two trivial
+pipelines, `source_pipe`: `source -> source`, and `target_pipe`:
 `target -> target`. Therefore we have three options.
 
-| Derivative    | Input  | Output |
+| Derivative    | Source | Target |
 |---------------|--------|--------|
-| *pass though* | Origin | Target |
+| *pass though* | Source | Target |
 | `target_pipe` | Target | Target |
-| `origin_pipe` | Origin | Origin |
+| `source_pipe` | Source | Source |
 
 A combinator has the option of what kind of input pipeline it
 could use for each of its arguments.
 
 | Combinator          | Argument Input          |
 |---------------------|-------------------------|
-| `Take(N)`           | N is an `origin_pipe`   |
+| `Take(N)`           | N is an `target_pipe`   |
 | `Filter(P)`         | P is a `target_pipe`    |
 | `Count(X)`          | X is a `target_pipe`    |
 | `Lift(fn, (Xs...))` | Xs... are `target_pipe` |

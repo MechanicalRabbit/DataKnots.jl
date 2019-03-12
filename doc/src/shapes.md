@@ -29,17 +29,17 @@ definitions.
         domain,
         elements,
         fits,
-        ishape,
         label,
         labels,
         replace_column,
         replace_elements,
-        tuple_lift,
-        tuple_of,
-        shape,
         shapeof,
         signature,
+        source,
         subject,
+        target,
+        tuple_lift,
+        tuple_of,
         wrap,
         x0to1,
         x0toN,
@@ -165,7 +165,7 @@ pipelines `dept_employee` and `emp_rate` cannot be chained into
 `chain_of(dept_employee, emp_rate)` because their intermediate shapes do not
 match.
 
-    fits(shape(dept_employee), ishape(emp_rate))    #-> false
+    fits(target(dept_employee), source(emp_rate))   #-> false
 
 On the other hand, these pipelines could be composed using the *monadic
 composition* combinator.
@@ -192,13 +192,13 @@ Monadic composition connects the pipelines by fusing their output flows.  The
 least upper bound of the flow cardinalities is the cardinality of the fused
 flow.
 
-    dept_employee_card = cardinality(shape(dept_employee))
+    dept_employee_card = cardinality(target(dept_employee))
     #-> x1toN
 
-    emp_rate_card = cardinality(shape(emp_rate))
+    emp_rate_card = cardinality(target(emp_rate))
     #-> x0to1
 
-    dept_employee_rate_card = cardinality(shape(dept_employee_rate))
+    dept_employee_rate_card = cardinality(target(dept_employee_rate))
     #-> x0toN
 
     dept_employee_card|emp_rate_card == dept_employee_rate_card
@@ -241,10 +241,10 @@ To be able to use this pipeline in composition, we assign it its signature.
 When two monadic pipelines have compatible intermediate domains, they could be
 composed.
 
-    domain(shape(dept_employee_rate))
+    domain(target(dept_employee_rate))
     #-> ValueOf(Float64)
 
-    domain(ishape(round_it))
+    domain(source(round_it))
     #-> ValueOf(Float64)
 
     dept_employee_round_rate = compose(dept_employee_rate, round_it)
@@ -525,13 +525,13 @@ A `Signature` object describes the shapes of a pipeline's input and output.
 
 Components of the signature can be easily extracted.
 
-    shape(sig)
+    target(sig)
     #=>
     BlockOf(TupleOf(:name => BlockOf(String, x1to1),
                     :employee => BlockOf(UInt))) |>
     IsFlow
     =#
 
-    ishape(sig)
+    source(sig)
     #-> ValueOf(UInt)
 

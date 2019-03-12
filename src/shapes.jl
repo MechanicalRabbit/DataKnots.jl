@@ -412,25 +412,25 @@ fits(v::AbstractVector, shp::AbstractShape) =
 """
     Signature(::AbstractShape, ::AbstractShape)
 
-Shapes of a pipeline input and output.
+Shapes of a pipeline source and tagret.
 """
 struct Signature
-    ishp::AbstractShape
-    shp::AbstractShape
+    src::AbstractShape
+    tgt::AbstractShape
 end
 
 Signature() = Signature(NoShape(), AnyShape())
 
 quoteof(sig::Signature) =
-    Expr(:call, nameof(Signature), quoteof(sig.ishp), quoteof(sig.shp))
+    Expr(:call, nameof(Signature), quoteof(sig.src), quoteof(sig.tgt))
 
 syntaxof(sig::Signature) =
-    Expr(:(->), syntaxof(sig.ishp), syntaxof(sig.shp))
+    Expr(:(->), syntaxof(sig.src), syntaxof(sig.tgt))
 
 show(io::IO, sig::Signature) =
     print_expr(io, quoteof(sig))
 
-ishape(sig::Signature) = sig.ishp
+source(sig::Signature) = sig.src
 
-shape(sig::Signature) = sig.shp
+target(sig::Signature) = sig.tgt
 

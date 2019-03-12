@@ -18,9 +18,10 @@ abstract type AbstractQuery end
 """
     Query(op, args...)
 
-A query is implemented as a pipeline transformation.  Specifically, a query
-takes a pipeline that maps *origin* to *input* and generates a pipeline that
-maps *origin* to *output*.
+A query is implemented as a pipeline transformation with a fixed source.
+Specifically, a query takes the input pipeline that maps the *source* to the
+*input target* and generates a pipeline that maps the *source* to the *output
+target*.
 
 Parameter `op` is a function that performs the transformation; `args` are extra
 arguments passed to the function.
@@ -115,9 +116,9 @@ end
 compile(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
     compile(F, shape(pack(db, params)))
 
-function  compile(F::AbstractQuery, ishp::AbstractShape)
+function  compile(F::AbstractQuery, src::AbstractShape)
     env = Environment()
-    q = uncover(compile(F, env, cover(ishp)))
+    q = uncover(compile(F, env, cover(src)))
     return optimize(q)
 end
 
@@ -181,7 +182,7 @@ replace_domain(shp::IsScope, f) =
 # Finds the output label.
 
 getlabel(p::Pipeline, default) =
-    getlabel(shape(p), default)
+    getlabel(target(p), default)
 
 getlabel(shp::AbstractShape, default) =
     default
@@ -198,7 +199,7 @@ getlabel(shp::IsScope, default) =
 # Reassigns the output label.
 
 relabel(p::Pipeline, lbl::Union{Symbol,Nothing}) =
-    p |> designate(ishape(p), relabel(shape(p), lbl))
+    p |> designate(source(p), relabel(target(p), lbl))
 
 relabel(shp::AbstractShape, ::Nothing) =
     shp
@@ -227,21 +228,21 @@ relabel(shp::IsScope, ::Nothing) =
 # Removes the flow annotation and strips the scope container from the query output.
 
 function uncover(p::Pipeline)
-    q = uncover(shape(p))
-    chain_of(p, q) |> designate(ishape(p), shape(q))
+    q = uncover(target(p))
+    chain_of(p, q) |> designate(source(p), target(q))
 end
 
-function uncover(ishp::IsFlow)
-    p = uncover(elements(ishp))
-    shp = replace_domain(shape(p), dom -> BlockOf(dom, cardinality(ishp)))
-    with_elements(p) |> designate(ishp, shp)
+function uncover(src::IsFlow)
+    p = uncover(elements(src))
+    tgt = replace_domain(target(p), dom -> BlockOf(dom, cardinality(src)))
+    with_elements(p) |> designate(src, tgt)
 end
 
-uncover(ishp::IsScope) =
-    column(1) |> designate(ishp, column(ishp))
+uncover(src::IsScope) =
+    column(1) |> designate(src, column(src))
 
-uncover(ishp::AbstractShape) =
-    pass() |> designate(ishp, ishp)
+uncover(src::AbstractShape) =
+    pass() |> designate(src, src)
 
 # Finds or creates a flow container and clones the scope container.
 
@@ -256,12 +257,12 @@ cover(cell::AbstractVector, sig::Signature) =
     cover(filler(cell[1]) |> designate(sig))
 
 cover(p::Pipeline) =
-    cover(ishape(p), p)
+    cover(source(p), p)
 
-function cover(ishp::IsScope, p::Pipeline)
-    ctx = context(ishp)
-    shp = TupleOf(shape(p), ctx) |> IsScope
-    p = tuple_of(p, column(2)) |> designate(ishp, shp)
+function cover(src::IsScope, p::Pipeline)
+    ctx = context(src)
+    tgt = TupleOf(target(p), ctx) |> IsScope
+    p = tuple_of(p, column(2)) |> designate(src, tgt)
     cover(nothing, p)
 end
 
@@ -269,43 +270,43 @@ cover(::AbstractShape, p::Pipeline) =
     cover(nothing, p)
 
 function cover(::Nothing, p::Pipeline)
-    q = cover(shape(p))
-    chain_of(p, q) |> designate(ishape(p), shape(q))
+    q = cover(target(p))
+    chain_of(p, q) |> designate(source(p), target(q))
 end
 
-cover(ishp::AbstractShape) =
-    wrap() |> designate(ishp, BlockOf(ishp, x1to1) |> IsFlow)
+cover(src::AbstractShape) =
+    wrap() |> designate(src, BlockOf(src, x1to1) |> IsFlow)
 
-cover(ishp::BlockOf) =
-    pass() |> designate(ishp, ishp |> IsFlow)
+cover(src::BlockOf) =
+    pass() |> designate(src, src |> IsFlow)
 
-function cover(ishp::ValueOf)
-    ty = eltype(ishp)
+function cover(src::ValueOf)
+    ty = eltype(src)
     if ty <: AbstractVector
         ty′ = eltype(ty)
-        adapt_vector() |> designate(ishp, BlockOf(ty′, x0toN) |> IsFlow)
+        adapt_vector() |> designate(src, BlockOf(ty′, x0toN) |> IsFlow)
     elseif Missing <: ty
         ty′ = Base.nonmissingtype(ty)
-        adapt_missing() |> designate(ishp, BlockOf(ty′, x0to1) |> IsFlow)
+        adapt_missing() |> designate(src, BlockOf(ty′, x0to1) |> IsFlow)
     else
-        wrap() |> designate(ishp, BlockOf(ishp, x1to1) |> IsFlow)
+        wrap() |> designate(src, BlockOf(src, x1to1) |> IsFlow)
     end
 end
 
-function cover(ishp::IsLabeled)
-    p = cover(subject(ishp))
-    shp = replace_elements(shape(p), IsLabeled(label(ishp)))
-    p |> designate(ishp, shp)
+function cover(src::IsLabeled)
+    p = cover(subject(src))
+    tgt = replace_elements(target(p), IsLabeled(label(src)))
+    p |> designate(src, tgt)
 end
 
-cover(ishp::IsFlow) =
-    pass() |> designate(ishp, ishp)
+cover(src::IsFlow) =
+    pass() |> designate(src, tgt)
 
-function cover(ishp::IsScope)
-    p = cover(column(ishp))
-    shp = shape(p)
-    shp = replace_elements(shp, TupleOf(elements(shp), context(ishp)) |> IsScope)
-    chain_of(with_column(1, p), distribute(1)) |> designate(ishp, shp)
+function cover(src::IsScope)
+    p = cover(column(src))
+    tgt = target(p)
+    tgt = replace_elements(tgt, TupleOf(elements(tgt), context(src)) |> IsScope)
+    chain_of(with_column(1, p), distribute(1)) |> designate(src, tgt)
 end
 
 
@@ -313,19 +314,19 @@ end
 # Monadic composition.
 #
 
-# Trivial pipes at the origin and target endpoints of a pipeline.
+# Trivial pipes at the source and target endpoints of a pipeline.
 
-origin_pipe(p::Pipeline) =
-    trivial_pipe(ishape(p))
+source_pipe(p::Pipeline) =
+    trivial_pipe(source(p))
 
 target_pipe(p::Pipeline) =
-    trivial_pipe(shape(p))
+    trivial_pipe(target(p))
 
-trivial_pipe(ishp::IsFlow) =
-    trivial_pipe(elements(ishp))
+trivial_pipe(src::IsFlow) =
+    trivial_pipe(elements(src))
 
-trivial_pipe(ishp::AbstractShape) =
-    cover(ishp)
+trivial_pipe(src::AbstractShape) =
+    cover(src)
 
 trivial_pipe(db::DataKnot) =
     cover(shape(db))
@@ -336,50 +337,50 @@ realign(p::Pipeline, ::AbstractShape) =
     p
 
 realign(p::Pipeline, ref::IsScope) =
-    realign(p, shape(p), ref)
+    realign(p, target(p), ref)
 
 realign(p::Pipeline, ::AbstractShape, ::IsScope) =
     p
 
-realign(p::Pipeline, shp::IsFlow, ref::IsScope) =
-    realign(p, elements(shp), shp, ref)
+realign(p::Pipeline, tgt::IsFlow, ref::IsScope) =
+    realign(p, elements(tgt), tgt, ref)
 
 realign(p::Pipeline, ::IsScope, ::IsFlow, ::IsScope) =
     p
 
-function realign(p::Pipeline, elts::AbstractShape, shp::IsFlow, ref::IsScope)
+function realign(p::Pipeline, elts::AbstractShape, tgt::IsFlow, ref::IsScope)
     p′ = chain_of(with_column(1, p), distribute(1))
     ctx = context(ref)
-    ishp′ = TupleOf(ishape(p), ctx) |> IsScope
-    shp′ = replace_elements(shp, elts -> TupleOf(elts, ctx) |> IsScope)
-    p′ |> designate(ishp′, shp′)
+    src′ = TupleOf(source(p), ctx) |> IsScope
+    tgt′ = replace_elements(tgt, elts -> TupleOf(elts, ctx) |> IsScope)
+    p′ |> designate(src′, tgt′)
 end
 
 realign(::AbstractShape, p::Pipeline) =
     p
 
 realign(ref::IsFlow, p::Pipeline) =
-    realign(ref, ishape(p), p)
+    realign(ref, source(p), p)
 
 realign(::IsFlow, ::IsFlow, p::Pipeline) =
     p
 
 realign(ref::IsFlow, ::AbstractShape, p::Pipeline) =
-    realign(ref, p, shape(p))
+    realign(ref, p, target(p))
 
 function realign(ref::IsFlow, p::Pipeline, ::AbstractShape)
     p′ = with_elements(p)
-    ishp′ = replace_elements(ref, ishape(p))
-    shp′ = replace_elements(ref, shape(p))
-    p′ |> designate(ishp′, shp′)
+    src′ = replace_elements(ref, source(p))
+    tgt′ = replace_elements(ref, target(p))
+    p′ |> designate(src′, tgt′)
 end
 
-function realign(ref::IsFlow, p::Pipeline, shp::IsFlow)
+function realign(ref::IsFlow, p::Pipeline, tgt::IsFlow)
     p′ = chain_of(with_elements(p), flatten())
-    ishp′ = replace_elements(ref, ishape(p))
-    card′ = cardinality(ref)|cardinality(shp)
-    shp′ = BlockOf(elements(shp), card′) |> IsFlow
-    p′ |> designate(ishp′, shp′)
+    src′ = replace_elements(ref, source(p))
+    card′ = cardinality(ref)|cardinality(tgt)
+    tgt′ = BlockOf(elements(tgt), card′) |> IsFlow
+    p′ |> designate(src′, tgt′)
 end
 
 # Composition.
@@ -390,10 +391,10 @@ compose(p1::Pipeline, p2::Pipeline, p3::Pipeline, ps::Pipeline...) =
     foldl(compose, ps, init=compose(compose(p1, p2), p3))
 
 function compose(p1::Pipeline, p2::Pipeline)
-    p1 = realign(p1, ishape(p2))
-    p2 = realign(shape(p1), p2)
-    @assert fits(shape(p1), ishape(p2)) "cannot fit\n$(shape(p1))\ninto\n$(ishape(p2))"
-    chain_of(p1, p2) |> designate(ishape(p1), shape(p2))
+    p1 = realign(p1, source(p2))
+    p2 = realign(target(p1), p2)
+    @assert fits(target(p1), source(p2)) "cannot fit\n$(target(p1))\ninto\n$(source(p2))"
+    chain_of(p1, p2) |> designate(source(p1), target(p2))
 end
 
 >>(X::Union{DataKnot,AbstractQuery,Pair{Symbol,<:Union{DataKnot,AbstractQuery}}}, Xs...) =
@@ -436,13 +437,13 @@ function assemble_record(p::Pipeline, xs::Vector{Pipeline})
         push!(lbls, lbl)
         push!(cols, x)
     end
-    ishp = elements(shape(p))
-    shp = TupleOf(lbls, shape.(cols))
+    src = elements(target(p))
+    tgt = TupleOf(lbls, target.(cols))
     lbl = getlabel(p, nothing)
     if lbl !== nothing
-        shp = relabel(shp, lbl)
+        tgt = relabel(tgt, lbl)
     end
-    q = tuple_of(lbls, cols) |> designate(ishp, shp)
+    q = tuple_of(lbls, cols) |> designate(src, tgt)
     q = cover(q)
     compose(p, q)
 end
@@ -467,13 +468,13 @@ end
 
 function assemble_lift(p::Pipeline, f, xs::Vector{Pipeline})
     cols = uncover.(xs)
-    ity = Tuple{eltype.(shape.(cols))...}
+    ity = Tuple{eltype.(target.(cols))...}
     oty = Core.Compiler.return_type(f, ity)
     oty != Union{} || error("cannot apply $f to $ity")
-    ishp = elements(shape(p))
-    shp = ValueOf(oty)
+    src = elements(target(p))
+    tgt = ValueOf(oty)
     q = if length(cols) == 1
-            card = cardinality(shape(xs[1]))
+            card = cardinality(target(xs[1]))
             if fits(x1toN, card) && !(oty <: AbstractVector)
                 chain_of(cols[1], block_lift(f))
             else
@@ -481,7 +482,7 @@ function assemble_lift(p::Pipeline, f, xs::Vector{Pipeline})
             end
         else
             chain_of(tuple_of(Symbol[], cols), tuple_lift(f))
-        end |> designate(ishp, shp)
+        end |> designate(src, tgt)
     q = cover(q)
     compose(p, q)
 end
@@ -520,7 +521,7 @@ function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
 end
 
 function Lift(env::Environment, p::Pipeline, db::DataKnot)
-    q = cover(cell(db), Signature(elements(shape(p)), shape(db)))
+    q = cover(cell(db), Signature(elements(target(p)), shape(db)))
     compose(p, q)
 end
 
@@ -643,26 +644,26 @@ Get(name) =
     Query(Get, name)
 
 function Get(env::Environment, p::Pipeline, name)
-    shp = shape(p)
-    q = lookup(shp, name)
-    q !== nothing || error("cannot find \"$name\" at\n$(syntaxof(shp))")
+    tgt = target(p)
+    q = lookup(tgt, name)
+    q !== nothing || error("cannot find \"$name\" at\n$(syntaxof(tgt))")
     q = cover(q)
     compose(p, q)
 end
 
 lookup(::AbstractShape, ::Any) = nothing
 
-lookup(ishp::IsLabeled, name::Any) =
-    lookup(subject(ishp), name)
+lookup(src::IsLabeled, name::Any) =
+    lookup(subject(src), name)
 
-lookup(ishp::IsFlow, name::Any) =
-    lookup(elements(ishp), name)
+lookup(src::IsFlow, name::Any) =
+    lookup(elements(src), name)
 
-function lookup(ishp::IsScope, name::Any)
-    q = lookup(context(ishp), name)
-    q === nothing || return chain_of(column(2), q) |> designate(ishp, shape(q))
-    q = lookup(column(ishp), name)
-    q === nothing || return chain_of(column(1), q) |> designate(ishp, shape(q))
+function lookup(src::IsScope, name::Any)
+    q = lookup(context(src), name)
+    q === nothing || return chain_of(column(2), q) |> designate(src, target(q))
+    q = lookup(column(src), name)
+    q === nothing || return chain_of(column(1), q) |> designate(src, target(q))
     nothing
 end
 
@@ -674,20 +675,20 @@ function lookup(lbls::Vector{Symbol}, name::Symbol)
     j
 end
 
-function lookup(ishp::TupleOf, name::Symbol)
-    lbls = labels(ishp)
+function lookup(src::TupleOf, name::Symbol)
+    lbls = labels(src)
     if isempty(lbls)
-        lbls = Symbol[ordinal_label(i) for i = 1:width(ishp)]
+        lbls = Symbol[ordinal_label(i) for i = 1:width(src)]
     end
     j = lookup(lbls, name)
     j !== nothing || return nothing
 
-    shp = relabel(column(ishp, j), name == lbls[j] ? name : nothing)
-    column(lbls[j]) |> designate(ishp, shp)
+    tgt = relabel(column(src, j), name == lbls[j] ? name : nothing)
+    column(lbls[j]) |> designate(src, tgt)
 end
 
-lookup(ishp::ValueOf, name) =
-    lookup(ishp.ty, name)
+lookup(src::ValueOf, name) =
+    lookup(src.ty, name)
 
 lookup(::Type, ::Any) =
     nothing
@@ -696,7 +697,7 @@ function lookup(ity::Type{<:NamedTuple}, name::Symbol)
     j = lookup(collect(Symbol, ity.parameters[1]), name)
     j !== nothing || return nothing
     oty = ity.parameters[2].parameters[j]
-    lift(getindex, j) |> designate(ValueOf(ity), ValueOf(oty) |> IsLabeled(name))
+    lift(getindex, j) |> designate(ity, oty |> IsLabeled(name))
 end
 
 function lookup(ity::Type{<:Tuple}, name::Symbol)
@@ -704,7 +705,7 @@ function lookup(ity::Type{<:Tuple}, name::Symbol)
     j = lookup(lbls, name)
     j !== nothing || return nothing
     oty = ity.parameters[j]
-    lift(getindex, j) |> designate(ValueOf(ity), ValueOf(oty))
+    lift(getindex, j) |> designate(ity, oty)
 end
 
 
@@ -714,16 +715,16 @@ end
 
 function assemble_keep(p::Pipeline, q::Pipeline)
     q = uncover(q)
-    shp = shape(q)
-    name = getlabel(shp, nothing)
+    tgt = target(q)
+    name = getlabel(tgt, nothing)
     name !== nothing || error("parameter name is not specified")
-    shp = relabel(shp, nothing)
+    tgt = relabel(tgt, nothing)
     lbls′ = Symbol[]
     cols′ = AbstractShape[]
     perm = Int[]
-    ishp = ishape(q)
-    if ishp isa IsScope
-        ctx = context(ishp)
+    src = source(q)
+    if src isa IsScope
+        ctx = context(src)
         for j = 1:width(ctx)
             lbl = label(ctx, j)
             if lbl != name
@@ -734,16 +735,16 @@ function assemble_keep(p::Pipeline, q::Pipeline)
         end
     end
     push!(lbls′, name)
-    push!(cols′, shp)
+    push!(cols′, tgt)
     ctx′ = TupleOf(lbls′, cols′)
     qs = Pipeline[chain_of(column(2), column(j)) for j in perm]
     push!(qs, q)
-    shp = BlockOf(TupleOf(ishp isa IsScope ? column(ishp) : ishp, ctx′) |> IsScope,
+    tgt = BlockOf(TupleOf(src isa IsScope ? column(src) : src, ctx′) |> IsScope,
                   x1to1) |> IsFlow
-    q = chain_of(tuple_of(ishp isa IsScope ? column(1) : pass(),
+    q = chain_of(tuple_of(src isa IsScope ? column(1) : pass(),
                           tuple_of(lbls′, qs)),
                  wrap(),
-    ) |> designate(ishp, shp)
+    ) |> designate(src, tgt)
     compose(p, q)
 end
 
@@ -807,7 +808,7 @@ Then(ctor, args::Tuple) =
     Query(Then, ctor, args)
 
 Then(env::Environment, p::Pipeline, ctor, args::Tuple=()) =
-    compile(ctor(Then(p), args...), env, origin_pipe(p))
+    compile(ctor(Then(p), args...), env, source_pipe(p))
 
 
 #
@@ -818,7 +819,7 @@ function assemble_count(p::Pipeline)
     p = uncover(p)
     q = chain_of(p,
                  block_length(),
-    ) |> designate(ishape(p), ValueOf(Int))
+    ) |> designate(source(p), Int)
     cover(q)
 end
 
@@ -885,7 +886,7 @@ maximum_missing(v) =
 
 function Max(env::Environment, p::Pipeline, X)
     x = compile(X, env, target_pipe(p))
-    card = cardinality(shape(x))
+    card = cardinality(target(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
 end
@@ -895,7 +896,7 @@ minimum_missing(v) =
 
 function Min(env::Environment, p::Pipeline, X)
     x = compile(X, env, target_pipe(p))
-    card = cardinality(shape(x))
+    card = cardinality(target(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
 end
@@ -907,11 +908,11 @@ end
 
 function assemble_filter(p::Pipeline, x::Pipeline)
     x = uncover(x)
-    fits(shape(x), BlockOf(ValueOf(Bool))) || error("expected a predicate")
+    fits(target(x), BlockOf(ValueOf(Bool))) || error("expected a predicate")
     q = chain_of(tuple_of(pass(),
                           chain_of(x, block_any())),
                  sieve(),
-    ) |> designate(ishape(x), BlockOf(ishape(x), x0to1) |> IsFlow)
+    ) |> designate(source(x), BlockOf(source(x), x0to1) |> IsFlow)
     compose(p, q)
 end
 
@@ -934,24 +935,24 @@ end
 #
 
 function assemble_take(p::Pipeline, n::Int, rev::Bool)
-    elts = elements(shape(p))
-    card = cardinality(shape(p))|x0to1
+    elts = elements(target(p))
+    card = cardinality(target(p))|x0to1
     chain_of(
         p,
         slice(n, rev),
-    ) |> designate(ishape(p), BlockOf(elts, card) |> IsFlow)
+    ) |> designate(source(p), BlockOf(elts, card) |> IsFlow)
 end
 
 function assemble_take(p::Pipeline, n::Pipeline, rev::Bool)
-    n_card = cardinality(shape(n))
+    n_card = cardinality(target(n))
     n = uncover(n)
-    fits(shape(n), BlockOf(ValueOf(Int), x0to1)) || error("expected a singular integer")
-    ishp = ishape(p)
-    shp = BlockOf(elements(shape(p)), cardinality(shape(p))|x0to1) |> IsFlow
+    fits(target(n), BlockOf(ValueOf(Int), x0to1)) || error("expected a singular integer")
+    src = source(p)
+    tgt = BlockOf(elements(target(p)), cardinality(target(p))|x0to1) |> IsFlow
     chain_of(
         tuple_of(p, n),
         slice(rev),
-    ) |> designate(ishp, shp)
+    ) |> designate(src, tgt)
 end
 
 """
@@ -977,7 +978,7 @@ Take(env::Environment, p::Pipeline, n::Int, rev::Bool=false) =
     assemble_take(p, n, rev)
 
 function Take(env::Environment, p::Pipeline, N, rev::Bool=false)
-    n = compile(N, env, origin_pipe(p))
+    n = compile(N, env, source_pipe(p))
     assemble_take(p, n, rev)
 end
 

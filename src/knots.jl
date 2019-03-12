@@ -115,9 +115,9 @@ function focus_blocks(d::TableData, pos::Int)
     p !== nothing || return d
     blks = chain_of(p, distribute(pos))(d.body)
     body′ = elements(blks)
-    col_shp′ = elements(shape(p))
+    col_shp′ = elements(target(p))
     shp′ = replace_column(d.shp, pos, col_shp′)
-    card = cardinality(shape(p))
+    card = cardinality(target(p))
     idxs′ =
         if !isempty(d.idxs)
             elements(chain_of(distribute(2), column(1))(TupleVector(:idxs => d.idxs, :blks => blks)))
@@ -132,20 +132,20 @@ end
 as_blocks(::AbstractShape) =
     nothing
 
-as_blocks(ishp::BlockOf) =
-    pass() |> designate(ishp, ishp)
+as_blocks(src::BlockOf) =
+    pass() |> designate(src, src)
 
-as_blocks(ishp::ValueOf) =
-    as_blocks(eltype(ishp))
+as_blocks(src::ValueOf) =
+    as_blocks(eltype(src))
 
 as_blocks(::Type) =
     nothing
 
 as_blocks(ity::Type{<:AbstractVector}) =
-    adapt_vector() |> designate(ValueOf(ity), BlockOf(eltype(ity)))
+    adapt_vector() |> designate(ity, BlockOf(eltype(ity)))
 
 as_blocks(ity::Type{>:Missing}) =
-    adapt_missing() |> designate(ValueOf(ity), BlockOf(Base.nonmissingtype(ity), x0to1))
+    adapt_missing() |> designate(ity, BlockOf(Base.nonmissingtype(ity), x0to1))
 
 function focus_tuples(d::TableData, pos::Int)
     col_shp = column(d.shp, pos)
@@ -156,7 +156,7 @@ function focus_tuples(d::TableData, pos::Int)
     cols′ = copy(columns(d.body))
     splice!(cols′, pos:pos, columns(col′))
     body′ = TupleVector(length(d.body), cols′)
-    col_shp′ = shape(p)
+    col_shp′ = target(p)
     col_shps′ = copy(columns(d.shp))
     splice!(col_shps′, pos:pos, columns(col_shp′))
     shp′ = TupleOf(col_shps′)
@@ -188,22 +188,22 @@ end
 as_tuples(::AbstractShape) =
     nothing
 
-as_tuples(ishp::TupleOf) =
-    pass() |> designate(ishp, ishp)
+as_tuples(src::TupleOf) =
+    pass() |> designate(src, src)
 
-as_tuples(ishp::ValueOf) =
-    as_tuples(eltype(ishp))
+as_tuples(src::ValueOf) =
+    as_tuples(eltype(src))
 
 as_tuples(::Type) =
     nothing
 
 as_tuples(ity::Type{<:NamedTuple}) =
-    adapt_tuple() |> designate(ValueOf(ity),
+    adapt_tuple() |> designate(ity,
                                TupleOf(collect(Symbol, ity.parameters[1]),
                                        collect(AbstractShape, ity.parameters[2].parameters)))
 
 as_tuples(ity::Type{<:Tuple}) =
-    adapt_tuple() |> designate(ValueOf(ity),
+    adapt_tuple() |> designate(ity,
                                TupleOf(collect(AbstractShape, ity.parameters)))
 
 function default_data_header(d::TableData)
@@ -389,9 +389,9 @@ end
 
 function render_cell(shp::AbstractShape, vals::AbstractVector, idx::Int, avail::Int, depth::Int=0)
     p = as_blocks(shp)
-    p === nothing || return render_cell(shape(p), p(vals[idx:idx]), 1, avail, depth)
+    p === nothing || return render_cell(target(p), p(vals[idx:idx]), 1, avail, depth)
     p = as_tuples(shp)
-    p === nothing || return render_cell(shape(p), p(vals[idx:idx]), 1, avail, depth)
+    p === nothing || return render_cell(target(p), p(vals[idx:idx]), 1, avail, depth)
     render_cell(vals[idx], avail)
 end
 

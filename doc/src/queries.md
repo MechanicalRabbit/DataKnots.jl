@@ -1161,7 +1161,7 @@ elements.
     =#
 
 `Take` and `Drop` accept a query argument, which is evaluated against the input
-origin and must produce a singular integer.
+source and must produce a singular integer.
 
     Half = Count(Employee) .÷ 2
 
