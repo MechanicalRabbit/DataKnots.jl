@@ -26,7 +26,7 @@ We will need the following definitions.
         Sum,
         Tag,
         Take,
-        compile,
+        assemble,
         elements,
         optimize,
         trivial_pipe,
@@ -65,10 +65,10 @@ holds associated employee records.
     =#
 
 
-### Assembling queries
+### Constructing queries
 
 In DataKnots, we query data by assembling and running `Query` objects.  Queries
-are assembled algebraically: they either come a set of atomic *primitive*
+are constructed algebraically: they either come a set of atomic *primitive*
 queries, or are built from other queries using query *combinators*.
 
 For example, consider the query:
@@ -77,7 +77,7 @@ For example, consider the query:
     #-> Get(:department) >> Get(:employee)
 
 This query traverses the dataset through fields *department* and *employee*.
-It is assembled from two primitive queries `Get(:department)` and
+It is constructed from two primitive queries `Get(:department)` and
 `Get(:employee)` connected using the query composition combinator `>>`.
 
 Since attribute traversal is so common, DataKnots provides a shorthand notation.
@@ -118,7 +118,7 @@ An equivalent query is constructed as follows:
     SalaryOver100K = Lift(>, (Get(:salary), Lift(100000)))
     #-> Lift(>, (Get(:salary), Lift(100000)))
 
-This query expression is assembled from two primitive components:
+This query expression is constructed from two primitive components:
 `Get(:salary)` and `Lift(100000)`, which serve as parameters of the `Lift(>)`
 combinator.  Here, `Lift` is used twice.  `Lift` applied to a regular Julia
 value converts it to a *constant* query primitive while `Lift` applied to a
@@ -196,7 +196,7 @@ reusable query components and remix them in creative ways.
 ### Compiling queries
 
 In DataKnots, applying a query to the input data is a two-phase process.
-First, the query is compiled to a pipeline.  Second, this pipeline transforms
+First, the query generates a pipeline.  Second, this pipeline transforms
 the input data to the output data.
 
 Let us elaborate on the role of pipelines and queries.  In DataKnots, just like
@@ -206,7 +206,7 @@ is, a query can be applied to a pipeline to produce a new pipeline.
 To run a query on the given data, we apply the query to a *trivial* pipeline.
 The generated pipeline is used to actually transform the data.
 
-To demonstrate how to compile a query, let us use `EmployeesWithSalaryOver100K`
+To demonstrate how to apply a query, let us use `EmployeesWithSalaryOver100K`
 from the previous section.  Recall that it could be represented as follows:
 
     Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)
@@ -223,12 +223,12 @@ The trivial pipeline can be obtained from the input data.
     p0 = trivial_pipe(chicago)
     #-> pass()
 
-We use the function `compile()` to apply a query to a pipeline.  To run
-`compile()` we need to create the *environment* object.
+We use the function `assemble()` to apply a query to a pipeline.  To run
+`assemble()` we need to create the *environment* object.
 
     env = Environment()
 
-    p1 = compile(Get(:department), env, p0)
+    p1 = assemble(Get(:department), env, p0)
     #-> chain_of(with_elements(column(:department)), flatten())
 
 The pipeline `p1` fetches the attribute *department* from the input data.  In
@@ -236,20 +236,20 @@ general, `Get(name)` maps a pipeline to its monadic composition with
 `column(name)`.  For example, when we apply `Get(:employee)` to `p1`, what we
 get is the result of `compose(p1, column(:employee))`.
 
-    p2 = compile(Get(:employee), env, p1)
+    p2 = assemble(Get(:employee), env, p1)
     #=>
     chain_of(chain_of(with_elements(column(:department)), flatten()),
              chain_of(with_elements(column(:employee)), flatten()))
     =#
 
 To finish assembling the pipeline, we apply `Filter(SalaryOver100K)` to `p2`.
-`Filter` acts on the input pipeline as follows.  First, it compiles the
-predicate query using the trivial pipeline on the target endpoint of `p2`.
+`Filter` acts on the input pipeline as follows.  First, it assembles the
+predicate pipeline by applying the predicate query to a trivial pipeline.
 
     pc0 = target_pipe(p2)
     #-> wrap()
 
-    pc1 = compile(SalaryOver100K, env, pc0)
+    pc1 = assemble(SalaryOver100K, env, pc0)
     #=>
     chain_of(wrap(),
              chain_of(
@@ -265,7 +265,7 @@ predicate query using the trivial pipeline on the target endpoint of `p2`.
 `Filter(SalaryOver100K)` then combines the pipelines `p2` and `pc1` using the
 pipeline primitive `sieve()`.
 
-    p3 = compile(Filter(SalaryOver100K), env, p2)
+    p3 = assemble(Filter(SalaryOver100K), env, p2)
     #=>
     chain_of(
         chain_of(chain_of(with_elements(column(:department)), flatten()),
@@ -347,9 +347,9 @@ Any parameters to the query should be be passed as keyword arguments.
     │  2 │
     =#
 
-We can use the function `compile()` to see the query plan.
+We can use the function `assemble()` to see the query plan.
 
-    p = compile(chicago, Count(It.department))
+    p = assemble(chicago, Count(It.department))
     #=>
     chain_of(with_elements(chain_of(column(:department), block_length(), wrap())),
              flatten())

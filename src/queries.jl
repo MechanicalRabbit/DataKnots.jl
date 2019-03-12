@@ -98,7 +98,7 @@ query(db, F; kws...) =
 
 function query(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     db = pack(db, params)
-    q = compile(F, shape(db))
+    q = assemble(F, shape(db))
     db′ = q(db)
     return db′
 end
@@ -113,12 +113,12 @@ function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
     return DataKnot(scp_cell, scp_shp)
 end
 
-compile(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
-    compile(F, shape(pack(db, params)))
+assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
+    assemble(F, shape(pack(db, params)))
 
-function  compile(F::AbstractQuery, src::AbstractShape)
+function  assemble(F::AbstractQuery, src::AbstractShape)
     env = Environment()
-    q = uncover(compile(F, env, cover(src)))
+    q = uncover(assemble(F, env, cover(src)))
     return optimize(q)
 end
 
@@ -135,13 +135,13 @@ Query compilation state.
 mutable struct Environment
 end
 
-compile(F, env::Environment, p::Pipeline)::Pipeline =
-    compile(Lift(F), env, p)
+assemble(F, env::Environment, p::Pipeline)::Pipeline =
+    assemble(Lift(F), env, p)
 
-compile(F::Query, env::Environment, p::Pipeline)::Pipeline =
+assemble(F::Query, env::Environment, p::Pipeline)::Pipeline =
     F.op(env, p, F.args...)
 
-function compile(nav::Navigation, env::Environment, p::Pipeline)::Pipeline
+function assemble(nav::Navigation, env::Environment, p::Pipeline)::Pipeline
     for name in getfield(nav, :__path)
         p = Get(env, p, name)
     end
@@ -408,7 +408,7 @@ quoteof(::typeof(Compose), args::Vector{Any}) =
 
 function Compose(env::Environment, p::Pipeline, Xs...)
     for X in Xs
-        p = compile(X, env, p)
+        p = assemble(X, env, p)
     end
     p
 end
@@ -457,7 +457,7 @@ Record(Xs...) =
     Query(Record, Xs...)
 
 function Record(env::Environment, p::Pipeline, Xs...)
-    xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
+    xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_record(p, xs)
 end
 
@@ -516,7 +516,7 @@ Lift(env::Environment, p::Pipeline, val) =
     Lift(env, p, convert(DataKnot, val))
 
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
-    xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
+    xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_lift(p, f, xs)
 end
 
@@ -574,7 +574,7 @@ This query evaluates `X` elementwise.
 Each(X) = Query(Each, X)
 
 Each(env::Environment, p::Pipeline, X) =
-    compose(p, compile(X, env, target_pipe(p)))
+    compose(p, assemble(X, env, target_pipe(p)))
 
 
 #
@@ -616,10 +616,10 @@ Tag(F::Union{Function,DataType}, args::Tuple, X) =
     Tag(nameof(F), args, X)
 
 Tag(env::Environment, p::Pipeline, name, X) =
-    compile(X, env, p)
+    assemble(X, env, p)
 
 Tag(env::Environment, p::Pipeline, name, args, X) =
-    compile(X, env, p)
+    assemble(X, env, p)
 
 quoteof(::typeof(Tag), args::Vector{Any}) =
     quoteof(Tag, args...)
@@ -760,7 +760,7 @@ Keep(env::Environment, p::Pipeline, P, Qs...) =
     Keep(env, Keep(env, p, P), Qs...)
 
 function Keep(env::Environment, p::Pipeline, P)
-    q = compile(P, env, target_pipe(p))
+    q = assemble(P, env, target_pipe(p))
     assemble_keep(p, q)
 end
 
@@ -786,7 +786,7 @@ Given(env::Environment, p::Pipeline, Xs...) =
     Given(env, p, Keep(Xs[1:end-1]...) >> Each(Xs[end]))
 
 function Given(env::Environment, p::Pipeline, X)
-    q = compile(X, env, target_pipe(p))
+    q = assemble(X, env, target_pipe(p))
     assemble_given(p, q)
 end
 
@@ -808,7 +808,7 @@ Then(ctor, args::Tuple) =
     Query(Then, ctor, args)
 
 Then(env::Environment, p::Pipeline, ctor, args::Tuple=()) =
-    compile(ctor(Then(p), args...), env, source_pipe(p))
+    assemble(ctor(Then(p), args...), env, source_pipe(p))
 
 
 #
@@ -836,7 +836,7 @@ Lift(::typeof(Count)) =
     Then(Count)
 
 function Count(env::Environment, p::Pipeline, X)
-    x = compile(X, env, target_pipe(p))
+    x = assemble(X, env, target_pipe(p))
     compose(p, assemble_count(x))
 end
 
@@ -877,7 +877,7 @@ Lift(::typeof(Min)) =
     Then(Min)
 
 function Sum(env::Environment, p::Pipeline, X)
-    x = compile(X, env, target_pipe(p))
+    x = assemble(X, env, target_pipe(p))
     assemble_lift(p, sum, Pipeline[x])
 end
 
@@ -885,7 +885,7 @@ maximum_missing(v) =
     !isempty(v) ? maximum(v) : missing
 
 function Max(env::Environment, p::Pipeline, X)
-    x = compile(X, env, target_pipe(p))
+    x = assemble(X, env, target_pipe(p))
     card = cardinality(target(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
@@ -895,7 +895,7 @@ minimum_missing(v) =
     !isempty(v) ? minimum(v) : missing
 
 function Min(env::Environment, p::Pipeline, X)
-    x = compile(X, env, target_pipe(p))
+    x = assemble(X, env, target_pipe(p))
     card = cardinality(target(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
@@ -925,7 +925,7 @@ Filter(X) =
     Query(Filter, X)
 
 function Filter(env::Environment, p::Pipeline, X)
-    x = compile(X, env, target_pipe(p))
+    x = assemble(X, env, target_pipe(p))
     assemble_filter(p, x)
 end
 
@@ -975,7 +975,7 @@ Take(env::Environment, p::Pipeline, n::Union{Int,Missing}, rev::Bool=false) =
     assemble_take(p, n, rev)
 
 function Take(env::Environment, p::Pipeline, N, rev::Bool=false)
-    n = compile(N, env, source_pipe(p))
+    n = assemble(N, env, source_pipe(p))
     assemble_take(p, n, rev)
 end
 
