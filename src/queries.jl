@@ -635,9 +635,9 @@ quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
 #
 
 """
-    Get(name)
+    Get(name) :: Query
 
-Finds an attribute or a parameter.
+This query emits the value of a record field.
 """
 Get(name) =
     Query(Get, name)
@@ -748,9 +748,9 @@ function assemble_keep(p::Pipeline, q::Pipeline)
 end
 
 """
-    Keep(P)
+    Keep(X₁, X₂ … Xₙ) :: Query
 
-Specifies the parameter.
+Defines context parameters.
 """
 Keep(P, Qs...) =
     Query(Keep, P, Qs...)
@@ -774,9 +774,9 @@ function assemble_given(p::Pipeline, q::Pipeline)
 end
 
 """
-    Given(P, X)
+    Given(X₁, X₂ … Xₙ, Q) :: Query
 
-Specifies the parameter and bounds its scope.
+Evaluates the query with the given context parameters.
 """
 Given(P, Xs...) =
     Query(Given, P, Xs...)
@@ -823,10 +823,10 @@ function assemble_count(p::Pipeline)
 end
 
 """
-    Count(X)
-    X >> Count
+    Count(X) :: Query
+    Each(X >> Count) :: Query
 
-Counts the number of elements produced by `X`.
+Counts the number of elements produced by the query.
 """
 Count(X) =
     Query(Count, X)
@@ -840,10 +840,10 @@ function Count(env::Environment, p::Pipeline, X)
 end
 
 """
-    Sum(X)
-    X >> Sum
+    Sum(X) :: Query
+    Each(X >> Sum) :: Query
 
-Sums the elements produced by `X`.
+Sums the elements produced by the query.
 """
 Sum(X) =
     Query(Sum, X)
@@ -852,10 +852,10 @@ Lift(::typeof(Sum)) =
     Then(Sum)
 
 """
-    Max(X)
-    X >> Max
+    Max(X) :: Query
+    Each(X >> Max) :: Query
 
-Finds the maximum.
+Finds the maximum among the elements produced by the query.
 """
 Max(X) =
     Query(Max, X)
@@ -864,10 +864,10 @@ Lift(::typeof(Max)) =
     Then(Max)
 
 """
-    Min(X)
-    X >> Min
+    Min(X) :: Query
+    Each(X >> Min) :: Query
 
-Finds the minimum.
+Finds the minimum among the elements produced by the query.
 """
 Min(X) =
     Query(Min, X)
@@ -916,9 +916,9 @@ function assemble_filter(p::Pipeline, x::Pipeline)
 end
 
 """
-    Filter(X)
+    Filter(X) :: Query
 
-Filters the input by condition.
+Filters the input by the given condition.
 """
 Filter(X) =
     Query(Filter, X)
@@ -955,17 +955,17 @@ function assemble_take(p::Pipeline, n::Pipeline, rev::Bool)
 end
 
 """
-    Take(N)
+    Take(N) :: Query
 
-Takes the first `N` elements.
+Keeps the first `N` elements of the input, drops the rest.
 """
 Take(N) =
     Query(Take, N)
 
 """
-    Drop(N)
+    Drop(N) :: Query
 
-Drops the first `N` elements.
+Drops the first `N` elements of the input, keeps the rest.
 """
 Drop(N) =
     Query(Drop, N)

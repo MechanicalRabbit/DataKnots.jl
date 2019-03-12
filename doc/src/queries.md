@@ -17,11 +17,13 @@ We will need the following definitions.
         Get,
         Given,
         It,
+        Keep,
         Label,
         Lift,
         Max,
         Min,
         Record,
+        Sum,
         Tag,
         Take,
         compile,
@@ -721,4 +723,461 @@ We use `Tag()` constructor to assign a name to a query.
     1 │ JEFFERY A  SERGEANT           101442       │
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
     =#
+
+
+### `Get`
+
+We use the `Get(name)` to extract the value of a record field.
+
+    Q = Get(:department) >> Get(:name)
+    #-> Get(:department) >> Get(:name)
+
+    chicago[Q]
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    3 │ OEMC   │
+    =#
+
+As a shorthand, extracting an attribute of `It` generates a `Get()` query.
+
+    Q = It.department.name
+    #-> It.department.name
+
+    chicago[Q]
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    3 │ OEMC   │
+    =#
+
+We can also extract fields that have ordinal labels, but the label name is not
+preserved.
+
+    Q = It.department >>
+        Record(It.name, Count(It.employee)) >>
+        It.B
+
+    chicago[Q]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  2 │
+    3 │  2 │
+    =#
+
+Same notation is used to extract values of context parameters defined with
+`Keep()` or `Given()`.
+
+    Q = It.department >>
+        Keep(:dept_name => It.name) >>
+        It.employee >>
+        Record(It.dept_name, It.name)
+
+    chicago[Q]
+    #=>
+      │ employee             │
+      │ dept_name  name      │
+    ──┼──────────────────────┼
+    1 │ POLICE     JEFFERY A │
+    2 │ POLICE     NANCY A   │
+    3 │ FIRE       JAMES A   │
+    4 │ FIRE       DANIEL A  │
+    5 │ OEMC       LAKENYA A │
+    6 │ OEMC       DORIS A   │
+    =#
+
+A context parameter is preferred if it has the same name as a record field.
+
+    Q = It.department >>
+        Keep(It.name) >>
+        It.employee >>
+        Record(It.name, It.position)
+
+    chicago[Q]
+    #=>
+      │ employee                  │
+      │ name    position          │
+    ──┼───────────────────────────┼
+    1 │ POLICE  SERGEANT          │
+    2 │ POLICE  POLICE OFFICER    │
+    3 │ FIRE    FIRE ENGINEER-EMT │
+    4 │ FIRE    FIRE FIGHTER-EMT  │
+    5 │ OEMC    CROSSING GUARD    │
+    6 │ OEMC    CROSSING GUARD    │
+    =#
+
+If there is no attribute with the given name, an error is reported.
+
+    Q = It.department.employee.ssn
+
+    chicago[Q]
+    #=>
+    ERROR: cannot find "ssn" at
+    (0:N) × (name = (1:1) × String, position = (1:1) × String, salary = (0:1) × Int, rate = (0:1) × Float64)
+    =#
+
+Regular and named tuples also support attribute lookup.
+
+    Q = Lift((name = "JEFFERY A", position = "SERGEANT", salary = 101442)) >>
+        It.position
+
+    chicago[Q]
+    #=>
+    │ position │
+    ┼──────────┼
+    │ SERGEANT │
+    =#
+
+    Q = Lift((name = "JEFFERY A", position = "SERGEANT", salary = 101442)) >>
+        It.ssn
+
+    chicago[Q]
+    #=>
+    ERROR: cannot find "ssn" at
+    (1:1) × NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}}
+    =#
+
+    Q = Lift(("JEFFERY A", "SERGEANT", 101442)) >>
+        It.B
+
+    chicago[Q]
+    #=>
+    │ It       │
+    ┼──────────┼
+    │ SERGEANT │
+    =#
+
+    Q = Lift(("JEFFERY A", "SERGEANT", 101442)) >>
+        It.Z
+
+    chicago[Q]
+    #=>
+    ERROR: cannot find "Z" at
+    (1:1) × Tuple{String,String,Int}
+    =#
+
+
+### `Keep` and `Given`
+
+We use the combinator `Keep()` to assign a value to a context parameter.
+
+    Q = It.department >>
+        Keep(:dept_name => It.name) >>
+        It.employee >>
+        Record(It.dept_name, It.name)
+    #=>
+    It.department >>
+    Keep(:dept_name => It.name) >>
+    It.employee >>
+    Record(It.dept_name, It.name)
+    =#
+
+    chicago[Q]
+    #=>
+      │ employee             │
+      │ dept_name  name      │
+    ──┼──────────────────────┼
+    1 │ POLICE     JEFFERY A │
+    2 │ POLICE     NANCY A   │
+    3 │ FIRE       JAMES A   │
+    4 │ FIRE       DANIEL A  │
+    5 │ OEMC       LAKENYA A │
+    6 │ OEMC       DORIS A   │
+    =#
+
+Several context parameters could be defined together.
+
+    Q = It.department >>
+        Keep(:size => Count(It.employee),
+             :half => It.size .÷ 2) >>
+        Each(It.employee >> Take(It.half))
+
+    chicago[Q]
+    #=>
+      │ employee                                    │
+      │ name       position           salary  rate  │
+    ──┼─────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT           101442        │
+    2 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+    3 │ LAKENYA A  CROSSING GUARD             17.68 │
+    =#
+
+`Keep()` requires that the parameter is labeled.
+
+    Q = It.department >>
+        Keep(Count(It.employee))
+
+    chicago[Q]
+    #-> ERROR: parameter name is not specified
+
+`Keep()` will override an existing parameter with the same name.
+
+    Q = It.department >>
+        Keep(:current_name => It.name) >>
+        It.employee >>
+        Keep(:current_name => It.name) >>
+        It.current_name
+
+    chicago[Q]
+    #=>
+      │ current_name │
+    ──┼──────────────┼
+    1 │ JEFFERY A    │
+    2 │ NANCY A      │
+    3 │ JAMES A      │
+    4 │ DANIEL A     │
+    5 │ LAKENYA A    │
+    6 │ DORIS A      │
+    =#
+
+Combinator `Given()` is used to evaluate a query with the given context
+parameters.
+
+    Q = It.department >>
+        Given(:size => Count(It.employee),
+              :half => It.size .÷ 2,
+              It.employee >> Take(It.half))
+    #=>
+    It.department >> Given(:size => Count(It.employee),
+                           :half => div.(It.size, 2),
+                           It.employee >> Take(It.half))
+    =#
+
+    chicago[Q]
+    #=>
+      │ employee                                    │
+      │ name       position           salary  rate  │
+    ──┼─────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT           101442        │
+    2 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+    3 │ LAKENYA A  CROSSING GUARD             17.68 │
+    =#
+
+`Given()` does not let any parameters defined within its scope escape it.
+
+    Q = It.department >>
+        Given(Keep(It.name)) >>
+        It.employee >>
+        It.name
+
+    chicago[Q]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ NANCY A   │
+    3 │ JAMES A   │
+    4 │ DANIEL A  │
+    5 │ LAKENYA A │
+    6 │ DORIS A   │
+    =#
+
+
+### `Count`, `Sum`, `Max`, `Min`
+
+`Count(X)`, `Sum(X)`, `Max(X)`, `Min(X)` evaluate the `X` and emit the number
+of elements, their sum, maximum, and minimum respectively.
+
+    Salary = It.department.employee.salary
+
+    Q = Record(Salary,
+               :count => Count(Salary),
+               :sum => Sum(Salary),
+               :max => Max(Salary),
+               :min => Min(Salary))
+    #=>
+    Record(It.department.employee.salary,
+           :count => Count(It.department.employee.salary),
+           :sum => Sum(It.department.employee.salary),
+           :max => Max(It.department.employee.salary),
+           :min => Min(It.department.employee.salary))
+    =#
+
+    chicago[Q]
+    #=>
+    │ salary                        count  sum     max     min   │
+    ┼────────────────────────────────────────────────────────────┼
+    │ 101442; 80016; 103350; 95484      4  380292  103350  80016 │
+    =#
+
+`Count`, `Sum`, `Max`, and `Min` could also be used as aggregate primitives.
+
+    Q = Record(Salary,
+               :count => Salary >> Count,
+               :sum => Salary >> Sum,
+               :max => Salary >> Max,
+               :min => Salary >> Min)
+    #=>
+    Record(It.department.employee.salary,
+           :count => It.department.employee.salary >> Count,
+           :sum => It.department.employee.salary >> Sum,
+           :max => It.department.employee.salary >> Max,
+           :min => It.department.employee.salary >> Min)
+    =#
+
+    chicago[Q]
+    #=>
+    │ salary                        count  sum     max     min   │
+    ┼────────────────────────────────────────────────────────────┼
+    │ 101442; 80016; 103350; 95484      4  380292  103350  80016 │
+    =#
+
+When applied to an empty input, `Sum` emits `0`, `Min` and `Max` emit no
+output.
+
+    Salary = It.employee.salary
+
+    Q = It.department >>
+        Record(It.name,
+               Salary,
+               :count => Count(Salary),
+               :sum => Sum(Salary),
+               :max => Max(Salary),
+               :min => Min(Salary))
+
+    chicago[Q]
+    #=>
+      │ department                                          │
+      │ name    salary         count  sum     max     min   │
+    ──┼─────────────────────────────────────────────────────┼
+    1 │ POLICE  101442; 80016      2  181458  101442  80016 │
+    2 │ FIRE    103350; 95484      2  198834  103350  95484 │
+    3 │ OEMC                       0       0                │
+    =#
+
+
+### `Filter`
+
+We use `Filter()` to filter the input by the given predicate.
+
+    Q = It.department >>
+        Filter(It.name .== "POLICE") >>
+        It.employee >>
+        Filter(It.name .== "JEFFERY A")
+    #=>
+    It.department >>
+    Filter(It.name .== "POLICE") >>
+    It.employee >>
+    Filter(It.name .== "JEFFERY A")
+    =#
+
+    chicago[Q]
+    #=>
+      │ employee                          │
+      │ name       position  salary  rate │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442       │
+    =#
+
+The predicate must produce `true` of `false` values.
+
+    Q = It.department >>
+        Filter(Count(It.employee))
+
+    chicago[Q]
+    #-> ERROR: expected a predicate
+
+The input data is dropped when the output of the predicate contains only
+`false` elements.
+
+    Q = It.department >>
+        Filter(It.employee >> (It.salary .> 100000)) >>
+        Record(It.name, It.employee.salary)
+
+    chicago[Q]
+    #=>
+      │ department            │
+      │ name    salary        │
+    ──┼───────────────────────┼
+    1 │ POLICE  101442; 80016 │
+    2 │ FIRE    103350; 95484 │
+    =#
+
+
+### `Take` and `Drop`
+
+We use `Take(N)` and `Drop(N)` to pass or drop the first `N` input elements.
+
+    Employee = It.department.employee
+
+    Q = Employee >> Take(4)
+    #-> It.department.employee >> Take(4)
+
+    chicago[Q]
+    #=>
+      │ employee                                   │
+      │ name       position           salary  rate │
+    ──┼────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT           101442       │
+    2 │ NANCY A    POLICE OFFICER      80016       │
+    3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+    4 │ DANIEL A   FIRE FIGHTER-EMT    95484       │
+    =#
+
+    Q = Employee >> Drop(4)
+    #-> It.department.employee >> Drop(4)
+
+    chicago[Q]
+    #=>
+      │ employee                                 │
+      │ name       position        salary  rate  │
+    ──┼──────────────────────────────────────────┼
+    1 │ LAKENYA A  CROSSING GUARD          17.68 │
+    2 │ DORIS A    CROSSING GUARD          19.38 │
+    =#
+
+`Take(-N)` drops the last `N` elements, while `Drop(-N)` keeps the last `N`
+elements.
+
+    Q = Employee >> Take(-4)
+
+    chicago[Q]
+    #=>
+      │ employee                                │
+      │ name       position        salary  rate │
+    ──┼─────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442       │
+    2 │ NANCY A    POLICE OFFICER   80016       │
+    =#
+
+    Q = Employee >> Drop(-4)
+
+    chicago[Q]
+    #=>
+      │ employee                                    │
+      │ name       position           salary  rate  │
+    ──┼─────────────────────────────────────────────┼
+    1 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+    2 │ DANIEL A   FIRE FIGHTER-EMT    95484        │
+    3 │ LAKENYA A  CROSSING GUARD             17.68 │
+    4 │ DORIS A    CROSSING GUARD             19.38 │
+    =#
+
+`Take` and `Drop` accept a query argument, which is evaluated against the input
+origin and must produce a singular integer.
+
+    Half = Count(Employee) .÷ 2
+
+    Q = Employee >> Take(Half)
+
+    chicago[Q]
+    #=>
+      │ employee                                   │
+      │ name       position           salary  rate │
+    ──┼────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT           101442       │
+    2 │ NANCY A    POLICE OFFICER      80016       │
+    3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+    =#
+
+    Q = Take(Employee >> It.name)
+
+    chicago[Q]
+    #-> ERROR: expected a singular integer
 
