@@ -1181,7 +1181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "Overview",
     "category": "section",
-    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Each,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Label,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Tag,\n    Take,\n    compile,\n    elements,\n    optimize,\n    stub,\n    uncoverAs a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(chicago_data, :x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
+    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Each,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Keep,\n    Label,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Sum,\n    Tag,\n    Take,\n    compile,\n    elements,\n    optimize,\n    stub,\n    uncoverAs a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(chicago_data, :x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
 },
 
 {
@@ -1205,7 +1205,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Count",
     "category": "method",
-    "text": "Count(X)\nX >> Count\n\nCounts the number of elements produced by X.\n\n\n\n\n\n"
+    "text": "Count(X) :: Query\nEach(X >> Count) :: Query\n\nCounts the number of elements produced by the query.\n\n\n\n\n\n"
 },
 
 {
@@ -1213,7 +1213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Drop",
     "category": "method",
-    "text": "Drop(N)\n\nDrops the first N elements.\n\n\n\n\n\n"
+    "text": "Drop(N) :: Query\n\nDrops the first N elements of the input, keeps the rest.\n\n\n\n\n\n"
 },
 
 {
@@ -1229,7 +1229,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Filter",
     "category": "method",
-    "text": "Filter(X)\n\nFilters the input by condition.\n\n\n\n\n\n"
+    "text": "Filter(X) :: Query\n\nFilters the input by the given condition.\n\n\n\n\n\n"
 },
 
 {
@@ -1237,7 +1237,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Get",
     "category": "method",
-    "text": "Get(name)\n\nFinds an attribute or a parameter.\n\n\n\n\n\n"
+    "text": "Get(name) :: Query\n\nThis query emits the value of a record field.\n\n\n\n\n\n"
 },
 
 {
@@ -1245,7 +1245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Given",
     "category": "method",
-    "text": "Given(P, X)\n\nSpecifies the parameter and bounds its scope.\n\n\n\n\n\n"
+    "text": "Given(X₁, X₂ … Xₙ, Q) :: Query\n\nEvaluates the query with the given context parameters.\n\n\n\n\n\n"
 },
 
 {
@@ -1253,7 +1253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Keep",
     "category": "method",
-    "text": "Keep(P)\n\nSpecifies the parameter.\n\n\n\n\n\n"
+    "text": "Keep(X₁, X₂ … Xₙ) :: Query\n\nDefines context parameters.\n\n\n\n\n\n"
 },
 
 {
@@ -1285,7 +1285,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Max",
     "category": "method",
-    "text": "Max(X)\nX >> Max\n\nFinds the maximum.\n\n\n\n\n\n"
+    "text": "Max(X) :: Query\nEach(X >> Max) :: Query\n\nFinds the maximum among the elements produced by the query.\n\n\n\n\n\n"
 },
 
 {
@@ -1293,7 +1293,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Min",
     "category": "method",
-    "text": "Min(X)\nX >> Min\n\nFinds the minimum.\n\n\n\n\n\n"
+    "text": "Min(X) :: Query\nEach(X >> Min) :: Query\n\nFinds the minimum among the elements produced by the query.\n\n\n\n\n\n"
 },
 
 {
@@ -1309,7 +1309,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Sum",
     "category": "method",
-    "text": "Sum(X)\nX >> Sum\n\nSums the elements produced by X.\n\n\n\n\n\n"
+    "text": "Sum(X) :: Query\nEach(X >> Sum) :: Query\n\nSums the elements produced by the query.\n\n\n\n\n\n"
 },
 
 {
@@ -1325,7 +1325,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "DataKnots.Take",
     "category": "method",
-    "text": "Take(N)\n\nTakes the first N elements.\n\n\n\n\n\n"
+    "text": "Take(N) :: Query\n\nKeeps the first N elements of the input, drops the rest.\n\n\n\n\n\n"
 },
 
 {
@@ -1430,6 +1430,46 @@ var documenterSearchIndex = {"docs": [
     "title": "Tag",
     "category": "section",
     "text": "We use Tag() constructor to assign a name to a query.DeptSize = Count(It.employee) >> Label(:dept_size)\n#-> Count(It.employee) >> Label(:dept_size)\n\nDeptSize = Tag(:DeptSize, DeptSize)\n#-> DeptSize\n\nQ = It.department >> Record(It.name, DeptSize)\n#-> It.department >> Record(It.name, DeptSize)\n\nchicago[Q]\n#=>\n  │ department        │\n  │ name    dept_size │\n──┼───────────────────┼\n1 │ POLICE          2 │\n2 │ FIRE            2 │\n3 │ OEMC            2 │\n=#Tag() is also used to assign a name to a query combinator.SalaryOver(X) = It.salary .> X\n\nSalaryOver(100000)\n#-> It.salary .> 100000\n\nSalaryOver(X) = Tag(SalaryOver, (X,), It.salary .> X)\n\nSalaryOver(100000)\n#-> SalaryOver(100000)\n\nQ = It.department.employee >>\n    Filter(SalaryOver(100000))\n#-> It.department.employee >> Filter(SalaryOver(100000))\n\nchicago[Q]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#"
+},
+
+{
+    "location": "queries/#Get-1",
+    "page": "Query Algebra",
+    "title": "Get",
+    "category": "section",
+    "text": "We use the Get(name) to extract the value of a record field.Q = Get(:department) >> Get(:name)\n#-> Get(:department) >> Get(:name)\n\nchicago[Q]\n#=>\n  │ name   │\n──┼────────┼\n1 │ POLICE │\n2 │ FIRE   │\n3 │ OEMC   │\n=#As a shorthand, extracting an attribute of It generates a Get() query.Q = It.department.name\n#-> It.department.name\n\nchicago[Q]\n#=>\n  │ name   │\n──┼────────┼\n1 │ POLICE │\n2 │ FIRE   │\n3 │ OEMC   │\n=#We can also extract fields that have ordinal labels, but the label name is not preserved.Q = It.department >>\n    Record(It.name, Count(It.employee)) >>\n    It.B\n\nchicago[Q]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  2 │\n3 │  2 │\n=#Same notation is used to extract values of context parameters defined with Keep() or Given().Q = It.department >>\n    Keep(:dept_name => It.name) >>\n    It.employee >>\n    Record(It.dept_name, It.name)\n\nchicago[Q]\n#=>\n  │ employee             │\n  │ dept_name  name      │\n──┼──────────────────────┼\n1 │ POLICE     JEFFERY A │\n2 │ POLICE     NANCY A   │\n3 │ FIRE       JAMES A   │\n4 │ FIRE       DANIEL A  │\n5 │ OEMC       LAKENYA A │\n6 │ OEMC       DORIS A   │\n=#A context parameter is preferred if it has the same name as a record field.Q = It.department >>\n    Keep(It.name) >>\n    It.employee >>\n    Record(It.name, It.position)\n\nchicago[Q]\n#=>\n  │ employee                  │\n  │ name    position          │\n──┼───────────────────────────┼\n1 │ POLICE  SERGEANT          │\n2 │ POLICE  POLICE OFFICER    │\n3 │ FIRE    FIRE ENGINEER-EMT │\n4 │ FIRE    FIRE FIGHTER-EMT  │\n5 │ OEMC    CROSSING GUARD    │\n6 │ OEMC    CROSSING GUARD    │\n=#If there is no attribute with the given name, an error is reported.Q = It.department.employee.ssn\n\nchicago[Q]\n#=>\nERROR: cannot find \"ssn\" at\n(0:N) × (name = (1:1) × String, position = (1:1) × String, salary = (0:1) × Int, rate = (0:1) × Float64)\n=#Regular and named tuples also support attribute lookup.Q = Lift((name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442)) >>\n    It.position\n\nchicago[Q]\n#=>\n│ position │\n┼──────────┼\n│ SERGEANT │\n=#\n\nQ = Lift((name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442)) >>\n    It.ssn\n\nchicago[Q]\n#=>\nERROR: cannot find \"ssn\" at\n(1:1) × NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}}\n=#\n\nQ = Lift((\"JEFFERY A\", \"SERGEANT\", 101442)) >>\n    It.B\n\nchicago[Q]\n#=>\n│ It       │\n┼──────────┼\n│ SERGEANT │\n=#\n\nQ = Lift((\"JEFFERY A\", \"SERGEANT\", 101442)) >>\n    It.Z\n\nchicago[Q]\n#=>\nERROR: cannot find \"Z\" at\n(1:1) × Tuple{String,String,Int}\n=#"
+},
+
+{
+    "location": "queries/#Keep-and-Given-1",
+    "page": "Query Algebra",
+    "title": "Keep and Given",
+    "category": "section",
+    "text": "We use the combinator Keep() to assign a value to a context parameter.Q = It.department >>\n    Keep(:dept_name => It.name) >>\n    It.employee >>\n    Record(It.dept_name, It.name)\n#=>\nIt.department >>\nKeep(:dept_name => It.name) >>\nIt.employee >>\nRecord(It.dept_name, It.name)\n=#\n\nchicago[Q]\n#=>\n  │ employee             │\n  │ dept_name  name      │\n──┼──────────────────────┼\n1 │ POLICE     JEFFERY A │\n2 │ POLICE     NANCY A   │\n3 │ FIRE       JAMES A   │\n4 │ FIRE       DANIEL A  │\n5 │ OEMC       LAKENYA A │\n6 │ OEMC       DORIS A   │\n=#Several context parameters could be defined together.Q = It.department >>\n    Keep(:size => Count(It.employee),\n         :half => It.size .÷ 2) >>\n    Each(It.employee >> Take(It.half))\n\nchicago[Q]\n#=>\n  │ employee                                    │\n  │ name       position           salary  rate  │\n──┼─────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442        │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350        │\n3 │ LAKENYA A  CROSSING GUARD             17.68 │\n=#Keep() requires that the parameter is labeled.Q = It.department >>\n    Keep(Count(It.employee))\n\nchicago[Q]\n#-> ERROR: parameter name is not specifiedKeep() will override an existing parameter with the same name.Q = It.department >>\n    Keep(:current_name => It.name) >>\n    It.employee >>\n    Keep(:current_name => It.name) >>\n    It.current_name\n\nchicago[Q]\n#=>\n  │ current_name │\n──┼──────────────┼\n1 │ JEFFERY A    │\n2 │ NANCY A      │\n3 │ JAMES A      │\n4 │ DANIEL A     │\n5 │ LAKENYA A    │\n6 │ DORIS A      │\n=#Combinator Given() is used to evaluate a query with the given context parameters.Q = It.department >>\n    Given(:size => Count(It.employee),\n          :half => It.size .÷ 2,\n          It.employee >> Take(It.half))\n#=>\nIt.department >> Given(:size => Count(It.employee),\n                       :half => div.(It.size, 2),\n                       It.employee >> Take(It.half))\n=#\n\nchicago[Q]\n#=>\n  │ employee                                    │\n  │ name       position           salary  rate  │\n──┼─────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442        │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350        │\n3 │ LAKENYA A  CROSSING GUARD             17.68 │\n=#Given() does not let any parameters defined within its scope escape it.Q = It.department >>\n    Given(Keep(It.name)) >>\n    It.employee >>\n    It.name\n\nchicago[Q]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n2 │ NANCY A   │\n3 │ JAMES A   │\n4 │ DANIEL A  │\n5 │ LAKENYA A │\n6 │ DORIS A   │\n=#"
+},
+
+{
+    "location": "queries/#Count,-Sum,-Max,-Min-1",
+    "page": "Query Algebra",
+    "title": "Count, Sum, Max, Min",
+    "category": "section",
+    "text": "Count(X), Sum(X), Max(X), Min(X) evaluate the X and emit the number of elements, their sum, maximum, and minimum respectively.Salary = It.department.employee.salary\n\nQ = Record(Salary,\n           :count => Count(Salary),\n           :sum => Sum(Salary),\n           :max => Max(Salary),\n           :min => Min(Salary))\n#=>\nRecord(It.department.employee.salary,\n       :count => Count(It.department.employee.salary),\n       :sum => Sum(It.department.employee.salary),\n       :max => Max(It.department.employee.salary),\n       :min => Min(It.department.employee.salary))\n=#\n\nchicago[Q]\n#=>\n│ salary                        count  sum     max     min   │\n┼────────────────────────────────────────────────────────────┼\n│ 101442; 80016; 103350; 95484      4  380292  103350  80016 │\n=#Count, Sum, Max, and Min could also be used as aggregate primitives.Q = Record(Salary,\n           :count => Salary >> Count,\n           :sum => Salary >> Sum,\n           :max => Salary >> Max,\n           :min => Salary >> Min)\n#=>\nRecord(It.department.employee.salary,\n       :count => It.department.employee.salary >> Count,\n       :sum => It.department.employee.salary >> Sum,\n       :max => It.department.employee.salary >> Max,\n       :min => It.department.employee.salary >> Min)\n=#\n\nchicago[Q]\n#=>\n│ salary                        count  sum     max     min   │\n┼────────────────────────────────────────────────────────────┼\n│ 101442; 80016; 103350; 95484      4  380292  103350  80016 │\n=#When applied to an empty input, Sum emits 0, Min and Max emit no output.Salary = It.employee.salary\n\nQ = It.department >>\n    Record(It.name,\n           Salary,\n           :count => Count(Salary),\n           :sum => Sum(Salary),\n           :max => Max(Salary),\n           :min => Min(Salary))\n\nchicago[Q]\n#=>\n  │ department                                          │\n  │ name    salary         count  sum     max     min   │\n──┼─────────────────────────────────────────────────────┼\n1 │ POLICE  101442; 80016      2  181458  101442  80016 │\n2 │ FIRE    103350; 95484      2  198834  103350  95484 │\n3 │ OEMC                       0       0                │\n=#"
+},
+
+{
+    "location": "queries/#Filter-1",
+    "page": "Query Algebra",
+    "title": "Filter",
+    "category": "section",
+    "text": "We use Filter() to filter the input by the given predicate.Q = It.department >>\n    Filter(It.name .== \"POLICE\") >>\n    It.employee >>\n    Filter(It.name .== \"JEFFERY A\")\n#=>\nIt.department >>\nFilter(It.name .== \"POLICE\") >>\nIt.employee >>\nFilter(It.name .== \"JEFFERY A\")\n=#\n\nchicago[Q]\n#=>\n  │ employee                          │\n  │ name       position  salary  rate │\n──┼───────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442       │\n=#The predicate must produce true of false values.Q = It.department >>\n    Filter(Count(It.employee))\n\nchicago[Q]\n#-> ERROR: expected a predicateThe input data is dropped when the output of the predicate contains only false elements.Q = It.department >>\n    Filter(It.employee >> (It.salary .> 100000)) >>\n    Record(It.name, It.employee.salary)\n\nchicago[Q]\n#=>\n  │ department            │\n  │ name    salary        │\n──┼───────────────────────┼\n1 │ POLICE  101442; 80016 │\n2 │ FIRE    103350; 95484 │\n=#"
+},
+
+{
+    "location": "queries/#Take-and-Drop-1",
+    "page": "Query Algebra",
+    "title": "Take and Drop",
+    "category": "section",
+    "text": "We use Take(N) and Drop(N) to pass or drop the first N input elements.Employee = It.department.employee\n\nQ = Employee >> Take(4)\n#-> It.department.employee >> Take(4)\n\nchicago[Q]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ NANCY A    POLICE OFFICER      80016       │\n3 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n4 │ DANIEL A   FIRE FIGHTER-EMT    95484       │\n=#\n\nQ = Employee >> Drop(4)\n#-> It.department.employee >> Drop(4)\n\nchicago[Q]\n#=>\n  │ employee                                 │\n  │ name       position        salary  rate  │\n──┼──────────────────────────────────────────┼\n1 │ LAKENYA A  CROSSING GUARD          17.68 │\n2 │ DORIS A    CROSSING GUARD          19.38 │\n=#Take(-N) drops the last N elements, while Drop(-N) keeps the last N elements.Q = Employee >> Take(-4)\n\nchicago[Q]\n#=>\n  │ employee                                │\n  │ name       position        salary  rate │\n──┼─────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT        101442       │\n2 │ NANCY A    POLICE OFFICER   80016       │\n=#\n\nQ = Employee >> Drop(-4)\n\nchicago[Q]\n#=>\n  │ employee                                    │\n  │ name       position           salary  rate  │\n──┼─────────────────────────────────────────────┼\n1 │ JAMES A    FIRE ENGINEER-EMT  103350        │\n2 │ DANIEL A   FIRE FIGHTER-EMT    95484        │\n3 │ LAKENYA A  CROSSING GUARD             17.68 │\n4 │ DORIS A    CROSSING GUARD             19.38 │\n=#Take and Drop accept a query argument, which is evaluated against the input origin and must produce a singular integer.Half = Count(Employee) .÷ 2\n\nQ = Employee >> Take(Half)\n\nchicago[Q]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ NANCY A    POLICE OFFICER      80016       │\n3 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#\n\nQ = Take(Employee >> It.name)\n\nchicago[Q]\n#-> ERROR: expected a singular integer"
 },
 
 {
