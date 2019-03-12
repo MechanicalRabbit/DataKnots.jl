@@ -126,6 +126,7 @@ which rely upon the output from previous processing.
     3 │  4 │
     =#
 
+
 In DataKnots, queries are built algebraically, starting with query
 primitives, such as constants (`Lift`) or the identity (`It`), and
 then arranged with with combinators, such as composition (`>>`).
@@ -221,6 +222,11 @@ the resulting combinator builds queries with plural output.
     3 │  3 │
     =#
 
+This conversion lets us access Julia's rich statistical and data
+processing functions from our queries.
+
+### Cardinality
+
 When Julia values and functions are lifted, the type signature is
 inspected to discover how it should interact with query's flow. A
 flow is *singular* if it could have at most one element; else, it
@@ -233,8 +239,8 @@ then it is *mandatory*; else, it is *optional*.
 | `Union{T, Missing}` | Yes      | No        |
 | `{T}`               | Yes      | Yes       |
 
-This conversion lets us access Julia's rich statistical and data
-processing functions from our queries.
+While the model permits mandatory and plural values, there isn't a
+Julia representation for this permutation.
 
 ## Query Combinators
 
@@ -473,23 +479,44 @@ We could construct and register a `FirstHalf` query primitive.
     3 │  3 │
     =#
 
-Paging operations highlight a diversity of query operations. When
-a query processes its input an element at a time, we call it
-*elementwise*; else, it is *aggregate*. Further, when the argument
-of a combinator uses the input's origin, we call it
-*origin-aware*.
+### Processing Model
 
-| Query       | Elementwise | Origin-Aware |
-|-------------|-------------|--------------|
-| `Count`     | No          | No           |
-| `Take(N)`   | No          | Yes          |
-| `Count(X)`  | Yes         | No           |
-| `Filter(P)` | Yes         | No           |
+There is significant diversity how a query's input and output
+could be treated.
 
-Since both `Filter` and `Count` combinators are elementwise and
-not origin-aware, they behave in quite similar ways. Conversely,
-the `Take` combinator behaves more like the `Count` aggregate,
-with its argument being origin-aware.
+| Query       | Input Model | Output Cardinality   |
+|-------------|-------------|----------------------|
+| `Count`     | Aggregate   | Singular / Mandatory |
+| `Take(N)`   | Aggregate   | Plural   / Optional  |
+| `Count(X)`  | Elementwise | Singular / Mandatory |
+| `Filter(P)` | Elementwise | Singular / Optional  |
+| `Lift(1:N)` | Elementwise | Plural   / Optional  |
+
+In this processing model, query input and output are pipelines,
+with two sides: an *origin* and a *target*; each element in the
+origin is mapped to zero or more target elements.
+
+When a combinator processes its arguments, it has the option of
+how to assemble the input pipeline for each of its arguments.
+
+| Derivative | Input  | Output |
+|------------|--------|--------|
+| *passthru* | Origin | Target |
+| *endpoint* | Target | Target |
+| *atorigin* | Origin | Origin |
+
+Typically, only the trivial endpoint (target to target) pipeline
+is used, but sometimes the atorigin (origin to origin) is used.
+
+| Combinator  | Argument Input |
+|-------------|----------------|
+| `Filter(P)` | endpoint       |
+| `Count(X)`  | endpoint       |
+| `Take(N)`   | atorigin       |
+
+The composition combinator (`>>`) with query arguments `A` and
+`B`, `A >> B`, deserves specific mention. The input of `A` is
+simply a passthru while the input of `B` is the output of `A`.
 
 ## Structuring Data
 
