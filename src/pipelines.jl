@@ -720,12 +720,15 @@ This pipeline transforms a block vector by keeping the first `N` elements of
 each block.  If `rev` is true, the pipeline drops the first `N` elements of
 each block.
 """
-slice(N::Union{Missing,Int}, rev::Bool=false) =
+slice(N::Union{Int,Missing}, rev::Bool=false) =
     Pipeline(slice, N, rev)
 
 function slice(rt::Runtime, input::AbstractVector, N::Missing, rev::Bool)
     @assert input isa BlockVector
-    input
+    offs′ = !rev ? offsets(input) : fill(1, length(input)+1)
+    elts′ = !rev ? elements(input) : elements(input)[Int[]]
+    card = cardinality(input)|x0to1
+    return BlockVector(offs′, elts′, card)
 end
 
 function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
@@ -823,8 +826,8 @@ end
         (n >= 0 ? min(l + 1, n + 1) : max(1, l + n + 1), l)
     end
 
-@inline _slice_range(::Missing, l::Int, ::Bool) =
-    (1, l)
+@inline _slice_range(::Missing, l::Int, rev::Bool) =
+    !rev ? (1, l) : (1, 0)
 
 
 #

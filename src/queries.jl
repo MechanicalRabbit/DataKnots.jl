@@ -934,7 +934,7 @@ end
 # Take and Drop combinators.
 #
 
-function assemble_take(p::Pipeline, n::Int, rev::Bool)
+function assemble_take(p::Pipeline, n::Union{Int,Missing}, rev::Bool)
     elts = elements(target(p))
     card = cardinality(target(p))|x0to1
     chain_of(
@@ -971,10 +971,7 @@ Drops the first `N` elements of the input, keeps the rest.
 Drop(N) =
     Query(Drop, N)
 
-Take(env::Environment, p::Pipeline, ::Missing, rev::Bool=false) =
-    p
-
-Take(env::Environment, p::Pipeline, n::Int, rev::Bool=false) =
+Take(env::Environment, p::Pipeline, n::Union{Int,Missing}, rev::Bool=false) =
     assemble_take(p, n, rev)
 
 function Take(env::Environment, p::Pipeline, N, rev::Bool=false)
