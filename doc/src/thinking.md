@@ -147,9 +147,9 @@ combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-The query `Double(X)` evaluates `X` and then runs its output
-through `double`. So, to do nothing but double the current input,
-we could write `Double(It)`.
+For a query `X`, the query `Double(X)` evaluates `X` and then runs
+its output through `double`. Thus, the query `Double(It)` would
+simply double its input.
 
     void[Lift(1:3) >> Double(It)]
     #=>
@@ -408,9 +408,31 @@ while `Take` ignores input past a particular point.
     =#
 
 Unlike `Filter`, the argument to `Take` is evaluated once, in the
-context of the input's *origin*. In this next example, `Take` is
-performed three times. Each time, `It` refers to the integer
-elements of the outer loop, `OneTo(3)`.
+context of the input's *origin*. To explain, let's first consider
+how a vector packed within a tuple could be listed.
+
+    void[Lift((x='a':'c', n=2)) >> It.x]
+    #=>
+      │ x │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
+    =#
+
+Notice that `n` in this tuple is set to `2`. It is a singular
+integer, so we can use it within the argument to `Take`.
+
+    void[Lift((x='a':'c', n=2)) >> Each(It.x >> Take(It.n))]
+    #=>
+      │ x │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    =#
+
+In this next example, `Take` is performed three times. Each time,
+`It` refers to the integer elements of the outer loop, `OneTo(3)`.
 
     void[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
@@ -424,9 +446,9 @@ elements of the outer loop, `OneTo(3)`.
     6 │ c  │
     =#
 
-How do we grab the 1st half of an input stream? Let's define
-`FirstHalf` as a combinator that builds a query returning the
-first half of an input stream.
+More generally, how do we grab the 1st half of an input stream?
+Let's define `FirstHalf` as a combinator that builds a query
+returning the first half of an input stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
     void[FirstHalf(OneTo(6))]
