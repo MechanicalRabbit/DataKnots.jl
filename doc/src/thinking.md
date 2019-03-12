@@ -47,9 +47,16 @@ To query `void` with `Hello`, we use indexing notation
     │ Hello World │
     =#
 
+A tuple lifted to a constant query is displayed as a table.
+
+    void[Lift((name="DataKnots", version="0.1"))]
+    #=>
+    │ name       version │
+    ┼────────────────────┼
+    │ DataKnots  0.1     │
+    =#
+
 A vector lifted to a constant query will produce plural output.
-Consider `Lift('a':'c')`, constructed by lifting a unit range to a
-constant query.
 
     void[Lift('a':'c')]
     #=>
@@ -60,7 +67,7 @@ constant query.
     3 │ c  │
     =#
 
-We call queries constructed this way *primitives* as they do not
+We call queries constructed this way *primitives*, as they do not
 rely upon any other query. There are also combinators, which build
 new queries from existing ones.
 
@@ -141,8 +148,8 @@ combinator by passing the function and its arguments to `Lift`.
     Double(X) = Lift(double, (X,))
 
 The query `Double(X)` evaluates `X` and then runs its output
-through `double`. So, to do nothing else but double the current
-input, we could write `Double(It)`.
+through `double`. So, to do nothing but double the current input,
+we could write `Double(It)`.
 
     void[Lift(1:3) >> Double(It)]
     #=>
@@ -153,7 +160,8 @@ input, we could write `Double(It)`.
     3 │  6 │
     =#
 
-Using Julia's broadcast syntax, this lifting could be automated.
+Broadcasting a function over a query argument performs a `Lift`
+implicitly, building a query component.
 
     void[Lift(1:3) >> double.(It)]
     #=>
@@ -164,9 +172,28 @@ Using Julia's broadcast syntax, this lifting could be automated.
     3 │  6 │
     =#
 
-Automatic lifting also applies to built-in Julia operators (`+`)
+Any existing function could be broadcast this way. For example, we
+could broadcast `getfield` to get a field value from a tuple.
+
+    void[Lift((x=1,y=2)) >> getfield.(It, :y)]
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
+Getting a field value is common enough to have its own notation.
+
+    void[Lift((x=1,y=2)) >> It.y]
+    #=>
+    │ y │
+    ┼───┼
+    │ 2 │
+    =#
+
+Implicit lifting also applies to built-in Julia operators (`+`)
 and values (`1`). The expression `It .+ 1` is a query component
-that increments each of it's input elements.
+that increments each of its input elements.
 
     void[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -206,8 +233,8 @@ then it is *mandatory*; else, it is *optional*.
 | `Union{T, Missing}` | Yes      | No        |
 | `{T}`               | Yes      | Yes       |
 
-This automated conversion lets us access Julia's rich statistical
-and data processing functions from our queries.
+This conversion lets us access Julia's rich statistical and data
+processing functions from our queries.
 
 ## Query Combinators
 
@@ -219,8 +246,8 @@ aggregation, filtering, and paging.
 ### Aggregate Queries
 
 So far queries have been *elementwise*; that is, for each input
-element, they produce zero or more output elements. Consider now
-the `Count` primitive which returns the number of input elements.
+element, they produce zero or more output elements. Consider the
+`Count` primitive; it returns the number of its input elements.
 
     void[OneTo(3) >> Count]
     #=>
@@ -265,9 +292,9 @@ around `OneTo(It) >> Sum` will not change the result.
     │ 10 │
     =#
 
-We need the `Each` combinator, which acts as a barrier for an
-aggregate query. For each input element, `Each` evaluates its
-argument; then, it then collects the outputs.
+We need the `Each` combinator, which acts as an elementwise
+*barrier*.  For each input element, `Each` evaluates its argument;
+and then, it then collects the outputs.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -305,8 +332,8 @@ plural output is converted into the function's vector argument.
     =#
 
 To use `Mean` as a query primitive, we use `Then` to build a query
-that aggregates from its input. Next, we register this query so it
-is used when `Mean` is treated as a query.
+that aggregates elements from its input. Next, we register this
+query so it is used when `Mean` is treated as a query.
 
     DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)
 
@@ -319,10 +346,10 @@ Once these are done, one could take an average of sums as follows:
     │ 3.33333 │
     =#
 
-In DataKnots, summary operations are naturally expressed as
-aggregate query primitives or as query combinators. Moreover,
-custom aggregates can be constructed from native Julia functions
-and lifted into the query algebra.
+In DataKnots, summary operations are expressed as aggregate query
+primitives or as query combinators taking a plural query argument.
+Moreover, custom aggregates can be constructed from native Julia
+functions and lifted into the query algebra.
 
 ### Filtering
 
@@ -383,7 +410,7 @@ while `Take` ignores input past a particular point.
 Unlike `Filter`, the argument to `Take` is evaluated once, in the
 context of the input's *origin*. In this next example, `Take` is
 performed three times. Each time, `It` refers to the integer
-elements of the outer loop, `OneTo`.
+elements of the outer loop, `OneTo(3)`.
 
     void[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
@@ -398,8 +425,8 @@ elements of the outer loop, `OneTo`.
     =#
 
 How do we grab the 1st half of an input stream? Let's define
-`FirstHalf` as a combinator that builds a query returning the first
-half of an input stream.
+`FirstHalf` as a combinator that builds a query returning the
+first half of an input stream.
 
     FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
     void[FirstHalf(OneTo(6))]
@@ -411,7 +438,7 @@ half of an input stream.
     3 │  3 │
     =#
 
-Using `Then`, this combinator could be used as a query primitive.
+We could construct and register a `FirstHalf` query primitive.
 
     DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
 
