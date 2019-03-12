@@ -29,7 +29,8 @@ We will need the following definitions.
         compile,
         elements,
         optimize,
-        stub,
+        trivial_pipe,
+        target_pipe,
         uncover
 
 As a running example, we will use the following dataset of city departments
@@ -219,7 +220,7 @@ start with a trivial pipeline and sequentially tranfrorm it with the queries
 
 The trivial pipeline can be obtained from the input data.
 
-    p0 = stub(chicago)
+    p0 = trivial_pipe(chicago)
     #-> pass()
 
 We use the function `compile()` to apply a query to a pipeline.  To run
@@ -243,9 +244,9 @@ get is the result of `compose(p1, column(:employee))`.
 
 To finish assembling the pipeline, we apply `Filter(SalaryOver100K)` to `p2`.
 `Filter` acts on the input pipeline as follows.  First, it compiles the
-predicate query using the trivial pipeline on the output of `p2`.
+predicate query using the trivial pipeline on the target endpoint of `p2`.
 
-    pc0 = stub(p2)
+    pc0 = target_pipe(p2)
     #-> wrap()
 
     pc1 = compile(SalaryOver100K, env, pc0)

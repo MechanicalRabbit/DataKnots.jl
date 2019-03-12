@@ -313,21 +313,21 @@ end
 # Monadic composition.
 #
 
-# Left and right stubs of a pipeline.
+# Trivial pipes at the origin and target endpoints of a pipeline.
 
-istub(p::Pipeline) =
-    stub(ishape(p))
+origin_pipe(p::Pipeline) =
+    trivial_pipe(ishape(p))
 
-stub(p::Pipeline) =
-    stub(shape(p))
+target_pipe(p::Pipeline) =
+    trivial_pipe(shape(p))
 
-stub(ishp::IsFlow) =
-    stub(elements(ishp))
+trivial_pipe(ishp::IsFlow) =
+    trivial_pipe(elements(ishp))
 
-stub(ishp::AbstractShape) =
+trivial_pipe(ishp::AbstractShape) =
     cover(ishp)
 
-stub(db::DataKnot) =
+trivial_pipe(db::DataKnot) =
     cover(shape(db))
 
 # Align pipelines for composition.
@@ -456,7 +456,7 @@ Record(Xs...) =
     Query(Record, Xs...)
 
 function Record(env::Environment, p::Pipeline, Xs...)
-    xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(stub(p)))
+    xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_record(p, xs)
 end
 
@@ -515,7 +515,7 @@ Lift(env::Environment, p::Pipeline, val) =
     Lift(env, p, convert(DataKnot, val))
 
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
-    xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(stub(p)))
+    xs = compile.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_lift(p, f, xs)
 end
 
@@ -573,7 +573,7 @@ This query evaluates `X` elementwise.
 Each(X) = Query(Each, X)
 
 Each(env::Environment, p::Pipeline, X) =
-    compose(p, compile(X, env, stub(p)))
+    compose(p, compile(X, env, target_pipe(p)))
 
 
 #
@@ -759,7 +759,7 @@ Keep(env::Environment, p::Pipeline, P, Qs...) =
     Keep(env, Keep(env, p, P), Qs...)
 
 function Keep(env::Environment, p::Pipeline, P)
-    q = compile(P, env, stub(p))
+    q = compile(P, env, target_pipe(p))
     assemble_keep(p, q)
 end
 
@@ -785,7 +785,7 @@ Given(env::Environment, p::Pipeline, Xs...) =
     Given(env, p, Keep(Xs[1:end-1]...) >> Each(Xs[end]))
 
 function Given(env::Environment, p::Pipeline, X)
-    q = compile(X, env, stub(p))
+    q = compile(X, env, target_pipe(p))
     assemble_given(p, q)
 end
 
@@ -807,7 +807,7 @@ Then(ctor, args::Tuple) =
     Query(Then, ctor, args)
 
 Then(env::Environment, p::Pipeline, ctor, args::Tuple=()) =
-    compile(ctor(Then(p), args...), env, istub(p))
+    compile(ctor(Then(p), args...), env, origin_pipe(p))
 
 
 #
@@ -835,7 +835,7 @@ Lift(::typeof(Count)) =
     Then(Count)
 
 function Count(env::Environment, p::Pipeline, X)
-    x = compile(X, env, stub(p))
+    x = compile(X, env, target_pipe(p))
     compose(p, assemble_count(x))
 end
 
@@ -876,7 +876,7 @@ Lift(::typeof(Min)) =
     Then(Min)
 
 function Sum(env::Environment, p::Pipeline, X)
-    x = compile(X, env, stub(p))
+    x = compile(X, env, target_pipe(p))
     assemble_lift(p, sum, Pipeline[x])
 end
 
@@ -884,7 +884,7 @@ maximum_missing(v) =
     !isempty(v) ? maximum(v) : missing
 
 function Max(env::Environment, p::Pipeline, X)
-    x = compile(X, env, stub(p))
+    x = compile(X, env, target_pipe(p))
     card = cardinality(shape(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
@@ -894,7 +894,7 @@ minimum_missing(v) =
     !isempty(v) ? minimum(v) : missing
 
 function Min(env::Environment, p::Pipeline, X)
-    x = compile(X, env, stub(p))
+    x = compile(X, env, target_pipe(p))
     card = cardinality(shape(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
@@ -924,7 +924,7 @@ Filter(X) =
     Query(Filter, X)
 
 function Filter(env::Environment, p::Pipeline, X)
-    x = compile(X, env, stub(p))
+    x = compile(X, env, target_pipe(p))
     assemble_filter(p, x)
 end
 
@@ -977,7 +977,7 @@ Take(env::Environment, p::Pipeline, n::Int, rev::Bool=false) =
     assemble_take(p, n, rev)
 
 function Take(env::Environment, p::Pipeline, N, rev::Bool=false)
-    n = compile(N, env, istub(p))
+    n = compile(N, env, origin_pipe(p))
     assemble_take(p, n, rev)
 end
 
