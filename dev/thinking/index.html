@@ -9,14 +9,19 @@
 │ It          │
 ┼─────────────┼
 │ Hello World │
-=#</code></pre><p>A vector lifted to a constant query will produce plural output. Consider <code>Lift(&#39;a&#39;:&#39;c&#39;)</code>, constructed by lifting a unit range to a constant query.</p><pre><code class="language-julia">void[Lift(&#39;a&#39;:&#39;c&#39;)]
+=#</code></pre><p>A tuple lifted to a constant query is displayed as a table.</p><pre><code class="language-julia">void[Lift((name=&quot;DataKnots&quot;, version=&quot;0.1&quot;))]
+#=&gt;
+│ name       version │
+┼────────────────────┼
+│ DataKnots  0.1     │
+=#</code></pre><p>A vector lifted to a constant query will produce plural output.</p><pre><code class="language-julia">void[Lift(&#39;a&#39;:&#39;c&#39;)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │ a  │
 2 │ b  │
 3 │ c  │
-=#</code></pre><p>We call queries constructed this way <em>primitives</em> as they do not rely upon any other query. There are also combinators, which build new queries from existing ones.</p><h3><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h3><p>Two queries can be connected sequentially using the <em>composition</em> combinator (<code>&gt;&gt;</code>). Consider the composition, <code>Lift(1:3) &gt;&gt; Hello</code>. Since <code>Hello</code> produces a value for each input element, preceding it with <code>Lift(1:3)</code> generates three copies of <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Hello]
+=#</code></pre><p>We call queries constructed this way <em>primitives</em>, as they do not rely upon any other query. There are also combinators, which build new queries from existing ones.</p><h3><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h3><p>Two queries can be connected sequentially using the <em>composition</em> combinator (<code>&gt;&gt;</code>). Consider the composition, <code>Lift(1:3) &gt;&gt; Hello</code>. Since <code>Hello</code> produces a value for each input element, preceding it with <code>Lift(1:3)</code> generates three copies of <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Hello]
 #=&gt;
   │ It          │
 ──┼─────────────┼
@@ -47,21 +52,31 @@ void[Lift(1:3) &gt;&gt; Increment]
 2 │  3 │
 3 │  4 │
 =#</code></pre><p>In DataKnots, queries are built algebraically, starting with query primitives, such as constants (<code>Lift</code>) or the identity (<code>It</code>), and then arranged with with combinators, such as composition (<code>&gt;&gt;</code>). This lets us define sophisticated query components and remix them in creative ways.</p><h3><a class="nav-anchor" id="Julia-Functions-1" href="#Julia-Functions-1">Julia Functions</a></h3><p>Consider the function <code>double(x)</code> that, when applied to a <code>Number</code>, produces a <code>Number</code>:</p><pre><code class="language-julia">double(x) = 2x
-double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any Julia function to a query combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>The query <code>Double(X)</code> evaluates <code>X</code> and then runs its output through <code>double</code>. So, to do nothing else but double the current input, we could write <code>Double(It)</code>.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Double(It)]
+double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any Julia function to a query combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>The query <code>Double(X)</code> evaluates <code>X</code> and then runs its output through <code>double</code>. So, to do nothing but double the current input, we could write <code>Double(It)</code>.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Double(It)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Using Julia&#39;s broadcast syntax, this lifting could be automated.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; double.(It)]
+=#</code></pre><p>Broadcasting a function over a query argument performs a <code>Lift</code> implicitly, building a query component.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; double.(It)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Automatic lifting also applies to built-in Julia operators (<code>+</code>) and values (<code>1</code>). The expression <code>It .+ 1</code> is a query component that increments each of it&#39;s input elements.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; (It .+ 1)]
+=#</code></pre><p>Any existing function could be broadcast this way. For example, we could broadcast <code>getfield</code> to get a field value from a tuple.</p><pre><code class="language-julia">void[Lift((x=1,y=2)) &gt;&gt; getfield.(It, :y)]
+#=&gt;
+│ It │
+┼────┼
+│  2 │
+=#</code></pre><p>Getting a field value is common enough to have its own notation.</p><pre><code class="language-julia">void[Lift((x=1,y=2)) &gt;&gt; It.y]
+#=&gt;
+│ y │
+┼───┼
+│ 2 │
+=#</code></pre><p>Implicit lifting also applies to built-in Julia operators (<code>+</code>) and values (<code>1</code>). The expression <code>It .+ 1</code> is a query component that increments each of its input elements.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; (It .+ 1)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -75,7 +90,7 @@ double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</c
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><p>When Julia values and functions are lifted, the type signature is inspected to discover how it should interact with query&#39;s flow. A flow is <em>singular</em> if it could have at most one element; else, it is <em>plural</em>. Furthermore, if a flow must have at least one element then it is <em>mandatory</em>; else, it is <em>optional</em>.</p><table><tr><th>Type</th><th>Singular</th><th>Mandatory</th></tr><tr><td><code>Vector{T}</code></td><td>No</td><td>No</td></tr><tr><td><code>Union{T, Missing}</code></td><td>Yes</td><td>No</td></tr><tr><td><code>{T}</code></td><td>Yes</td><td>Yes</td></tr></table><p>This automated conversion lets us access Julia&#39;s rich statistical and data processing functions from our queries.</p><h2><a class="nav-anchor" id="Query-Combinators-1" href="#Query-Combinators-1">Query Combinators</a></h2><p>There are query operations which cannot be lifted from Julia functions. We&#39;ve met a few already, including the identity (<code>It</code>) and query composition (<code>&gt;&gt;</code>). There are many others involving aggregation, filtering, and paging.</p><h3><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h3><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider now the <code>Count</code> primitive which returns the number of input elements.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Count]
+=#</code></pre><p>When Julia values and functions are lifted, the type signature is inspected to discover how it should interact with query&#39;s flow. A flow is <em>singular</em> if it could have at most one element; else, it is <em>plural</em>. Furthermore, if a flow must have at least one element then it is <em>mandatory</em>; else, it is <em>optional</em>.</p><table><tr><th>Type</th><th>Singular</th><th>Mandatory</th></tr><tr><td><code>Vector{T}</code></td><td>No</td><td>No</td></tr><tr><td><code>Union{T, Missing}</code></td><td>Yes</td><td>No</td></tr><tr><td><code>{T}</code></td><td>Yes</td><td>Yes</td></tr></table><p>This conversion lets us access Julia&#39;s rich statistical and data processing functions from our queries.</p><h2><a class="nav-anchor" id="Query-Combinators-1" href="#Query-Combinators-1">Query Combinators</a></h2><p>There are query operations which cannot be lifted from Julia functions. We&#39;ve met a few already, including the identity (<code>It</code>) and query composition (<code>&gt;&gt;</code>). There are many others involving aggregation, filtering, and paging.</p><h3><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h3><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider the <code>Count</code> primitive; it returns the number of its input elements.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Count]
 #=&gt;
 │ It │
 ┼────┼
@@ -100,7 +115,7 @@ double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</c
 │ It │
 ┼────┼
 │ 10 │
-=#</code></pre><p>We need the <code>Each</code> combinator, which acts as a barrier for an aggregate query. For each input element, <code>Each</code> evaluates its argument; then, it then collects the outputs.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum)]
+=#</code></pre><p>We need the <code>Each</code> combinator, which acts as an elementwise <em>barrier</em>.  For each input element, <code>Each</code> evaluates its argument; and then, it then collects the outputs.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -121,12 +136,12 @@ void[Mean(OneTo(3) &gt;&gt; Sum(OneTo(It)))]
 │ It      │
 ┼─────────┼
 │ 3.33333 │
-=#</code></pre><p>To use <code>Mean</code> as a query primitive, we use <code>Then</code> to build a query that aggregates from its input. Next, we register this query so it is used when <code>Mean</code> is treated as a query.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean]
+=#</code></pre><p>To use <code>Mean</code> as a query primitive, we use <code>Then</code> to build a query that aggregates elements from its input. Next, we register this query so it is used when <code>Mean</code> is treated as a query.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean]
 #=&gt;
 │ It      │
 ┼─────────┼
 │ 3.33333 │
-=#</code></pre><p>In DataKnots, summary operations are naturally expressed as aggregate query primitives or as query combinators. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra.</p><h3><a class="nav-anchor" id="Filtering-1" href="#Filtering-1">Filtering</a></h3><p>The <code>Filter</code> combinator has one parameter, a predicate query that, for each input element, decides if this element should be included in the output.</p><pre><code class="language-julia">void[OneTo(6) &gt;&gt; Filter(It .&gt; 3)]
+=#</code></pre><p>In DataKnots, summary operations are expressed as aggregate query primitives or as query combinators taking a plural query argument. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra.</p><h3><a class="nav-anchor" id="Filtering-1" href="#Filtering-1">Filtering</a></h3><p>The <code>Filter</code> combinator has one parameter, a predicate query that, for each input element, decides if this element should be included in the output.</p><pre><code class="language-julia">void[OneTo(6) &gt;&gt; Filter(It .&gt; 3)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -153,7 +168,7 @@ void[OneTo(6) &gt;&gt; KeepEven]
 1 │  4 │
 2 │  5 │
 3 │  6 │
-=#</code></pre><p>Unlike <code>Filter</code>, the argument to <code>Take</code> is evaluated once, in the context of the input&#39;s <em>origin</em>. In this next example, <code>Take</code> is performed three times. Each time, <code>It</code> refers to the integer elements of the outer loop, <code>OneTo</code>.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
+=#</code></pre><p>Unlike <code>Filter</code>, the argument to <code>Take</code> is evaluated once, in the context of the input&#39;s <em>origin</em>. In this next example, <code>Take</code> is performed three times. Each time, <code>It</code> refers to the integer elements of the outer loop, <code>OneTo(3)</code>.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
 #=&gt;
   │ It │
 ──┼────┼
@@ -171,7 +186,7 @@ void[FirstHalf(OneTo(6))]
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><p>Using <code>Then</code>, this combinator could be used as a query primitive.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
+=#</code></pre><p>We could construct and register a <code>FirstHalf</code> query primitive.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
 
 void[OneTo(6) &gt;&gt; FirstHalf]
 #=&gt;
