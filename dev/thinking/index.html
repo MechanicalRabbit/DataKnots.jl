@@ -52,7 +52,7 @@ void[Lift(1:3) &gt;&gt; Increment]
 2 │  3 │
 3 │  4 │
 =#</code></pre><p>In DataKnots, queries are built algebraically, starting with query primitives, such as constants (<code>Lift</code>) or the identity (<code>It</code>), and then arranged with with combinators, such as composition (<code>&gt;&gt;</code>). This lets us define sophisticated query components and remix them in creative ways.</p><h3><a class="nav-anchor" id="Julia-Functions-1" href="#Julia-Functions-1">Julia Functions</a></h3><p>Consider the function <code>double(x)</code> that, when applied to a <code>Number</code>, produces a <code>Number</code>:</p><pre><code class="language-julia">double(x) = 2x
-double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any Julia function to a query combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>The query <code>Double(X)</code> evaluates <code>X</code> and then runs its output through <code>double</code>. So, to do nothing but double the current input, we could write <code>Double(It)</code>.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Double(It)]
+double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any Julia function to a query combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>For a query <code>X</code>, the query <code>Double(X)</code> evaluates <code>X</code> and then runs its output through <code>double</code>. Thus, the query <code>Double(It)</code> would simply double its input.</p><pre><code class="language-julia">void[Lift(1:3) &gt;&gt; Double(It)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -168,7 +168,20 @@ void[OneTo(6) &gt;&gt; KeepEven]
 1 │  4 │
 2 │  5 │
 3 │  6 │
-=#</code></pre><p>Unlike <code>Filter</code>, the argument to <code>Take</code> is evaluated once, in the context of the input&#39;s <em>origin</em>. In this next example, <code>Take</code> is performed three times. Each time, <code>It</code> refers to the integer elements of the outer loop, <code>OneTo(3)</code>.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
+=#</code></pre><p>Unlike <code>Filter</code>, the argument to <code>Take</code> is evaluated once, in the context of the input&#39;s <em>origin</em>. To explain, let&#39;s first consider how a vector packed within a tuple could be listed.</p><pre><code class="language-julia">void[Lift((x=&#39;a&#39;:&#39;c&#39;, n=2)) &gt;&gt; It.x]
+#=&gt;
+  │ x │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+=#</code></pre><p>Notice that <code>n</code> in this tuple is set to <code>2</code>. It is a singular integer, so we can use it within the argument to <code>Take</code>.</p><pre><code class="language-julia">void[Lift((x=&#39;a&#39;:&#39;c&#39;, n=2)) &gt;&gt; Each(It.x &gt;&gt; Take(It.n))]
+#=&gt;
+  │ x │
+──┼───┼
+1 │ a │
+2 │ b │
+=#</code></pre><p>In this next example, <code>Take</code> is performed three times. Each time, <code>It</code> refers to the integer elements of the outer loop, <code>OneTo(3)</code>.</p><pre><code class="language-julia">void[OneTo(3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
 #=&gt;
   │ It │
 ──┼────┼
@@ -178,7 +191,7 @@ void[OneTo(6) &gt;&gt; KeepEven]
 4 │ a  │
 5 │ b  │
 6 │ c  │
-=#</code></pre><p>How do we grab the 1st half of an input stream? Let&#39;s define <code>FirstHalf</code> as a combinator that builds a query returning the first half of an input stream.</p><pre><code class="language-julia">FirstHalf(X) = Each(X &gt;&gt; Take(Count(X) .÷ 2))
+=#</code></pre><p>More generally, how do we grab the 1st half of an input stream? Let&#39;s define <code>FirstHalf</code> as a combinator that builds a query returning the first half of an input stream.</p><pre><code class="language-julia">FirstHalf(X) = Each(X &gt;&gt; Take(Count(X) .÷ 2))
 void[FirstHalf(OneTo(6))]
 #=&gt;
   │ It │
