@@ -31,8 +31,8 @@ will serve as the input for our queries.
 
 Any Julia value could be converted to a *query* using the `Lift`
 constructor. Queries constructed this way are constant: for each
-input they receive, they produce the given value.  Consider the
-query `Hello`, lifted from the string value `"Hello World"`.
+input element they receive, they output the given value. Consider
+the query `Hello`, lifted from the string value `"Hello World"`.
 
     Hello = Lift("Hello World")
 
@@ -492,31 +492,37 @@ could be treated.
 | `Filter(P)` | Elementwise | Singular / Optional  |
 | `Lift(1:N)` | Elementwise | Plural   / Optional  |
 
-In this processing model, query input and output are pipelines,
-with two sides: an *origin* and a *target*; each element in the
-origin is mapped to zero or more target elements.
+In this processing model, query input and output are pipelines
+with two sides: an *origin* and a *target*, where each element in
+the origin is mapped to zero or more target elements.
 
-When a combinator processes its arguments, it has the option of
-how to assemble the input pipeline for each of its arguments.
+For any `origin -> target` pipeline, we can create two trivial
+pipelines, `origin_pipe`: `origin -> origin`, and `target_pipe`:
+`target -> target`. Therefore we have three options.
 
-| Derivative | Input  | Output |
-|------------|--------|--------|
-| *passthru* | Origin | Target |
-| *endpoint* | Target | Target |
-| *atorigin* | Origin | Origin |
+| Derivative    | Input  | Output |
+|---------------|--------|--------|
+| *pass though* | Origin | Target |
+| `target_pipe` | Target | Target |
+| `origin_pipe` | Origin | Origin |
 
-Typically, only the trivial endpoint (target to target) pipeline
-is used, but sometimes the atorigin (origin to origin) is used.
+A combinator has the option of what kind of input pipeline it
+could use for each of its arguments.
 
-| Combinator  | Argument Input |
-|-------------|----------------|
-| `Filter(P)` | endpoint       |
-| `Count(X)`  | endpoint       |
-| `Take(N)`   | atorigin       |
+| Combinator          | Argument Input          |
+|---------------------|-------------------------|
+| `Take(N)`           | N is an `origin_pipe`   |
+| `Filter(P)`         | P is a `target_pipe`    |
+| `Count(X)`          | X is a `target_pipe`    |
+| `Lift(fn, (Xs...))` | Xs... are `target_pipe` |
 
 The composition combinator (`>>`) with query arguments `A` and
-`B`, `A >> B`, deserves specific mention. The input of `A` is
-simply a passthru while the input of `B` is the output of `A`.
+`B`, `A >> B`, deserves specific mention. The input of `A` is a
+pass though of the composition's input, while the input of `B` is
+the output of `A`.
+
+Also note that a combinator which builds only elementwise queries
+will necessarily use the target pipe to process its arguments.
 
 ## Structuring Data
 
