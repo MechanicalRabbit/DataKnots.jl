@@ -21,7 +21,7 @@ struct DataKnot
     cell::AbstractVector
     shp::AbstractShape
 
-    function DataKnot(cell::AbstractVector, shp::AbstractShape)
+    function DataKnot(cell::AbstractVector, shp::Union{AbstractShape,Type})
         @assert length(cell) == 1
         new(cell, shp)
     end

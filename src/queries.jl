@@ -944,7 +944,6 @@ function assemble_take(p::Pipeline, n::Union{Int,Missing}, rev::Bool)
 end
 
 function assemble_take(p::Pipeline, n::Pipeline, rev::Bool)
-    n_card = cardinality(target(n))
     n = uncover(n)
     fits(target(n), BlockOf(ValueOf(Int), x0to1)) || error("expected a singular integer")
     src = source(p)
