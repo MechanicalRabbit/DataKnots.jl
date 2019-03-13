@@ -126,15 +126,15 @@ which rely upon the output from previous processing.
     3 │  4 │
     =#
 
-
 In DataKnots, queries are built algebraically, starting with query
 primitives, such as constants (`Lift`) or the identity (`It`), and
 then arranged with with combinators, such as composition (`>>`).
 This lets us define sophisticated query components and remix them
 in creative ways.
 
-### Julia Functions
+### Lifting Julia Functions
 
+Any Julia function could be integrated into a DataKnots query.
 Consider the function `double(x)` that, when applied to a
 `Number`, produces a `Number`:
 
@@ -227,20 +227,41 @@ processing functions from our queries.
 
 ### Cardinality
 
-When Julia values and functions are lifted, the type signature is
-inspected to discover how it should interact with query's flow. A
-flow is *singular* if it could have at most one element; else, it
-is *plural*. Furthermore, if a flow must have at least one element
-then it is *mandatory*; else, it is *optional*.
+We have seen that queries produce any number of output rows:
+`Lift(1:3)` produces `3` rows and `Lift("Hello World")` produces
+exactly one row. Further, the value `missing`, lifted to a
+constant query, never produces any rows.
 
-| Type                | Singular | Mandatory |
-|---------------------|----------|-----------|
-| `Vector{T}`         | No       | No        |
-| `Union{T, Missing}` | Yes      | No        |
-| `{T}`               | Yes      | Yes       |
+    void[Lift(missing)]
+    #=>
+    │ It │
+    ┼────┼
+    =#
 
-While the model permits mandatory and plural values, there isn't a
-Julia representation for this permutation.
+The constraint on the number of output rows a query may produce is
+called *cardinality*. A query is *mandatory* if its output must
+contain at least one row. It is *singular* if its output must
+contain at least one row.
+
+| Example         | Singular | Mandatory |
+|-----------------|----------|-----------|
+| `Lift([])`      | No       | No        |
+| `Lift('a':'c')` | No       | No        |
+| `Lift(missing)` | Yes      | No        |
+| `Lift("Hello")` | Yes      | Yes       |
+
+It's notable that queries producing vectors are never singular nor
+mandatory.
+
+    void[Lift(["One"])]
+    #=>
+      │ It  │
+    ──┼─────┼
+    1 │ One │
+    =#
+
+Finally, while the model permits mandatory and plural values,
+there isn't a Julia representation for this permutation.
 
 ## Query Combinators
 
