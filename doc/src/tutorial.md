@@ -5,9 +5,9 @@ accidental programmers could more easily solve complex data
 analysis tasks.
 
 This tutorial shows how typical query operations can be performed
-upon a simplified in-memory dataset. For initial releases,
-DataKnots will not include have methods to read/write common data
-formats (such as CSV or DataFrames). Contributors are welcome.
+upon a simplified in-memory dataset. Currently DataKnots does not
+include methods to read/write common data formats (such as CSV or
+DataFrames). Feedback and contributions are welcome.
 
 ## Getting Started
 
@@ -18,19 +18,15 @@ represented as nested `NamedTuple` and `Vector` objects.
       (department = [
         (name = "POLICE",
          employee = [
-          (name = "JEFFERY A", position = "SERGEANT",
-           salary = 101442),
-          (name = "NANCY A", position = "POLICE OFFICER",
-           salary = 80016)]),
+          (name = "JEFFERY A", position = "SERGEANT", salary = 101442),
+          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016)]),
         (name = "FIRE",
          employee = [
-          (name = "DANIEL A", position = "FIRE FIGHTER-EMT",
-           salary = 95484)])],);
+          (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484)])],)
 
 In this hierarchical Chicago dataset, the root is a `NamedTuple`
-with an entry `:department`, which is a `Vector` department
-records, and so on. Notice that the label `name` occurs both
-within the context of a department and an employee record.
+with a field `department`, which is a `Vector` of department
+records, and so on.
 
 To query this dataset, we convert it into a `DataKnot`, or *knot*.
 
@@ -41,7 +37,7 @@ To query this dataset, we convert it into a `DataKnot`, or *knot*.
 
 Let's say we want to return the list of department names from this
 dataset. We query the `chicago` knot using Julia's index notation
-and the query `It.department.name`.
+with `It.department.name`.
 
     department_names = chicago[It.department.name]
     #=>
@@ -59,8 +55,8 @@ this output knot could be accessed via `get` function.
 
 ### Navigation
 
-In DataKnot queries, `It` means "use the current input". The
-dotted notation lets one navigate the hierarchy. Let's continue
+In DataKnot queries, `It` means "the current input". The dotted
+notation lets one navigate a hierarchical dataset. Let's continue
 our dataset exploration by listing employee names.
 
     chicago[It.department.employee.name]
@@ -80,8 +76,8 @@ can't be found, an appropriate error message is displayed.
     #-> ERROR: cannot find "employee" ⋮
 
 Instead, `employee` tuples can be queried by navigating though
-`department` tuples. When tuples are returned, they is displayed
-with a tabular layout.
+`department` tuples. When tuples are returned, they are displayed
+as a table.
 
     chicago[It.department.employee]
     #=>
@@ -93,12 +89,12 @@ with a tabular layout.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-Notice that nested lists traversed during navigation are flattened
-into a single output.
+Notice that nested vectors traversed during navigation are
+flattened into a single output vector.
 
 ### Composition & Identity
 
-Dotted navigations, such as `It.department.name`, are a syntax
+Dotted navigation, such as `It.department.name`, is a syntax
 shorthand for the `Get()` primitive together with query
 composition (`>>`).
 
@@ -110,7 +106,7 @@ composition (`>>`).
     2 │ FIRE   │
     =#
 
-The `Get()` primitive returns values that match a given name.
+The `Get()` primitive returns values that match a given label.
 Query composition (`>>`) chains two queries serially, with the
 output of its first query as input to the second.
 
@@ -124,10 +120,9 @@ output of its first query as input to the second.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-In this query algebra, `It` is the identity query with respect to
-composition (`>>`). The query `It` simply reproduces for its
-output what it recieves as its input. Hence, `It` can be woven
-into any composition without changing the result.
+The `It` query simply reproduces its input, which makes it the
+identity with respect to composition (`>>`). Hence, `It` can be
+woven into any composition without changing the result.
 
     chicago[It >> Get(:department) >> Get(:name)]
     #=>
@@ -137,7 +132,7 @@ into any composition without changing the result.
     2 │ FIRE   │
     =#
 
-This motivates our clever use of `It` as a syntax short hand.
+This motivates our clever use of `It` as a syntax shorthand.
 
     chicago[It.department.name]
     #=>
@@ -147,8 +142,9 @@ This motivates our clever use of `It` as a syntax short hand.
     2 │ FIRE   │
     =#
 
-This query, `It.department.name`, could be equivalently written
-`Get(:department) >> Get(:name)`.
+In DataKnots, queries are either *primitives*, such as `Get` and
+`It`, or built from other queries with *combinators*, such as
+composition (`>>`). Let's explore some other combinators.
 
 ### Context & Counting
 
@@ -175,16 +171,14 @@ within each `department`.
     2 │  1 │
     =#
 
-In this output we see that the 1st department, `"POLICE"`, has `2`
-employees, while the 2nd, `"FIRE"` only has `1`. The occurrence of
-`It` within the subordinate query `Count(It.employee)` refers to
-each department individually, not to the dataset as a whole.
+In this output, we see that one department has `2` employees,
+while the other has only `1`.
 
 ### Record Construction
 
-Returning values in tandem can be done with `Record()`. Let's
-improve the previous output by including each department's name
-alongside employee counts.
+Let's improve the previous query by including each department's
+name alongside employee counts. This can be done by using the
+`Record` combinator.
 
     chicago[
         It.department >>
@@ -199,7 +193,7 @@ alongside employee counts.
     =#
 
 Records can be nested. The following listing includes, for each
-department, employee names and their salary.
+department, employees' name and salary.
 
     chicago[
         It.department >>
@@ -215,8 +209,8 @@ department, employee names and their salary.
     2 │ FIRE    DANIEL A, 95484                   │
     =#
 
-In this nested display, commas are used to separate fields and
-semi-colons separate values.
+In this output, commas separate tuple fields and semi-colons
+separate vector elements.
 
 ### Expressions & Output Labels
 
