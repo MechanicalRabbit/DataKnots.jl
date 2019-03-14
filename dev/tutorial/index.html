@@ -1,24 +1,21 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>DataKnots Tutorial · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>DataKnots Tutorial</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Query-Combinators-1">Query Combinators</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>DataKnots Tutorial</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>DataKnots Tutorial</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="DataKnots-Tutorial-1" href="#DataKnots-Tutorial-1">DataKnots Tutorial</a></h1><p>DataKnots is an embedded query language designed so that accidental programmers could more easily solve complex data analysis tasks.</p><p>This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset. For initial releases, DataKnots will not include have methods to read/write common data formats (such as CSV or DataFrames). Contributors are welcome.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>DataKnots Tutorial · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>DataKnots Tutorial</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Query-Combinators-1">Query Combinators</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>DataKnots Tutorial</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>DataKnots Tutorial</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="DataKnots-Tutorial-1" href="#DataKnots-Tutorial-1">DataKnots Tutorial</a></h1><p>DataKnots is an embedded query language designed so that accidental programmers could more easily solve complex data analysis tasks.</p><p>This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset. Currently DataKnots does not include methods to read/write common data formats (such as CSV or DataFrames). Feedback and contributions are welcome.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
   (department = [
     (name = &quot;POLICE&quot;,
      employee = [
-      (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;,
-       salary = 101442),
-      (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;,
-       salary = 80016)]),
+      (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
+      (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016)]),
     (name = &quot;FIRE&quot;,
      employee = [
-      (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;,
-       salary = 95484)])],);</code></pre><p>In this hierarchical Chicago dataset, the root is a <code>NamedTuple</code> with an entry <code>:department</code>, which is a <code>Vector</code> department records, and so on. Notice that the label <code>name</code> occurs both within the context of a department and an employee record.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
-chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-First-Query-1" href="#Our-First-Query-1">Our First Query</a></h3><p>Let&#39;s say we want to return the list of department names from this dataset. We query the <code>chicago</code> knot using Julia&#39;s index notation and the query <code>It.department.name</code>.</p><pre><code class="language-julia">department_names = chicago[It.department.name]
+      (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484)])],)</code></pre><p>In this hierarchical Chicago dataset, the root is a <code>NamedTuple</code> with a field <code>department</code>, which is a <code>Vector</code> of department records, and so on.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
+chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-First-Query-1" href="#Our-First-Query-1">Our First Query</a></h3><p>Let&#39;s say we want to return the list of department names from this dataset. We query the <code>chicago</code> knot using Julia&#39;s index notation with <code>It.department.name</code>.</p><pre><code class="language-julia">department_names = chicago[It.department.name]
 #=&gt;
   │ name   │
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
 =#</code></pre><p>The output, <code>department_names</code>, is also a DataKnot. The content of this output knot could be accessed via <code>get</code> function.</p><pre><code class="language-julia">get(department_names)
-#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><h3><a class="nav-anchor" id="Navigation-1" href="#Navigation-1">Navigation</a></h3><p>In DataKnot queries, <code>It</code> means &quot;use the current input&quot;. The dotted notation lets one navigate the hierarchy. Let&#39;s continue our dataset exploration by listing employee names.</p><pre><code class="language-julia">chicago[It.department.employee.name]
+#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><h3><a class="nav-anchor" id="Navigation-1" href="#Navigation-1">Navigation</a></h3><p>In DataKnot queries, <code>It</code> means &quot;the current input&quot;. The dotted notation lets one navigate a hierarchical dataset. Let&#39;s continue our dataset exploration by listing employee names.</p><pre><code class="language-julia">chicago[It.department.employee.name]
 #=&gt;
   │ name      │
 ──┼───────────┼
@@ -26,7 +23,7 @@ chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-F
 2 │ NANCY A   │
 3 │ DANIEL A  │
 =#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset. When a label can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">chicago[It.employee]
-#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating though <code>department</code> tuples. When tuples are returned, they is displayed with a tabular layout.</p><pre><code class="language-julia">chicago[It.department.employee]
+#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating though <code>department</code> tuples. When tuples are returned, they are displayed as a table.</p><pre><code class="language-julia">chicago[It.department.employee]
 #=&gt;
   │ employee                            │
   │ name       position          salary │
@@ -34,13 +31,13 @@ chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-F
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ NANCY A    POLICE OFFICER     80016 │
 3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>Notice that nested lists traversed during navigation are flattened into a single output.</p><h3><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h3><p>Dotted navigations, such as <code>It.department.name</code>, are a syntax shorthand for the <code>Get()</code> primitive together with query composition (<code>&gt;&gt;</code>).</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:name)]
+=#</code></pre><p>Notice that nested vectors traversed during navigation are flattened into a single output vector.</p><h3><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h3><p>Dotted navigation, such as <code>It.department.name</code>, is a syntax shorthand for the <code>Get()</code> primitive together with query composition (<code>&gt;&gt;</code>).</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:name)]
 #=&gt;
   │ name   │
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>The <code>Get()</code> primitive returns values that match a given name. Query composition (<code>&gt;&gt;</code>) chains two queries serially, with the output of its first query as input to the second.</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:employee)]
+=#</code></pre><p>The <code>Get()</code> primitive returns values that match a given label. Query composition (<code>&gt;&gt;</code>) chains two queries serially, with the output of its first query as input to the second.</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:employee)]
 #=&gt;
   │ employee                            │
   │ name       position          salary │
@@ -48,19 +45,19 @@ chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-F
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ NANCY A    POLICE OFFICER     80016 │
 3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>In this query algebra, <code>It</code> is the identity query with respect to composition (<code>&gt;&gt;</code>). The query <code>It</code> simply reproduces for its output what it recieves as its input. Hence, <code>It</code> can be woven into any composition without changing the result.</p><pre><code class="language-julia">chicago[It &gt;&gt; Get(:department) &gt;&gt; Get(:name)]
+=#</code></pre><p>The <code>It</code> query simply reproduces its input, which makes it the identity with respect to composition (<code>&gt;&gt;</code>). Hence, <code>It</code> can be woven into any composition without changing the result.</p><pre><code class="language-julia">chicago[It &gt;&gt; Get(:department) &gt;&gt; Get(:name)]
 #=&gt;
   │ name   │
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>This motivates our clever use of <code>It</code> as a syntax short hand.</p><pre><code class="language-julia">chicago[It.department.name]
+=#</code></pre><p>This motivates our clever use of <code>It</code> as a syntax shorthand.</p><pre><code class="language-julia">chicago[It.department.name]
 #=&gt;
   │ name   │
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>This query, <code>It.department.name</code>, could be equivalently written <code>Get(:department) &gt;&gt; Get(:name)</code>.</p><h3><a class="nav-anchor" id="Context-and-Counting-1" href="#Context-and-Counting-1">Context &amp; Counting</a></h3><p>To count the number of departments in this <code>chicago</code> dataset we write the query <code>Count(It.department)</code>. Observe that the argument provided to <code>Count()</code>, <code>It.department</code>, is itself a query.</p><pre><code class="language-julia">chicago[Count(It.department)]
+=#</code></pre><p>In DataKnots, queries are either <em>primitives</em>, such as <code>Get</code> and <code>It</code>, or built from other queries with <em>combinators</em>, such as composition (<code>&gt;&gt;</code>). Let&#39;s explore some other combinators.</p><h3><a class="nav-anchor" id="Context-and-Counting-1" href="#Context-and-Counting-1">Context &amp; Counting</a></h3><p>To count the number of departments in this <code>chicago</code> dataset we write the query <code>Count(It.department)</code>. Observe that the argument provided to <code>Count()</code>, <code>It.department</code>, is itself a query.</p><pre><code class="language-julia">chicago[Count(It.department)]
 #=&gt;
 │ It │
 ┼────┼
@@ -71,7 +68,7 @@ chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-F
 ──┼────┼
 1 │  2 │
 2 │  1 │
-=#</code></pre><p>In this output we see that the 1st department, <code>&quot;POLICE&quot;</code>, has <code>2</code> employees, while the 2nd, <code>&quot;FIRE&quot;</code> only has <code>1</code>. The occurrence of <code>It</code> within the subordinate query <code>Count(It.employee)</code> refers to each department individually, not to the dataset as a whole.</p><h3><a class="nav-anchor" id="Record-Construction-1" href="#Record-Construction-1">Record Construction</a></h3><p>Returning values in tandem can be done with <code>Record()</code>. Let&#39;s improve the previous output by including each department&#39;s name alongside employee counts.</p><pre><code class="language-julia">chicago[
+=#</code></pre><p>In this output, we see that one department has <code>2</code> employees, while the other has only <code>1</code>.</p><h3><a class="nav-anchor" id="Record-Construction-1" href="#Record-Construction-1">Record Construction</a></h3><p>Let&#39;s improve the previous query by including each department&#39;s name alongside employee counts. This can be done by using the <code>Record</code> combinator.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
     Record(It.name,
            Count(It.employee))]
@@ -81,7 +78,29 @@ chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-F
 ──┼────────────┼
 1 │ POLICE   2 │
 2 │ FIRE     1 │
-=#</code></pre><p>Records can be nested. The following listing includes, for each department, employee names and their salary.</p><pre><code class="language-julia">chicago[
+=#</code></pre><p>To label a record field we use Julia&#39;s <code>Pair</code> syntax, (<code>=&gt;</code>).</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           :employee_count =&gt;
+               Count(It.employee))]
+#=&gt;
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+2 │ FIRE                 1 │
+=#</code></pre><p>This is syntax shorthand for the <code>Label</code> primitive.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           Count(It.employee) &gt;&gt;
+           Label(:employee_count))]
+#=&gt;
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+2 │ FIRE                 1 │
+=#</code></pre><p>Records can be nested. The following listing includes, for each department, employees&#39; name and salary.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
     Record(It.name,
            It.employee &gt;&gt;
@@ -93,9 +112,14 @@ chicago = DataKnot(chicago_data)</code></pre><h3><a class="nav-anchor" id="Our-F
 ──┼───────────────────────────────────────────┼
 1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
 2 │ FIRE    DANIEL A, 95484                   │
-=#</code></pre><p>In this nested display, commas are used to separate fields and semi-colons separate values.</p><h3><a class="nav-anchor" id="Expressions-and-Output-Labels-1" href="#Expressions-and-Output-Labels-1">Expressions &amp; Output Labels</a></h3><p>Query expressions can be named and reused. Further, the output column of these named queries may be labeled using Julia&#39;s <code>Pair</code> syntax (<code>=&gt;</code>). Let&#39;s define <code>EmployeeCount</code> to be the number of employees in a given department.</p><pre><code class="language-julia">EmployeeCount =
+=#</code></pre><p>In this output, commas separate tuple fields and semi-colons separate vector elements.</p><h3><a class="nav-anchor" id="Reusable-Queries-1" href="#Reusable-Queries-1">Reusable Queries</a></h3><p>Queries can be reused. Let&#39;s define <code>EmployeeCount</code> to be a query that computes the number of employees in a department.</p><pre><code class="language-julia">EmployeeCount =
     :employee_count =&gt;
-        Count(It.employee)
+        Count(It.employee)</code></pre><p>This query can be used in different contexts.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
+#=&gt;
+│ It │
+┼────┼
+│  2 │
+=#
 
 chicago[
     It.department &gt;&gt;
@@ -107,65 +131,39 @@ chicago[
 ──┼────────────────────────┼
 1 │ POLICE               2 │
 2 │ FIRE                 1 │
-=#</code></pre><p>Labels can be attached to an existing query using the <code>Label</code> primitive. This form is handy for use in successive query refinements (<code>&gt;&gt;=</code>).</p><pre><code class="language-julia">DeptCount = Count(It.department)
-DeptCount &gt;&gt;= Label(:dept_count)
-
-chicago[DeptCount]
-#=&gt;
-│ dept_count │
-┼────────────┼
-│          2 │
-=#</code></pre><p>Besides providing a display title, labels also provide a way to access fields within a record.</p><pre><code class="language-julia">chicago[
-    Record(It, DeptCount) &gt;&gt;
-    It.dept_count]
-#=&gt;
-│ dept_count │
-┼────────────┼
-│          2 │
-=#</code></pre><h3><a class="nav-anchor" id="Filtering-Data-1" href="#Filtering-Data-1">Filtering Data</a></h3><p>Returning only wanted values can be done with <code>Filter()</code>. Here we list department names who have exactly one employee.</p><pre><code class="language-julia">chicago[
+=#</code></pre><h3><a class="nav-anchor" id="Filtering-Data-1" href="#Filtering-Data-1">Filtering Data</a></h3><p>Let&#39;s extend the previous query to only show departments with more than one employee. This can be done using the <code>Filter</code> combinator.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
-    Filter(EmployeeCount .== 1) &gt;&gt;
-    Record(It.name, EmployeeCount)]
+    Record(It.name, EmployeeCount) &gt;&gt;
+    Filter(It.employee_count .&gt; 1)]
 #=&gt;
-  │ department           │
-  │ name  employee_count │
-──┼──────────────────────┼
-1 │ FIRE               1 │
-=#</code></pre><p>In query expressions, the broadcast variant of common operators, such as <code>.==</code>, are to be used. Forgetting the period is an easy mistake to make and the resulting Julia language error message may not be helpful.</p><pre><code class="language-julia">chicago[
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+=#</code></pre><p>To use regular operators in query expressions, we need to use broadcasting notation, such as <code>.&gt;</code> rather than <code>&gt;</code>. Forgetting the period is an easy mistake to make.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
-    Filter(EmployeeCount == 1) &gt;&gt;
-    Record(It.name, EmployeeCount)]
+    Record(It.name, EmployeeCount) &gt;&gt;
+    Filter(It.employee_count &gt; 1)]
 #=&gt;
-ERROR: AssertionError: eltype(input) &lt;: AbstractVector
-=#</code></pre><p>Let&#39;s define <code>GT100K</code> to check if an employee&#39;s salary is greater than 100K. The output of this query component is also labeled.</p><pre><code class="language-julia">GT100K =
-    :gt100k =&gt;
-        It.salary .&gt; 100000
+ERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)
+⋮
+=#</code></pre><h3><a class="nav-anchor" id="Incremental-Composition-1" href="#Incremental-Composition-1">Incremental Composition</a></h3><p>Combinators let us construct queries incrementally. Let&#39;s explore our Chicago data starting with a list of employees.</p><pre><code class="language-julia">Q = It.department.employee
 
-chicago[
-    It.department.employee &gt;&gt;
-    Record(It.name, It.salary, GT100K)]
+chicago[Q]
 #=&gt;
-  │ employee                  │
-  │ name       salary  gt100k │
-──┼───────────────────────────┼
-1 │ JEFFERY A  101442    true │
-2 │ NANCY A     80016   false │
-3 │ DANIEL A    95484   false │
-=#</code></pre><p>Since <code>Filter</code> takes a boolean valued query for an argument, we could use <code>GTK100K</code> to filter employees.</p><pre><code class="language-julia">chicago[
-    It.department.employee &gt;&gt;
-    Filter(GT100K) &gt;&gt;
-    It.name]
-#=&gt;
-  │ name      │
-──┼───────────┼
-1 │ JEFFERY A │
-=#</code></pre><h3><a class="nav-anchor" id="Incremental-Composition-1" href="#Incremental-Composition-1">Incremental Composition</a></h3><p>This data discovery could have been done incrementally, with each intermediate query being fully runnable. Let&#39;s start <code>our_query</code> as a list of employees. We&#39;re not going to run it, but we could.</p><pre><code class="language-julia">our_query = It.department.employee
-#-&gt; It.department.employee</code></pre><p>Let&#39;s extend this query to compute if the salary is over 100k. Notice how query composition is tracked for us.</p><pre><code class="language-julia">GT100K = :gt100k =&gt; It.salary .&gt; 100000
-our_query &gt;&gt;= Record(It.name, It.salary, GT100K)
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ NANCY A    POLICE OFFICER     80016 │
+3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k. Notice how the query definition is tracked.</p><pre><code class="language-julia">GT100K = :gt100k =&gt; It.salary .&gt; 100000
+
+Q &gt;&gt;= Record(It.name, It.salary, GT100K)
 #=&gt;
 It.department.employee &gt;&gt;
 Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
-=#</code></pre><p>Let&#39;s run <code>our_query</code> against the <code>chicago</code> knot.</p><pre><code class="language-julia">chicago[our_query]
+=#</code></pre><p>Let&#39;s run <code>Q</code> again.</p><pre><code class="language-julia">chicago[Q]
 #=&gt;
   │ employee                  │
   │ name       salary  gt100k │
@@ -173,36 +171,37 @@ Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
 1 │ JEFFERY A  101442    true │
 2 │ NANCY A     80016   false │
 3 │ DANIEL A    95484   false │
-=#</code></pre><p>Since labeling permits direct Record access, we could further extend <code>our_query</code> to filter unwanted rows.</p><pre><code class="language-julia">our_query &gt;&gt;= Filter(It.gt100k)
+=#</code></pre><p>We can now filter the dataset to include only high-paid employees.</p><pre><code class="language-julia">Q &gt;&gt;= Filter(It.gt100k)
 #=&gt;
 It.department.employee &gt;&gt;
 Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000) &gt;&gt;
 Filter(It.gt100k)
-=#</code></pre><p>Let&#39;s run <code>our_query</code> again.</p><pre><code class="language-julia">chicago[our_query]
+=#</code></pre><p>Let&#39;s run <code>Q</code> again.</p><pre><code class="language-julia">chicago[Q]
 #=&gt;
   │ employee                  │
   │ name       salary  gt100k │
 ──┼───────────────────────────┼
 1 │ JEFFERY A  101442    true │
-=#</code></pre><p>Well-tested queries may benefit from a <code>Tag</code> so that their definitions are suppressed in larger compositions.</p><pre><code class="language-julia">GT100K = Tag(:GT100K, :gt100k =&gt; It.salary .&gt; 100000)
-#-&gt; GT100K</code></pre><p>This tagging can make subsequent compositions easier to read, when the definition of the named query is not being questioned.</p><pre><code class="language-julia">our_query = It.department.employee &gt;&gt;
-            Record(It.name, It.salary, GT100K)
-#=&gt;
-It.department.employee &gt;&gt; Record(It.name, It.salary, GT100K)
-=#</code></pre><p>Notice that the tag (<code>:GT100K</code>) is distinct from the data label (<code>:gt100k</code>), the tag names the query while the label names the output column.</p><pre><code class="language-julia">our_query &gt;&gt;= Filter(It.gt100k)
-chicago[our_query]
+=#</code></pre><p>Well-tested queries may benefit from a <code>Tag</code> so that their definitions are suppressed in larger compositions.</p><pre><code class="language-julia">HighlyCompensated = Tag(:HighlyCompensated, Q)
+#-&gt; HighlyCompensated
+
+chicago[HighlyCompensated]
 #=&gt;
   │ employee                  │
   │ name       salary  gt100k │
 ──┼───────────────────────────┼
 1 │ JEFFERY A  101442    true │
-=#</code></pre><p>For the final step of our query&#39;s incremental construction, let&#39;s only show the employee&#39;s name that met the GT100K criteria.</p><pre><code class="language-julia">our_query &gt;&gt;= It.name
-chicago[our_query]
+=#</code></pre><p>This tagging can make subsequent compositions easier to read.</p><pre><code class="language-julia">Q = HighlyCompensated &gt;&gt; It.name
+#=&gt;
+HighlyCompensated &gt;&gt; It.name
+=#
+
+chicago[Q]
 #=&gt;
   │ name      │
 ──┼───────────┼
 1 │ JEFFERY A │
-=#</code></pre><p>As we see, queries can be combined in series or as arguments to make new queries. Queries can then be performed on a DataKnot to produce a new DataKnot. Hence, the construction and performance of a query are distinct and separate operations.</p><h3><a class="nav-anchor" id="Accessing-Data-1" href="#Accessing-Data-1">Accessing Data</a></h3><p>Given any <code>DataKnot</code>, its content can be accessed via <code>get</code>. For scalar outputs, <code>get</code> returns a typed Julia value.</p><pre><code class="language-julia">get(chicago[Count(It.department)])
+=#</code></pre><h3><a class="nav-anchor" id="Accessing-Data-1" href="#Accessing-Data-1">Accessing Data</a></h3><p>Given any <code>DataKnot</code>, its content can be accessed via <code>get</code>. For scalar outputs, <code>get</code> returns a typed Julia value.</p><pre><code class="language-julia">get(chicago[Count(It.department)])
 #-&gt; 2</code></pre><p>For simple lists, <code>get</code> returns a typed <code>Vector</code>.</p><pre><code class="language-julia">get(chicago[It.department.employee.name])
 #-&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;DANIEL A&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, a column-oriented storage for our <code>DataKnot</code> system.</p><pre><code class="language-julia">query = It.department &gt;&gt;
         Record(It.name,
