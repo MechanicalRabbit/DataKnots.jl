@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "DataKnots.jl",
     "category": "section",
-    "text": "DataKnots are a Julia library for representing and querying data, including nested and circular structures. DataKnots provides integration and analytics across CSV, JSON, XML and SQL data sources with an extensible, practical and coherent algebra of data processing pipelines."
+    "text": "DataKnots aspires to be a Julia library for representing and querying data, including nested and circular structures. DataKnots will provide integration and analytics across CSV, JSON, XML and SQL data sources with an extensible, practical and coherent algebra of query combinators.At this time, while we welcome feedback and contributors, DataKnots is not yet usable for general audiences."
 },
 
 {
