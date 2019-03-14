@@ -1,10 +1,14 @@
 # DataKnots.jl
 
-*DataKnots is a Julia library for representing and
-querying data, including nested and circular structures.
-DataKnots provides integration and analytics across CSV,
-JSON, XML and SQL data sources with an extensible,
-practical and coherent algebra of query combinators.*
+*DataKnots aspires to be a Julia library for representing
+and querying data, including nested and circular
+structures. DataKnots will provide integration and
+analytics across CSV, JSON, XML and SQL data sources with
+an extensible, practical and coherent algebra of query
+combinators.*
+
+At this time, while we welcome feedback and contributors,
+DataKnots is not yet usable for general audiences.
 
 [![Linux/OSX Build Status][travis-img]][travis-url]
 [![Windows Build Status][appveyor-img]][appveyor-url]
@@ -51,20 +55,6 @@ We use the word *knot* since the general form of data
 input and output, a `DataKnot`, isn't limited to simple
 tables, they can be trees or even arbitrary graphs.
 
-## Releases
-
-| Release | Date       | Description                 |
-|---------|------------|-----------------------------|
-| v0.1    | 2019-XX-XX | Initial Contributor Release |
-
-DataKnots is currently usable for contributors who wish
-to help grow the ecosystem. However, with v0.1, DataKnots
-is not yet usable for general audiences: there are no
-data source adapters and we lack important operators,
-such as `Sort` and `Group`. Many of these deficiencies
-were prototyped and subsequent releases will address
-these feature gaps incrementally.
-
 ## Installation
 
 DataKnots.jl is a Julia library, but it is not yet
@@ -87,7 +77,6 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 
 Our development chat is currently hosted on Gitter:
 https://gitter.im/rbt-lang/rbt-proto
-
 
 [travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl
