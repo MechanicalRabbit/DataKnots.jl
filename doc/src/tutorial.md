@@ -192,6 +192,36 @@ name alongside employee counts. This can be done by using the
     2 │ FIRE     1 │
     =#
 
+To label a record field we use Julia's `Pair` syntax, (`=>`).
+
+    chicago[
+        It.department >>
+        Record(It.name,
+               :employee_count =>
+                   Count(It.employee))]
+    #=>
+      │ department             │
+      │ name    employee_count │
+    ──┼────────────────────────┼
+    1 │ POLICE               2 │
+    2 │ FIRE                 1 │
+    =#
+
+This is syntax shorthand for the `Label` primitive.
+
+    chicago[
+        It.department >>
+        Record(It.name,
+               Count(It.employee) >>
+               Label(:employee_count))]
+    #=>
+      │ department             │
+      │ name    employee_count │
+    ──┼────────────────────────┼
+    1 │ POLICE               2 │
+    2 │ FIRE                 1 │
+    =#
+
 Records can be nested. The following listing includes, for each
 department, employees' name and salary.
 
@@ -212,16 +242,23 @@ department, employees' name and salary.
 In this output, commas separate tuple fields and semi-colons
 separate vector elements.
 
-### Expressions & Output Labels
+### Reusable Queries
 
-Query expressions can be named and reused. Further, the output
-column of these named queries may be labeled using Julia's `Pair`
-syntax (`=>`). Let's define `EmployeeCount` to be the number of
-employees in a given department.
+Queries can be reused. Let's define `EmployeeCount` to be a query
+that computes the number of employees in a department.
 
     EmployeeCount =
         :employee_count =>
             Count(It.employee)
+
+This query can be used in different contexts.
+
+    chicago[Max(It.department >> EmployeeCount)]
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
 
     chicago[
         It.department >>
@@ -235,115 +272,66 @@ employees in a given department.
     2 │ FIRE                 1 │
     =#
 
-Labels can be attached to an existing query using the `Label`
-primitive. This form is handy for use in successive query
-refinements (`>>=`).
-
-    DeptCount = Count(It.department)
-    DeptCount >>= Label(:dept_count)
-
-    chicago[DeptCount]
-    #=>
-    │ dept_count │
-    ┼────────────┼
-    │          2 │
-    =#
-
-Besides providing a display title, labels also provide a way to
-access fields within a record.
-
-    chicago[
-        Record(It, DeptCount) >>
-        It.dept_count]
-    #=>
-    │ dept_count │
-    ┼────────────┼
-    │          2 │
-    =#
-
 ### Filtering Data
 
-Returning only wanted values can be done with `Filter()`. Here we
-list department names who have exactly one employee.
+Let's extend the previous query to only show departments with more
+than one employee. This can be done using the `Filter` combinator.
 
     chicago[
         It.department >>
-        Filter(EmployeeCount .== 1) >>
-        Record(It.name, EmployeeCount)]
+        Record(It.name, EmployeeCount) >>
+        Filter(It.employee_count .> 1)]
     #=>
-      │ department           │
-      │ name  employee_count │
-    ──┼──────────────────────┼
-    1 │ FIRE               1 │
+      │ department             │
+      │ name    employee_count │
+    ──┼────────────────────────┼
+    1 │ POLICE               2 │
     =#
 
-In query expressions, the broadcast variant of common operators,
-such as `.==`, are to be used. Forgetting the period is an easy
-mistake to make and the resulting Julia language error message may
-not be helpful.
+To use regular operators in query expressions, we need to use
+broadcasting notation, such as `.>` rather than `>`. Forgetting
+the period is an easy mistake to make.
 
     chicago[
         It.department >>
-        Filter(EmployeeCount == 1) >>
-        Record(It.name, EmployeeCount)]
+        Record(It.name, EmployeeCount) >>
+        Filter(It.employee_count > 1)]
     #=>
-    ERROR: AssertionError: eltype(input) <: AbstractVector
-    =#
-
-Let's define `GT100K` to check if an employee's salary is greater
-than 100K. The output of this query component is also labeled.
-
-    GT100K =
-        :gt100k =>
-            It.salary .> 100000
-
-    chicago[
-        It.department.employee >>
-        Record(It.name, It.salary, GT100K)]
-    #=>
-      │ employee                  │
-      │ name       salary  gt100k │
-    ──┼───────────────────────────┼
-    1 │ JEFFERY A  101442    true │
-    2 │ NANCY A     80016   false │
-    3 │ DANIEL A    95484   false │
-    =#
-
-Since `Filter` takes a boolean valued query for an argument, we
-could use `GTK100K` to filter employees.
-
-    chicago[
-        It.department.employee >>
-        Filter(GT100K) >>
-        It.name]
-    #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
+    ERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)
+    ⋮
     =#
 
 ### Incremental Composition
 
-This data discovery could have been done incrementally, with each
-intermediate query being fully runnable. Let's start `our_query`
-as a list of employees. We're not going to run it, but we could.
+Combinators let us construct queries incrementally. Let's explore
+our Chicago data starting with a list of employees.
 
-    our_query = It.department.employee
-    #-> It.department.employee
+    Q = It.department.employee
 
-Let's extend this query to compute if the salary is over 100k.
-Notice how query composition is tracked for us.
+    chicago[Q]
+    #=>
+      │ employee                            │
+      │ name       position          salary │
+    ──┼─────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT          101442 │
+    2 │ NANCY A    POLICE OFFICER     80016 │
+    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+    =#
+
+Let's extend this query to show if the salary is over 100k.
+Notice how the query definition is tracked.
 
     GT100K = :gt100k => It.salary .> 100000
-    our_query >>= Record(It.name, It.salary, GT100K)
+
+    Q >>= Record(It.name, It.salary, GT100K)
     #=>
     It.department.employee >>
     Record(It.name, It.salary, :gt100k => It.salary .> 100000)
     =#
 
-Let's run `our_query` against the `chicago` knot.
+Let's run `Q` again.
 
-    chicago[our_query]
+    chicago[Q]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -353,19 +341,18 @@ Let's run `our_query` against the `chicago` knot.
     3 │ DANIEL A    95484   false │
     =#
 
-Since labeling permits direct Record access, we could further
-extend `our_query` to filter unwanted rows.
+We can now filter the dataset to include only high-paid employees.
 
-    our_query >>= Filter(It.gt100k)
+    Q >>= Filter(It.gt100k)
     #=>
     It.department.employee >>
     Record(It.name, It.salary, :gt100k => It.salary .> 100000) >>
     Filter(It.gt100k)
     =#
 
-Let's run `our_query` again.
+Let's run `Q` again.
 
-    chicago[our_query]
+    chicago[Q]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -376,24 +363,10 @@ Let's run `our_query` again.
 Well-tested queries may benefit from a `Tag` so that their
 definitions are suppressed in larger compositions.
 
-    GT100K = Tag(:GT100K, :gt100k => It.salary .> 100000)
-    #-> GT100K
+    HighlyCompensated = Tag(:HighlyCompensated, Q)
+    #-> HighlyCompensated
 
-This tagging can make subsequent compositions easier to read, when
-the definition of the named query is not being questioned.
-
-    our_query = It.department.employee >>
-                Record(It.name, It.salary, GT100K)
-    #=>
-    It.department.employee >> Record(It.name, It.salary, GT100K)
-    =#
-
-Notice that the tag (`:GT100K`) is distinct from the data label
-(`:gt100k`), the tag names the query while the label names the
-output column.
-
-    our_query >>= Filter(It.gt100k)
-    chicago[our_query]
+    chicago[HighlyCompensated]
     #=>
       │ employee                  │
       │ name       salary  gt100k │
@@ -401,21 +374,19 @@ output column.
     1 │ JEFFERY A  101442    true │
     =#
 
-For the final step of our query's incremental construction, let's
-only show the employee's name that met the GT100K criteria.
+This tagging can make subsequent compositions easier to read.
 
-    our_query >>= It.name
-    chicago[our_query]
+    Q = HighlyCompensated >> It.name
+    #=>
+    HighlyCompensated >> It.name
+    =#
+
+    chicago[Q]
     #=>
       │ name      │
     ──┼───────────┼
     1 │ JEFFERY A │
     =#
-
-As we see, queries can be combined in series or as arguments to
-make new queries. Queries can then be performed on a DataKnot to
-produce a new DataKnot. Hence, the construction and performance of
-a query are distinct and separate operations.
 
 ### Accessing Data
 
