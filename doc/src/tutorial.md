@@ -1,9 +1,9 @@
 # DataKnots Tutorial
 
 DataKnots is an embedded query language designed so that
-accidental programmers could more easily solve complex data
-analysis tasks. This tutorial shows how typical query operations
-can be performed upon a simplified in-memory dataset.
+accidental programmers can more easily solve complex data analysis
+tasks. This tutorial shows how typical query operations can be
+performed upon a simplified in-memory dataset.
 
 ## Getting Started
 
@@ -65,8 +65,9 @@ our dataset exploration by listing employee names.
     =#
 
 Navigation context matters. For example, `employee` tuples are not
-directly accessible from the root of the dataset. When a label
-can't be found, an appropriate error message is displayed.
+directly accessible from the root of the dataset. When a field
+label, such as `employee`, can't be found, an appropriate error
+message is displayed.
 
     chicago[It.employee]
     #-> ERROR: cannot find "employee" ⋮
@@ -285,7 +286,7 @@ than one employee. This can be done using the `Filter` combinator.
     =#
 
 To use regular operators in query expressions, we need to use
-broadcasting notation, such as `.>` rather than `>`. Forgetting
+broadcasting notation, such as `.>` rather than `>` ; forgetting
 the period is an easy mistake to make.
 
     chicago[
@@ -384,7 +385,7 @@ This tagging can make subsequent compositions easier to read.
     1 │ JEFFERY A │
     =#
 
-## Aggregate queries
+## Aggregate Queries
 
 We've demonstrated the `Count` combinator, but `Count` could also
 be used as a query. In this next example, `Count` receives
@@ -397,12 +398,14 @@ employees as input, and produces their number as output.
     │  3 │
     =#
 
-Previously we've only seen *elementwise* queries, which emits an
+Previously we've only seen *elementwise* queries, which emit an
 output for each of its input elements. The `Count` query is an
 *aggregate*, which means it emits an output for its entire input.
 
-Note that in this query, `Count` consumes all employees across all
-departments. This doesn't change even if we add parentheses:
+In this example, since `It.department >> It.employee` is the input
+for `Count`, the total spans all employees across all departments.
+Adding parenthesis to get counts by department doesn't work since
+composition (`>>`) is an associative operator.
 
     chicago[It.department >> (It.employee >> Count)]
     #=>
@@ -648,7 +651,7 @@ The parameter values are available in the query though `It`.
 
 Using parameters lets us reuse complex queries without changing
 their definition. By convention we capitalize parameters so they
-standout from regular data labels.
+stand out from regular data labels.
 
     PaidOverAmt =
         It.department >>
