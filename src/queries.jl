@@ -18,10 +18,10 @@ abstract type AbstractQuery end
 """
     Query(op, args...)
 
-A query is implemented as a pipeline transformation with a fixed source.
-Specifically, a query takes the input pipeline that maps the *source* to the
-*input target* and generates a pipeline that maps the *source* to the *output
-target*.
+A query is implemented as a pipeline transformation that preserves pipeline
+source.  Specifically, a query takes the input pipeline that maps the *source*
+to the *input target* and generates a pipeline that maps the *source* to the
+*output target*.
 
 Parameter `op` is a function that performs the transformation; `args` are extra
 arguments passed to the function.
@@ -311,7 +311,7 @@ end
 
 
 #
-# Monadic composition.
+# Elementwise composition.
 #
 
 # Trivial pipes at the source and target endpoints of a pipeline.

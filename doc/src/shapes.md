@@ -167,7 +167,7 @@ match.
 
     fits(target(dept_employee), source(emp_rate))   #-> false
 
-On the other hand, these pipelines could be composed using the *monadic
+On the other hand, these pipelines could be composed using the *elementwise
 composition* combinator.
 
     dept_employee_rate = compose(dept_employee, emp_rate)
@@ -188,8 +188,8 @@ composition* combinator.
               BlockOf(Float64) |> IsFlow)
     =#
 
-Monadic composition connects the pipelines by fusing their output flows.  The
-least upper bound of the flow cardinalities is the cardinality of the fused
+Elementwise composition connects the pipelines by fusing their output flows.
+The least upper bound of the flow cardinalities is the cardinality of the fused
 flow.
 
     dept_employee_card = cardinality(target(dept_employee))
@@ -207,8 +207,8 @@ flow.
 
 ### Flow and scope
 
-Monadic composition is a sequential composition with special handling of two
-types of containers: *flow* and *scope*.
+Elementwise composition is a sequential composition with special handling of
+two types of containers: *flow* and *scope*.
 
 The flow is a `BlockVector` that wraps the output of the pipeline.  When two
 pipelines are composed, their output flows are fused together.
@@ -238,7 +238,7 @@ To be able to use this pipeline in composition, we assign it its signature.
         round_it |> designate(TupleOf(Float64, TupleOf(:P => Float64)) |> IsScope,
                               BlockOf(Float64, x1to1) |> IsFlow)
 
-When two monadic pipelines have compatible intermediate domains, they could be
+When two pipelines have compatible intermediate domains, they could be
 composed.
 
     domain(target(dept_employee_rate))
