@@ -2,12 +2,8 @@
 
 DataKnots is an embedded query language designed so that
 accidental programmers could more easily solve complex data
-analysis tasks.
-
-This tutorial shows how typical query operations can be performed
-upon a simplified in-memory dataset. Currently DataKnots does not
-include methods to read/write common data formats (such as CSV or
-DataFrames). Feedback and contributions are welcome.
+analysis tasks. This tutorial shows how typical query operations
+can be performed upon a simplified in-memory dataset.
 
 ## Getting Started
 
@@ -401,7 +397,7 @@ employees as input, and produces their number as output.
     │  3 │
     =#
 
-So far we've only seen *elementwise* queries, which emits an
+Previously we've only seen *elementwise* queries, which emits an
 output for each of its input elements. The `Count` query is an
 *aggregate*, which means it emits an output for its entire input.
 
@@ -416,8 +412,8 @@ departments. This doesn't change even if we add parentheses:
     =#
 
 To count employees in *each* department, we use `Each()`. This
-combinator applies its input elementwise. Therefore, we get two
-numbers, one for each department.
+combinator evaluates its argument elementwise. Therefore, we get
+two numbers, one for each department.
 
     chicago[It.department >> Each(It.employee >> Count)]
     #=>
@@ -460,7 +456,47 @@ We could then refine the query, and run the exact same command.
     │  1 │
     =#
 
-## Broadcasting over queries
+## Summarizing Data
+
+To summarize data, we could use combinators such as `Min`, `Max`,
+and `Sum`.
+
+    Salary = It.department.employee.salary
+
+    chicago[
+        Record(
+            :count => Count(Salary),
+            :min => Min(Salary),
+            :max => Max(Salary),
+            :sum => Sum(Salary))]
+    #=>
+    │ count  min    max     sum    │
+    ┼──────────────────────────────┼
+    │     3  80016  101442  276942 │
+    =#
+
+Just as `Count` has an aggregate query form, so do `Min`, `Max`,
+and `Sum`.
+
+    Salary = It.employee.salary
+
+    chicago[
+        It.department >>
+        Record(
+            It.name,
+            :count => Salary >> Count,
+            :min => Salary >> Min,
+            :max => Salary >> Max,
+            :sum => Salary >> Sum)]
+    #=>
+      │ department                           │
+      │ name    count  min    max     sum    │
+    ──┼──────────────────────────────────────┼
+    1 │ POLICE      2  80016  101442  181458 │
+    2 │ FIRE        1  95484   95484   95484 │
+    =#
+
+## Broadcasting over Queries
 
 Any function could be used as a query combinator with the
 broadcasting notation.
@@ -493,14 +529,11 @@ Vector functions, such as `mean`, can also be broadcast.
     2 │ FIRE        95484.0 │
     =#
 
-The conversion of a function into a combinator is accomplished by
-`Lift`, as documented in the reference.
-
 ## Keeping Values
 
-Suppose we'd like a list of employee names together with the
-corresponding department name. The naive approach won't work,
-because `department` is not a label in the context of an employee.
+Suppose we'd like a list of employee names together with their
+department.  The naive approach won't work, because `department` is
+not available in the context of an employee.
 
     chicago[
         It.department >>
@@ -525,11 +558,10 @@ result, so that it is available within subsequent computations.
     3 │ DANIEL A   FIRE      │
     =#
 
-This pattern also emerges with aggregate computations which need
-to be done in a parent scope. For example, let's compute employees
+This pattern also emerges when a filter condition uses a parameter
+calculated in a parent context. For example, let's list employees
 with a higher than average salary for their department.
 
-    using Statistics: mean
     chicago[
         It.department >>
         Keep(:mean_salary => mean.(It.employee.salary)) >>
@@ -542,14 +574,11 @@ with a higher than average salary for their department.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-In this last query, `mean` simply can't be moved into `Filter`'s
-argument, since this argument is evaluated for *each* employee.
-
 ## Paging Data
 
 Sometimes query results can be quite large. In this case it's
-helpful to `Take` or `Drop` items from the input stream. Let's
-start by listing all 3 employees of our toy database.
+helpful to `Take` or `Drop` items from the input. Let's start by
+listing all 3 employees of our toy database.
 
     Employee = It.department.employee
     chicago[Employee]
@@ -562,7 +591,7 @@ start by listing all 3 employees of our toy database.
     3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-To return up to the 2nd employee record, we use `Take`.
+To return only the first 2 records, we use `Take`.
 
     chicago[Employee >> Take(2)]
     #=>
@@ -573,23 +602,20 @@ To return up to the 2nd employee record, we use `Take`.
     2 │ NANCY A    POLICE OFFICER   80016 │
     =#
 
-A negative index can be used, counting records from the end of the
-query's input. So, to return up to, but not including, the very
-last item in the stream, we could write:
+A negative index counts records from the end of the input. So, to
+return all the records but the last two, we write:
 
-    chicago[Employee >> Take(-1)]
+    chicago[Employee >> Take(-2)]
     #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
+      │ employee                    │
+      │ name       position  salary │
+    ──┼─────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-To return the last record of the query's input, we could `Drop` up
-to the last item in the stream:
+To skip the first two records, returning the rest, we use `Drop`.
 
-    chicago[Employee >> Drop(-1)]
+    chicago[Employee >> Drop(2)]
     #=>
       │ employee                           │
       │ name      position          salary │
@@ -610,9 +636,8 @@ use `Take` with an argument that computes how many to take.
 
 ## Query Parameters
 
-Julia's index notation permits named parameters. Each argument
-passed via named parameter is converted into a `DataKnot` and then
-made available as a label accessible anywhere in the query.
+A query may depend upon parameters, passed as keyword arguments.
+The parameter values are available in the query though `It`.
 
     chicago[AMT=100000, It.AMT]
     #=>
@@ -621,9 +646,9 @@ made available as a label accessible anywhere in the query.
     │ 100000 │
     =#
 
-This technique permits complex queries to be re-used with
-different argument values. By convention we capitalize parameters
-so they standout from regular data labels.
+Using parameters lets us reuse complex queries without changing
+their definition. By convention we capitalize parameters so they
+standout from regular data labels.
 
     PaidOverAmt =
         It.department >>
@@ -631,25 +656,25 @@ so they standout from regular data labels.
         Filter(It.salary .> It.AMT) >>
         It.name
 
-    chicago[PaidOverAmt, AMT=100000]
+    chicago[AMT=100000, PaidOverAmt]
     #=>
       │ name      │
     ──┼───────────┼
     1 │ JEFFERY A │
     =#
 
-What if we want to return employee names who have a greater than
-average salary? This average could be computed first.
+What if we want to return employees who have a greater than average
+salary? This average could be computed first.
 
-    using Statistics
-    mean_salary = chicago[mean.(It.department.employee.salary)]
+    MeanSalary = mean.(It.department.employee.salary)
+    mean_salary = chicago[MeanSalary]
     #=>
     │ It      │
     ┼─────────┼
     │ 92314.0 │
     =#
 
-Then, this value could be used as a query parameter.
+Then, this value could be passed as our parameter.
 
     chicago[PaidOverAmt, AMT=mean_salary]
     #=>
@@ -659,15 +684,23 @@ Then, this value could be used as a query parameter.
     2 │ DANIEL A  │
     =#
 
-While this approach works, it performs composition outside of the
-query language. If the dataset changes, a new `mean_salary` would
-have to be computed before the query above could be performed.
+This approach performs composition outside of the query language.
+To evaluate a query and immediately use it as a parameter within
+the same query expression, we could use the `Given` combinator.
 
-## Parameterized Queries
+    chicago[Given(:AMT => MeanSalary, PaidOverAmt)]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ DANIEL A  │
+    =#
 
-Suppose we want parameterized query that could take other queries
-as arguments. Using `Given`, we could build a query that returns
-`employee` records with `salary` over a given amount.
+## Custom Combinators
+
+Using `Given` lets us easily create new query combinators. Let's
+make a combinator `EmployeesOver` that produces employees with a
+salary greater than the given amount.
 
     EmployeesOver(X) =
         Given(:AMT => X,
@@ -683,22 +716,12 @@ as arguments. Using `Given`, we could build a query that returns
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-But what if we wished to find employees with higher than average
-salary? Let's compute the average value as a query.
+`EmployeesOver` can take another query as an argument. For
+example, let's find employees with higher than average salary.
 
-    using Statistics: mean
-    AvgSalary = mean.(It.department.employee.salary)
+    MeanSalary = mean.(It.department.employee.salary)
 
-    chicago[AvgSalary]
-    #=>
-    │ It      │
-    ┼─────────┼
-    │ 92314.0 │
-    =#
-
-We could then combine these two queries.
-
-    chicago[EmployeesOver(AvgSalary)]
+    chicago[EmployeesOver(MeanSalary)]
     #=>
       │ employee                            │
       │ name       position          salary │
@@ -707,10 +730,10 @@ We could then combine these two queries.
     2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
     =#
 
-Note that this combined expression is yet another query that could
-be further refined.
+Note that this combination is yet another query that could be
+further refined.
 
-    chicago[EmployeesOver(AvgSalary) >> It.name]
+    chicago[EmployeesOver(MeanSalary) >> It.name]
     #=>
       │ name      │
     ──┼───────────┼
@@ -718,91 +741,17 @@ be further refined.
     2 │ DANIEL A  │
     =#
 
-Unlike its cousin `Having`, `Given` doesn't leak its definitions.
-Specifically, `It.amt` is not available outside `EmployeesOver()`.
+Alternatively, this combinator could have been defined using
+`Keep`. We use `Given` because it doesn't leak parameters.
+Specifically, `It.AMT` is not available outside `EmployeesOver()`.
 
-    chicago[EmployeesOver(AvgSalary) >> It.amt]
-    #-> ERROR: cannot find "amt" ⋮
+    chicago[EmployeesOver(MeanSalary) >> It.AMT]
+    #-> ERROR: cannot find "AMT" ⋮
 
-## Aggregate Combinators
+## Extracting Data
 
-There are other aggregate combinators, such as `Min`, `Max`, and
-`Sum`. They could be used to create a statistical measure.
-
-    using Statistics: mean
-    Stats(X) =
-        Record(
-            :count => Count(X),
-            :mean => floor.(Int, mean.(X)),
-            :min => Min(X),
-            :max => Max(X),
-            :sum => Sum(X))
-
-    chicago[
-        :salary_stats_for_all_employees =>
-            Stats(It.department.employee.salary)]
-    #=>
-    │ salary_stats_for_all_employees      │
-    │ count  mean   min    max     sum    │
-    ┼─────────────────────────────────────┼
-    │     3  92314  80016  101442  276942 │
-    =#
-
-These statistics could be computed for each department.
-
-    chicago[
-        It.department >>
-        Record(
-            It.name,
-            :salary_stats => Stats(It.employee.salary))]
-    #=>
-      │ department                              │
-      │ name    salary_stats                    │
-    ──┼─────────────────────────────────────────┼
-    1 │ POLICE  2, 90729, 80016, 101442, 181458 │
-    2 │ FIRE    1, 95484, 95484, 95484, 95484   │
-    =#
-
-To inspect the definition of `Stats` you could build a query,
-`Stats(It)`, and show it.
-
-    Stats(It)
-    #=>
-    Record(:count => Count(It),
-           :mean => floor.(Int, mean.(It)),
-           :min => Min(It),
-           :max => Max(It),
-           :sum => Sum(It))
-    =#
-
-Parameterized queries, such as `Stats`, can also be tagged. Then,
-when they are displayed with an argument, the definition is
-suppressed.
-
-    Stats(X) =
-      Tag(:Stats, (X,),
-        Record(
-            :count => Count(X),
-            :mean => floor.(Int, mean.(X)),
-            :min => Min(X),
-            :max => Max(X),
-            :sum => Sum(X)))
-    Stats(It)
-    #-> Stats(It)
-
-Suppressing the definition of parameterized queries such as
-`Stats` makes the incremental composition easier to follow.
-
-    MyQuery = It.department
-    MyQuery >>= Stats(It.employee.salary)
-    #=>
-    It.department >> Stats(It.employee.salary)
-    =#
-
-## Accessing Data
-
-Given any `DataKnot`, its content can be accessed via `get`. For
-scalar output, `get` returns a Julia value.
+Given any `DataKnot`, its content can be extracted using `get`.
+For singular output, `get` returns a scalar value.
 
     get(chicago[Count(It.department)])
     #-> 2
@@ -825,4 +774,5 @@ is an `AbstractVector` specialized for column-oriented storage.
      (name = "POLICE", employee_count = 2)
      (name = "FIRE", employee_count = 1)
     =#
+
 
