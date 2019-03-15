@@ -33,7 +33,7 @@ To query this dataset, we convert it into a `DataKnot`, or *knot*.
     using DataKnots
     chicago = DataKnot(chicago_data)
 
-### Our First Query
+## Our First Query
 
 Let's say we want to return the list of department names from this
 dataset. We query the `chicago` knot using Julia's index notation
@@ -53,7 +53,7 @@ this output knot could be accessed via `get` function.
     get(department_names)
     #-> ["POLICE", "FIRE"]
 
-### Navigation
+## Navigation
 
 In DataKnot queries, `It` means "the current input". The dotted
 notation lets one navigate a hierarchical dataset. Let's continue
@@ -92,7 +92,7 @@ as a table.
 Notice that nested vectors traversed during navigation are
 flattened into a single output vector.
 
-### Composition & Identity
+## Composition & Identity
 
 Dotted navigation, such as `It.department.name`, is a syntax
 shorthand for the `Get()` primitive together with query
@@ -108,7 +108,7 @@ composition (`>>`).
 
 The `Get()` primitive returns values that match a given label.
 Query composition (`>>`) chains two queries serially, with the
-output of its first query as input to the second.
+output of the first query as input to the second.
 
     chicago[Get(:department) >> Get(:employee)]
     #=>
@@ -146,7 +146,7 @@ In DataKnots, queries are either *primitives*, such as `Get` and
 `It`, or built from other queries with *combinators*, such as
 composition (`>>`). Let's explore some other combinators.
 
-### Context & Counting
+## Context & Counting
 
 To count the number of departments in this `chicago` dataset we
 write the query `Count(It.department)`. Observe that the argument
@@ -174,7 +174,7 @@ within each `department`.
 In this output, we see that one department has `2` employees,
 while the other has only `1`.
 
-### Record Construction
+## Record Construction
 
 Let's improve the previous query by including each department's
 name alongside employee counts. This can be done by using the
@@ -242,7 +242,7 @@ department, employees' name and salary.
 In this output, commas separate tuple fields and semi-colons
 separate vector elements.
 
-### Reusable Queries
+## Reusable Queries
 
 Queries can be reused. Let's define `EmployeeCount` to be a query
 that computes the number of employees in a department.
@@ -272,7 +272,7 @@ This query can be used in different contexts.
     2 │ FIRE                 1 │
     =#
 
-### Filtering Data
+## Filtering Data
 
 Let's extend the previous query to only show departments with more
 than one employee. This can be done using the `Filter` combinator.
@@ -301,7 +301,7 @@ the period is an easy mistake to make.
     ⋮
     =#
 
-### Incremental Composition
+## Incremental Composition
 
 Combinators let us construct queries incrementally. Let's explore
 our Chicago data starting with a list of employees.
@@ -388,89 +388,24 @@ This tagging can make subsequent compositions easier to read.
     1 │ JEFFERY A │
     =#
 
-### Accessing Data
+## Aggregate queries
 
-Given any `DataKnot`, its content can be accessed via `get`. For
-scalar outputs, `get` returns a typed Julia value.
+We've demonstrated the `Count` combinator, but `Count` could also
+be used as a query. In this next example, `Count` receives
+employees as input, and produces their number as output.
 
-    get(chicago[Count(It.department)])
-    #-> 2
-
-For simple lists, `get` returns a typed `Vector`.
-
-    get(chicago[It.department.employee.name])
-    #-> ["JEFFERY A", "NANCY A", "DANIEL A"]
-
-For more complex outputs, `get` may return a `@VectorTree`, a
-column-oriented storage for our `DataKnot` system.
-
-    query = It.department >>
-            Record(It.name,
-                   :employee_count => Count(It.employee))
-    vt = get(chicago[query])
-    display(vt)
-    #=>
-    @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
-     (name = "POLICE", employee_count = 2)
-     (name = "FIRE", employee_count = 1)
-    =#
-
-The `@VectorTree` datatype is considered an implemention detail,
-upon which specific input/output converters will be written.
-
-## Query Combinators
-
-We've seen how DataKnots' queries are assembled algebraically:
-they either come from a set of atomic *primitives* or are built
-from other queries using *combinators*.
-
-Query primitives include the identity (`It`), constant values
-(like `100000`), and data navigation via `Get(:Symbol)`. Besides
-query composition (`>>`), query combinators include `Count()`,
-`Record()`, `Label()`, `Filter()`, `Tag()` and broadcast operators
-such as equality `(.==)` and greater than `(.>)`.
-
-This next section describes additional primitives and combinators
-included with DataKnots' core library.
-
-### Aggregate queries
-
-Aggregates, such as `Count` may be used as a query primitive,
-providing incremental refinement without additional nesting. In
-this next example, `Count` takes an input of filtered employees,
-and returns the size of its input.
-
-    chicago[
-        It.department.employee >>
-        Filter(It.salary .> 100000) >>
-        Count]
+    chicago[It.department.employee >> Count]
     #=>
     │ It │
     ┼────┼
-    │  1 │
+    │  3 │
     =#
 
-Aggregate query primitives operate contextually. In the following
-example, `Count` is performed relative to each department.
+So far we've only seen *elementwise* queries, which emits an
+output for each of its input elements. The `Count` query is an
+*aggregate*, which means it emits an output for its entire input.
 
-    chicago[
-        It.department >>
-        Record(
-            It.name,
-            :over_100k =>
-                It.employee >>
-                Filter(It.salary .> 100000) >>
-                Count)]
-    #=>
-      │ department        │
-      │ name    over_100k │
-    ──┼───────────────────┼
-    1 │ POLICE          1 │
-    2 │ FIRE            0 │
-    =#
-
-Note that in the query `It.department.employee >> Count`, the
-`Count` primitive aggregates the number of employees across all
+Note that in this query, `Count` consumes all employees across all
 departments. This doesn't change even if we add parentheses:
 
     chicago[It.department >> (It.employee >> Count)]
@@ -481,8 +416,8 @@ departments. This doesn't change even if we add parentheses:
     =#
 
 To count employees in *each* department, we use `Each()`. This
-combinator applies its input *elementwise* to its argument.
-Therefore, we get two counts, one for each department.
+combinator applies its input elementwise. Therefore, we get two
+numbers, one for each department.
 
     chicago[It.department >> Each(It.employee >> Count)]
     #=>
@@ -492,7 +427,7 @@ Therefore, we get two counts, one for each department.
     2 │  1 │
     =#
 
-Naturally, we could use the `Count()` query combinator to get the
+Alternatively, we could use the `Count()` combinator to get the
 same result.
 
     chicago[It.department >> Count(It.employee)]
@@ -503,12 +438,12 @@ same result.
     2 │  1 │
     =#
 
-Which form of an aggregate to use depends upon what is
-notationally convenient. For incremental construction, being able
-to simply append `>> Count` is often very helpful.
+Which form of `Count` to use depends upon what is notationally
+convenient. For incremental construction, being able to simply
+append `>> Count` is often very helpful.
 
-    our_query = It.department.employee
-    chicago[our_query >> Count]
+    Q = It.department.employee
+    chicago[Q >> Count]
     #=>
     │ It │
     ┼────┼
@@ -517,41 +452,31 @@ to simply append `>> Count` is often very helpful.
 
 We could then refine the query, and run the exact same command.
 
-    our_query >>= Filter(It.salary .> 100000)
-    chicago[our_query >> Count]
+    Q >>= Filter(It.salary .> 100000)
+    chicago[Q >> Count]
     #=>
     │ It │
     ┼────┼
     │  1 │
     =#
 
-### Function broadcasting
+## Broadcasting over queries
 
-Besides operators, such as greater than (`.>`), arbitrary
-functions can also be used as a query combinator with the
-broadcast notation. Let's define a function to extract an
-employee's first name.
-
-    fname(x) = titlecase(split(x)[1])
-    fname("NANCY A")
-    #-> "Nancy"
-
-This `fname` function can then be used within a query expression
-to return first names of all employees.
+Any function could be used as a query combinator with the
+broadcasting notation.
 
     chicago[
         It.department.employee >>
-        fname.(It.name) >>
-        Label(:first_name)]
+        titlecase.(It.name)]
     #=>
-      │ first_name │
-    ──┼────────────┼
-    1 │ Jeffery    │
-    2 │ Nancy      │
-    3 │ Daniel     │
+      │ It        │
+    ──┼───────────┼
+    1 │ Jeffery A │
+    2 │ Nancy A   │
+    3 │ Daniel A  │
     =#
 
-Aggregate Julia functions, such as `mean`, can also be used.
+Vector functions, such as `mean`, can also be broadcast.
 
     using Statistics: mean
 
@@ -569,11 +494,9 @@ Aggregate Julia functions, such as `mean`, can also be used.
     =#
 
 The conversion of a function into a combinator is accomplished by
-`Lift`, as documented in the reference. How a lifted function is
-treated as a query combinator depends upon that function's input
-and output signature.
+`Lift`, as documented in the reference.
 
-### Keeping Values
+## Keeping Values
 
 Suppose we'd like a list of employee names together with the
 corresponding department name. The naive approach won't work,
@@ -622,7 +545,7 @@ with a higher than average salary for their department.
 In this last query, `mean` simply can't be moved into `Filter`'s
 argument, since this argument is evaluated for *each* employee.
 
-### Paging Data
+## Paging Data
 
 Sometimes query results can be quite large. In this case it's
 helpful to `Take` or `Drop` items from the input stream. Let's
@@ -685,7 +608,7 @@ use `Take` with an argument that computes how many to take.
     1 │ JEFFERY A  SERGEANT  101442 │
     =#
 
-### Query Parameters
+## Query Parameters
 
 Julia's index notation permits named parameters. Each argument
 passed via named parameter is converted into a `DataKnot` and then
@@ -740,7 +663,7 @@ While this approach works, it performs composition outside of the
 query language. If the dataset changes, a new `mean_salary` would
 have to be computed before the query above could be performed.
 
-### Parameterized Queries
+## Parameterized Queries
 
 Suppose we want parameterized query that could take other queries
 as arguments. Using `Given`, we could build a query that returns
@@ -801,7 +724,7 @@ Specifically, `It.amt` is not available outside `EmployeesOver()`.
     chicago[EmployeesOver(AvgSalary) >> It.amt]
     #-> ERROR: cannot find "amt" ⋮
 
-### Aggregate Combinators
+## Aggregate Combinators
 
 There are other aggregate combinators, such as `Min`, `Max`, and
 `Sum`. They could be used to create a statistical measure.
@@ -876,4 +799,30 @@ Suppressing the definition of parameterized queries such as
     It.department >> Stats(It.employee.salary)
     =#
 
+## Accessing Data
+
+Given any `DataKnot`, its content can be accessed via `get`. For
+scalar output, `get` returns a Julia value.
+
+    get(chicago[Count(It.department)])
+    #-> 2
+
+For plural output, `get` returns a `Vector`.
+
+    get(chicago[It.department.employee.name])
+    #-> ["JEFFERY A", "NANCY A", "DANIEL A"]
+
+For more complex outputs, `get` may return a `@VectorTree`, which
+is an `AbstractVector` specialized for column-oriented storage.
+
+    query = It.department >>
+            Record(It.name,
+                   :employee_count => Count(It.employee))
+    vt = get(chicago[query])
+    display(vt)
+    #=>
+    @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
+     (name = "POLICE", employee_count = 2)
+     (name = "FIRE", employee_count = 1)
+    =#
 

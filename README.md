@@ -7,7 +7,7 @@ analytics across CSV, JSON, XML and SQL data sources with
 an extensible, practical and coherent algebra of query
 combinators.*
 
-At this time, while we welcome feedback and contributors,
+At this time, while we welcome feedback and contributions,
 DataKnots is not yet usable for general audiences.
 
 [![Linux/OSX Build Status][travis-img]][travis-url]
