@@ -47,7 +47,7 @@ To query `void` with `Hello`, we use indexing notation
     │ Hello World │
     =#
 
-A tuple lifted to a constant query is displayed as a table.
+A `Tuple` lifted to a constant query is displayed as a table.
 
     void[Lift((name="DataKnots", version="0.1"))]
     #=>
@@ -56,7 +56,7 @@ A tuple lifted to a constant query is displayed as a table.
     │ DataKnots  0.1     │
     =#
 
-A vector lifted to a constant query will produce plural output.
+A `Vector` lifted to a constant query will produce plural output.
 
     void[Lift('a':'c')]
     #=>
@@ -74,7 +74,7 @@ new queries from existing ones.
 ### Composition & Identity
 
 Two queries can be connected sequentially using the *composition*
-combinator (`>>`). Consider the composition, `Lift(1:3) >> Hello`.
+combinator (`>>`). Consider the composition `Lift(1:3) >> Hello`.
 Since `Hello` produces a value for each input element, preceding
 it with `Lift(1:3)` generates three copies of `"Hello World"`.
 
@@ -132,25 +132,26 @@ then arranged with with combinators, such as composition (`>>`).
 This lets us define sophisticated query components and remix them
 in creative ways.
 
-### Lifting Julia Functions
+### Lifting Functions
 
-Any Julia function could be integrated into a DataKnots query.
-Consider the function `double(x)` that, when applied to a
-`Number`, produces a `Number`:
+Any function could be integrated into a DataKnots query. Consider
+the function `double(x)` that, when applied to a `Number`,
+produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
 
-What we want is an analogue to `double` which, instead of operating
-on numbers, operates on queries. Such functions are called query
-*combinators*. We can convert any Julia function to a query
+What we want is an analogue to `double` which, instead of
+operating on numbers, operates on queries. Such functions are
+called query *combinators*. We can convert any function to a
 combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-For a query `X`, the query `Double(X)` evaluates `X` and then runs
-its output through `double`. Thus, the query `Double(It)` would
-simply double its input.
+In this case, `double` expects a scalar value. Therefore, for a
+query `X`, the combinator `Double(X)` evaluates `X` and then runs
+each output element though `double`. Thus, the query `Double(It)`
+would simply double its input.
 
     void[Lift(1:3) >> Double(It)]
     #=>
@@ -183,7 +184,8 @@ could broadcast `getfield` to get a field value from a tuple.
     │  2 │
     =#
 
-Getting a field value is common enough to have its own notation.
+Getting a field value is common enough to have its own notation,
+properties of `It`, such as `It.y`, are used for field access.
 
     void[Lift((x=1,y=2)) >> It.y]
     #=>
@@ -222,8 +224,8 @@ the resulting combinator builds queries with plural output.
     3 │  3 │
     =#
 
-This conversion lets us access Julia's rich statistical and data
-processing functions from our queries.
+This automated lifting lets us access rich statistical and data
+processing functions from within our queries.
 
 ### Cardinality
 
@@ -239,29 +241,31 @@ constant query, never produces any rows.
     =#
 
 The constraint on the number of output rows a query may produce is
-called *cardinality*. A query is *mandatory* if its output must
-contain at least one row. It is *singular* if its output must
-contain at least one row.
+called its *cardinality*. A query is *mandatory* if its output
+must contain at least one row. It is *singular* if its output must
+contain at most one row.
 
-| Example         | Singular | Mandatory |
-|-----------------|----------|-----------|
-| `Lift([])`      | No       | No        |
-| `Lift('a':'c')` | No       | No        |
-| `Lift(missing)` | Yes      | No        |
-| `Lift("Hello")` | Yes      | Yes       |
+Example         | Data Type | Singular | Mandatory | Cardinality
+----------------|-----------|----------|-----------|------------
+`Lift("Hello")` | *scalar*  | Yes      | Yes       | :x1to1
+`Lift(missing)` | `Missing` | Yes      | No        | :x0to1
+`Lift('a':'c')` | `Vector`  | No       | No        | :x0toN
+``              |           | No       | Yes       | :x1toN
 
-It's notable that queries producing vectors are never singular nor
-mandatory.
+The last permutation in this chart, mandatory yet not singular,
+does not have a corresponding Julia type. However, data with this
+`:x1toN` cardinality could be created as a `DataKnot` and then
+lifted to a constant query.
 
-    void[Lift(["One"])]
+    one_or_more = DataKnot('A':'B', :x1toN)
+
+    void[Lift(one_or_more)]
     #=>
-      │ It  │
-    ──┼─────┼
-    1 │ One │
+      │ It │
+    ──┼────┼
+    1 │ A  │
+    2 │ B  │
     =#
-
-Finally, while the model permits mandatory and plural values,
-there isn't a Julia representation for this permutation.
 
 ## Query Combinators
 
@@ -283,9 +287,9 @@ element, they produce zero or more output elements. Consider the
     │  3 │
     =#
 
-An *aggregate* query such as `Count` is relative to the input as a
-whole, even if it might consider input elements. Let's consider
-the query `OneTo(3) >> OneTo(It)`.
+An *aggregate* query such as `Count` is computed over the input as
+a whole, and not for each individual element. The semantics of
+aggregates require discussion. Consider `OneTo(3) >> OneTo(It)`.
 
     void[OneTo(3) >> OneTo(It)]
     #=>
@@ -299,7 +303,8 @@ the query `OneTo(3) >> OneTo(It)`.
     6 │  3 │
     =#
 
-By simply appending `>> Sum` we could aggregate the input.
+By appending `>> Sum` we could aggregate the entire input flow,
+producing a single output element.
 
     void[OneTo(3) >> OneTo(It) >> Sum]
     #=>
@@ -320,8 +325,8 @@ around `OneTo(It) >> Sum` will not change the result.
     =#
 
 We need the `Each` combinator, which acts as an elementwise
-*barrier*.  For each input element, `Each` evaluates its argument;
-and then, it then collects the outputs.
+*barrier*. For each input element, `Each` evaluates its argument,
+and then collects the outputs.
 
     void[OneTo(3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -333,8 +338,9 @@ and then, it then collects the outputs.
     =#
 
 Following is an equivalent query, using the `Sum` combinator.
-While `Sum(X)` performs a numerical aggregation, it is not an
-aggregate query since it treats its input elementwise.
+Here, `Sum(X)` produces the same output as `Each(X >> Sum)`.
+Although `Sum(X)` performs numerical aggregation, it is not an
+aggregate query since its input is treated elementwise.
 
     void[OneTo(3) >> Sum(OneTo(It))]
     #=>
@@ -415,9 +421,10 @@ Filter can work in a nested context.
     1 │  3 │
     =#
 
-The `Filter` combinator is elementwise. That is, its arguments are
-evaluated for each input element. If the predicate is `true`, then
-that element is reproduced, otherwise it is discarded.
+The `Filter` combinator is elementwise. Furthermore, the predicate
+argument is evaluated for each input element. If the predicate
+evaluation is `true` for a given element, then that element is
+reproduced, otherwise it is discarded.
 
 ### Paging Data
 
@@ -434,32 +441,9 @@ while `Take` ignores input past a particular point.
     3 │  6 │
     =#
 
-Unlike `Filter`, the argument to `Take` is evaluated once, in the
-context of the input's *source*. To explain, let's first consider
-how a vector packed within a tuple could be listed.
-
-    void[Lift((x='a':'c', n=2)) >> It.x]
-    #=>
-      │ x │
-    ──┼───┼
-    1 │ a │
-    2 │ b │
-    3 │ c │
-    =#
-
-Notice that `n` in this tuple is set to `2`. It is a singular
-integer, so we can use it within the argument to `Take`.
-
-    void[Lift((x='a':'c', n=2)) >> Each(It.x >> Take(It.n))]
-    #=>
-      │ x │
-    ──┼───┼
-    1 │ a │
-    2 │ b │
-    =#
-
-In this next example, `Take` is performed three times. Each time,
-`It` refers to the integer elements of the outer loop, `OneTo(3)`.
+Unlike `Filter`, which evaluates its argument for each element,
+the argument to `Take` is evaluated once, in the context of the
+input's *source*.
 
     void[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
@@ -473,77 +457,57 @@ In this next example, `Take` is performed three times. Each time,
     6 │ c  │
     =#
 
-More generally, how do we grab the 1st half of an input stream?
-Let's define `FirstHalf` as a combinator that builds a query
-returning the first half of an input stream.
-
-    FirstHalf(X) = Each(X >> Take(Count(X) .÷ 2))
-    void[FirstHalf(OneTo(6))]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    3 │  3 │
-    =#
-
-We could construct and register a `FirstHalf` query primitive.
-
-    DataKnots.Lift(::typeof(FirstHalf)) = DataKnots.Then(FirstHalf)
-
-    void[OneTo(6) >> FirstHalf]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    3 │  3 │
-    =#
+In this example, the argument of `Take` evaluates in the context
+of `OneTo(3)`. Therefore, `Take` will be performed three times,
+where `It` has the values `1`, `2`, and `3`.
 
 ### Processing Model
 
-There is significant diversity how a query's input and output
-could be treated.
+DataKnots processing model has three levels.
 
-| Query       | Input Model | Output Cardinality   |
-|-------------|-------------|----------------------|
-| `Count`     | Aggregate   | Singular / Mandatory |
-| `Take(N)`   | Aggregate   | Plural   / Optional  |
-| `Count(X)`  | Elementwise | Singular / Mandatory |
-| `Filter(P)` | Elementwise | Singular / Optional  |
-| `Lift(1:N)` | Elementwise | Plural   / Optional  |
+* Combinators build queries.
+* Queries extend pipelines.
+* Pipelines process data.
 
-In this processing model, query input and output are pipelines
-with two endpoints: a *source* and a *target*, where each element
-in the source is mapped to zero or more target elements.
+In particular, queries don't process data, they are blueprints for
+assembling pipeline extensions. Pipelines then do processing.
 
-For any `source -> target` pipeline, we can create two trivial
-pipelines, `source_pipe`: `source -> source`, and `target_pipe`:
-`target -> target`. Therefore we have three options.
+Every pipeline has two endpoints, a *source* and a *target*, such
+that each data element that enters at the source is processed to
+produce zero or more target elements.
 
-| Derivative    | Source | Target |
-|---------------|--------|--------|
-| *pass though* | Source | Target |
-| `target_pipe` | Target | Target |
-| `source_pipe` | Source | Source |
+Combinators, which take queries as arguments and build an output
+query, have a choice for what to use for each of its arguments'
+starting pipeline. For query composition, the starting pipeline
+for its 1st argument is the input pipeline and the starting
+pipeline for the 2nd argument is the output pipeline of the 1st.
 
-A combinator has the option of what kind of input pipeline it
-could use for each of its arguments.
+For `Filter` and other elementwise combinators, the argument
+queries get a starting pipeline which treats each target element
+individually. In in this way, they are evaluated locally, without
+consideration of a broader context.
 
-| Combinator          | Argument Input          |
-|---------------------|-------------------------|
-| `Take(N)`           | N is an `target_pipe`   |
-| `Filter(P)`         | P is a `target_pipe`    |
-| `Count(X)`          | X is a `target_pipe`    |
-| `Lift(fn, (Xs...))` | Xs... are `target_pipe` |
+For `Take` and other aggregate combinators, the arguments (if any)
+could only have a starting pipeline constructed from the input's
+source. This is advantageous since it lets the aggregate's
+argument inspect the broader context in which it is used.
 
-The composition combinator (`>>`) with query arguments `A` and
-`B`, `A >> B`, deserves specific mention. The input of `A` is a
-pass though of the composition's input, while the input of `B` is
-the output of `A`.
+We've seen significant variation of processing approach among the
+queries we've built thus far.
 
-Also note that a combinator which builds only elementwise queries
-will necessarily use the target pipe to process its arguments.
+|               |             | Output      | Argument |
+| Query         | Input Model | Cardinality | Context  |
+|---------------|-------------|-------------|----------|
+| `Lift(1:3)`   | Elementwise | `:x0toN`    |          |
+| `Count`       | Aggregate   | `:x1to1`    |          |
+| `Count(...)`  | Elementwise | `:x1to1`    | Target   |
+| `Filter(...)` | Elementwise | `:x0to1`    | Target   |
+| `Take(3)`     | Aggregate   | `:x0toN`    | Source   |
+
+In DataKnots, how combinators construct their queries is given
+significant flexibility, with a simple interface for the queries
+themselves: they have an input and output pipeline. Each pipeline
+can be connected on both sides, the source, the target, or both.
 
 ## Structuring Data
 
