@@ -563,7 +563,7 @@ Lift(val) =
 
 `Lift` lets you use a function as a query combinator.
 
-    julia> DataKnot((x=1,y=2))[Lift(+, (It.x, It.y))]
+    julia> DataKnot((x=1, y=2))[Lift(+, (It.x, It.y))]
     │ It │
     ┼────┼
     │  3 │
@@ -571,7 +571,7 @@ Lift(val) =
 `Lift` is implicitly used when a function is broadcast over
 queries.
 
-    julia> DataKnot((x=1,y=2))[It.x .+ It.y]
+    julia> DataKnot((x=1, y=2))[It.x .+ It.y]
     │ It │
     ┼────┼
     │  3 │
@@ -586,7 +586,7 @@ queries.
 
 Functions returning `AbstractVector` become plural queries.
 
-    DataKnot((x='a',y='c'))[Lift(:,(It.x,It.y))]
+    DataKnot((x='a', y='c'))[Lift(:, (It.x, It.y))]
       │ It │
     ──┼────┼
     1 │ a  │
@@ -775,9 +775,28 @@ quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
 #
 
 """
-    Get(name) :: Query
+    Get(lbl::Symbol) :: Query
 
-This query emits the value of a record field.
+This query extracts a field value by its label.
+
+    julia> DataKnot((x=1, y=2))[Get(:x)]
+    │ x │
+    ┼───┼
+    │ 1 │
+
+This has a shorthand form using `It`.
+
+    julia> DataKnot((x=1, y=2))[It.x]
+    │ x │
+    ┼───┼
+    │ 1 │
+
+With unlabeled fields, ordinal labels (A, B, ...) can be used.
+
+    julia> DataKnot((1,2))[It.B]
+    │ It │
+    ┼────┼
+    │  2 │
 """
 Get(name) =
     Query(Get, name)
@@ -890,7 +909,20 @@ end
 """
     Keep(X₁, X₂ … Xₙ) :: Query
 
-Defines context parameters.
+`Keep` evaluates named queries, making their results available for
+subsequent computation.
+
+    julia> DataKnot()[Keep(:x => 2) >> It.x]
+    │ x │
+    ┼───┼
+    │ 2 │
+
+`Keep` does not otherwise change its input.
+
+    julia> DataKnot(1)[Keep(:x => 2) >> (It .+ It.x)]
+    │ It │
+    ┼────┼
+    │  3 │
 """
 Keep(P, Qs...) =
     Query(Keep, P, Qs...)
@@ -916,7 +948,13 @@ end
 """
     Given(X₁, X₂ … Xₙ, Q) :: Query
 
-Evaluates the query with the given context parameters.
+This evaluates `Q` in a context augmented with named parameters
+added by a set of queries.
+
+    julia> DataKnot()[Given(:x => 2, It.x .+ 1)]
+    │ It │
+    ┼────┼
+    │  3 │
 """
 Given(P, Xs...) =
     Query(Given, P, Xs...)
@@ -1009,9 +1047,34 @@ end
 
 """
     Sum(X) :: Query
+
+In the combinator form, `Sum(X)` emits the sum of elements
+produced by `X`.
+
+    julia> X = Lift(1:3);
+    julia> DataKnot()[Sum(X)]
+    │ It │
+    ┼────┼
+    │  6 │
+
+The `Sum` of an empty input is `0`.
+
+    julia> DataKnot()[Sum(Int[])]
+    │ It │
+    ┼────┼
+    │  0 │
+
+---
+
     Each(X >> Sum) :: Query
 
-Sums the elements produced by the query.
+In the query form, `Sum` emits the sum of input elements.
+
+    julia> X = Lift(1:3);
+    julia> DataKnot()[X >> Sum]
+    │ It │
+    ┼────┼
+    │  6 │
 """
 Sum(X) =
     Query(Sum, X)
@@ -1020,10 +1083,34 @@ Lift(::typeof(Sum)) =
     Then(Sum)
 
 """
-    Max(X) :: Query
+     Max(X) :: Query
+
+In the combinator form, `Max(X)` finds the maximum among the
+elements produced by `X`.
+
+    julia> X = Lift(1:3);
+    julia> DataKnot()[Max(X)]
+    │ It │
+    ┼────┼
+    │  3 │
+
+The `Max` of an empty input is empty.
+
+    julia> DataKnot()[Max(Int[])]
+    │ It │
+    ┼────┼
+
+---
+
     Each(X >> Max) :: Query
 
-Finds the maximum among the elements produced by the query.
+In the query form, `Max` finds the maximum of its input elements.
+
+    julia> X = Lift(1:3);
+    julia> DataKnot()[X >> Max]
+    │ It │
+    ┼────┼
+    │  3 │
 """
 Max(X) =
     Query(Max, X)
@@ -1032,10 +1119,34 @@ Lift(::typeof(Max)) =
     Then(Max)
 
 """
-    Min(X) :: Query
+     Min(X) :: Query
+
+In the combinator form, `Min(X)` finds the minimum among the
+elements produced by `X`.
+
+    julia> X = Lift(1:3);
+    julia> DataKnot()[Min(X)]
+    │ It │
+    ┼────┼
+    │  1 │
+
+The `Min` of an empty input is empty.
+
+    julia> DataKnot()[Min(Int[])]
+    │ It │
+    ┼────┼
+
+---
+
     Each(X >> Min) :: Query
 
-Finds the minimum among the elements produced by the query.
+In the query form, `Min` finds the minimum of its input elements.
+
+    julia> X = Lift(1:3);
+    julia> DataKnot()[X >> Min]
+    │ It │
+    ┼────┼
+    │  1 │
 """
 Min(X) =
     Query(Min, X)
@@ -1086,7 +1197,32 @@ end
 """
     Filter(X) :: Query
 
-Filters the input by the given condition.
+This query emits the elements from its input that satisfy a given
+condition.
+
+    julia> DataKnot(1:5)[Filter(isodd.(It))]
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  3 │
+    3 │  5 │
+
+When the predicate query produces an empty output, the condition
+is presumed to have failed.
+
+    julia> DataKnot('a':'c')[Filter(missing)]
+    │ It │
+    ┼────┼
+
+When the predicate produces plural output, the condition succeeds
+if at least one output value is `true`.
+
+    julia> DataKnot('a':'c')[Filter([true,false])]
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
 """
 Filter(X) =
     Query(Filter, X)
@@ -1124,7 +1260,21 @@ end
 """
     Take(N) :: Query
 
-Keeps the first `N` elements of the input, drops the rest.
+This query preserves the first `N` elements of its input, dropping
+the rest.
+
+    julia> DataKnot()[Lift('a':'c') >> Take(2)]
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+
+`Take(-N)` drops the last `N` elements.
+
+    julia> DataKnot()[Lift('a':'c') >> Take(-2)]
+      │ It │
+    ──┼────┼
+    1 │ a  │
 """
 Take(N) =
     Query(Take, N)
@@ -1132,7 +1282,21 @@ Take(N) =
 """
     Drop(N) :: Query
 
-Drops the first `N` elements of the input, keeps the rest.
+This query drops the first `N` elements of its input, preserving
+the rest.
+
+    julia> DataKnot()[Lift('a':'c') >> Drop(2)]
+      │ It │
+    ──┼────┼
+    1 │ c  │
+
+`Drop(-N)` takes the last `N` elements.
+
+    julia> DataKnot()[Lift('a':'c') >> Drop(-2)]
+      │ It │
+    ──┼────┼
+    1 │ b  │
+    2 │ c  │
 """
 Drop(N) =
     Query(Drop, N)

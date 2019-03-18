@@ -13,9 +13,71 @@ import Base:
 #
 
 """
-    DataKnot(cell::AbstractVector, shp::AbstractShape)
+    DataKnot(::Any=nothing)
+    DataKnot(::AbstactVector, card=:x0toN)
 
-Encapsulates a data cell serialized in a column-oriented form.
+The `DataKnot` constructor wraps a given value so that it could be
+used to start a query. When the argument is an vector, we can
+clarify its cardinality (`:x0to1`, `:x1to1`, `:x0toN`, `:x1toN`).
+
+The simplest knot holds the value `nothing`.
+
+    julia> DataKnot()
+    │ It │
+    ┼────┼
+    │    │
+
+An empty knot can be constructed with `missing`.
+
+    julia> DataKnot(missing)
+    │ It │
+    ┼────┼
+
+It's often useful to wrap a dataset in a one-field tuple.
+
+    julia> DataKnot((dataset='a':'c',))
+    │ dataset │
+    ┼─────────┼
+    │ a; b; c │
+
+By default, vectors have no cardinality constraints. To indicate
+that vector will always has at least one element, use `:x1toN`.
+
+    julia> DataKnot('a':'c', :x1toN)
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+
+---
+
+    get(::DataKnot)
+
+Use `get` to extract the underlying value held by a knot.
+
+    julia> get(DataKnot("Hello World"))
+    "Hello World"
+
+---
+
+    getindex(::DataKnot, X; kwargs...)
+
+We can query a knot using array indexing notation.
+
+    julia> DataKnot((dataset='a':'c',))[Count(It.dataset)]
+    │ It │
+    ┼────┼
+    │  3 │
+
+Query parameters are provided as keyword arguments.
+
+    julia> DataKnot(1:3)[PWR=2, It .^ It.PWR]
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  4 │
+    3 │  9 │
 """
 struct DataKnot
     cell::AbstractVector
