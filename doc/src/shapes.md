@@ -282,6 +282,7 @@ To run this pipeline, we pack the input data together with parameters.
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["shapes.jl"]
+Public = false
 ```
 
 

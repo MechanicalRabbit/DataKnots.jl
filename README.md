@@ -78,6 +78,9 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 Our development chat is currently hosted on Gitter:
 https://gitter.im/rbt-lang/rbt-proto
 
+Current documentation could be found at:
+https://rbt-lang.github.io/DataKnots.jl/dev/
+
 [travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl
 [appveyor-img]: https://ci.appveyor.com/api/projects/status/github/rbt-lang/DataKnots.jl?branch=master&svg=true

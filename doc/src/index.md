@@ -10,19 +10,12 @@ combinators.*
 At this time, while we welcome feedback and contributions,
 DataKnots is not yet usable for general audiences.
 
-## Contents
-
 ```@contents
 Pages = [
     "tutorial.md",
-    "thinking.md",
     "reference.md",
     "implementation.md",
 ]
 Depth=2
 ```
 
-## Index
-
-```@index
-```

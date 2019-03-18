@@ -245,6 +245,7 @@ It is also easy to create new pipeline combinators.  Let us create a combinator
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["pipelines.jl"]
+Public = false
 ```
 
 

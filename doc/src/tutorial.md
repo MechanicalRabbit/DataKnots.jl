@@ -1,8 +1,8 @@
-# DataKnots Tutorial
+# Tutorial
 
 DataKnots is an embedded query language designed so that
-accidental programmers can more easily solve complex data analysis
-tasks. This tutorial shows how typical query operations can be
+accidental programmers can more easily analyze complex data.
+This tutorial shows how typical query operations can be
 performed upon a simplified in-memory dataset.
 
 ## Getting Started
@@ -248,7 +248,7 @@ that computes the number of employees in a department.
         :employee_count =>
             Count(It.employee)
 
-This query can be used in different contexts.
+This query can be used in different ways.
 
     chicago[Max(It.department >> EmployeeCount)]
     #=>
@@ -316,11 +316,14 @@ our Chicago data starting with a list of employees.
     =#
 
 Let's extend this query to show if the salary is over 100k.
-Notice how the query definition is tracked.
 
     GT100K = :gt100k => It.salary .> 100000
 
     Q >>= Record(It.name, It.salary, GT100K)
+
+The query definition is tracked automatically.
+
+    Q
     #=>
     It.department.employee >>
     Record(It.name, It.salary, :gt100k => It.salary .> 100000)
@@ -402,10 +405,8 @@ Previously we've only seen *elementwise* queries, which emit an
 output for each of its input elements. The `Count` query is an
 *aggregate*, which means it emits an output for its entire input.
 
-In this example, since `It.department >> It.employee` is the input
-for `Count`, the total spans all employees across all departments.
-Adding parenthesis to get counts by department doesn't work since
-composition (`>>`) is an associative operator.
+We may wish to count employees by department. Contrary to
+expectation, adding parentheses will not change the output.
 
     chicago[It.department >> (It.employee >> Count)]
     #=>
@@ -414,9 +415,8 @@ composition (`>>`) is an associative operator.
     │  3 │
     =#
 
-To count employees in *each* department, we use `Each()`. This
-combinator evaluates its argument elementwise. Therefore, we get
-two numbers, one for each department.
+To count employees in *each* department, we use the `Each()`
+combinator, which evaluates its argument elementwise.
 
     chicago[It.department >> Each(It.employee >> Count)]
     #=>
@@ -501,7 +501,7 @@ and `Sum`.
 
 ## Broadcasting over Queries
 
-Any function could be used as a query combinator with the
+Any function could be applied to query arguments using Julia's
 broadcasting notation.
 
     chicago[
@@ -515,7 +515,7 @@ broadcasting notation.
     3 │ Daniel A  │
     =#
 
-Vector functions, such as `mean`, can also be broadcast.
+Vector functions, such as `mean`, can also be used.
 
     using Statistics: mean
 
@@ -534,8 +534,8 @@ Vector functions, such as `mean`, can also be broadcast.
 
 ## Keeping Values
 
-Suppose we'd like a list of employee names together with their
-department.  The naive approach won't work, because `department` is
+Suppose we'd like to list employee names together with their
+department. The naive approach won't work because `department` is
 not available in the context of an employee.
 
     chicago[
@@ -699,10 +699,10 @@ the same query expression, we could use the `Given` combinator.
     2 │ DANIEL A  │
     =#
 
-## Custom Combinators
+## Query Functions
 
-Using `Given` lets us easily create new query combinators. Let's
-make a combinator `EmployeesOver` that produces employees with a
+Using `Given` lets us easily create new query functions. Let's
+make a function `EmployeesOver` that produces employees with a
 salary greater than the given amount.
 
     EmployeesOver(X) =
@@ -744,7 +744,7 @@ further refined.
     2 │ DANIEL A  │
     =#
 
-Alternatively, this combinator could have been defined using
+Alternatively, this query function could have been defined using
 `Keep`. We use `Given` because it doesn't leak parameters.
 Specifically, `It.AMT` is not available outside `EmployeesOver()`.
 

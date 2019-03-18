@@ -315,6 +315,7 @@ Applying this pipeline to the input data gives us the output of the query.
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["queries.jl"]
+Public = false
 ```
 
 

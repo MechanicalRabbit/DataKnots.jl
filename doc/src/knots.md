@@ -53,6 +53,7 @@ query is also a `DataKnot` object.
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["knots.jl"]
+Public = false
 ```
 
 

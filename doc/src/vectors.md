@@ -285,6 +285,7 @@ Another way to assemble this data in column-oriented format is to use
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["vectors.jl"]
+Public = false
 ```
 
 
