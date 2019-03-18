@@ -55,15 +55,6 @@ show(io::IO, F::Query) =
 # Navigation sugar.
 #
 
-"""
-    It
-
-Identity query with respect to the query composition.
-
-    It.a.b.c
-
-Equivalent to `Get(:a) >> Get(:b) >> Get(:c)`.
-"""
 struct Navigation <: AbstractQuery
     __path::Tuple{Vararg{Symbol}}
 end
@@ -78,6 +69,39 @@ show(io::IO, nav::Navigation) =
         print(io, join((:It, path...), "."))
     end
 
+"""
+    It
+
+In a query expression, use `It` to refer to the query's input.
+
+    julia> DataKnot(3)[It .+ 1]
+    │ It │
+    ┼────┼
+    │  4 │
+
+`It` is the identity with respect to query composition.
+
+    julia> DataKnot()[Lift('a':'c') >> It]
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+
+`It` provides a shorthand notation for data navigation using
+`Get`, so that `It.a.x` is equivalent to `Get(:a) >> Get(:x)`.
+
+    julia> DataKnot((a=(x=1,y=2),))[It.a]
+    │ a    │
+    │ x  y │
+    ┼──────┼
+    │ 1  2 │
+
+    julia> DataKnot((a=(x=1,y=2),))[It.a.x]
+    │ x │
+    ┼───┼
+    │ 1 │
+"""
 const It = Navigation(())
 
 
