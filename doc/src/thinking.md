@@ -207,8 +207,11 @@ that increments each of its input elements.
     3 │  4 │
     =#
 
-One can also define combinators as query expressions. However, be
-sure to cast each argument using `Lift`.
+In Julia, broadcasting lets the function's arguments control how
+the function is applied. When a function is broadcasted over
+queries, the result is a query. However, to make sure it works, we
+need to ensure that at least one argument is a query, and we can
+do this by wrapping at least one argument with `Lift`.
 
     OneTo(N) = UnitRange.(1, Lift(N))
 
