@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>DataKnots Tutorial · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>DataKnots Tutorial</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Our-First-Query-1">Our First Query</a></li><li><a class="toctext" href="#Navigation-1">Navigation</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Context-and-Counting-1">Context &amp; Counting</a></li><li><a class="toctext" href="#Record-Construction-1">Record Construction</a></li><li><a class="toctext" href="#Reusable-Queries-1">Reusable Queries</a></li><li><a class="toctext" href="#Filtering-Data-1">Filtering Data</a></li><li><a class="toctext" href="#Incremental-Composition-1">Incremental Composition</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Summarizing-Data-1">Summarizing Data</a></li><li><a class="toctext" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></li><li><a class="toctext" href="#Keeping-Values-1">Keeping Values</a></li><li><a class="toctext" href="#Paging-Data-1">Paging Data</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Custom-Combinators-1">Custom Combinators</a></li><li><a class="toctext" href="#Extracting-Data-1">Extracting Data</a></li></ul></li><li><a class="toctext" href="../thinking/">Thinking in Combinators</a></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a></li><li><a class="toctext" href="../simulation/">Tutorial: Simulated Data</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>DataKnots Tutorial</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>DataKnots Tutorial</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="DataKnots-Tutorial-1" href="#DataKnots-Tutorial-1">DataKnots Tutorial</a></h1><p>DataKnots is an embedded query language designed so that accidental programmers can more easily solve complex data analysis tasks. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li class="current"><a class="toctext" href>Tutorial</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Our-First-Query-1">Our First Query</a></li><li><a class="toctext" href="#Navigation-1">Navigation</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Context-and-Counting-1">Context &amp; Counting</a></li><li><a class="toctext" href="#Record-Construction-1">Record Construction</a></li><li><a class="toctext" href="#Reusable-Queries-1">Reusable Queries</a></li><li><a class="toctext" href="#Filtering-Data-1">Filtering Data</a></li><li><a class="toctext" href="#Incremental-Composition-1">Incremental Composition</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Summarizing-Data-1">Summarizing Data</a></li><li><a class="toctext" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></li><li><a class="toctext" href="#Keeping-Values-1">Keeping Values</a></li><li><a class="toctext" href="#Paging-Data-1">Paging Data</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Query-Functions-1">Query Functions</a></li><li><a class="toctext" href="#Extracting-Data-1">Extracting Data</a></li></ul></li><li><a class="toctext" href="../reference/">Reference</a></li><li><a class="toctext" href="../implementation/">Implementation Notes</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Tutorial</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Tutorial</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Tutorial-1" href="#Tutorial-1">Tutorial</a></h1><p>DataKnots is an embedded query language designed so that accidental programmers can more easily analyze complex data. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
   (department = [
     (name = &quot;POLICE&quot;,
      employee = [
@@ -114,7 +114,7 @@ chicago = DataKnot(chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-F
 2 │ FIRE    DANIEL A, 95484                   │
 =#</code></pre><p>In this output, commas separate tuple fields and semi-colons separate vector elements.</p><h2><a class="nav-anchor" id="Reusable-Queries-1" href="#Reusable-Queries-1">Reusable Queries</a></h2><p>Queries can be reused. Let&#39;s define <code>EmployeeCount</code> to be a query that computes the number of employees in a department.</p><pre><code class="language-julia">EmployeeCount =
     :employee_count =&gt;
-        Count(It.employee)</code></pre><p>This query can be used in different contexts.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
+        Count(It.employee)</code></pre><p>This query can be used in different ways.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
 #=&gt;
 │ It │
 ┼────┼
@@ -157,9 +157,9 @@ chicago[Q]
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ NANCY A    POLICE OFFICER     80016 │
 3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k. Notice how the query definition is tracked.</p><pre><code class="language-julia">GT100K = :gt100k =&gt; It.salary .&gt; 100000
+=#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k.</p><pre><code class="language-julia">GT100K = :gt100k =&gt; It.salary .&gt; 100000
 
-Q &gt;&gt;= Record(It.name, It.salary, GT100K)
+Q &gt;&gt;= Record(It.name, It.salary, GT100K)</code></pre><p>The query definition is tracked automatically.</p><pre><code class="language-julia">Q
 #=&gt;
 It.department.employee &gt;&gt;
 Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
@@ -206,12 +206,12 @@ chicago[Q]
 │ It │
 ┼────┼
 │  3 │
-=#</code></pre><p>Previously we&#39;ve only seen <em>elementwise</em> queries, which emit an output for each of its input elements. The <code>Count</code> query is an <em>aggregate</em>, which means it emits an output for its entire input.</p><p>In this example, since <code>It.department &gt;&gt; It.employee</code> is the input for <code>Count</code>, the total spans all employees across all departments. Adding parenthesis to get counts by department doesn&#39;t work since composition (<code>&gt;&gt;</code>) is an associative operator.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; (It.employee &gt;&gt; Count)]
+=#</code></pre><p>Previously we&#39;ve only seen <em>elementwise</em> queries, which emit an output for each of its input elements. The <code>Count</code> query is an <em>aggregate</em>, which means it emits an output for its entire input.</p><p>We may wish to count employees by department. Contrary to expectation, adding parentheses will not change the output.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; (It.employee &gt;&gt; Count)]
 #=&gt;
 │ It │
 ┼────┼
 │  3 │
-=#</code></pre><p>To count employees in <em>each</em> department, we use <code>Each()</code>. This combinator evaluates its argument elementwise. Therefore, we get two numbers, one for each department.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Each(It.employee &gt;&gt; Count)]
+=#</code></pre><p>To count employees in <em>each</em> department, we use the <code>Each()</code> combinator, which evaluates its argument elementwise.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Each(It.employee &gt;&gt; Count)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -263,7 +263,7 @@ chicago[
 ──┼──────────────────────────────────────┼
 1 │ POLICE      2  80016  101442  181458 │
 2 │ FIRE        1  95484   95484   95484 │
-=#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be used as a query combinator with the broadcasting notation.</p><pre><code class="language-julia">chicago[
+=#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     titlecase.(It.name)]
 #=&gt;
@@ -272,7 +272,7 @@ chicago[
 1 │ Jeffery A │
 2 │ Nancy A   │
 3 │ Daniel A  │
-=#</code></pre><p>Vector functions, such as <code>mean</code>, can also be broadcast.</p><pre><code class="language-julia">using Statistics: mean
+=#</code></pre><p>Vector functions, such as <code>mean</code>, can also be used.</p><pre><code class="language-julia">using Statistics: mean
 
 chicago[
     It.department &gt;&gt;
@@ -285,7 +285,7 @@ chicago[
 ──┼─────────────────────┼
 1 │ POLICE      90729.0 │
 2 │ FIRE        95484.0 │
-=#</code></pre><h2><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h2><p>Suppose we&#39;d like a list of employee names together with their department.  The naive approach won&#39;t work, because <code>department</code> is not available in the context of an employee.</p><pre><code class="language-julia">chicago[
+=#</code></pre><h2><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h2><p>Suppose we&#39;d like to list employee names together with their department. The naive approach won&#39;t work because <code>department</code> is not available in the context of an employee.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
     It.employee &gt;&gt;
     Record(It.name, It.department.name)]
@@ -379,7 +379,7 @@ mean_salary = chicago[MeanSalary]
 ──┼───────────┼
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-=#</code></pre><h2><a class="nav-anchor" id="Custom-Combinators-1" href="#Custom-Combinators-1">Custom Combinators</a></h2><p>Using <code>Given</code> lets us easily create new query combinators. Let&#39;s make a combinator <code>EmployeesOver</code> that produces employees with a salary greater than the given amount.</p><pre><code class="language-julia">EmployeesOver(X) =
+=#</code></pre><h2><a class="nav-anchor" id="Query-Functions-1" href="#Query-Functions-1">Query Functions</a></h2><p>Using <code>Given</code> lets us easily create new query functions. Let&#39;s make a function <code>EmployeesOver</code> that produces employees with a salary greater than the given amount.</p><pre><code class="language-julia">EmployeesOver(X) =
     Given(:AMT =&gt; X,
         It.department &gt;&gt;
         It.employee &gt;&gt;
@@ -406,7 +406,7 @@ chicago[EmployeesOver(MeanSalary)]
 ──┼───────────┼
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-=#</code></pre><p>Alternatively, this combinator could have been defined using <code>Keep</code>. We use <code>Given</code> because it doesn&#39;t leak parameters. Specifically, <code>It.AMT</code> is not available outside <code>EmployeesOver()</code>.</p><pre><code class="language-julia">chicago[EmployeesOver(MeanSalary) &gt;&gt; It.AMT]
+=#</code></pre><p>Alternatively, this query function could have been defined using <code>Keep</code>. We use <code>Given</code> because it doesn&#39;t leak parameters. Specifically, <code>It.AMT</code> is not available outside <code>EmployeesOver()</code>.</p><pre><code class="language-julia">chicago[EmployeesOver(MeanSalary) &gt;&gt; It.AMT]
 #-&gt; ERROR: cannot find &quot;AMT&quot; ⋮</code></pre><h2><a class="nav-anchor" id="Extracting-Data-1" href="#Extracting-Data-1">Extracting Data</a></h2><p>Given any <code>DataKnot</code>, its content can be extracted using <code>get</code>. For singular output, <code>get</code> returns a scalar value.</p><pre><code class="language-julia">get(chicago[Count(It.department)])
 #-&gt; 2</code></pre><p>For plural output, <code>get</code> returns a <code>Vector</code>.</p><pre><code class="language-julia">get(chicago[It.department.employee.name])
 #-&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;DANIEL A&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, which is an <code>AbstractVector</code> specialized for column-oriented storage.</p><pre><code class="language-julia">query = It.department &gt;&gt;
@@ -418,4 +418,4 @@ display(vt)
 @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
  (name = &quot;POLICE&quot;, employee_count = 2)
  (name = &quot;FIRE&quot;, employee_count = 1)
-=#</code></pre><footer><hr/><a class="previous" href="../"><span class="direction">Previous</span><span class="title">Home</span></a><a class="next" href="../thinking/"><span class="direction">Next</span><span class="title">Thinking in Combinators</span></a></footer></article></body></html>
+=#</code></pre><footer><hr/><a class="previous" href="../"><span class="direction">Previous</span><span class="title">Home</span></a><a class="next" href="../reference/"><span class="direction">Next</span><span class="title">Reference</span></a></footer></article></body></html>

@@ -13,44 +13,28 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "DataKnots.jl",
     "category": "section",
-    "text": "DataKnots aspires to be a Julia library for representing and querying data, including nested and circular structures. DataKnots will provide integration and analytics across CSV, JSON, XML and SQL data sources with an extensible, practical and coherent algebra of query combinators.At this time, while we welcome feedback and contributions, DataKnots is not yet usable for general audiences."
-},
-
-{
-    "location": "#Contents-1",
-    "page": "Home",
-    "title": "Contents",
-    "category": "section",
-    "text": "Pages = [\n    \"tutorial.md\",\n    \"thinking.md\",\n    \"reference.md\",\n    \"implementation.md\",\n]\nDepth=2"
-},
-
-{
-    "location": "#Index-1",
-    "page": "Home",
-    "title": "Index",
-    "category": "section",
-    "text": ""
+    "text": "DataKnots aspires to be a Julia library for representing and querying data, including nested and circular structures. DataKnots will provide integration and analytics across CSV, JSON, XML and SQL data sources with an extensible, practical and coherent algebra of query combinators.At this time, while we welcome feedback and contributions, DataKnots is not yet usable for general audiences.Pages = [\n    \"tutorial.md\",\n    \"reference.md\",\n    \"implementation.md\",\n]\nDepth=2"
 },
 
 {
     "location": "tutorial/#",
-    "page": "DataKnots Tutorial",
-    "title": "DataKnots Tutorial",
+    "page": "Tutorial",
+    "title": "Tutorial",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "tutorial/#DataKnots-Tutorial-1",
-    "page": "DataKnots Tutorial",
-    "title": "DataKnots Tutorial",
+    "location": "tutorial/#Tutorial-1",
+    "page": "Tutorial",
+    "title": "Tutorial",
     "category": "section",
-    "text": "DataKnots is an embedded query language designed so that accidental programmers can more easily solve complex data analysis tasks. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset."
+    "text": "DataKnots is an embedded query language designed so that accidental programmers can more easily analyze complex data. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset."
 },
 
 {
     "location": "tutorial/#Getting-Started-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Getting Started",
     "category": "section",
     "text": "Consider a tiny cross-section of public data from Chicago, represented as nested NamedTuple and Vector objects.chicago_data =\n  (department = [\n    (name = \"POLICE\",\n     employee = [\n      (name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442),\n      (name = \"NANCY A\", position = \"POLICE OFFICER\", salary = 80016)]),\n    (name = \"FIRE\",\n     employee = [\n      (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", salary = 95484)])],)In this hierarchical Chicago dataset, the root is a NamedTuple with a field department, which is a Vector of department records, and so on.To query this dataset, we convert it into a DataKnot, or knot.using DataKnots\nchicago = DataKnot(chicago_data)"
@@ -58,7 +42,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Our-First-Query-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Our First Query",
     "category": "section",
     "text": "Let\'s say we want to return the list of department names from this dataset. We query the chicago knot using Julia\'s index notation with It.department.name.department_names = chicago[It.department.name]\n#=>\n  │ name   │\n──┼────────┼\n1 │ POLICE │\n2 │ FIRE   │\n=#The output, department_names, is also a DataKnot. The content of this output knot could be accessed via get function.get(department_names)\n#-> [\"POLICE\", \"FIRE\"]"
@@ -66,7 +50,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Navigation-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Navigation",
     "category": "section",
     "text": "In DataKnot queries, It means \"the current input\". The dotted notation lets one navigate a hierarchical dataset. Let\'s continue our dataset exploration by listing employee names.chicago[It.department.employee.name]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n2 │ NANCY A   │\n3 │ DANIEL A  │\n=#Navigation context matters. For example, employee tuples are not directly accessible from the root of the dataset. When a field label, such as employee, can\'t be found, an appropriate error message is displayed.chicago[It.employee]\n#-> ERROR: cannot find \"employee\" ⋮Instead, employee tuples can be queried by navigating though department tuples. When tuples are returned, they are displayed as a table.chicago[It.department.employee]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Notice that nested vectors traversed during navigation are flattened into a single output vector."
@@ -74,7 +58,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Composition-and-Identity-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Composition & Identity",
     "category": "section",
     "text": "Dotted navigation, such as It.department.name, is a syntax shorthand for the Get() primitive together with query composition (>>).chicago[Get(:department) >> Get(:name)]\n#=>\n  │ name   │\n──┼────────┼\n1 │ POLICE │\n2 │ FIRE   │\n=#The Get() primitive returns values that match a given label. Query composition (>>) chains two queries serially, with the output of the first query as input to the second.chicago[Get(:department) >> Get(:employee)]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#The It query simply reproduces its input, which makes it the identity with respect to composition (>>). Hence, It can be woven into any composition without changing the result.chicago[It >> Get(:department) >> Get(:name)]\n#=>\n  │ name   │\n──┼────────┼\n1 │ POLICE │\n2 │ FIRE   │\n=#This motivates our clever use of It as a syntax shorthand.chicago[It.department.name]\n#=>\n  │ name   │\n──┼────────┼\n1 │ POLICE │\n2 │ FIRE   │\n=#In DataKnots, queries are either primitives, such as Get and It, or built from other queries with combinators, such as composition (>>). Let\'s explore some other combinators."
@@ -82,7 +66,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Context-and-Counting-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Context & Counting",
     "category": "section",
     "text": "To count the number of departments in this chicago dataset we write the query Count(It.department). Observe that the argument provided to Count(), It.department, is itself a query.chicago[Count(It.department)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#Using query composition (>>), we can perform Count in a nested context. For this next example, let\'s count employee records within each department.chicago[It.department >> Count(It.employee)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#In this output, we see that one department has 2 employees, while the other has only 1."
@@ -90,7 +74,7 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Record-Construction-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Record Construction",
     "category": "section",
     "text": "Let\'s improve the previous query by including each department\'s name alongside employee counts. This can be done by using the Record combinator.chicago[\n    It.department >>\n    Record(It.name,\n           Count(It.employee))]\n#=>\n  │ department │\n  │ name    #B │\n──┼────────────┼\n1 │ POLICE   2 │\n2 │ FIRE     1 │\n=#To label a record field we use Julia\'s Pair syntax, (=>).chicago[\n    It.department >>\n    Record(It.name,\n           :employee_count =>\n               Count(It.employee))]\n#=>\n  │ department             │\n  │ name    employee_count │\n──┼────────────────────────┼\n1 │ POLICE               2 │\n2 │ FIRE                 1 │\n=#This is syntax shorthand for the Label primitive.chicago[\n    It.department >>\n    Record(It.name,\n           Count(It.employee) >>\n           Label(:employee_count))]\n#=>\n  │ department             │\n  │ name    employee_count │\n──┼────────────────────────┼\n1 │ POLICE               2 │\n2 │ FIRE                 1 │\n=#Records can be nested. The following listing includes, for each department, employees\' name and salary.chicago[\n    It.department >>\n    Record(It.name,\n           It.employee >>\n           Record(It.name,\n                  It.salary))]\n#=>\n  │ department                                │\n  │ name    employee                          │\n──┼───────────────────────────────────────────┼\n1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │\n2 │ FIRE    DANIEL A, 95484                   │\n=#In this output, commas separate tuple fields and semi-colons separate vector elements."
@@ -98,15 +82,15 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Reusable-Queries-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Reusable Queries",
     "category": "section",
-    "text": "Queries can be reused. Let\'s define EmployeeCount to be a query that computes the number of employees in a department.EmployeeCount =\n    :employee_count =>\n        Count(It.employee)This query can be used in different contexts.chicago[Max(It.department >> EmployeeCount)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#\n\nchicago[\n    It.department >>\n    Record(It.name,\n           EmployeeCount)]\n#=>\n  │ department             │\n  │ name    employee_count │\n──┼────────────────────────┼\n1 │ POLICE               2 │\n2 │ FIRE                 1 │\n=#"
+    "text": "Queries can be reused. Let\'s define EmployeeCount to be a query that computes the number of employees in a department.EmployeeCount =\n    :employee_count =>\n        Count(It.employee)This query can be used in different ways.chicago[Max(It.department >> EmployeeCount)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#\n\nchicago[\n    It.department >>\n    Record(It.name,\n           EmployeeCount)]\n#=>\n  │ department             │\n  │ name    employee_count │\n──┼────────────────────────┼\n1 │ POLICE               2 │\n2 │ FIRE                 1 │\n=#"
 },
 
 {
     "location": "tutorial/#Filtering-Data-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Filtering Data",
     "category": "section",
     "text": "Let\'s extend the previous query to only show departments with more than one employee. This can be done using the Filter combinator.chicago[\n    It.department >>\n    Record(It.name, EmployeeCount) >>\n    Filter(It.employee_count .> 1)]\n#=>\n  │ department             │\n  │ name    employee_count │\n──┼────────────────────────┼\n1 │ POLICE               2 │\n=#To use regular operators in query expressions, we need to use broadcasting notation, such as .> rather than > ; forgetting the period is an easy mistake to make.chicago[\n    It.department >>\n    Record(It.name, EmployeeCount) >>\n    Filter(It.employee_count > 1)]\n#=>\nERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)\n⋮\n=#"
@@ -114,23 +98,23 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Incremental-Composition-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Incremental Composition",
     "category": "section",
-    "text": "Combinators let us construct queries incrementally. Let\'s explore our Chicago data starting with a list of employees.Q = It.department.employee\n\nchicago[Q]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Let\'s extend this query to show if the salary is over 100k. Notice how the query definition is tracked.GT100K = :gt100k => It.salary .> 100000\n\nQ >>= Record(It.name, It.salary, GT100K)\n#=>\nIt.department.employee >>\nRecord(It.name, It.salary, :gt100k => It.salary .> 100000)\n=#Let\'s run Q again.chicago[Q]\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┼\n1 │ JEFFERY A  101442    true │\n2 │ NANCY A     80016   false │\n3 │ DANIEL A    95484   false │\n=#We can now filter the dataset to include only high-paid employees.Q >>= Filter(It.gt100k)\n#=>\nIt.department.employee >>\nRecord(It.name, It.salary, :gt100k => It.salary .> 100000) >>\nFilter(It.gt100k)\n=#Let\'s run Q again.chicago[Q]\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┼\n1 │ JEFFERY A  101442    true │\n=#Well-tested queries may benefit from a Tag so that their definitions are suppressed in larger compositions.HighlyCompensated = Tag(:HighlyCompensated, Q)\n#-> HighlyCompensated\n\nchicago[HighlyCompensated]\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┼\n1 │ JEFFERY A  101442    true │\n=#This tagging can make subsequent compositions easier to read.Q = HighlyCompensated >> It.name\n#=>\nHighlyCompensated >> It.name\n=#\n\nchicago[Q]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n=#"
+    "text": "Combinators let us construct queries incrementally. Let\'s explore our Chicago data starting with a list of employees.Q = It.department.employee\n\nchicago[Q]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Let\'s extend this query to show if the salary is over 100k.GT100K = :gt100k => It.salary .> 100000\n\nQ >>= Record(It.name, It.salary, GT100K)The query definition is tracked automatically.Q\n#=>\nIt.department.employee >>\nRecord(It.name, It.salary, :gt100k => It.salary .> 100000)\n=#Let\'s run Q again.chicago[Q]\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┼\n1 │ JEFFERY A  101442    true │\n2 │ NANCY A     80016   false │\n3 │ DANIEL A    95484   false │\n=#We can now filter the dataset to include only high-paid employees.Q >>= Filter(It.gt100k)\n#=>\nIt.department.employee >>\nRecord(It.name, It.salary, :gt100k => It.salary .> 100000) >>\nFilter(It.gt100k)\n=#Let\'s run Q again.chicago[Q]\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┼\n1 │ JEFFERY A  101442    true │\n=#Well-tested queries may benefit from a Tag so that their definitions are suppressed in larger compositions.HighlyCompensated = Tag(:HighlyCompensated, Q)\n#-> HighlyCompensated\n\nchicago[HighlyCompensated]\n#=>\n  │ employee                  │\n  │ name       salary  gt100k │\n──┼───────────────────────────┼\n1 │ JEFFERY A  101442    true │\n=#This tagging can make subsequent compositions easier to read.Q = HighlyCompensated >> It.name\n#=>\nHighlyCompensated >> It.name\n=#\n\nchicago[Q]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n=#"
 },
 
 {
     "location": "tutorial/#Aggregate-Queries-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Aggregate Queries",
     "category": "section",
-    "text": "We\'ve demonstrated the Count combinator, but Count could also be used as a query. In this next example, Count receives employees as input, and produces their number as output.chicago[It.department.employee >> Count]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#Previously we\'ve only seen elementwise queries, which emit an output for each of its input elements. The Count query is an aggregate, which means it emits an output for its entire input.In this example, since It.department >> It.employee is the input for Count, the total spans all employees across all departments. Adding parenthesis to get counts by department doesn\'t work since composition (>>) is an associative operator.chicago[It.department >> (It.employee >> Count)]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#To count employees in each department, we use Each(). This combinator evaluates its argument elementwise. Therefore, we get two numbers, one for each department.chicago[It.department >> Each(It.employee >> Count)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#Alternatively, we could use the Count() combinator to get the same result.chicago[It.department >> Count(It.employee)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#Which form of Count to use depends upon what is notationally convenient. For incremental construction, being able to simply append >> Count is often very helpful.Q = It.department.employee\nchicago[Q >> Count]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#We could then refine the query, and run the exact same command.Q >>= Filter(It.salary .> 100000)\nchicago[Q >> Count]\n#=>\n│ It │\n┼────┼\n│  1 │\n=#"
+    "text": "We\'ve demonstrated the Count combinator, but Count could also be used as a query. In this next example, Count receives employees as input, and produces their number as output.chicago[It.department.employee >> Count]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#Previously we\'ve only seen elementwise queries, which emit an output for each of its input elements. The Count query is an aggregate, which means it emits an output for its entire input.We may wish to count employees by department. Contrary to expectation, adding parentheses will not change the output.chicago[It.department >> (It.employee >> Count)]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#To count employees in each department, we use the Each() combinator, which evaluates its argument elementwise.chicago[It.department >> Each(It.employee >> Count)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#Alternatively, we could use the Count() combinator to get the same result.chicago[It.department >> Count(It.employee)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#Which form of Count to use depends upon what is notationally convenient. For incremental construction, being able to simply append >> Count is often very helpful.Q = It.department.employee\nchicago[Q >> Count]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#We could then refine the query, and run the exact same command.Q >>= Filter(It.salary .> 100000)\nchicago[Q >> Count]\n#=>\n│ It │\n┼────┼\n│  1 │\n=#"
 },
 
 {
     "location": "tutorial/#Summarizing-Data-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Summarizing Data",
     "category": "section",
     "text": "To summarize data, we could use combinators such as Min, Max, and Sum.Salary = It.department.employee.salary\n\nchicago[\n    Record(\n        :count => Count(Salary),\n        :min => Min(Salary),\n        :max => Max(Salary),\n        :sum => Sum(Salary))]\n#=>\n│ count  min    max     sum    │\n┼──────────────────────────────┼\n│     3  80016  101442  276942 │\n=#Just as Count has an aggregate query form, so do Min, Max, and Sum.Salary = It.employee.salary\n\nchicago[\n    It.department >>\n    Record(\n        It.name,\n        :count => Salary >> Count,\n        :min => Salary >> Min,\n        :max => Salary >> Max,\n        :sum => Salary >> Sum)]\n#=>\n  │ department                           │\n  │ name    count  min    max     sum    │\n──┼──────────────────────────────────────┼\n1 │ POLICE      2  80016  101442  181458 │\n2 │ FIRE        1  95484   95484   95484 │\n=#"
@@ -138,23 +122,23 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Broadcasting-over-Queries-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Broadcasting over Queries",
     "category": "section",
-    "text": "Any function could be used as a query combinator with the broadcasting notation.chicago[\n    It.department.employee >>\n    titlecase.(It.name)]\n#=>\n  │ It        │\n──┼───────────┼\n1 │ Jeffery A │\n2 │ Nancy A   │\n3 │ Daniel A  │\n=#Vector functions, such as mean, can also be broadcast.using Statistics: mean\n\nchicago[\n    It.department >>\n    Record(\n        It.name,\n        :mean_salary => mean.(It.employee.salary))]\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┼\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#"
+    "text": "Any function could be applied to query arguments using Julia\'s broadcasting notation.chicago[\n    It.department.employee >>\n    titlecase.(It.name)]\n#=>\n  │ It        │\n──┼───────────┼\n1 │ Jeffery A │\n2 │ Nancy A   │\n3 │ Daniel A  │\n=#Vector functions, such as mean, can also be used.using Statistics: mean\n\nchicago[\n    It.department >>\n    Record(\n        It.name,\n        :mean_salary => mean.(It.employee.salary))]\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┼\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#"
 },
 
 {
     "location": "tutorial/#Keeping-Values-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Keeping Values",
     "category": "section",
-    "text": "Suppose we\'d like a list of employee names together with their department.  The naive approach won\'t work, because department is not available in the context of an employee.chicago[\n    It.department >>\n    It.employee >>\n    Record(It.name, It.department.name)]\n#-> ERROR: cannot find \"department\" ⋮This can be overcome by using Keep to label an expression\'s result, so that it is available within subsequent computations.chicago[\n    It.department >>\n    Keep(:dept_name => It.name) >>\n    It.employee >>\n    Record(It.name, It.dept_name)]\n#=>\n  │ employee             │\n  │ name       dept_name │\n──┼──────────────────────┼\n1 │ JEFFERY A  POLICE    │\n2 │ NANCY A    POLICE    │\n3 │ DANIEL A   FIRE      │\n=#This pattern also emerges when a filter condition uses a parameter calculated in a parent context. For example, let\'s list employees with a higher than average salary for their department.chicago[\n    It.department >>\n    Keep(:mean_salary => mean.(It.employee.salary)) >>\n    It.employee >>\n    Filter(It.salary .> It.mean_salary)]\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442 │\n=#"
+    "text": "Suppose we\'d like to list employee names together with their department. The naive approach won\'t work because department is not available in the context of an employee.chicago[\n    It.department >>\n    It.employee >>\n    Record(It.name, It.department.name)]\n#-> ERROR: cannot find \"department\" ⋮This can be overcome by using Keep to label an expression\'s result, so that it is available within subsequent computations.chicago[\n    It.department >>\n    Keep(:dept_name => It.name) >>\n    It.employee >>\n    Record(It.name, It.dept_name)]\n#=>\n  │ employee             │\n  │ name       dept_name │\n──┼──────────────────────┼\n1 │ JEFFERY A  POLICE    │\n2 │ NANCY A    POLICE    │\n3 │ DANIEL A   FIRE      │\n=#This pattern also emerges when a filter condition uses a parameter calculated in a parent context. For example, let\'s list employees with a higher than average salary for their department.chicago[\n    It.department >>\n    Keep(:mean_salary => mean.(It.employee.salary)) >>\n    It.employee >>\n    Filter(It.salary .> It.mean_salary)]\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442 │\n=#"
 },
 
 {
     "location": "tutorial/#Paging-Data-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Paging Data",
     "category": "section",
     "text": "Sometimes query results can be quite large. In this case it\'s helpful to Take or Drop items from the input. Let\'s start by listing all 3 employees of our toy database.Employee = It.department.employee\nchicago[Employee]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ NANCY A    POLICE OFFICER     80016 │\n3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#To return only the first 2 records, we use Take.chicago[Employee >> Take(2)]\n#=>\n  │ employee                          │\n  │ name       position        salary │\n──┼───────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT        101442 │\n2 │ NANCY A    POLICE OFFICER   80016 │\n=#A negative index counts records from the end of the input. So, to return all the records but the last two, we write:chicago[Employee >> Take(-2)]\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442 │\n=#To skip the first two records, returning the rest, we use Drop.chicago[Employee >> Drop(2)]\n#=>\n  │ employee                           │\n  │ name      position          salary │\n──┼────────────────────────────────────┼\n1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │\n=#To return the 1st half of the employees in the database, we could use Take with an argument that computes how many to take.chicago[Employee >> Take(Count(Employee) .÷ 2)]\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442 │\n=#"
@@ -162,162 +146,26 @@ var documenterSearchIndex = {"docs": [
 
 {
     "location": "tutorial/#Query-Parameters-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Query Parameters",
     "category": "section",
     "text": "A query may depend upon parameters, passed as keyword arguments. The parameter values are available in the query though It.chicago[AMT=100000, It.AMT]\n#=>\n│ AMT    │\n┼────────┼\n│ 100000 │\n=#Using parameters lets us reuse complex queries without changing their definition. By convention we capitalize parameters so they stand out from regular data labels.PaidOverAmt =\n    It.department >>\n    It.employee >>\n    Filter(It.salary .> It.AMT) >>\n    It.name\n\nchicago[AMT=100000, PaidOverAmt]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n=#What if we want to return employees who have a greater than average salary? This average could be computed first.MeanSalary = mean.(It.department.employee.salary)\nmean_salary = chicago[MeanSalary]\n#=>\n│ It      │\n┼─────────┼\n│ 92314.0 │\n=#Then, this value could be passed as our parameter.chicago[PaidOverAmt, AMT=mean_salary]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n2 │ DANIEL A  │\n=#This approach performs composition outside of the query language. To evaluate a query and immediately use it as a parameter within the same query expression, we could use the Given combinator.chicago[Given(:AMT => MeanSalary, PaidOverAmt)]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n2 │ DANIEL A  │\n=#"
 },
 
 {
-    "location": "tutorial/#Custom-Combinators-1",
-    "page": "DataKnots Tutorial",
-    "title": "Custom Combinators",
+    "location": "tutorial/#Query-Functions-1",
+    "page": "Tutorial",
+    "title": "Query Functions",
     "category": "section",
-    "text": "Using Given lets us easily create new query combinators. Let\'s make a combinator EmployeesOver that produces employees with a salary greater than the given amount.EmployeesOver(X) =\n    Given(:AMT => X,\n        It.department >>\n        It.employee >>\n        Filter(It.salary .> It.AMT))\n\nchicago[EmployeesOver(100000)]\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442 │\n=#EmployeesOver can take another query as an argument. For example, let\'s find employees with higher than average salary.MeanSalary = mean.(It.department.employee.salary)\n\nchicago[EmployeesOver(MeanSalary)]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Note that this combination is yet another query that could be further refined.chicago[EmployeesOver(MeanSalary) >> It.name]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n2 │ DANIEL A  │\n=#Alternatively, this combinator could have been defined using Keep. We use Given because it doesn\'t leak parameters. Specifically, It.AMT is not available outside EmployeesOver().chicago[EmployeesOver(MeanSalary) >> It.AMT]\n#-> ERROR: cannot find \"AMT\" ⋮"
+    "text": "Using Given lets us easily create new query functions. Let\'s make a function EmployeesOver that produces employees with a salary greater than the given amount.EmployeesOver(X) =\n    Given(:AMT => X,\n        It.department >>\n        It.employee >>\n        Filter(It.salary .> It.AMT))\n\nchicago[EmployeesOver(100000)]\n#=>\n  │ employee                    │\n  │ name       position  salary │\n──┼─────────────────────────────┼\n1 │ JEFFERY A  SERGEANT  101442 │\n=#EmployeesOver can take another query as an argument. For example, let\'s find employees with higher than average salary.MeanSalary = mean.(It.department.employee.salary)\n\nchicago[EmployeesOver(MeanSalary)]\n#=>\n  │ employee                            │\n  │ name       position          salary │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT          101442 │\n2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │\n=#Note that this combination is yet another query that could be further refined.chicago[EmployeesOver(MeanSalary) >> It.name]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ JEFFERY A │\n2 │ DANIEL A  │\n=#Alternatively, this query function could have been defined using Keep. We use Given because it doesn\'t leak parameters. Specifically, It.AMT is not available outside EmployeesOver().chicago[EmployeesOver(MeanSalary) >> It.AMT]\n#-> ERROR: cannot find \"AMT\" ⋮"
 },
 
 {
     "location": "tutorial/#Extracting-Data-1",
-    "page": "DataKnots Tutorial",
+    "page": "Tutorial",
     "title": "Extracting Data",
     "category": "section",
     "text": "Given any DataKnot, its content can be extracted using get. For singular output, get returns a scalar value.get(chicago[Count(It.department)])\n#-> 2For plural output, get returns a Vector.get(chicago[It.department.employee.name])\n#-> [\"JEFFERY A\", \"NANCY A\", \"DANIEL A\"]For more complex outputs, get may return a @VectorTree, which is an AbstractVector specialized for column-oriented storage.query = It.department >>\n        Record(It.name,\n               :employee_count => Count(It.employee))\nvt = get(chicago[query])\ndisplay(vt)\n#=>\n@VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):\n (name = \"POLICE\", employee_count = 2)\n (name = \"FIRE\", employee_count = 1)\n=#"
-},
-
-{
-    "location": "thinking/#",
-    "page": "Thinking in Combinators",
-    "title": "Thinking in Combinators",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "thinking/#Thinking-in-Combinators-1",
-    "page": "Thinking in Combinators",
-    "title": "Thinking in Combinators",
-    "category": "section",
-    "text": "DataKnots is a Julia library for building database queries. In DataKnots, queries are assembled algebraically: they either come from a set of atomic primitives or are built from other queries using combinators. In this conceptual guide, we show how to build queries starting from smaller components and then combining them algebraically to implement complex processing tasks.To start working with DataKnots, we import the package:using DataKnots"
-},
-
-{
-    "location": "thinking/#Constructing-Queries-1",
-    "page": "Thinking in Combinators",
-    "title": "Constructing Queries",
-    "category": "section",
-    "text": "A DataKnot, or just knot, is a container having structured, vectorized data.For this guide, we\'ll use a trivial knot, void as our data source. The void knot encapsulates the value nothing, which will serve as the input for our queries.void = DataKnot(nothing)\n#=>\n│ It │\n┼────┼\n│    │\n=#"
-},
-
-{
-    "location": "thinking/#Constant-Queries-1",
-    "page": "Thinking in Combinators",
-    "title": "Constant Queries",
-    "category": "section",
-    "text": "Any Julia value could be converted to a query using the Lift constructor. Queries constructed this way are constant: for each input element they receive, they output the given value. Consider the query Hello, lifted from the string value \"Hello World\".Hello = Lift(\"Hello World\")To query void with Hello, we use indexing notation void[Hello]. In this case, Hello receives nothing from void and produces the value, \"Hello World\".void[Hello]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#A Tuple lifted to a constant query is displayed as a table.void[Lift((name=\"DataKnots\", version=\"0.1\"))]\n#=>\n│ name       version │\n┼────────────────────┼\n│ DataKnots  0.1     │\n=#A Vector lifted to a constant query will produce plural output.void[Lift(\'a\':\'c\')]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n=#We call queries constructed this way primitives, as they do not rely upon any other query. There are also combinators, which build new queries from existing ones."
-},
-
-{
-    "location": "thinking/#Composition-and-Identity-1",
-    "page": "Thinking in Combinators",
-    "title": "Composition & Identity",
-    "category": "section",
-    "text": "Two queries can be connected sequentially using the composition combinator (>>). Consider the composition Lift(1:3) >> Hello. Since Hello produces a value for each input element, preceding it with Lift(1:3) generates three copies of \"Hello World\".void[Lift(1:3) >> Hello]\n#=>\n  │ It          │\n──┼─────────────┼\n1 │ Hello World │\n2 │ Hello World │\n3 │ Hello World │\n=#If we compose two plural queries, Lift(1:2) and Lift(\'a\':\'c\'), the output will contain the elements of \'a\':\'c\' repeated twice.void[Lift(1:2) >> Lift(\'a\':\'c\')]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n4 │ a  │\n5 │ b  │\n6 │ c  │\n=#The identity with respect to query composition is called It. This primitive can be composed with any query without changing the query\'s output.void[Hello >> It]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#The identity primitive, It, can be used to construct queries which rely upon the output from previous processing.Increment = It .+ 1\nvoid[Lift(1:3) >> Increment]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  3 │\n3 │  4 │\n=#In DataKnots, queries are built algebraically, starting with query primitives, such as constants (Lift) or the identity (It), and then arranged with with combinators, such as composition (>>). This lets us define sophisticated query components and remix them in creative ways."
-},
-
-{
-    "location": "thinking/#Lifting-Functions-1",
-    "page": "Thinking in Combinators",
-    "title": "Lifting Functions",
-    "category": "section",
-    "text": "Any function could be integrated into a DataKnots query. Consider the function double(x) that, when applied to a Number, produces a Number:double(x) = 2x\ndouble(3) #-> 6What we want is an analogue to double which, instead of operating on numbers, operates on queries. Such functions are called query combinators. We can convert any function to a combinator by passing the function and its arguments to Lift.Double(X) = Lift(double, (X,))In this case, double expects a scalar value. Therefore, for a query X, the combinator Double(X) evaluates X and then runs each output element though double. Thus, the query Double(It) would simply double its input.void[Lift(1:3) >> Double(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  4 │\n3 │  6 │\n=#Broadcasting a function over a query argument performs a Lift implicitly, building a query component.void[Lift(1:3) >> double.(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  4 │\n3 │  6 │\n=#Any existing function could be broadcast this way. For example, we could broadcast getfield to get a field value from a tuple.void[Lift((x=1,y=2)) >> getfield.(It, :y)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#Getting a field value is common enough to have its own notation, properties of It, such as It.y, are used for field access.void[Lift((x=1,y=2)) >> It.y]\n#=>\n│ y │\n┼───┼\n│ 2 │\n=#Implicit lifting also applies to built-in Julia operators (+) and values (1). The expression It .+ 1 is a query component that increments each of its input elements.void[Lift(1:3) >> (It .+ 1)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  3 │\n3 │  4 │\n=#In Julia, broadcasting lets the function\'s arguments control how the function is applied. When a function is broadcasted over queries, the result is a query. However, to make sure it works, we need to ensure that at least one argument is a query, and we can do this by wrapping at least one argument with Lift.OneTo(N) = UnitRange.(1, Lift(N))Note that the unit range constructor is vector-valued. Therefore, the resulting combinator builds queries with plural output.void[OneTo(3)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  2 │\n3 │  3 │\n=#This automated lifting lets us access rich statistical and data processing functions from within our queries."
-},
-
-{
-    "location": "thinking/#Cardinality-1",
-    "page": "Thinking in Combinators",
-    "title": "Cardinality",
-    "category": "section",
-    "text": "We have seen that queries produce any number of output rows: Lift(1:3) produces 3 rows and Lift(\"Hello World\") produces exactly one row. Further, the value missing, lifted to a constant query, never produces any rows.void[Lift(missing)]\n#=>\n│ It │\n┼────┼\n=#The constraint on the number of output rows a query may produce is called its cardinality. A query is mandatory if its output must contain at least one row. It is singular if its output must contain at most one row.Example Data Type Singular Mandatory Cardinality\nLift(\"Hello\") scalar Yes Yes :x1to1\nLift(missing) Missing Yes No :x0to1\nLift(\'a\':\'c\') Vector No No :x0toN\n``  No Yes :x1toNThe last permutation in this chart, mandatory yet not singular, does not have a corresponding Julia type. However, data with this :x1toN cardinality could be created as a DataKnot and then lifted to a constant query.one_or_more = DataKnot(\'A\':\'B\', :x1toN)\n\nvoid[Lift(one_or_more)]\n#=>\n  │ It │\n──┼────┼\n1 │ A  │\n2 │ B  │\n=#"
-},
-
-{
-    "location": "thinking/#Query-Combinators-1",
-    "page": "Thinking in Combinators",
-    "title": "Query Combinators",
-    "category": "section",
-    "text": "There are query operations which cannot be lifted from Julia functions. We\'ve met a few already, including the identity (It) and query composition (>>). There are many others involving aggregation, filtering, and paging."
-},
-
-{
-    "location": "thinking/#Aggregate-Queries-1",
-    "page": "Thinking in Combinators",
-    "title": "Aggregate Queries",
-    "category": "section",
-    "text": "So far queries have been elementwise; that is, for each input element, they produce zero or more output elements. Consider the Count primitive; it returns the number of its input elements.void[OneTo(3) >> Count]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#An aggregate query such as Count is computed over the input as a whole, and not for each individual element. The semantics of aggregates require discussion. Consider OneTo(3) >> OneTo(It).void[OneTo(3) >> OneTo(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  1 │\n3 │  2 │\n4 │  1 │\n5 │  2 │\n6 │  3 │\n=#By appending >> Sum we could aggregate the entire input flow, producing a single output element.void[OneTo(3) >> OneTo(It) >> Sum]\n#=>\n│ It │\n┼────┼\n│ 10 │\n=#What if we wanted to produce sums by the outer query, OneTo(3)? Since query composition (>>) is associative, adding parenthesis around OneTo(It) >> Sum will not change the result.void[OneTo(3) >> (OneTo(It) >> Sum)]\n#=>\n│ It │\n┼────┼\n│ 10 │\n=#We need the Each combinator, which acts as an elementwise barrier. For each input element, Each evaluates its argument, and then collects the outputs.void[OneTo(3) >> Each(OneTo(It) >> Sum)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  3 │\n3 │  6 │\n=#Following is an equivalent query, using the Sum combinator. Here, Sum(X) produces the same output as Each(X >> Sum). Although Sum(X) performs numerical aggregation, it is not an aggregate query since its input is treated elementwise.void[OneTo(3) >> Sum(OneTo(It))]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  3 │\n3 │  6 │\n=#Julia functions taking a vector argument, such as mean, can be lifted to a combinator taking a plural query. When performed, the plural output is converted into the function\'s vector argument.using Statistics\nMean(X) = mean.(X)\nvoid[Mean(OneTo(3) >> Sum(OneTo(It)))]\n#=>\n│ It      │\n┼─────────┼\n│ 3.33333 │\n=#To use Mean as a query primitive, we use Then to build a query that aggregates elements from its input. Next, we register this query so it is used when Mean is treated as a query.DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)Once these are done, one could take an average of sums as follows:void[Lift(1:3) >> Sum(OneTo(It)) >> Mean]\n#=>\n│ It      │\n┼─────────┼\n│ 3.33333 │\n=#In DataKnots, summary operations are expressed as aggregate query primitives or as query combinators taking a plural query argument. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra."
-},
-
-{
-    "location": "thinking/#Filtering-1",
-    "page": "Thinking in Combinators",
-    "title": "Filtering",
-    "category": "section",
-    "text": "The Filter combinator has one parameter, a predicate query that, for each input element, decides if this element should be included in the output.void[OneTo(6) >> Filter(It .> 3)]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#Being a combinator, Filter builds a query component, which could then be composed with any data generating query.KeepEven = Filter(iseven.(It))\nvoid[OneTo(6) >> KeepEven]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  4 │\n3 │  6 │\n=#Filter can work in a nested context.void[Lift(1:3) >> Filter(Sum(OneTo(It)) .> 5)]\n#=>\n  │ It │\n──┼────┼\n1 │  3 │\n=#The Filter combinator is elementwise. Furthermore, the predicate argument is evaluated for each input element. If the predicate evaluation is true for a given element, then that element is reproduced, otherwise it is discarded."
-},
-
-{
-    "location": "thinking/#Paging-Data-1",
-    "page": "Thinking in Combinators",
-    "title": "Paging Data",
-    "category": "section",
-    "text": "Like Filter, the Take and Drop combinators can be used to choose elements from an input: Drop is used to skip over input, while Take ignores input past a particular point.void[OneTo(9) >> Drop(3) >> Take(3)]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#Unlike Filter, which evaluates its argument for each element, the argument to Take is evaluated once, in the context of the input\'s source.void[OneTo(3) >> Each(Lift(\'a\':\'c\') >> Take(It))]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ a  │\n3 │ b  │\n4 │ a  │\n5 │ b  │\n6 │ c  │\n=#In this example, the argument of Take evaluates in the context of OneTo(3). Therefore, Take will be performed three times, where It has the values 1, 2, and 3."
-},
-
-{
-    "location": "thinking/#Processing-Model-1",
-    "page": "Thinking in Combinators",
-    "title": "Processing Model",
-    "category": "section",
-    "text": "DataKnots processing model has three levels.Combinators build queries.\nQueries extend pipelines.\nPipelines process data.In particular, queries don\'t process data, they are blueprints for assembling pipeline extensions. Pipelines then do processing.Every pipeline has two endpoints, a source and a target, such that each data element that enters at the source is processed to produce zero or more target elements.Combinators, which take queries as arguments and build an output query, have a choice for what to use for each of its arguments\' starting pipeline. For query composition, the starting pipeline for its 1st argument is the input pipeline and the starting pipeline for the 2nd argument is the output pipeline of the 1st.For Filter and other elementwise combinators, the argument queries get a starting pipeline which treats each target element individually. In in this way, they are evaluated locally, without consideration of a broader context.For Take and other aggregate combinators, the arguments (if any) could only have a starting pipeline constructed from the input\'s source. This is advantageous since it lets the aggregate\'s argument inspect the broader context in which it is used.We\'ve seen significant variation of processing approach among the queries we\'ve built thus far.|               |             | Output      | Argument | | Query         | Input Model | Cardinality | Context  | |–––––––-|––––––-|––––––-|–––––| | Lift(1:3)   | Elementwise | :x0toN    |          | | Count       | Aggregate   | :x1to1    |          | | Count(...)  | Elementwise | :x1to1    | Target   | | Filter(...) | Elementwise | :x0to1    | Target   | | Take(3)     | Aggregate   | :x0toN    | Source   |In DataKnots, how combinators construct their queries is given significant flexibility, with a simple interface for the queries themselves: they have an input and output pipeline. Each pipeline can be connected on both sides, the source, the target, or both."
-},
-
-{
-    "location": "thinking/#Structuring-Data-1",
-    "page": "Thinking in Combinators",
-    "title": "Structuring Data",
-    "category": "section",
-    "text": "Thus far we\'ve seen how queries can be composed in heavily nested environments. DataKnots also supports nested data and contexts."
-},
-
-{
-    "location": "thinking/#Records-and-Labels-1",
-    "page": "Thinking in Combinators",
-    "title": "Records & Labels",
-    "category": "section",
-    "text": "Data objects can be created using the Record combinator. Values can be labeled using Julia\'s Pair syntax. The entire result as a whole may also be named.GM = Record(:name => \"GARRY M\", :salary => 260004)\nvoid[GM]\n#=>\n│ name     salary │\n┼─────────────────┼\n│ GARRY M  260004 │\n=#Field access is possible via Get query constructor, which takes a label\'s name. Here Get(:name) is an elementwise query that returns the value of a given label when found.void[GM >> Get(:name)]\n#=>\n│ name    │\n┼─────────┼\n│ GARRY M │\n=#For syntactic convenience, It can be used for dotted access.void[GM >> It.name]\n#=>\n│ name    │\n┼─────────┼\n│ GARRY M │\n=#The Label combinator provides a name to any expression.void[Lift(\"Hello World\") >> Label(:greeting)]\n#=>\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n=#Alternatively, Julia\'s pair constructor (=>) and and a Symbol denoted by a colon (:) can be used to label an expression.Hello =\n  :greeting => Lift(\"Hello World\")\n\nvoid[Hello]\n#=>\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n=#Records can be plural. Here is a table of obvious statistics.Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)\nvoid[Lift(1:3) >> Stats]\n#=>\n  │ n¹  n²  n³ │\n──┼────────────┼\n1 │  1   1   1 │\n2 │  2   4   8 │\n3 │  3   9  27 │\n=#By accessing names, calculations can be performed on records.void[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]\n#=>\n  │ It │\n──┼────┼\n1 │  3 │\n2 │ 14 │\n3 │ 39 │\n=#Using records, it is possible to represent complex, hierarchical data. It is then possible to access and compute with this data."
-},
-
-{
-    "location": "thinking/#Query-Parameters-1",
-    "page": "Thinking in Combinators",
-    "title": "Query Parameters",
-    "category": "section",
-    "text": "With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.void[\"Hello \" .* Get(:WHO), WHO=\"World\"]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#To make Get convenient, It provides a shorthand syntax.void[\"Hello \" .* It.WHO, WHO=\"World\"]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#Query parameters are available anywhere in the query. They could, for example be used within a filter.query = OneTo(6) >> Filter(It .> It.START)\nvoid[query, START=3]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#Parameters can also be defined as part of a query using Given. This combinator takes set of pairs (=>) that map symbols (:name) onto query expressions. The subsequent argument is then evaluated in a naming context where the defined parameters are available for reuse.void[Given(:WHO => \"World\", \"Hello \" .* Get(:WHO))]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#Query parameters can be especially useful when managing aggregates, or with expressions that one may wish to repeat more than once.GreaterThanAverage(X) =\n  Given(:AVG => Mean(X),\n        X >> Filter(It .> Get(:AVG)))\n\nvoid[GreaterThanAverage(OneTo(6))]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#In DataKnots, query parameters permit external data to be used within query expressions. Parameters that are defined with Given can be used to remember values and reuse them."
-},
-
-{
-    "location": "thinking/#Working-With-Data-1",
-    "page": "Thinking in Combinators",
-    "title": "Working With Data",
-    "category": "section",
-    "text": "Arrays of named tuples can be wrapped with Lift in order to provide a series of tuples. Since DataKnots works fluidly with Julia, any sort of Julia object may be used. In this case, NamedTuple has special support so that it prints well.DATA = Lift([(name = \"GARRY M\", salary = 260004),\n              (name = \"ANTHONY R\", salary = 185364),\n              (name = \"DANA A\", salary = 170112)])\n\nvoid[:staff => DATA]\n#=>\n  │ staff             │\n  │ name       salary │\n──┼───────────────────┼\n1 │ GARRY M    260004 │\n2 │ ANTHONY R  185364 │\n3 │ DANA A     170112 │\n=#Access to slots in a NamedTuple is also supported by Get.void[DATA >> Get(:name)]\n#=>\n  │ name      │\n──┼───────────┼\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n=#Together with previous combinators, DataKnots could be used to create readable queries, such as \"who has the greatest salary\"?void[:highest_salary =>\n  Given(:MAX => Max(DATA >> It.salary),\n        DATA >> Filter(It.salary .== Get(:MAX)))]\n#=>\n  │ highest_salary  │\n  │ name     salary │\n──┼─────────────────┼\n1 │ GARRY M  260004 │\n=#Records can even contain lists of subordinate records.DB =\n  void[:department =>\n    Record(:name => \"FIRE\", :staff => It.FIRE),\n    FIRE=[(name = \"JOSE S\", salary = 202728),\n          (name = \"CHARLES S\", salary = 197736)]]\n#=>\n│ department                              │\n│ name  staff                             │\n┼─────────────────────────────────────────┼\n│ FIRE  JOSE S, 202728; CHARLES S, 197736 │\n=#These subordinate records can then be summarized.void[:statistics =>\n  DB >> Record(:dept => It.name,\n               :count => Count(It.staff))]\n#=>\n│ statistics  │\n│ dept  count │\n┼─────────────┼\n│ FIRE      2 │\n=#"
-},
-
-{
-    "location": "thinking/#Quirks-and-Hints-1",
-    "page": "Thinking in Combinators",
-    "title": "Quirks & Hints",
-    "category": "section",
-    "text": "By quirks we mean perhaps unexpected consequences of embedding DataKnots in Julia or deviations from how other languages work. They are not necessarily bugs, nor could they be easily fixed.The query Count is not the same as the query Count(It). The former is an aggregate that consumes its entire input, the latter is an elementwise query that considers one input a time. Since it could only receive one input element at a time, Count(It) is always 1. This is clearly less than ideal.void[OneTo(3) >> Count(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  1 │\n3 │  1 │\n=#The Count aggregate only considers the number of elements in the input. It does not check for values that are truthy.void[OneTo(5) >> iseven.(It) >> Count]\n#=>\n│ It │\n┼────┼\n│  5 │\n=#\n\nvoid[OneTo(5) >> Filter(iseven.(It)) >> Count]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#Using the broadcast syntax to lift combinators is clever, but it doesn\'t always work out. If an argument to the broadcast isn\'t a Query then a regular broadcast will happen. For example, rand.(1:3) is an array of arrays containing random numbers. Wrapping an argument in Lift will address this challenge.using Random: seed!, rand\nseed!(0)\nvoid[Lift(1:3) >> rand.(Lift(7:9))]\n#=>\n  │ It │\n──┼────┼\n1 │  7 │\n2 │  9 │\n3 │  8 │\n=#"
 },
 
 {
@@ -329,91 +177,147 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "reference/#DataKnots.DataKnot",
+    "page": "Reference",
+    "title": "DataKnots.DataKnot",
+    "category": "type",
+    "text": "DataKnot(cell::AbstractVector, shp::AbstractShape)\n\nEncapsulates a data cell serialized in a column-oriented form.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Count-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Count",
+    "category": "method",
+    "text": "Count(X) :: Query\nEach(X >> Count) :: Query\n\nCounts the number of elements produced by the query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Drop-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Drop",
+    "category": "method",
+    "text": "Drop(N) :: Query\n\nDrops the first N elements of the input, keeps the rest.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Each-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Each",
+    "category": "method",
+    "text": "Each(X) :: Query\n\nThis query evaluates X elementwise.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Filter-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Filter",
+    "category": "method",
+    "text": "Filter(X) :: Query\n\nFilters the input by the given condition.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Get-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Get",
+    "category": "method",
+    "text": "Get(name) :: Query\n\nThis query emits the value of a record field.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}",
+    "page": "Reference",
+    "title": "DataKnots.Given",
+    "category": "method",
+    "text": "Given(X₁, X₂ … Xₙ, Q) :: Query\n\nEvaluates the query with the given context parameters.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Keep-Tuple{Any,Vararg{Any,N} where N}",
+    "page": "Reference",
+    "title": "DataKnots.Keep",
+    "category": "method",
+    "text": "Keep(X₁, X₂ … Xₙ) :: Query\n\nDefines context parameters.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Label-Tuple{Symbol}",
+    "page": "Reference",
+    "title": "DataKnots.Label",
+    "category": "method",
+    "text": "Label(lbl::Symbol) :: Query\n\nAssigns a label to the output.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Lift-Tuple{Any,Tuple}",
+    "page": "Reference",
+    "title": "DataKnots.Lift",
+    "category": "method",
+    "text": "Lift(f, (X₁, X₂ … Xₙ)) :: Query\n\nThis query uses the outputs of X₁, X₂ … Xₙ as arguments of f.  The output of f is emitted.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Lift-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Lift",
+    "category": "method",
+    "text": "Lift(val) :: Query\n\nThis query emits the given value.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Max-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Max",
+    "category": "method",
+    "text": "Max(X) :: Query\nEach(X >> Max) :: Query\n\nFinds the maximum among the elements produced by the query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Min-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Min",
+    "category": "method",
+    "text": "Min(X) :: Query\nEach(X >> Min) :: Query\n\nFinds the minimum among the elements produced by the query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Record-Tuple",
+    "page": "Reference",
+    "title": "DataKnots.Record",
+    "category": "method",
+    "text": "Record(X₁, X₂ … Xₙ) :: Query\n\nThis query emits records, whose fields are generated by X₁, X₂ … Xₙ.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Sum-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Sum",
+    "category": "method",
+    "text": "Sum(X) :: Query\nEach(X >> Sum) :: Query\n\nSums the elements produced by the query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Tag-Tuple{Symbol,Any}",
+    "page": "Reference",
+    "title": "DataKnots.Tag",
+    "category": "method",
+    "text": "Tag(name::Symbol, F) :: Query\nTag(name::Symbol, (X₁, X₂ … Xₙ), F) :: Query\n\nAssigns a name to a query.\n\n\n\n\n\n"
+},
+
+{
+    "location": "reference/#DataKnots.Take-Tuple{Any}",
+    "page": "Reference",
+    "title": "DataKnots.Take",
+    "category": "method",
+    "text": "Take(N) :: Query\n\nKeeps the first N elements of the input, drops the rest.\n\n\n\n\n\n"
+},
+
+{
     "location": "reference/#Reference-1",
     "page": "Reference",
     "title": "Reference",
     "category": "section",
-    "text": "DataKnots are a Julia library for building and evaluating data processing pipelines. Each Pipeline represents a context-aware data transformation; a pipeline\'s input and output is represented by a DataKnot. Besides a few overloaded Base functions, such as run and get, the bulk of this reference focuses on pipeline constructors."
-},
-
-{
-    "location": "reference/#Concept-Overview-1",
-    "page": "Reference",
-    "title": "Concept Overview",
-    "category": "section",
-    "text": "The DataKnots package exports two data types: DataKnot and Pipeline. A DataKnot represents a data set, which may be composite, hierarchical or cyclic; hence the monkier knot. A Pipeline represents a context-aware data transformation from an input knot to an output knot.Consider the following example containing a cross-section of public data from Chicago. This data could be modeled in native Julia as a hierarchy of NamedTuple and Vector objects. Within each department is a set of employee records.Emp = NamedTuple{(:name,:position,:salary,:rate),\n                  Tuple{String,String,Union{Int,Missing},\n                        Union{Float64,Missing}}}\nDep = NamedTuple{(:name, :employee), \n                  Tuple{String,Vector{Emp}}}\n\nchicago_data = \n  (department = Dep[\n   (name = \"POLICE\", employee = Emp[\n     (name = \"JEFFERY A\", position = \"SERGEANT\", \n      salary = 101442, rate = missing), \n     (name = \"NANCY A\", position = \"POLICE OFFICER\", \n      salary = 80016, rate = missing)]), \n   (name = \"FIRE\", employee = Emp[\n     (name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", \n      salary = 103350, rate = missing), \n     (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", \n      salary = 95484, rate = missing)]), \n   (name = \"OEMC\", employee = Emp[\n     (name = \"LAKENYA A\", position = \"CROSSING GUARD\", \n      salary = missing, rate = 17.68), \n     (name = \"DORIS A\", position = \"CROSSING GUARD\", \n      salary = missing, rate = 19.38)])]\n  ,);We can inquire the maximum salary for each department using the DataKnots system. Here we define a MaxSalary pipeline and then incorporate it into the broader DeptStats pipeline. This pipeline can then be run on the ChicagoData knot.using DataKnots\nMaxSalary = :max_salary => Max(It.employee.salary)\nDeptStats = Record(It.name, MaxSalary)\nchicago = DataKnot(chicago_data)\n\nchicago[It.department >> DeptStats]\n#=>\n  │ department         │\n  │ name    max_salary │\n──┼────────────────────┼\n1 │ POLICE      101442 │\n2 │ FIRE        103350 │\n3 │ OEMC               │\n=#The MaxSalary pipeline is context-aware: it assumes a list of employee data found within a given department. It could be used independently by first extracting a particular department. FindDept(X) = It.department >> Filter(It.name .== X)\n police = chicago[FindDept(\"POLICE\")]\n police[DeptStats]\n#=>\n  │ department         │\n  │ name    max_salary │\n──┼────────────────────┼\n1 │ POLICE      101442 │\n=#When the MaxSalary pipeline is invoked, it sees employee data having a source relative to each department. This is what we mean by DataKnots being context-aware. In the DeptStats pipeline, after each MaxSalary is computed, the results are integrated to provide output of the DeptStats pipeline."
-},
-
-{
-    "location": "reference/#DataKnots.Cardinality-1",
-    "page": "Reference",
-    "title": "DataKnots.Cardinality",
-    "category": "section",
-    "text": "In DataKnots, the elementary unit is a collection of values, we call a data knot. Besides the Julia datatype for a knot\'s values, each data knot also has a cardinality. The bookkeeping of cardinality is an essential aspect of pipeline evaluation.Cardinality is a constraint on the number of values in a knot. A knot is called mandatory if it must contain at least one value; optional otherwise. Similarly, a knot is called singular if it must contain at most one value; plural otherwise.    REG::Cardinality = 0      # singular and mandatory\n    OPT::Cardinality = 1      # optional, but singular\n    PLU::Cardinality = 2      # plural, but mandatory\n    OPT_PLU::Cardinality = 3  # optional and pluralTo record the knot cardinality constraint we use the OPT, PLU and REG flags of the type DataKnots.Cardinality. The OPT and PLU flags express relaxations of the mandatory and singular constraint, respectively. A REG knot, which is both mandatory and singular, is called regular and it must contain exactly one value. Conversely, a knot with both OPT|PLU flags has unconstrained cardinality and may contain any number of values.For any knot with values of Julia type T, the knot\'s cardinality has a correspondence to native Julia types: A regular knot corresponds to a single Julia value of type T.  An unconstrained knot corresponds to Vector{T}. An optional knot corresponds to Union{Missing, T}. There is no correspondence for mandatory yet plural knots; however, Vector{T} could be used with the convention that it always has at least one element."
-},
-
-{
-    "location": "reference/#Creating-and-Extracting-DataKnots-1",
-    "page": "Reference",
-    "title": "Creating & Extracting DataKnots",
-    "category": "section",
-    "text": "The constructor DataKnot() takes a native Julia object, typically a vector or scalar value. The get() function can be used to retrieve the DataKnot\'s native Julia value. Like most libraries, show() will produce a suitable display."
-},
-
-{
-    "location": "reference/#DataKnots.DataKnot-1",
-    "page": "Reference",
-    "title": "DataKnots.DataKnot",
-    "category": "section",
-    "text": "    DataKnot(elts::AbstractVector, card::Cardinality=OPT|PLU)In the general case, a DataKnot can be constructed from an AbstractVector to produce a DataKnot with a given cardinality. By default, the card of the collection is unconstrained.    DataKnot(elt, card::Cardinality=REG)As a convenience, a non-vector constructor is also defined, it marks the collection as being both singular and mandatory.    DataKnot(::Missing, card::Cardinality=OPT)There is an edge-case constructor for the creation of a singular but empty collection.    DataKnot()Finally, there is the unit knot, with a single value nothing; this is the default, implicit DataKnot used when run is evaluated without an input data source.DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#=>\n  │ It        │\n──┼───────────┼\n1 │ GARRY M   │\n2 │ ANTHONY R │\n3 │ DANA A    │\n\n=#\n\nDataKnot(\"GARRY M\")\n#=>\n│ It      │\n┼─────────┼\n│ GARRY M │\n=#\n\nDataKnot(missing)\n#=>\n│ It │\n┼────┼\n=#\n\nDataKnot()\n#=>\n│ It │\n┼────┼\n│    │\n=#Note that plural DataKnots are shown with an index, while singular knots are shown without. Further note that the missing knot doesn\'t have a value in its data block, unlike the unit knot which has a value of nothing. When showing a DataKnot, we follow Julia\'s command line behavior of rendering nothing as a blank since we wish to display short string values unquoted."
-},
-
-{
-    "location": "reference/#show-1",
-    "page": "Reference",
-    "title": "show",
-    "category": "section",
-    "text": "    show(data::DataKnot)Besides displaying plural and singular knots differently, the show method has special treatment for Tuple and NamedTuple.DataKnot((name = \"GARRY M\", salary = 260004))\n#=>\n│ name     salary │\n┼─────────────────┼\n│ GARRY M  260004 │\n=#This permits a vector-of-tuples to be displayed as tabular data.DataKnot([(name = \"GARRY M\", salary = 260004),\n          (name = \"ANTHONY R\", salary = 185364),\n          (name = \"DANA A\", salary = 170112)])\n#=>\n  │ name       salary │\n──┼───────────────────┼\n1 │ GARRY M    260004 │\n2 │ ANTHONY R  185364 │\n3 │ DANA A     170112 │\n=#"
-},
-
-{
-    "location": "reference/#get-1",
-    "page": "Reference",
-    "title": "get",
-    "category": "section",
-    "text": "    get(data::DataKnot)A DataKnot can be converted into native Julia values using get. Regular values are returned as native Julia. Plural values are returned as a vector.get(DataKnot(\"GARRY M\"))\n#=>\n\"GARRY M\"\n=#\n\nget(DataKnot([\"GARRY M\", \"ANTHONY R\", \"DANA A\"]))\n#=>\n[\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n=#\n\nget(DataKnot(missing))\n#=>\nmissing\n=#\n\nshow(get(DataKnot()))\n#=>\nnothing\n=#Nested vectors and other data, such as a TupleVector, round-trip though the conversion to a DataKnot and back using get.get(DataKnot([[260004, 185364], [170112]]))\n#=>\nArray{Int,1}[[260004, 185364], [170112]]\n=#\n\nget(DataKnot((name = \"GARRY M\", salary = 260004)))\n#=>\n(name = \"GARRY M\", salary = 260004)\n=#The Implementation Guide provides for lower level details as to the internal representation of a DataKnot. Libraries built with this internal API may provide more convenient ways to construct knots and retrieve values."
-},
-
-{
-    "location": "reference/#Running-Pipelines-and-Parameters-1",
-    "page": "Reference",
-    "title": "Running Pipelines & Parameters",
-    "category": "section",
-    "text": "Pipelines can be evaluated against an input DataKnot using run() to produce an output DataKnot. If an input is not specified, the default unit knot, DataKnot(), is used. There are several sorts of pipelines that could be evaluated."
-},
-
-{
-    "location": "reference/#DataKnots.AbstractPipeline-1",
-    "page": "Reference",
-    "title": "DataKnots.AbstractPipeline",
-    "category": "section",
-    "text": "    struct DataKnot <: AbstractPipeline ... endA DataKnot is viewed as a pipeline that produces its entire data block for each input value it receives.    struct Navigation <: AbstractPipeline ... endFor convenience, path-based navigation is also seen as a pipeline. The identity pipeline, It, simply reproduces its input. Further, when a parameter x is provided via run() it is available for lookup with It.x.    struct Pipeline <: AbstractPipeline ... endBesides the primitives identified above, the remainder of this reference is dedicated to various ways of constructing Pipeline instances from other pipelines."
-},
-
-{
-    "location": "reference/#run-1",
-    "page": "Reference",
-    "title": "run",
-    "category": "section",
-    "text": "    run(F::AbstractPipeline; params...)In its simplest form, run takes a pipeline with a set of named parameters and evaluates the pipeline with the unit knot as input. The parameters are each converted to a DataKnot before being made available within the pipeline\'s evaluation.    run(F::Pair{Symbol,<:AbstractPipeline}; params...)Using Julia\'s Pair syntax, this run method provides a convenient way to label an output DataKnot.    run(db::DataKnot, F; params...)The general case run permits easy use of a specific input data source. It run applies the pipeline F to the input dataset db elementwise with the context params.  Since the 1st argument is a DataKnot and dispatch is unambiguous, the second argument to the method can be automatically converted to a Pipeline using Lift.Therefore, we can write the following examples.DataKnot(\"Hello World\")\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#\n\nDataKnot(\"Hello World\")[:greeting => It]\n#=>\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n=#\n\nDataKnot(\"Hello World\")[It]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#\n\nDataKnot()[\"Hello World\"]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#Named arguments to run() become additional values that are accessible via It. Those arguments are converted into a DataKnot if they are not already.DataKnot()[It.hello, hello=DataKnot(\"Hello World\")]\n#=>\n│ hello       │\n┼─────────────┼\n│ Hello World │\n=#\n\nDataKnot()[It.a .* (It.b .+ It.c), a=7, b=7, c=-1]\n#=>\n│ It │\n┼────┼\n│ 42 │\n=#Once a pipeline is run() the resulting DataKnot value can be retrieved via get().get(DataKnot(1)[It .+ 1])\n#=>\n2\n=#Like get and show, the run function comes Julia\'s Base, and hence the methods defined here are only chosen if an argument matches the signature dispatch."
-},
-
-{
-    "location": "reference/#Pipeline-Construction-1",
-    "page": "Reference",
-    "title": "Pipeline Construction",
-    "category": "section",
-    "text": "..."
+    "text": "Modules = [DataKnots]\nPrivate = false"
 },
 
 {
@@ -429,7 +333,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Implementation Notes",
     "title": "Implementation Notes",
     "category": "section",
-    "text": "Pages = [\n    \"vectors.md\",\n    \"pipelines.md\",\n    \"shapes.md\",\n    \"queries.md\",\n]\nDepth = 3"
+    "text": "Pages = [\n    \"vectors.md\",\n    \"pipelines.md\",\n    \"shapes.md\",\n    \"knots.md\",\n    \"queries.md\",\n]\nDepth = 3"
 },
 
 {
@@ -541,7 +445,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Column Store",
     "title": "API Reference",
     "category": "section",
-    "text": "Modules = [DataKnots]\nPages = [\"vectors.jl\"]"
+    "text": "Modules = [DataKnots]\nPages = [\"vectors.jl\"]\nPublic = false"
 },
 
 {
@@ -877,7 +781,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Pipeline Algebra",
     "title": "API Reference",
     "category": "section",
-    "text": "Modules = [DataKnots]\nPages = [\"pipelines.jl\"]"
+    "text": "Modules = [DataKnots]\nPages = [\"pipelines.jl\"]\nPublic = false"
 },
 
 {
@@ -1061,7 +965,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Shapes and Signatures",
     "title": "API Reference",
     "category": "section",
-    "text": "Modules = [DataKnots]\nPages = [\"shapes.jl\"]"
+    "text": "Modules = [DataKnots]\nPages = [\"shapes.jl\"]\nPublic = false"
 },
 
 {
@@ -1145,19 +1049,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "knots/#DataKnots.DataKnot",
-    "page": "Data Knots",
-    "title": "DataKnots.DataKnot",
-    "category": "type",
-    "text": "DataKnot(cell::AbstractVector, shp::AbstractShape)\n\nEncapsulates a data cell serialized in a column-oriented form.\n\n\n\n\n\n"
-},
-
-{
     "location": "knots/#API-Reference-1",
     "page": "Data Knots",
     "title": "API Reference",
     "category": "section",
-    "text": "Modules = [DataKnots]\nPages = [\"knots.jl\"]"
+    "text": "Modules = [DataKnots]\nPages = [\"knots.jl\"]\nPublic = false"
 },
 
 {
@@ -1225,134 +1121,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "queries/#DataKnots.Count-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Count",
-    "category": "method",
-    "text": "Count(X) :: Query\nEach(X >> Count) :: Query\n\nCounts the number of elements produced by the query.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Drop-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Drop",
-    "category": "method",
-    "text": "Drop(N) :: Query\n\nDrops the first N elements of the input, keeps the rest.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Each-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Each",
-    "category": "method",
-    "text": "Each(X) :: Query\n\nThis query evaluates X elementwise.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Filter-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Filter",
-    "category": "method",
-    "text": "Filter(X) :: Query\n\nFilters the input by the given condition.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Get-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Get",
-    "category": "method",
-    "text": "Get(name) :: Query\n\nThis query emits the value of a record field.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Given-Tuple{Any,Vararg{Any,N} where N}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Given",
-    "category": "method",
-    "text": "Given(X₁, X₂ … Xₙ, Q) :: Query\n\nEvaluates the query with the given context parameters.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Keep-Tuple{Any,Vararg{Any,N} where N}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Keep",
-    "category": "method",
-    "text": "Keep(X₁, X₂ … Xₙ) :: Query\n\nDefines context parameters.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Label-Tuple{Symbol}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Label",
-    "category": "method",
-    "text": "Label(lbl::Symbol) :: Query\n\nAssigns a label to the output.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Lift-Tuple{Any,Tuple}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Lift",
-    "category": "method",
-    "text": "Lift(f, (X₁, X₂ … Xₙ)) :: Query\n\nThis query uses the outputs of X₁, X₂ … Xₙ as arguments of f.  The output of f is emitted.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Lift-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Lift",
-    "category": "method",
-    "text": "Lift(val) :: Query\n\nThis query emits the given value.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Max-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Max",
-    "category": "method",
-    "text": "Max(X) :: Query\nEach(X >> Max) :: Query\n\nFinds the maximum among the elements produced by the query.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Min-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Min",
-    "category": "method",
-    "text": "Min(X) :: Query\nEach(X >> Min) :: Query\n\nFinds the minimum among the elements produced by the query.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Record-Tuple",
-    "page": "Query Algebra",
-    "title": "DataKnots.Record",
-    "category": "method",
-    "text": "Record(X₁, X₂ … Xₙ) :: Query\n\nThis query emits records, whose fields are generated by X₁, X₂ … Xₙ.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Sum-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Sum",
-    "category": "method",
-    "text": "Sum(X) :: Query\nEach(X >> Sum) :: Query\n\nSums the elements produced by the query.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Tag-Tuple{Symbol,Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Tag",
-    "category": "method",
-    "text": "Tag(name::Symbol, F) :: Query\nTag(name::Symbol, (X₁, X₂ … Xₙ), F) :: Query\n\nAssigns a name to a query.\n\n\n\n\n\n"
-},
-
-{
-    "location": "queries/#DataKnots.Take-Tuple{Any}",
-    "page": "Query Algebra",
-    "title": "DataKnots.Take",
-    "category": "method",
-    "text": "Take(N) :: Query\n\nKeeps the first N elements of the input, drops the rest.\n\n\n\n\n\n"
-},
-
-{
     "location": "queries/#DataKnots.Environment",
     "page": "Query Algebra",
     "title": "DataKnots.Environment",
@@ -1389,7 +1157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "API Reference",
     "category": "section",
-    "text": "Modules = [DataKnots]\nPages = [\"queries.jl\"]"
+    "text": "Modules = [DataKnots]\nPages = [\"queries.jl\"]\nPublic = false"
 },
 
 {
@@ -1494,46 +1262,6 @@ var documenterSearchIndex = {"docs": [
     "title": "Take and Drop",
     "category": "section",
     "text": "We use Take(N) and Drop(N) to pass or drop the first N input elements.Employee = It.department.employee\n\nQ = Employee >> Take(4)\n#-> It.department.employee >> Take(4)\n\nchicago[Q]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ NANCY A    POLICE OFFICER      80016       │\n3 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n4 │ DANIEL A   FIRE FIGHTER-EMT    95484       │\n=#\n\nQ = Employee >> Drop(4)\n#-> It.department.employee >> Drop(4)\n\nchicago[Q]\n#=>\n  │ employee                                 │\n  │ name       position        salary  rate  │\n──┼──────────────────────────────────────────┼\n1 │ LAKENYA A  CROSSING GUARD          17.68 │\n2 │ DORIS A    CROSSING GUARD          19.38 │\n=#Take(-N) drops the last N elements, while Drop(-N) keeps the last N elements.Q = Employee >> Take(-4)\n\nchicago[Q]\n#=>\n  │ employee                                │\n  │ name       position        salary  rate │\n──┼─────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT        101442       │\n2 │ NANCY A    POLICE OFFICER   80016       │\n=#\n\nQ = Employee >> Drop(-4)\n\nchicago[Q]\n#=>\n  │ employee                                    │\n  │ name       position           salary  rate  │\n──┼─────────────────────────────────────────────┼\n1 │ JAMES A    FIRE ENGINEER-EMT  103350        │\n2 │ DANIEL A   FIRE FIGHTER-EMT    95484        │\n3 │ LAKENYA A  CROSSING GUARD             17.68 │\n4 │ DORIS A    CROSSING GUARD             19.38 │\n=#Take and Drop accept a query argument, which is evaluated against the input source and must produce a singular integer.Half = Count(Employee) .÷ 2\n\nQ = Employee >> Take(Half)\n\nchicago[Q]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ NANCY A    POLICE OFFICER      80016       │\n3 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#\n\nQ = Take(Employee >> It.name)\n\nchicago[Q]\n#-> ERROR: expected a singular integer"
-},
-
-{
-    "location": "simulation/#",
-    "page": "Tutorial: Simulated Data",
-    "title": "Tutorial: Simulated Data",
-    "category": "page",
-    "text": "EditURL = \"https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/simulation.jl\""
-},
-
-{
-    "location": "simulation/#Tutorial:-Simulated-Data-1",
-    "page": "Tutorial: Simulated Data",
-    "title": "Tutorial: Simulated Data",
-    "category": "section",
-    "text": "In this tutorial we simulate a random patient population from a health clinic dealing with hypertension and type 2 diabetes. We assume the reader has read \"Thinking in Combinators\" and wishes to use DataKnots for this simulation.using DataKnots"
-},
-
-{
-    "location": "simulation/#Lifted-Functions-1",
-    "page": "Tutorial: Simulated Data",
-    "title": "Lifted Functions",
-    "category": "section",
-    "text": "Before we start generating data, there are a few combinators that are specific to this application area we should define first. Let\'s start with OneTo that wraps Julia\'s UnitRange.OneTo(N) = Lift(UnitRange, (1, N))\nrun(OneTo(3))Known data is boring in a simulation. Instead we need pseudorandom data. To make that data repeatable, let\'s fix the seed. We can then lift the rand function to a DataKnot combinator and use it to pick a random number from 3 to 5.using Random: seed!, rand\nseed!(1)\nRand(r::AbstractVector) = Lift(rand, (r,))\nrun(Rand(3:5))Combining OneTo and Rand we could make an easy way to build several rows of a given value.Several = OneTo(Rand(2:5))\nrun(Several >> \"Hello World\")Julia\'s Distributions has Categorical and TruncatedNormal to make sure they work with DataKnots, we need another lift.using Distributions\nRand(d::Distribution) = Lift(rand, (d,))\nrun(Rand(Categorical([.492, .508])))Sometimes it\'s helpful to truncate a floating point value, as chosen from an age distribution, to an integer value.  Here we lift Trunc.Trunc(X) = Int.(floor.(X))\nrun(Trunc(Rand(TruncatedNormal(60,20,18,104))))Translating a value, such as an index to a reference height, is also common. Here we define a switch function and then lift it.switch(x) = error();\nswitch(x, p, qs...) = x == p.first ? p.second : switch(x, qs...)\nSwitch(X, QS...) = Lift(switch, (X, QS...))\nrun(Switch(1, 1=>177, 2=>163))"
-},
-
-{
-    "location": "simulation/#Building-a-Patient-Record-1",
-    "page": "Tutorial: Simulated Data",
-    "title": "Building a Patient Record",
-    "category": "section",
-    "text": "Let\'s incrementally construct a set of patient records. Let\'s start with assigning a random 5-digit Medical Record Number (\"MRN\").RandPatient = Record(:mrn => Rand(10000:99999))\nrun(:patient => Several >> RandPatient)To assign an age to patients, we use Julia\'s truncated normal distribution. Since we wish whole-numbered ages, we truncate to the nearest integer value.RandPatient >>= Record(It.mrn,\n  :age => Trunc(Rand(TruncatedNormal(60,20,18,104))))\nrun(:patient => Several >> RandPatient)Let\'s assign each patient a random Sex. Here we use a categorical distribution plus enumerated values for male/female.@enum Sex male=1 female=2\nRandPatient >>= Record(It.mrn, It.age,\n  :sex => Lift(Sex, (Rand(Categorical([.492, .508])),)))\nrun(:patient => Several >> RandPatient)Next, let\'s define the patient\'s height based upon the U.S. average of 177cm for males and 163cm for females with distribution of 7cm.RandPatient >>= Record(It.mrn, It.age, It.sex,\n  :height => Trunc(Switch(It.sex, male => 177, female => 163)\n                   .+ Rand(TruncatedNormal(0,7,-40,40))))\nrun(:patient => Several >> RandPatient)"
-},
-
-{
-    "location": "simulation/#Implemention-Comparison-1",
-    "page": "Tutorial: Simulated Data",
-    "title": "Implemention Comparison",
-    "category": "section",
-    "text": "How could this patient sample be implemented directly in Julia?@enum Sex male=1 female=2\nfunction rand_patient()\n   sex = Sex(rand(Categorical([.492,.508])))\n   return (\n      mrn = rand(10000:99999), sex = sex,\n      age = trunc(Int, rand(TruncatedNormal(60,20,18,104))),\n      height = trunc(Int, (sex == male ? 177 : 163)\n                          + rand(TruncatedNormal(0,7,-40,40))))\nend\n[rand_patient() for i in 1:rand(2:5)]Omitting the boilerplate lifting of Rand, Trunc, and Switch, the combinator variant can also be constructed succinctly.@enum Sex male=1 female=2\nRandPatient = Given(\n  :sex => Lift(Sex, (Rand(Categorical([.492, .508])),)),\n  Record(\n    :mrn => Rand(10000:99999), It.sex,\n    :age => Trunc(Rand(TruncatedNormal(60,20,18,104))),\n    :height => Trunc(Switch(It.sex, male => 177, female => 163)\n                     .+ Rand(TruncatedNormal(0,7,-40,40)))))\nrun(:patient => OneTo(Rand(2:5)) >> RandPatient)That said, as complexity builds, the more incremental approach as shown in the previous section may prove to be more desireable."
 },
 
 ]}
