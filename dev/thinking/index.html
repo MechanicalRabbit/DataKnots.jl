@@ -83,7 +83,7 @@ double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</c
 1 │  2 │
 2 │  3 │
 3 │  4 │
-=#</code></pre><p>One can also define combinators as query expressions. However, be sure to cast each argument using <code>Lift</code>.</p><pre><code class="language-julia">OneTo(N) = UnitRange.(1, Lift(N))</code></pre><p>Note that the unit range constructor is vector-valued. Therefore, the resulting combinator builds queries with plural output.</p><pre><code class="language-julia">void[OneTo(3)]
+=#</code></pre><p>In Julia, broadcasting lets the function&#39;s arguments control how the function is applied. When a function is broadcasted over queries, the result is a query. However, to make sure it works, we need to ensure that at least one argument is a query, and we can do this by wrapping at least one argument with <code>Lift</code>.</p><pre><code class="language-julia">OneTo(N) = UnitRange.(1, Lift(N))</code></pre><p>Note that the unit range constructor is vector-valued. Therefore, the resulting combinator builds queries with plural output.</p><pre><code class="language-julia">void[OneTo(3)]
 #=&gt;
   │ It │
 ──┼────┼
