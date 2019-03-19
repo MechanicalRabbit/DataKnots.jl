@@ -651,25 +651,17 @@ use `Take` with an argument that computes how many to take.
 
 ## Query Parameters
 
-A query may depend upon parameters, passed as keyword arguments.
-The parameter values are available in the query through `It`.
-
-    chicago[AMT=100000, It.AMT]
-    #=>
-    │ AMT    │
-    ┼────────┼
-    │ 100000 │
-    =#
-
-Using parameters lets us reuse complex queries without changing
-their definition. By convention we capitalize parameters so they
-stand out from regular data labels.
+Parameters let us reuse complex queries without changing their
+definition. Here we construct a query that depends upon the
+parameter `AMT`, which is capitalized by convention.
 
     PaidOverAmt =
         It.department >>
         It.employee >>
         Filter(It.salary .> It.AMT) >>
         It.name
+
+Query parameters are passed as keyword arguments.
 
     chicago[AMT=100000, PaidOverAmt]
     #=>
@@ -713,9 +705,10 @@ the same query expression, we could use the `Given` combinator.
 
 ## Query Functions
 
-Using `Given` lets us easily create new query functions. Let's
-make a function `EmployeesOver` that produces employees with a
-salary greater than the given amount.
+Let's make a function `EmployeesOver` that produces employees with
+a salary greater than the given threshold. The threshold value
+`AMT` is evaluated and then made available in the context of each
+employee with the `Given` combinator.
 
     EmployeesOver(X) =
         Given(:AMT => X,
