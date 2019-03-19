@@ -23,7 +23,7 @@ chicago = DataKnot(chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-F
 2 │ NANCY A   │
 3 │ DANIEL A  │
 =#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset. When a field label, such as <code>employee</code>, can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">chicago[It.employee]
-#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating though <code>department</code> tuples. When tuples are returned, they are displayed as a table.</p><pre><code class="language-julia">chicago[It.department.employee]
+#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating through <code>department</code> tuples. When tuples are returned, they are displayed as a table.</p><pre><code class="language-julia">chicago[It.department.employee]
 #=&gt;
   │ employee                            │
   │ name       position          salary │
@@ -345,7 +345,7 @@ chicago[Employee]
   │ name       position  salary │
 ──┼─────────────────────────────┼
 1 │ JEFFERY A  SERGEANT  101442 │
-=#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>A query may depend upon parameters, passed as keyword arguments. The parameter values are available in the query though <code>It</code>.</p><pre><code class="language-julia">chicago[AMT=100000, It.AMT]
+=#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>A query may depend upon parameters, passed as keyword arguments. The parameter values are available in the query through <code>It</code>.</p><pre><code class="language-julia">chicago[AMT=100000, It.AMT]
 #=&gt;
 │ AMT    │
 ┼────────┼
