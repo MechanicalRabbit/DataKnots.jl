@@ -197,7 +197,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Count",
     "category": "method",
-    "text": "Count(X) :: Query\n\nIn the combinator form, Count(X) emits the number of elements produced by X.\n\njulia> X = Lift(\'a\':\'c\');\njulia> DataKnot()[Count(X)]\n│ It │\n┼────┼\n│  3 │\n\n\n\nEach(X >> Count) :: Query\n\nIn the query form, Count emits the number of elements in its input.\n\njulia> X = Lift(\'a\':\'c\');\njulia> DataKnot()[X >> Count]\n│ It │\n┼────┼\n│  3 │\n\nTo limit the scope of aggregation, use Each.\n\njulia> X = Lift(\'a\':\'c\');\njulia> DataKnot()[Lift(1:3) >> Each(X >> Count)]\n  │ It │\n──┼────┼\n1 │  3 │\n2 │  3 │\n3 │  3 │\n\n\n\n\n\n"
+    "text": "Count(X) :: Query\n\nIn the combinator form, Count(X) emits the number of elements produced by X.\n\njulia> X = Lift(\'a\':\'c\');\n\njulia> DataKnot()[Count(X)]\n│ It │\n┼────┼\n│  3 │\n\n\n\nEach(X >> Count) :: Query\n\nIn the query form, Count emits the number of elements in its input.\n\njulia> X = Lift(\'a\':\'c\');\n\njulia> DataKnot()[X >> Count]\n│ It │\n┼────┼\n│  3 │\n\nTo limit the scope of aggregation, use Each.\n\njulia> X = Lift(\'a\':\'c\');\n\njulia> DataKnot()[Lift(1:3) >> Each(X >> Count)]\n  │ It │\n──┼────┼\n1 │  3 │\n2 │  3 │\n3 │  3 │\n\n\n\n\n\n"
 },
 
 {
@@ -213,7 +213,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Each",
     "category": "method",
-    "text": "Each(X) :: Query\n\nThis evaluates X elementwise.\n\njulia> X = Lift(\'a\':\'c\') >> Count;\njulia> DataKnot()[Lift(1:3) >> Each(X)]\n  │ It │\n──┼────┼\n1 │  3 │\n2 │  3 │\n3 │  3 │\n\nCompare this with the query without Each.\n\njulia> X = Lift(\'a\':\'c\') >> Count;\njulia> DataKnot()[Lift(1:3) >> X]\n│ It │\n┼────┼\n│  9 │\n\n\n\n\n\n"
+    "text": "Each(X) :: Query\n\nThis evaluates X elementwise.\n\njulia> X = Lift(\'a\':\'c\') >> Count;\n\njulia> DataKnot()[Lift(1:3) >> Each(X)]\n  │ It │\n──┼────┼\n1 │  3 │\n2 │  3 │\n3 │  3 │\n\nCompare this with the query without Each.\n\njulia> X = Lift(\'a\':\'c\') >> Count;\n\njulia> DataKnot()[Lift(1:3) >> X]\n│ It │\n┼────┼\n│  9 │\n\n\n\n\n\n"
 },
 
 {
@@ -253,7 +253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Label",
     "category": "method",
-    "text": "Label(lbl::Symbol) :: Query\n\nThis assigns a label to the output.\n\njulia> DataKnot()[Lift(\"Hello World\") >> Label(:greeting)]\n │ greeting    │\n ┼─────────────┼\n │ Hello World │\n\nA label could also be assigned using the => operator.\n\njulia> DataKnot()[:greeting => Lift(\"Hello World\")]\n │ greeting    │\n ┼─────────────┼\n │ Hello World │\n\n\n\n\n\n"
+    "text": "Label(lbl::Symbol) :: Query\n\nThis assigns a label to the output.\n\njulia> DataKnot()[Lift(\"Hello World\") >> Label(:greeting)]\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n\nA label could also be assigned using the => operator.\n\njulia> DataKnot()[:greeting => Lift(\"Hello World\")]\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n\n\n\n\n\n"
 },
 
 {
@@ -261,7 +261,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Lift",
     "category": "method",
-    "text": "Lift(f, (X₁, X₂ … Xₙ)) :: Query\n\nLift lets you use a function as a query combinator.\n\njulia> DataKnot((x=1, y=2))[Lift(+, (It.x, It.y))]\n│ It │\n┼────┼\n│  3 │\n\nLift is implicitly used when a function is broadcast over queries.\n\njulia> DataKnot((x=1, y=2))[It.x .+ It.y]\n│ It │\n┼────┼\n│  3 │\n\nFunctions accepting a AbstractVector can be used with plural queries.\n\njulia> DataKnot()[sum.(Lift(1:3))]\n│ It │\n┼────┼\n│  6 │\n\nFunctions returning AbstractVector become plural queries.\n\nDataKnot((x=\'a\', y=\'c\'))[Lift(:, (It.x, It.y))]\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n\n\n\n\n\n"
+    "text": "Lift(f, (X₁, X₂ … Xₙ)) :: Query\n\nLift lets you use a function as a query combinator.\n\njulia> DataKnot((x=1, y=2))[Lift(+, (It.x, It.y))]\n│ It │\n┼────┼\n│  3 │\n\nLift is implicitly used when a function is broadcast over queries.\n\njulia> DataKnot((x=1, y=2))[It.x .+ It.y]\n│ It │\n┼────┼\n│  3 │\n\nFunctions accepting a AbstractVector can be used with plural queries.\n\njulia> DataKnot()[sum.(Lift(1:3))]\n│ It │\n┼────┼\n│  6 │\n\nFunctions returning AbstractVector become plural queries.\n\njulia> DataKnot((x=\'a\', y=\'c\'))[Lift(:, (It.x, It.y))]\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n\n\n\n\n\n"
 },
 
 {
@@ -277,7 +277,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Max",
     "category": "method",
-    "text": " Max(X) :: Query\n\nIn the combinator form, Max(X) finds the maximum among the elements produced by X.\n\njulia> X = Lift(1:3);\njulia> DataKnot()[Max(X)]\n│ It │\n┼────┼\n│  3 │\n\nThe Max of an empty input is empty.\n\njulia> DataKnot()[Max(Int[])]\n│ It │\n┼────┼\n\n\n\nEach(X >> Max) :: Query\n\nIn the query form, Max finds the maximum of its input elements.\n\njulia> X = Lift(1:3);\njulia> DataKnot()[X >> Max]\n│ It │\n┼────┼\n│  3 │\n\n\n\n\n\n"
+    "text": " Max(X) :: Query\n\nIn the combinator form, Max(X) finds the maximum among the elements produced by X.\n\njulia> X = Lift(1:3);\n\njulia> DataKnot()[Max(X)]\n│ It │\n┼────┼\n│  3 │\n\nThe Max of an empty input is empty.\n\njulia> DataKnot()[Max(Int[])]\n│ It │\n┼────┼\n\n\n\nEach(X >> Max) :: Query\n\nIn the query form, Max finds the maximum of its input elements.\n\njulia> X = Lift(1:3);\n\njulia> DataKnot()[X >> Max]\n│ It │\n┼────┼\n│  3 │\n\n\n\n\n\n"
 },
 
 {
@@ -285,7 +285,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Min",
     "category": "method",
-    "text": " Min(X) :: Query\n\nIn the combinator form, Min(X) finds the minimum among the elements produced by X.\n\njulia> X = Lift(1:3);\njulia> DataKnot()[Min(X)]\n│ It │\n┼────┼\n│  1 │\n\nThe Min of an empty input is empty.\n\njulia> DataKnot()[Min(Int[])]\n│ It │\n┼────┼\n\n\n\nEach(X >> Min) :: Query\n\nIn the query form, Min finds the minimum of its input elements.\n\njulia> X = Lift(1:3);\njulia> DataKnot()[X >> Min]\n│ It │\n┼────┼\n│  1 │\n\n\n\n\n\n"
+    "text": " Min(X) :: Query\n\nIn the combinator form, Min(X) finds the minimum among the elements produced by X.\n\njulia> X = Lift(1:3);\n\njulia> DataKnot()[Min(X)]\n│ It │\n┼────┼\n│  1 │\n\nThe Min of an empty input is empty.\n\njulia> DataKnot()[Min(Int[])]\n│ It │\n┼────┼\n\n\n\nEach(X >> Min) :: Query\n\nIn the query form, Min finds the minimum of its input elements.\n\njulia> X = Lift(1:3);\n\njulia> DataKnot()[X >> Min]\n│ It │\n┼────┼\n│  1 │\n\n\n\n\n\n"
 },
 
 {
@@ -301,7 +301,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "DataKnots.Sum",
     "category": "method",
-    "text": "Sum(X) :: Query\n\nIn the combinator form, Sum(X) emits the sum of elements produced by X.\n\njulia> X = Lift(1:3);\njulia> DataKnot()[Sum(X)]\n│ It │\n┼────┼\n│  6 │\n\nThe Sum of an empty input is 0.\n\njulia> DataKnot()[Sum(Int[])]\n│ It │\n┼────┼\n│  0 │\n\n\n\nEach(X >> Sum) :: Query\n\nIn the query form, Sum emits the sum of input elements.\n\njulia> X = Lift(1:3);\njulia> DataKnot()[X >> Sum]\n│ It │\n┼────┼\n│  6 │\n\n\n\n\n\n"
+    "text": "Sum(X) :: Query\n\nIn the combinator form, Sum(X) emits the sum of elements produced by X.\n\njulia> X = Lift(1:3);\n\njulia> DataKnot()[Sum(X)]\n│ It │\n┼────┼\n│  6 │\n\nThe Sum of an empty input is 0.\n\njulia> DataKnot()[Sum(Int[])]\n│ It │\n┼────┼\n│  0 │\n\n\n\nEach(X >> Sum) :: Query\n\nIn the query form, Sum emits the sum of input elements.\n\njulia> X = Lift(1:3);\n\njulia> DataKnot()[X >> Sum]\n│ It │\n┼────┼\n│  6 │\n\n\n\n\n\n"
 },
 
 {
@@ -325,7 +325,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reference",
     "title": "Reference",
     "category": "section",
-    "text": "Modules = [DataKnots]\nPrivate = false"
+    "text": "DocTestSetup = quote\n    using DataKnots\nendModules = [DataKnots]\nPrivate = false"
 },
 
 {
