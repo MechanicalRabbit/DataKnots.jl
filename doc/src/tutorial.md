@@ -326,9 +326,10 @@ our Chicago data starting with a list of employees.
 
 Let's extend this query to show if the salary is over 100k.
 
-    GT100K = :gt100k => It.salary .> 100000
-
-    Q >>= Record(It.name, It.salary, GT100K)
+    Q >>= Record(It.name,
+                 It.salary,
+                 :gt100k =>
+                     It.salary .> 100000)
 
 The query definition is tracked automatically.
 
