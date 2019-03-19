@@ -162,9 +162,10 @@ chicago[Q]
 1 │ JEFFERY A  SERGEANT          101442 │
 2 │ NANCY A    POLICE OFFICER     80016 │
 3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
-=#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k.</p><pre><code class="language-julia">GT100K = :gt100k =&gt; It.salary .&gt; 100000
-
-Q &gt;&gt;= Record(It.name, It.salary, GT100K)</code></pre><p>The query definition is tracked automatically.</p><pre><code class="language-julia">Q
+=#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k.</p><pre><code class="language-julia">Q &gt;&gt;= Record(It.name,
+             It.salary,
+             :gt100k =&gt;
+                 It.salary .&gt; 100000)</code></pre><p>The query definition is tracked automatically.</p><pre><code class="language-julia">Q
 #=&gt;
 It.department.employee &gt;&gt;
 Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
