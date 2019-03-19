@@ -62,7 +62,12 @@ chicago = DataKnot(chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-F
 │ It │
 ┼────┼
 │  2 │
-=#</code></pre><p>Using query composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context. For this next example, let&#39;s count <code>employee</code> records within each <code>department</code>.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Count(It.employee)]
+=#</code></pre><p>We could also count the total number of employees across all departments.</p><pre><code class="language-julia">chicago[Count(It.department.employee)]
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>What if we wanted to count employees by department? Using query composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Count(It.employee)]
 #=&gt;
   │ It │
 ──┼────┼

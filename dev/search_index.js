@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Tutorial",
     "title": "Context & Counting",
     "category": "section",
-    "text": "To count the number of departments in this chicago dataset we write the query Count(It.department). Observe that the argument provided to Count(), It.department, is itself a query.chicago[Count(It.department)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#Using query composition (>>), we can perform Count in a nested context. For this next example, let\'s count employee records within each department.chicago[It.department >> Count(It.employee)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#In this output, we see that one department has 2 employees, while the other has only 1."
+    "text": "To count the number of departments in this chicago dataset we write the query Count(It.department). Observe that the argument provided to Count(), It.department, is itself a query.chicago[Count(It.department)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#We could also count the total number of employees across all departments.chicago[Count(It.department.employee)]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#What if we wanted to count employees by department? Using query composition (>>), we can perform Count in a nested context.chicago[It.department >> Count(It.employee)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  1 │\n=#In this output, we see that one department has 2 employees, while the other has only 1."
 },
 
 {
