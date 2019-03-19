@@ -22,33 +22,41 @@ clarify its cardinality (`:x0to1`, `:x1to1`, `:x0toN`, `:x1toN`).
 
 The simplest knot holds the value `nothing`.
 
-    julia> DataKnot()
-    │ It │
-    ┼────┼
-    │    │
+```jldoctest
+julia> DataKnot()
+│ It │
+┼────┼
+│    │
+```
 
 An empty knot can be constructed with `missing`.
 
-    julia> DataKnot(missing)
-    │ It │
-    ┼────┼
+```jldoctest
+julia> DataKnot(missing)
+│ It │
+┼────┼
+```
 
 It's often useful to wrap a dataset in a one-field tuple.
 
-    julia> DataKnot((dataset='a':'c',))
-    │ dataset │
-    ┼─────────┼
-    │ a; b; c │
+```jldoctest
+julia> DataKnot((dataset='a':'c',))
+│ dataset │
+┼─────────┼
+│ a; b; c │
+```
 
 By default, vectors have no cardinality constraints. To indicate
 that vector will always has at least one element, use `:x1toN`.
 
-    julia> DataKnot('a':'c', :x1toN)
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+```jldoctest
+julia> DataKnot('a':'c', :x1toN)
+  │ It │
+──┼────┼
+1 │ a  │
+2 │ b  │
+3 │ c  │
+```
 
 ---
 
@@ -56,8 +64,10 @@ that vector will always has at least one element, use `:x1toN`.
 
 Use `get` to extract the underlying value held by a knot.
 
-    julia> get(DataKnot("Hello World"))
-    "Hello World"
+```jldoctest
+julia> get(DataKnot("Hello World"))
+"Hello World"
+```
 
 ---
 
@@ -65,19 +75,23 @@ Use `get` to extract the underlying value held by a knot.
 
 We can query a knot using array indexing notation.
 
-    julia> DataKnot((dataset='a':'c',))[Count(It.dataset)]
-    │ It │
-    ┼────┼
-    │  3 │
+```jldoctest
+julia> DataKnot((dataset='a':'c',))[Count(It.dataset)]
+│ It │
+┼────┼
+│  3 │
+```
 
 Query parameters are provided as keyword arguments.
 
-    julia> DataKnot(1:3)[PWR=2, It .^ It.PWR]
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  4 │
-    3 │  9 │
+```jldoctest
+julia> DataKnot(1:3)[PWR=2, It .^ It.PWR]
+  │ It │
+──┼────┼
+1 │  1 │
+2 │  4 │
+3 │  9 │
+```
 """
 struct DataKnot
     cell::AbstractVector
