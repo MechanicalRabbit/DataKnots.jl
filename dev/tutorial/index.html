@@ -351,18 +351,11 @@ chicago[Employee]
   │ name       position  salary │
 ──┼─────────────────────────────┼
 1 │ JEFFERY A  SERGEANT  101442 │
-=#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>A query may depend upon parameters, passed as keyword arguments. The parameter values are available in the query through <code>It</code>.</p><pre><code class="language-julia">chicago[AMT=100000, It.AMT]
-#=&gt;
-│ AMT    │
-┼────────┼
-│ 100000 │
-=#</code></pre><p>Using parameters lets us reuse complex queries without changing their definition. By convention we capitalize parameters so they stand out from regular data labels.</p><pre><code class="language-julia">PaidOverAmt =
+=#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>Parameters let us reuse complex queries without changing their definition. Here we construct a query that depends upon the parameter <code>AMT</code>, which is capitalized by convention.</p><pre><code class="language-julia">PaidOverAmt =
     It.department &gt;&gt;
     It.employee &gt;&gt;
     Filter(It.salary .&gt; It.AMT) &gt;&gt;
-    It.name
-
-chicago[AMT=100000, PaidOverAmt]
+    It.name</code></pre><p>Query parameters are passed as keyword arguments.</p><pre><code class="language-julia">chicago[AMT=100000, PaidOverAmt]
 #=&gt;
   │ name      │
 ──┼───────────┼
@@ -385,7 +378,7 @@ mean_salary = chicago[MeanSalary]
 ──┼───────────┼
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-=#</code></pre><h2><a class="nav-anchor" id="Query-Functions-1" href="#Query-Functions-1">Query Functions</a></h2><p>Using <code>Given</code> lets us easily create new query functions. Let&#39;s make a function <code>EmployeesOver</code> that produces employees with a salary greater than the given amount.</p><pre><code class="language-julia">EmployeesOver(X) =
+=#</code></pre><h2><a class="nav-anchor" id="Query-Functions-1" href="#Query-Functions-1">Query Functions</a></h2><p>Let&#39;s make a function <code>EmployeesOver</code> that produces employees with a salary greater than the given threshold. The threshold value <code>AMT</code> is evaluated and then made available in the context of each employee with the <code>Given</code> combinator.</p><pre><code class="language-julia">EmployeesOver(X) =
     Given(:AMT =&gt; X,
         It.department &gt;&gt;
         It.employee &gt;&gt;
