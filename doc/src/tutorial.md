@@ -524,7 +524,9 @@ broadcasting notation.
     3 │ Daniel A  │
     =#
 
-Vector functions, such as `mean`, can also be used.
+Functions taking a vector argument, such as `mean`, can also be
+applied to queries. In this example, `mean` computes the average
+employee salary by department.
 
     using Statistics: mean
 
