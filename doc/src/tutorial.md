@@ -72,7 +72,7 @@ message is displayed.
     chicago[It.employee]
     #-> ERROR: cannot find "employee" ⋮
 
-Instead, `employee` tuples can be queried by navigating though
+Instead, `employee` tuples can be queried by navigating through
 `department` tuples. When tuples are returned, they are displayed
 as a table.
 
@@ -640,7 +640,7 @@ use `Take` with an argument that computes how many to take.
 ## Query Parameters
 
 A query may depend upon parameters, passed as keyword arguments.
-The parameter values are available in the query though `It`.
+The parameter values are available in the query through `It`.
 
     chicago[AMT=100000, It.AMT]
     #=>
