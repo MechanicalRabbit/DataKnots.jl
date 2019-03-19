@@ -125,7 +125,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Tutorial",
     "title": "Broadcasting over Queries",
     "category": "section",
-    "text": "Any function could be applied to query arguments using Julia\'s broadcasting notation.chicago[\n    It.department.employee >>\n    titlecase.(It.name)]\n#=>\n  │ It        │\n──┼───────────┼\n1 │ Jeffery A │\n2 │ Nancy A   │\n3 │ Daniel A  │\n=#Vector functions, such as mean, can also be used.using Statistics: mean\n\nchicago[\n    It.department >>\n    Record(\n        It.name,\n        :mean_salary => mean.(It.employee.salary))]\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┼\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#"
+    "text": "Any function could be applied to query arguments using Julia\'s broadcasting notation.chicago[\n    It.department.employee >>\n    titlecase.(It.name)]\n#=>\n  │ It        │\n──┼───────────┼\n1 │ Jeffery A │\n2 │ Nancy A   │\n3 │ Daniel A  │\n=#Functions taking a vector argument, such as mean, can also be applied to queries. In this example, mean computes the average employee salary by department.using Statistics: mean\n\nchicago[\n    It.department >>\n    Record(\n        It.name,\n        :mean_salary => mean.(It.employee.salary))]\n#=>\n  │ department          │\n  │ name    mean_salary │\n──┼─────────────────────┼\n1 │ POLICE      90729.0 │\n2 │ FIRE        95484.0 │\n=#"
 },
 
 {

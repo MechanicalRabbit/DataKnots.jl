@@ -277,7 +277,7 @@ chicago[
 1 │ Jeffery A │
 2 │ Nancy A   │
 3 │ Daniel A  │
-=#</code></pre><p>Vector functions, such as <code>mean</code>, can also be used.</p><pre><code class="language-julia">using Statistics: mean
+=#</code></pre><p>Functions taking a vector argument, such as <code>mean</code>, can also be applied to queries. In this example, <code>mean</code> computes the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
 
 chicago[
     It.department &gt;&gt;
