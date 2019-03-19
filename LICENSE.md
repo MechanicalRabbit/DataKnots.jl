@@ -1,6 +1,8 @@
-The DataKnots.jl package is licensed under the MIT "Expat" License:
+The DataKnots.jl package is licensed under both the Apache 2.0 and 
+the MIT "Expat" License:
 
-> Copyright (c) 2017: Prometheus Research, LLC.
+> Copyright (c) 2017-2019: Prometheus Research, LLC. &
+>                          Kyrylo Simonov, Clark C. Evans
 >
 > Permission is hereby granted, free of charge, to any person obtaining a copy
 > of this software and associated documentation files (the "Software"), to deal
@@ -19,4 +21,6 @@ The DataKnots.jl package is licensed under the MIT "Expat" License:
 > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE.
->
+
+Any contributor to this project agrees to release their intellectual property
+rights (patent, trademark, and tradesecret) under these terms.
