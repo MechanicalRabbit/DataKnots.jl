@@ -6,7 +6,8 @@ Copyright (c) 2017-2019: Prometheus Research, LLC.,
 
 ---
 
-> MIT "Expat" License
+>                               MIT "Expat" License
+>                       https://opensource.org/licenses/MIT
 >
 > Permission is hereby granted, free of charge, to any person obtaining a
 > copy of this software and associated documentation files (the "Software"),

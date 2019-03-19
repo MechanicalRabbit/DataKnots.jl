@@ -75,6 +75,8 @@ you need to install it in development mode with:
 pkg> dev https://github.com/rbt-lang/DataKnots.jl
 ```
 
+## Support
+
 Our development chat is currently hosted on Gitter:
 https://gitter.im/rbt-lang/rbt-proto
 
