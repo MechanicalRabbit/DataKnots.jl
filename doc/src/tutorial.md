@@ -156,9 +156,18 @@ provided to `Count()`, `It.department`, is itself a query.
     │  2 │
     =#
 
-Using query composition (`>>`), we can perform `Count` in a nested
-context. For this next example, let's count `employee` records
-within each `department`.
+We could also count the total number of employees across all
+departments.
+
+    chicago[Count(It.department.employee)]
+    #=>
+    │ It │
+    ┼────┼
+    │  3 │
+    =#
+
+What if we wanted to count employees by department? Using query
+composition (`>>`), we can perform `Count` in a nested context.
 
     chicago[It.department >> Count(It.employee)]
     #=>
