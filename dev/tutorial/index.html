@@ -121,9 +121,9 @@ chicago = DataKnot(chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-F
     :employee_count =&gt;
         Count(It.employee)</code></pre><p>This query can be used in different ways.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
 #=&gt;
-│ employee_count │
-┼────────────────┼
-│              2 │
+│ It │
+┼────┼
+│  2 │
 =#
 
 chicago[
