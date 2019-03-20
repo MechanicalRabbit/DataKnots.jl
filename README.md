@@ -1,9 +1,6 @@
 # DataKnots.jl
 
-*DataKnots aspires to be a Julia library for representing
-and querying data, including nested and circular
-structures. DataKnots will provide integration and
-analytics across CSV, JSON, XML and SQL data sources with
+*DataKnots is a Julia library for querying data with
 an extensible, practical and coherent algebra of query
 combinators.*
 
@@ -27,8 +24,8 @@ represent relationships among class entities and data
 types. This algebra’s operations, or combinators, are
 applied to construct query expressions.
 
-There are significant advantages of DataKnots over
-the state of the art.
+We seek to prove that this query algebra has 
+significant advantages over the state of the art:
 
 * DataKnots is a practical alternative to SQL with
   a declarative syntax; this makes it suitable for
@@ -50,10 +47,6 @@ the state of the art.
 * DataKnots is fully extensible with Julia; this makes
   it possible to specialize it into various domain
   specific query languages.
-
-We use the word *knot* since the general form of data
-input and output, a `DataKnot`, isn't limited to simple
-tables, they can be trees or even arbitrary graphs.
 
 ## Installation
 
