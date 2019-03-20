@@ -1,5 +1,6 @@
 DataKnots.jl is provided under both the MIT "Expat" License and the
-Apache 2.0 License. Either license applies, at your option.
+Apache 2.0 License. 
+Either license applies, at your option.
 
 Copyright (c) 2017-2019: Prometheus Research, LLC.,
                          Kyrylo Simonov, and Clark C. Evans
