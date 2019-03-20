@@ -1030,6 +1030,22 @@ of elements, their sum, maximum, and minimum respectively.
     │ 101442; 80016; 103350; 95484      4  380292  103350  80016 │
     =#
 
+`Min` and `Max` preserve the output label.
+
+    chicago[Min(Salary)]
+    #=>
+    │ salary │
+    ┼────────┼
+    │  80016 │
+    =#
+
+    chicago[Max(Salary)]
+    #=>
+    │ salary │
+    ┼────────┼
+    │ 103350 │
+    =#
+
 When applied to an empty input, `Sum` emits `0`, `Min` and `Max` emit no
 output.
 

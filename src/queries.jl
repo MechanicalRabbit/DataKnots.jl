@@ -1247,9 +1247,10 @@ maximum_missing(v) =
 
 function Max(env::Environment, p::Pipeline, X)
     x = assemble(X, env, target_pipe(p))
+    lbl = getlabel(x, nothing)
     card = cardinality(target(x))
     optional = fits(x0to1, card)
-    assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
+    relabel(assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x]), lbl)
 end
 
 minimum_missing(v) =
@@ -1257,9 +1258,10 @@ minimum_missing(v) =
 
 function Min(env::Environment, p::Pipeline, X)
     x = assemble(X, env, target_pipe(p))
+    lbl = getlabel(x, nothing)
     card = cardinality(target(x))
     optional = fits(x0to1, card)
-    assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
+    relabel(assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x]), lbl)
 end
 
 

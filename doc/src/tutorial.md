@@ -261,9 +261,9 @@ This query can be used in different ways.
 
     chicago[Max(It.department >> EmployeeCount)]
     #=>
-    │ It │
-    ┼────┼
-    │  2 │
+    │ employee_count │
+    ┼────────────────┼
+    │              2 │
     =#
 
     chicago[
