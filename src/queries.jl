@@ -75,7 +75,7 @@ show(io::IO, nav::Navigation) =
 In a query expression, use `It` to refer to the query's input.
 
 ```jldoctest
-julia> DataKnot(3)[It .+ 1]
+julia> unitknot[Lift(3) >> (It .+ 1)]
 │ It │
 ┼────┼
 │  4 │
@@ -84,7 +84,7 @@ julia> DataKnot(3)[It .+ 1]
 `It` is the identity with respect to query composition.
 
 ```jldoctest
-julia> DataKnot()[Lift('a':'c') >> It]
+julia> unitknot[Lift('a':'c') >> It]
   │ It │
 ──┼────┼
 1 │ a  │
@@ -96,13 +96,13 @@ julia> DataKnot()[Lift('a':'c') >> It]
 `Get`, so that `It.a.x` is equivalent to `Get(:a) >> Get(:x)`.
 
 ```jldoctest
-julia> DataKnot((a=(x=1,y=2),))[It.a]
+julia> unitknot[Lift((a=(x=1,y=2),)) >> It.a]
 │ a    │
 │ x  y │
 ┼──────┼
 │ 1  2 │
 
-julia> DataKnot((a=(x=1,y=2),))[It.a.x]
+julia> unitknot[Lift((a=(x=1,y=2),)) >> It.a.x]
 │ x │
 ┼───┼
 │ 1 │
@@ -140,7 +140,7 @@ function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
     ctx_shps = collect(AbstractShape, shape.(last.(params)))
     scp_cell = TupleVector(1, AbstractVector[cell(db), TupleVector(ctx_lbls, 1, ctx_cols)])
     scp_shp = TupleOf(shape(db), TupleOf(ctx_lbls, ctx_shps)) |> IsScope
-    return DataKnot(scp_cell, scp_shp)
+    return DataKnot(scp_shp, scp_cell)
 end
 
 assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
@@ -485,7 +485,7 @@ end
 `X₁`, `X₂` … `Xₙ`.
 
 ```jldoctest
-julia> DataKnot()[Lift(1:3) >> Record(It, It .* It)]
+julia> unitknot[Lift(1:3) >> Record(It, It .* It)]
   │ #A  #B │
 ──┼────────┼
 1 │  1   1 │
@@ -496,8 +496,8 @@ julia> DataKnot()[Lift(1:3) >> Record(It, It .* It)]
 Field labels are inherited from queries.
 
 ```jldoctest
-julia> DataKnot()[Lift(1:3) >> Record(:x => It,
-                                      :x² => It .* It)]
+julia> unitknot[Lift(1:3) >> Record(:x => It,
+                                    :x² => It .* It)]
   │ x  x² │
 ──┼───────┼
 1 │ 1   1 │
@@ -546,7 +546,7 @@ Lift(X::AbstractQuery) = X
 This converts any value to a constant query.
 
 ```jldoctest
-julia> DataKnot()[Lift("Hello")]
+julia> unitknot[Lift("Hello")]
 │ It    │
 ┼───────┼
 │ Hello │
@@ -555,7 +555,19 @@ julia> DataKnot()[Lift("Hello")]
 `AbstractVector` objects become plural queries.
 
 ```jldoctest
-julia> DataKnot()[Lift('a':'c')]
+julia> unitknot[Lift('a':'c')]
+  │ It │
+──┼────┼
+1 │ a  │
+2 │ b  │
+3 │ c  │
+```
+
+To specify the vector cardinality, add `:x0to1`, `:x0toN`,
+`:x1to1`, or `:x1toN`.
+
+```jldoctest
+julia> unitknot[Lift('a':'c', :x1toN)]
   │ It │
 ──┼────┼
 1 │ a  │
@@ -566,7 +578,7 @@ julia> DataKnot()[Lift('a':'c')]
 The `missing` value makes an query with no output.
 
 ```jldoctest
-julia> DataKnot()[Lift(missing)]
+julia> unitknot[Lift(missing)]
 │ It │
 ┼────┼
 ```
@@ -574,13 +586,16 @@ julia> DataKnot()[Lift(missing)]
 Lift(val) =
     Query(Lift, val)
 
+Lift(elts::AbstractVector, card::Union{Cardinality,Symbol}) =
+    Query(Lift, elts, card)
+
 """
     Lift(f, (X₁, X₂ … Xₙ)) :: Query
 
 `Lift` lets you use a function as a query combinator.
 
 ```jldoctest
-julia> DataKnot((x=1, y=2))[Lift(+, (It.x, It.y))]
+julia> unitknot[Lift((x=1, y=2)) >> Lift(+, (It.x, It.y))]
 │ It │
 ┼────┼
 │  3 │
@@ -590,7 +605,7 @@ julia> DataKnot((x=1, y=2))[Lift(+, (It.x, It.y))]
 queries.
 
 ```jldoctest
-julia> DataKnot((x=1, y=2))[It.x .+ It.y]
+julia> unitknot[Lift((x=1, y=2)) >> (It.x .+ It.y)]
 │ It │
 ┼────┼
 │  3 │
@@ -600,7 +615,7 @@ Functions accepting a `AbstractVector` can be used with plural
 queries.
 
 ```jldoctest
-julia> DataKnot()[sum.(Lift(1:3))]
+julia> unitknot[sum.(Lift(1:3))]
 │ It │
 ┼────┼
 │  6 │
@@ -609,7 +624,7 @@ julia> DataKnot()[sum.(Lift(1:3))]
 Functions returning `AbstractVector` become plural queries.
 
 ```jldoctest
-julia> DataKnot((x='a', y='c'))[Lift(:, (It.x, It.y))]
+julia> unitknot[Lift((x='a', y='c')) >> Lift(:, (It.x, It.y))]
   │ It │
 ──┼────┼
 1 │ a  │
@@ -628,6 +643,9 @@ convert(::Type{AbstractQuery}, F::AbstractQuery) =
 
 Lift(env::Environment, p::Pipeline, val) =
     Lift(env, p, convert(DataKnot, val))
+
+Lift(env::Environment, p::Pipeline, elts::AbstractVector, card::Union{Cardinality,Symbol}) =
+    Lift(env, p, DataKnot(Any, elts, card))
 
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
     xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
@@ -688,7 +706,7 @@ This evaluates `X` elementwise.
 ```jldoctest
 julia> X = Lift('a':'c') >> Count;
 
-julia> DataKnot()[Lift(1:3) >> Each(X)]
+julia> unitknot[Lift(1:3) >> Each(X)]
   │ It │
 ──┼────┼
 1 │  3 │
@@ -701,7 +719,7 @@ Compare this with the query without `Each`.
 ```jldoctest
 julia> X = Lift('a':'c') >> Count;
 
-julia> DataKnot()[Lift(1:3) >> X]
+julia> unitknot[Lift(1:3) >> X]
 │ It │
 ┼────┼
 │  9 │
@@ -723,7 +741,7 @@ Each(env::Environment, p::Pipeline, X) =
 This assigns a label to the output.
 
 ```jldoctest
-julia> DataKnot()[Lift("Hello World") >> Label(:greeting)]
+julia> unitknot[Lift("Hello World") >> Label(:greeting)]
 │ greeting    │
 ┼─────────────┼
 │ Hello World │
@@ -732,7 +750,7 @@ julia> DataKnot()[Lift("Hello World") >> Label(:greeting)]
 A label could also be assigned using the `=>` operator.
 
 ```jldoctest
-julia> DataKnot()[:greeting => Lift("Hello World")]
+julia> unitknot[:greeting => Lift("Hello World")]
 │ greeting    │
 ┼─────────────┼
 │ Hello World │
@@ -818,7 +836,7 @@ quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
 This query extracts a field value by its label.
 
 ```jldoctest
-julia> DataKnot((x=1, y=2))[Get(:x)]
+julia> unitknot[Lift((x=1, y=2)) >> Get(:x)]
 │ x │
 ┼───┼
 │ 1 │
@@ -827,7 +845,7 @@ julia> DataKnot((x=1, y=2))[Get(:x)]
 This has a shorthand form using `It`.
 
 ```jldoctest
-julia> DataKnot((x=1, y=2))[It.x]
+julia> unitknot[Lift((x=1, y=2)) >> It.x]
 │ x │
 ┼───┼
 │ 1 │
@@ -836,7 +854,7 @@ julia> DataKnot((x=1, y=2))[It.x]
 With unlabeled fields, ordinal labels (A, B, ...) can be used.
 
 ```jldoctest
-julia> DataKnot((1,2))[It.B]
+julia> unitknot[Lift((1,2)) >> It.B]
 │ It │
 ┼────┼
 │  2 │
@@ -957,7 +975,7 @@ end
 subsequent computation.
 
 ```jldoctest
-julia> DataKnot()[Keep(:x => 2) >> It.x]
+julia> unitknot[Keep(:x => 2) >> It.x]
 │ x │
 ┼───┼
 │ 2 │
@@ -966,7 +984,7 @@ julia> DataKnot()[Keep(:x => 2) >> It.x]
 `Keep` does not otherwise change its input.
 
 ```jldoctest
-julia> DataKnot(1)[Keep(:x => 2) >> (It .+ It.x)]
+julia> unitknot[Lift(1) >> Keep(:x => 2) >> (It .+ It.x)]
 │ It │
 ┼────┼
 │  3 │
@@ -1000,7 +1018,7 @@ This evaluates `Q` in a context augmented with named parameters
 added by a set of queries.
 
 ```jldoctest
-julia> DataKnot()[Given(:x => 2, It.x .+ 1)]
+julia> unitknot[Given(:x => 2, It.x .+ 1)]
 │ It │
 ┼────┼
 │  3 │
@@ -1059,7 +1077,7 @@ produced by `X`.
 ```jldoctest
 julia> X = Lift('a':'c');
 
-julia> DataKnot()[Count(X)]
+julia> unitknot[Count(X)]
 │ It │
 ┼────┼
 │  3 │
@@ -1074,7 +1092,7 @@ In the query form, `Count` emits the number of elements in its input.
 ```jldoctest
 julia> X = Lift('a':'c');
 
-julia> DataKnot()[X >> Count]
+julia> unitknot[X >> Count]
 │ It │
 ┼────┼
 │  3 │
@@ -1085,7 +1103,7 @@ To limit the scope of aggregation, use `Each`.
 ```jldoctest
 julia> X = Lift('a':'c');
 
-julia> DataKnot()[Lift(1:3) >> Each(X >> Count)]
+julia> unitknot[Lift(1:3) >> Each(X >> Count)]
   │ It │
 ──┼────┼
 1 │  3 │
@@ -1113,7 +1131,7 @@ produced by `X`.
 ```jldoctest
 julia> X = Lift(1:3);
 
-julia> DataKnot()[Sum(X)]
+julia> unitknot[Sum(X)]
 │ It │
 ┼────┼
 │  6 │
@@ -1122,7 +1140,7 @@ julia> DataKnot()[Sum(X)]
 The `Sum` of an empty input is `0`.
 
 ```jldoctest
-julia> DataKnot()[Sum(Int[])]
+julia> unitknot[Sum(Int[])]
 │ It │
 ┼────┼
 │  0 │
@@ -1137,7 +1155,7 @@ In the query form, `Sum` emits the sum of input elements.
 ```jldoctest
 julia> X = Lift(1:3);
 
-julia> DataKnot()[X >> Sum]
+julia> unitknot[X >> Sum]
 │ It │
 ┼────┼
 │  6 │
@@ -1158,7 +1176,7 @@ elements produced by `X`.
 ```jldoctest
 julia> X = Lift(1:3);
 
-julia> DataKnot()[Max(X)]
+julia> unitknot[Max(X)]
 │ It │
 ┼────┼
 │  3 │
@@ -1167,7 +1185,7 @@ julia> DataKnot()[Max(X)]
 The `Max` of an empty input is empty.
 
 ```jldoctest
-julia> DataKnot()[Max(Int[])]
+julia> unitknot[Max(Int[])]
 │ It │
 ┼────┼
 ```
@@ -1181,7 +1199,7 @@ In the query form, `Max` finds the maximum of its input elements.
 ```jldoctest
 julia> X = Lift(1:3);
 
-julia> DataKnot()[X >> Max]
+julia> unitknot[X >> Max]
 │ It │
 ┼────┼
 │  3 │
@@ -1202,7 +1220,7 @@ elements produced by `X`.
 ```jldoctest
 julia> X = Lift(1:3);
 
-julia> DataKnot()[Min(X)]
+julia> unitknot[Min(X)]
 │ It │
 ┼────┼
 │  1 │
@@ -1211,7 +1229,7 @@ julia> DataKnot()[Min(X)]
 The `Min` of an empty input is empty.
 
 ```jldoctest
-julia> DataKnot()[Min(Int[])]
+julia> unitknot[Min(Int[])]
 │ It │
 ┼────┼
 ```
@@ -1225,7 +1243,7 @@ In the query form, `Min` finds the minimum of its input elements.
 ```jldoctest
 julia> X = Lift(1:3);
 
-julia> DataKnot()[X >> Min]
+julia> unitknot[X >> Min]
 │ It │
 ┼────┼
 │  1 │
@@ -1284,7 +1302,7 @@ This query emits the elements from its input that satisfy a given
 condition.
 
 ```jldoctest
-julia> DataKnot(1:5)[Filter(isodd.(It))]
+julia> unitknot[Lift(1:5) >> Filter(isodd.(It))]
   │ It │
 ──┼────┼
 1 │  1 │
@@ -1296,7 +1314,7 @@ When the predicate query produces an empty output, the condition
 is presumed to have failed.
 
 ```jldoctest
-julia> DataKnot('a':'c')[Filter(missing)]
+julia> unitknot[Lift('a':'c') >> Filter(missing)]
 │ It │
 ┼────┼
 ```
@@ -1305,7 +1323,7 @@ When the predicate produces plural output, the condition succeeds
 if at least one output value is `true`.
 
 ```jldoctest
-julia> DataKnot('a':'c')[Filter([true,false])]
+julia> unitknot[Lift('a':'c') >> Filter([true,false])]
   │ It │
 ──┼────┼
 1 │ a  │
@@ -1353,7 +1371,7 @@ This query preserves the first `N` elements of its input, dropping
 the rest.
 
 ```jldoctest
-julia> DataKnot()[Lift('a':'c') >> Take(2)]
+julia> unitknot[Lift('a':'c') >> Take(2)]
   │ It │
 ──┼────┼
 1 │ a  │
@@ -1363,7 +1381,7 @@ julia> DataKnot()[Lift('a':'c') >> Take(2)]
 `Take(-N)` drops the last `N` elements.
 
 ```jldoctest
-julia> DataKnot()[Lift('a':'c') >> Take(-2)]
+julia> unitknot[Lift('a':'c') >> Take(-2)]
   │ It │
 ──┼────┼
 1 │ a  │
@@ -1379,7 +1397,7 @@ This query drops the first `N` elements of its input, preserving
 the rest.
 
 ```jldoctest
-julia> DataKnot()[Lift('a':'c') >> Drop(2)]
+julia> unitknot[Lift('a':'c') >> Drop(2)]
   │ It │
 ──┼────┼
 1 │ c  │
@@ -1388,7 +1406,7 @@ julia> DataKnot()[Lift('a':'c') >> Drop(2)]
 `Drop(-N)` takes the last `N` elements.
 
 ```jldoctest
-julia> DataKnot()[Lift('a':'c') >> Drop(-2)]
+julia> unitknot[Lift('a':'c') >> Drop(-2)]
   │ It │
 ──┼────┼
 1 │ b  │

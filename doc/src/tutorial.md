@@ -27,7 +27,7 @@ records, and so on.
 To query this dataset, we convert it into a `DataKnot`, or *knot*.
 
     using DataKnots
-    chicago = DataKnot(chicago_data)
+    chicago = convert(DataKnot, chicago_data)
 
 ## Our First Query
 

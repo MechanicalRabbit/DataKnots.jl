@@ -84,7 +84,7 @@ target(p::Pipeline) = target(p.sig)
 
 function (p::Pipeline)(input::DataKnot)
     @assert fits(shape(input), source(p))
-    DataKnot(p(cell(input)), target(p))
+    DataKnot(target(p), p(cell(input)))
 end
 
 function (p::Pipeline)(input::AbstractVector)

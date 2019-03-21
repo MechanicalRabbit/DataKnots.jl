@@ -57,7 +57,7 @@ holds associated employee records.
             )
         ]
 
-    chicago = DataKnot(chicago_data, :x1to1)
+    chicago = DataKnot(Any, chicago_data, :x1to1)
     #=>
     │ department                                                                   …
     ┼──────────────────────────────────────────────────────────────────────────────…
@@ -475,6 +475,20 @@ Lifting a vector produces plural output.
 
     Q = Lift('a':'c')
     #-> Lift('a':1:'c')
+
+    chicago[Q]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+    =#
+
+When lifting a vector, we can specify the cardinality constraint.
+
+    Q = Lift('a':'c', :x1toN)
+    #-> Lift('a':1:'c', :x1toN)
 
     chicago[Q]
     #=>

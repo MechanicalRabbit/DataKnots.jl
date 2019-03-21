@@ -13,17 +13,15 @@ import Base:
 #
 
 """
-    DataKnot(::Any=nothing)
-    DataKnot(::AbstactVector, card=:x0toN)
+    convert(DataKnot, val)
 
-The `DataKnot` constructor wraps a given value so that it could be
-used to start a query. When the argument is an vector, we can
-clarify its cardinality (`:x0to1`, `:x1to1`, `:x0toN`, `:x1toN`).
+This converter wraps a given value so that it could be used to
+start a query.
 
-The simplest knot holds the value `nothing`.
+The unit knot holds the value `nothing`.
 
 ```jldoctest
-julia> DataKnot()
+julia> convert(DataKnot, nothing)
 │ It │
 ┼────┼
 │    │
@@ -32,30 +30,29 @@ julia> DataKnot()
 An empty knot can be constructed with `missing`.
 
 ```jldoctest
-julia> DataKnot(missing)
+julia> convert(DataKnot, missing)
 │ It │
 ┼────┼
 ```
 
-It's often useful to wrap a dataset in a one-field tuple.
+A plural knot is constructed from a vector.
 
 ```jldoctest
-julia> DataKnot((dataset='a':'c',))
-│ dataset │
-┼─────────┼
-│ a; b; c │
-```
-
-By default, vectors have no cardinality constraints. To indicate
-that vector will always has at least one element, use `:x1toN`.
-
-```jldoctest
-julia> DataKnot('a':'c', :x1toN)
+julia> convert(DataKnot, 'a':'c')
   │ It │
 ──┼────┼
 1 │ a  │
 2 │ b  │
 3 │ c  │
+```
+
+It's often useful to wrap a dataset in a one-field tuple.
+
+```jldoctest
+julia> convert(DataKnot, (dataset='a':'c',))
+│ dataset │
+┼─────────┼
+│ a; b; c │
 ```
 
 ---
@@ -65,7 +62,7 @@ julia> DataKnot('a':'c', :x1toN)
 Use `get` to extract the underlying value held by a knot.
 
 ```jldoctest
-julia> get(DataKnot("Hello World"))
+julia> get(convert(DataKnot, "Hello World"))
 "Hello World"
 ```
 
@@ -76,7 +73,7 @@ julia> get(DataKnot("Hello World"))
 We can query a knot using array indexing notation.
 
 ```jldoctest
-julia> DataKnot((dataset='a':'c',))[Count(It.dataset)]
+julia> convert(DataKnot, (dataset='a':'c',))[Count(It.dataset)]
 │ It │
 ┼────┼
 │  3 │
@@ -85,7 +82,7 @@ julia> DataKnot((dataset='a':'c',))[Count(It.dataset)]
 Query parameters are provided as keyword arguments.
 
 ```jldoctest
-julia> DataKnot(1:3)[PWR=2, It .^ It.PWR]
+julia> convert(DataKnot, 1:3)[PWR=2, It .^ It.PWR]
   │ It │
 ──┼────┼
 1 │  1 │
@@ -94,33 +91,43 @@ julia> DataKnot(1:3)[PWR=2, It .^ It.PWR]
 ```
 """
 struct DataKnot
-    cell::AbstractVector
     shp::AbstractShape
+    cell::AbstractVector
 
-    function DataKnot(cell::AbstractVector, shp::Union{AbstractShape,Type})
+    function DataKnot(shp::AbstractShape, cell::AbstractVector)
         @assert length(cell) == 1
-        new(cell, shp)
+        new(shp, cell)
     end
 end
 
-DataKnot(elts::AbstractVector, card::Union{Cardinality,Symbol}=x0toN) =
-    DataKnot(BlockVector([1, length(elts)+1], elts, convert(Cardinality, card)),
-             BlockOf(shapeof(elts), convert(Cardinality, card)))
+DataKnot(T::Type, cell::AbstractVector) =
+    DataKnot(convert(AbstractShape, T), cell)
 
-DataKnot(::Missing) =
-    DataKnot(Union{}[], x0to1)
+DataKnot(::Type{Any}, cell::AbstractVector) =
+    DataKnot(shapeof(cell), cell)
 
-DataKnot(ref::Base.RefValue{T}) where {T} =
-    DataKnot(T[ref.x], ValueOf(T))
-
-DataKnot(elt::T) where {T} =
-    DataKnot(T[elt], ValueOf(T))
-
-DataKnot() = DataKnot(nothing)
+DataKnot(::Type{Any}, elts::AbstractVector, card::Union{Cardinality,Symbol}) =
+    let card = convert(Cardinality, card),
+        shp = BlockOf(shapeof(elts), card),
+        cell = BlockVector{card}([1, length(elts)+1], elts)
+        DataKnot(shp, cell)
+    end
 
 convert(::Type{DataKnot}, db::DataKnot) = db
 
-convert(::Type{DataKnot}, val) = DataKnot(val)
+convert(::Type{DataKnot}, ref::Base.RefValue{T}) where {T} =
+    DataKnot(ValueOf(T), T[ref.x])
+
+convert(::Type{DataKnot}, elts::AbstractVector) =
+    DataKnot(Any, elts, x0toN)
+
+convert(::Type{DataKnot}, ::Missing) =
+    DataKnot(Any, Union{}[], x0to1)
+
+convert(::Type{DataKnot}, elt) =
+    DataKnot(Any, [elt])
+
+const unitknot = convert(DataKnot, nothing)
 
 get(db::DataKnot) = db.cell[1]
 
@@ -189,7 +196,7 @@ function focus_blocks(d::TableData, pos::Int)
     col_shp = column(d.shp, pos)
     p = as_blocks(col_shp)
     p !== nothing || return d
-    blks = chain_of(p, distribute(pos))(d.body)
+    blks = chain_of(with_column(pos, p), distribute(pos))(d.body)
     body′ = elements(blks)
     col_shp′ = elements(target(p))
     shp′ = replace_column(d.shp, pos, col_shp′)

@@ -21,7 +21,8 @@ export
     Record,
     Sum,
     Tag,
-    Take
+    Take,
+    unitknot
 
 include("layouts.jl")
 include("vectors.jl")

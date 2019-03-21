@@ -10,12 +10,14 @@ column-oriented form.
         @VectorTree,
         DataKnot,
         It,
+        ValueOf,
         cell,
-        shape
+        shape,
+        unitknot
 
 Any Julia value can be converted to a `DataKnot`.
 
-    hello = DataKnot("Hello World!")
+    hello = convert(DataKnot, "Hello World!")
     #=>
     │ It           │
     ┼──────────────┼
@@ -62,31 +64,64 @@ Public = false
 
 ### Constructors
 
-A `DataKnot` object is created from a one-element vector and its shape.
+A `DataKnot` object is created from a one-element *cell* vector and its shape.
 
-    DataKnot(["Hello World"], String)
+    hello = DataKnot(ValueOf(String), ["Hello World"])
     #=>
     │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
 
-It is an error to provide a vector of a length different from 1.
+It is an error if the cell length is different from 1.
 
-    DataKnot(String[], String)
+    DataKnot(ValueOf(String), String[])
     #-> ERROR: AssertionError: length(cell) == 1
 
-Any Julia value can be converted to a `DataKnot` object using the `convert()`
-function or a one-argument `DataKnot` constructor.
+The cell and its shape can be retrieved.
 
-    convert(DataKnot, "Hello World!")
+    cell(hello)
+    #-> ["Hello World"]
+
+    shape(hello)
+    #-> ValueOf(String)
+
+The shape could be specified by the element type.
+
+    hello = DataKnot(String, ["Hello World"])
+
+    shape(hello)
+    #-> ValueOf(String)
+
+The shape could also be introspected from the given cell.
+
+    hello = DataKnot(Any, ["Hello World"])
+
+    shape(hello)
+    #-> ValueOf(String)
+
+To make a `DataKnot` with a block cell, we can provide the block elements and
+its cardinality.
+
+    abc = DataKnot(Any, 'a':'c', :x1toN)
     #=>
-    │ It           │
-    ┼──────────────┼
-    │ Hello World! │
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
     =#
 
-    hello = DataKnot("Hello World!")
+    cell(abc)
+    #-> @VectorTree (1:N) × Char ['a':'\x01':'c']
+
+    shape(abc)
+    #-> BlockOf(Char, x1toN)
+
+Any Julia value can be converted to a `DataKnot` object using the `convert()`
+function.
+
+    hello = convert(DataKnot, "Hello World!")
     #=>
     │ It           │
     ┼──────────────┼
@@ -100,31 +135,31 @@ Scalar values are stored as is.
 
 The value `missing` is converted to an empty `DataKnot`.
 
-    null = DataKnot(missing)
+    nullknot = convert(DataKnot, missing)
     #=>
     │ It │
     ┼────┼
     =#
 
-    shape(null)
+    shape(nullknot)
     #-> BlockOf(NoShape(), x0to1)
 
-The value `nothing` is converted to the void `DataKnot`.  The same `DataKnot`
-is created by the constructor with no arguments.
+The value `nothing` is converted to the unit `DataKnot`.  The unit `DataKnot`
+is exported under the name `unitknot`.
 
-    void = DataKnot()
+    unitknot
     #=>
     │ It │
     ┼────┼
     │    │
     =#
 
-    shape(void)
+    shape(unitknot)
     #-> ValueOf(Nothing)
 
 A vector value is converted to a block.
 
-    blk = DataKnot('a':'c')
+    vecknot = convert(DataKnot, 'a':'c')
     #=>
       │ It │
     ──┼────┼
@@ -133,24 +168,12 @@ A vector value is converted to a block.
     3 │ c  │
     =#
 
-    shape(blk)
+    shape(vecknot)
     #-> BlockOf(Char)
-
-By default, the block has no cardinality constraint, but we could specify it
-explicitly.
-
-    int_null = DataKnot(Int[], :x0to1)
-    #=>
-    │ It │
-    ┼────┼
-    =#
-
-    shape(int_null)
-    #-> BlockOf(Int, x0to1)
 
 A `Ref` object is converted into the referenced value.
 
-    int_ty = DataKnot(Base.broadcastable(Int))
+    int_ty = convert(DataKnot, Base.broadcastable(Int))
     #=>
     │ It  │
     ┼─────┼
@@ -165,10 +188,11 @@ A `Ref` object is converted into the referenced value.
 
 On output, a `DataKnot` object is rendered as a table.
 
-    emp = DataKnot([(name = "JEFFERY A", position = "SERGEANT", salary = 101442),
-                    (name = "NANCY A", position = "POLICE OFFICER", salary = 80016),
-                    (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350),
-                    (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484)])
+    emp = convert(DataKnot,
+                  [(name = "JEFFERY A", position = "SERGEANT", salary = 101442),
+                   (name = "NANCY A", position = "POLICE OFFICER", salary = 80016),
+                   (name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350),
+                   (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484)])
     #=>
       │ name       position           salary │
     ──┼──────────────────────────────────────┼
@@ -194,15 +218,15 @@ The table is truncated if it does not fit the output screen.
 Top-level tuples are serialized as table columns while nested tuples are
 rendered as comma-separated lists of tuple elements.
 
-    DataKnot(("FIRE", [("JEFFERY A", (101442, missing)), ("NANCY A", (80016, missing))]))
+    convert(DataKnot, ("FIRE", [("JEFFERY A", (101442, missing)), ("NANCY A", (80016, missing))]))
     #=>
     │ #A    #B                                                      │
     ┼───────────────────────────────────────────────────────────────┼
     │ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
     =#
 
-    DataKnot((name = "FIRE", employee = [(name = "JEFFERY A", compensation = (salary = 101442, rate = missing)),
-                                         (name = "NANCY A", compensation = (salary = 80016, rate = missing))]))
+    convert(DataKnot, (name = "FIRE", employee = [(name = "JEFFERY A", compensation = (salary = 101442, rate = missing)),
+                                                  (name = "NANCY A", compensation = (salary = 80016, rate = missing))]))
     #=>
     │ name  employee                                                │
     ┼───────────────────────────────────────────────────────────────┼
@@ -210,14 +234,13 @@ rendered as comma-separated lists of tuple elements.
     =#
 
     DataKnot(
+        Any,
         @VectorTree((name = (1:1)String,
                      employee = [(name = (1:1)String,
                                   compensation = (1:1)(salary = (0:1)Int,
                                                        rate = (0:1)Float64))]), [
             (name = "FIRE", employee = [(name = "JEFFERY A", compensation = (salary = 101442, rate = missing)),
-                                        (name = "NANCY A", compensation = (salary = 80016, rate = missing))])]),
-        :x1to1)
-
+                                        (name = "NANCY A", compensation = (salary = 80016, rate = missing))])]),)
     #=>
     │ name  employee                                                │
     ┼───────────────────────────────────────────────────────────────┼
@@ -227,7 +250,7 @@ rendered as comma-separated lists of tuple elements.
 Similarly, top-level vectors are represented as table rows while nested vectors
 are rendered as semicolon-separated lists.
 
-    DataKnot([["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"]])
+    convert(DataKnot, [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"]])
     #=>
       │ It                 │
     ──┼────────────────────┼
@@ -235,7 +258,7 @@ are rendered as semicolon-separated lists.
     2 │ JAMES A; DANIEL A  │
     =#
 
-    DataKnot(@VectorTree [String] [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"]])
+    convert(DataKnot, @VectorTree [String] [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"]])
     #=>
       │ It                 │
     ──┼────────────────────┼
@@ -246,7 +269,7 @@ are rendered as semicolon-separated lists.
 Integer numbers are right-aligned while decimal numbers are centered around the
 decimal point.
 
-    DataKnot([true, false])
+    convert(DataKnot, [true, false])
     #=>
       │ It    │
     ──┼───────┼
@@ -254,7 +277,7 @@ decimal point.
     2 │ false │
     =#
 
-    DataKnot([101442, 80016])
+    convert(DataKnot, [101442, 80016])
     #=>
       │ It     │
     ──┼────────┼
@@ -262,7 +285,7 @@ decimal point.
     2 │  80016 │
     =#
 
-    DataKnot([35.6, 2.65])
+    convert(DataKnot, [35.6, 2.65])
     #=>
       │ It    │
     ──┼───────┼
