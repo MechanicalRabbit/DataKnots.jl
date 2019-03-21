@@ -3,8 +3,10 @@
     @VectorTree,
     DataKnot,
     It,
+    ValueOf,
     cell,
-    shape</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code>.</p><pre><code class="language-julia">hello = DataKnot(&quot;Hello World!&quot;)
+    shape,
+    unitknot</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code>.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
 #=&gt;
 │ It           │
 ┼──────────────┼
@@ -17,41 +19,23 @@
 │ It │
 ┼────┼
 │ 12 │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element vector and its shape.</p><pre><code class="language-julia">DataKnot([&quot;Hello World&quot;], String)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
 #=&gt;
 │ It          │
 ┼─────────────┼
 │ Hello World │
-=#</code></pre><p>It is an error to provide a vector of a length different from 1.</p><pre><code class="language-julia">DataKnot(String[], String)
-#-&gt; ERROR: AssertionError: length(cell) == 1</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function or a one-argument <code>DataKnot</code> constructor.</p><pre><code class="language-julia">convert(DataKnot, &quot;Hello World!&quot;)
-#=&gt;
-│ It           │
-┼──────────────┼
-│ Hello World! │
-=#
+=#</code></pre><p>It is an error if the cell length is different from 1.</p><pre><code class="language-julia">DataKnot(ValueOf(String), String[])
+#-&gt; ERROR: AssertionError: length(cell) == 1</code></pre><p>The cell and its shape can be retrieved.</p><pre><code class="language-julia">cell(hello)
+#-&gt; [&quot;Hello World&quot;]
 
-hello = DataKnot(&quot;Hello World!&quot;)
-#=&gt;
-│ It           │
-┼──────────────┼
-│ Hello World! │
-=#</code></pre><p>Scalar values are stored as is.</p><pre><code class="language-julia">shape(hello)
-#-&gt; ValueOf(String)</code></pre><p>The value <code>missing</code> is converted to an empty <code>DataKnot</code>.</p><pre><code class="language-julia">null = DataKnot(missing)
-#=&gt;
-│ It │
-┼────┼
-=#
+shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>The shape could be specified by the element type.</p><pre><code class="language-julia">hello = DataKnot(String, [&quot;Hello World&quot;])
 
-shape(null)
-#-&gt; BlockOf(NoShape(), x0to1)</code></pre><p>The value <code>nothing</code> is converted to the void <code>DataKnot</code>.  The same <code>DataKnot</code> is created by the constructor with no arguments.</p><pre><code class="language-julia">void = DataKnot()
-#=&gt;
-│ It │
-┼────┼
-│    │
-=#
+shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>The shape could also be introspected from the given cell.</p><pre><code class="language-julia">hello = DataKnot(Any, [&quot;Hello World&quot;])
 
-shape(void)
-#-&gt; ValueOf(Nothing)</code></pre><p>A vector value is converted to a block.</p><pre><code class="language-julia">blk = DataKnot(&#39;a&#39;:&#39;c&#39;)
+shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>To make a <code>DataKnot</code> with a block cell, we can provide the block elements and its cardinality.</p><pre><code class="language-julia">abc = DataKnot(Any, &#39;a&#39;:&#39;c&#39;, :x1toN)
 #=&gt;
   │ It │
 ──┼────┼
@@ -60,15 +44,42 @@ shape(void)
 3 │ c  │
 =#
 
-shape(blk)
-#-&gt; BlockOf(Char)</code></pre><p>By default, the block has no cardinality constraint, but we could specify it explicitly.</p><pre><code class="language-julia">int_null = DataKnot(Int[], :x0to1)
+cell(abc)
+#-&gt; @VectorTree (1:N) × Char [&#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;]
+
+shape(abc)
+#-&gt; BlockOf(Char, x1toN)</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
+#=&gt;
+│ It           │
+┼──────────────┼
+│ Hello World! │
+=#</code></pre><p>Scalar values are stored as is.</p><pre><code class="language-julia">shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>The value <code>missing</code> is converted to an empty <code>DataKnot</code>.</p><pre><code class="language-julia">nullknot = convert(DataKnot, missing)
 #=&gt;
 │ It │
 ┼────┼
 =#
 
-shape(int_null)
-#-&gt; BlockOf(Int, x0to1)</code></pre><p>A <code>Ref</code> object is converted into the referenced value.</p><pre><code class="language-julia">int_ty = DataKnot(Base.broadcastable(Int))
+shape(nullknot)
+#-&gt; BlockOf(NoShape(), x0to1)</code></pre><p>The value <code>nothing</code> is converted to the unit <code>DataKnot</code>.  The unit <code>DataKnot</code> is exported under the name <code>unitknot</code>.</p><pre><code class="language-julia">unitknot
+#=&gt;
+│ It │
+┼────┼
+│    │
+=#
+
+shape(unitknot)
+#-&gt; ValueOf(Nothing)</code></pre><p>A vector value is converted to a block.</p><pre><code class="language-julia">vecknot = convert(DataKnot, &#39;a&#39;:&#39;c&#39;)
+#=&gt;
+  │ It │
+──┼────┼
+1 │ a  │
+2 │ b  │
+3 │ c  │
+=#
+
+shape(vecknot)
+#-&gt; BlockOf(Char)</code></pre><p>A <code>Ref</code> object is converted into the referenced value.</p><pre><code class="language-julia">int_ty = convert(DataKnot, Base.broadcastable(Int))
 #=&gt;
 │ It  │
 ┼─────┼
@@ -76,10 +87,11 @@ shape(int_null)
 =#
 
 shape(int_ty)
-#-&gt; ValueOf(Type{Int})</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = DataKnot([(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
-                (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016),
-                (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350),
-                (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484)])
+#-&gt; ValueOf(Type{Int})</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = convert(DataKnot,
+              [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
+               (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016),
+               (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350),
+               (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484)])
 #=&gt;
   │ name       position           salary │
 ──┼──────────────────────────────────────┼
@@ -96,15 +108,15 @@ show(small, emp)
 1 │ JEFFERY A  SERG…
 ⋮
 4 │ DANIEL A   FIRE…
-=#</code></pre><p>Top-level tuples are serialized as table columns while nested tuples are rendered as comma-separated lists of tuple elements.</p><pre><code class="language-julia">DataKnot((&quot;FIRE&quot;, [(&quot;JEFFERY A&quot;, (101442, missing)), (&quot;NANCY A&quot;, (80016, missing))]))
+=#</code></pre><p>Top-level tuples are serialized as table columns while nested tuples are rendered as comma-separated lists of tuple elements.</p><pre><code class="language-julia">convert(DataKnot, (&quot;FIRE&quot;, [(&quot;JEFFERY A&quot;, (101442, missing)), (&quot;NANCY A&quot;, (80016, missing))]))
 #=&gt;
 │ #A    #B                                                      │
 ┼───────────────────────────────────────────────────────────────┼
 │ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
 =#
 
-DataKnot((name = &quot;FIRE&quot;, employee = [(name = &quot;JEFFERY A&quot;, compensation = (salary = 101442, rate = missing)),
-                                     (name = &quot;NANCY A&quot;, compensation = (salary = 80016, rate = missing))]))
+convert(DataKnot, (name = &quot;FIRE&quot;, employee = [(name = &quot;JEFFERY A&quot;, compensation = (salary = 101442, rate = missing)),
+                                              (name = &quot;NANCY A&quot;, compensation = (salary = 80016, rate = missing))]))
 #=&gt;
 │ name  employee                                                │
 ┼───────────────────────────────────────────────────────────────┼
@@ -112,19 +124,18 @@ DataKnot((name = &quot;FIRE&quot;, employee = [(name = &quot;JEFFERY A&quot;, co
 =#
 
 DataKnot(
+    Any,
     @VectorTree((name = (1:1)String,
                  employee = [(name = (1:1)String,
                               compensation = (1:1)(salary = (0:1)Int,
                                                    rate = (0:1)Float64))]), [
         (name = &quot;FIRE&quot;, employee = [(name = &quot;JEFFERY A&quot;, compensation = (salary = 101442, rate = missing)),
-                                    (name = &quot;NANCY A&quot;, compensation = (salary = 80016, rate = missing))])]),
-    :x1to1)
-
+                                    (name = &quot;NANCY A&quot;, compensation = (salary = 80016, rate = missing))])]),)
 #=&gt;
 │ name  employee                                                │
 ┼───────────────────────────────────────────────────────────────┼
 │ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
-=#</code></pre><p>Similarly, top-level vectors are represented as table rows while nested vectors are rendered as semicolon-separated lists.</p><pre><code class="language-julia">DataKnot([[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]])
+=#</code></pre><p>Similarly, top-level vectors are represented as table rows while nested vectors are rendered as semicolon-separated lists.</p><pre><code class="language-julia">convert(DataKnot, [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]])
 #=&gt;
   │ It                 │
 ──┼────────────────────┼
@@ -132,13 +143,13 @@ DataKnot(
 2 │ JAMES A; DANIEL A  │
 =#
 
-DataKnot(@VectorTree [String] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]])
+convert(DataKnot, @VectorTree [String] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]])
 #=&gt;
   │ It                 │
 ──┼────────────────────┼
 1 │ JEFFERY A; NANCY A │
 2 │ JAMES A; DANIEL A  │
-=#</code></pre><p>Integer numbers are right-aligned while decimal numbers are centered around the decimal point.</p><pre><code class="language-julia">DataKnot([true, false])
+=#</code></pre><p>Integer numbers are right-aligned while decimal numbers are centered around the decimal point.</p><pre><code class="language-julia">convert(DataKnot, [true, false])
 #=&gt;
   │ It    │
 ──┼───────┼
@@ -146,7 +157,7 @@ DataKnot(@VectorTree [String] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&q
 2 │ false │
 =#
 
-DataKnot([101442, 80016])
+convert(DataKnot, [101442, 80016])
 #=&gt;
   │ It     │
 ──┼────────┼
@@ -154,7 +165,7 @@ DataKnot([101442, 80016])
 2 │  80016 │
 =#
 
-DataKnot([35.6, 2.65])
+convert(DataKnot, [35.6, 2.65])
 #=&gt;
   │ It    │
 ──┼───────┼

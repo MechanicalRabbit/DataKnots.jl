@@ -8,7 +8,7 @@
     (name = &quot;FIRE&quot;,
      employee = [
       (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484)])],)</code></pre><p>In this hierarchical Chicago dataset, the root is a <code>NamedTuple</code> with a field <code>department</code>, which is a <code>Vector</code> of department records, and so on.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
-chicago = DataKnot(chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-First-Query-1" href="#Our-First-Query-1">Our First Query</a></h2><p>Let&#39;s say we want to return the list of department names from this dataset. We query the <code>chicago</code> knot using Julia&#39;s index notation with <code>It.department.name</code>.</p><pre><code class="language-julia">department_names = chicago[It.department.name]
+chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-First-Query-1" href="#Our-First-Query-1">Our First Query</a></h2><p>Let&#39;s say we want to return the list of department names from this dataset. We query the <code>chicago</code> knot using Julia&#39;s index notation with <code>It.department.name</code>.</p><pre><code class="language-julia">department_names = chicago[It.department.name]
 #=&gt;
   │ name   │
 ──┼────────┼
