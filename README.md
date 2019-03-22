@@ -24,7 +24,7 @@ represent relationships among class entities and data
 types. This algebra’s operations, or combinators, are
 applied to construct query expressions.
 
-We seek to prove that this query algebra has 
+We seek to prove that this query algebra has
 significant advantages over the state of the art:
 
 * DataKnots is a practical alternative to SQL with
@@ -50,13 +50,11 @@ significant advantages over the state of the art:
 
 ## Installation
 
-DataKnots.jl is a Julia library, but it is not yet
-registered with the Julia package manager. To install
-it, run in the package shell (enter with `]` from the
-Julia shell):
+To install `DataKnots`, run in the package shell
+(enter with `]` from the Julia shell):
 
 ```juliarepl
-pkg> add https://github.com/rbt-lang/DataKnots.jl
+pkg> add DataKnots
 ```
 
 DataKnots.jl requires Julia 1.0 or higher.
