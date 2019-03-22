@@ -16,12 +16,12 @@ makedocs(
         "Home" => "index.md",
         "tutorial.md",
         "reference.md",
-        hide("implementation.md",
-             ["vectors.md",
-              "pipelines.md",
-              "shapes.md",
-              "knots.md",
-              "queries.md"]),
+        "primer.md",
+        "vectors.md",
+        "pipelines.md",
+        "shapes.md",
+        "knots.md",
+        "queries.md",
     ],
     modules = [DataKnots])
 

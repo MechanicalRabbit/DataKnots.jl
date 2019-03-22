@@ -1,8 +1,5 @@
 # Data Knots
 
-
-## Overview
-
 A `DataKnot` object contains a single data value serialized in a
 column-oriented form.
 
@@ -14,6 +11,8 @@ column-oriented form.
         cell,
         shape,
         unitknot
+
+## Overview
 
 Any Julia value can be converted to a `DataKnot`.
 
@@ -49,7 +48,6 @@ query is also a `DataKnot` object.
     ┼────┼
     │ 12 │
     =#
-
 
 ## API Reference
 ```@autodocs

@@ -1,8 +1,5 @@
 # Pipeline Algebra
 
-
-## Overview
-
 This section describes the `Pipeline` interface of vectorized data
 transformations.  We will use the following definitions:
 
@@ -35,8 +32,7 @@ transformations.  We will use the following definitions:
         wrap,
         x1toN
 
-
-### Lifting and fillers
+## Lifting and Fillers
 
 `DataKnots` stores structured data in a column-oriented format, serialized
 using specialized composite vector types.  Consequently, operations on data
@@ -101,8 +97,7 @@ a `BlockVector` filled with empty blocks.
     p(["GARRY M", "ANTHONY R", "DANA A"])
     #-> @VectorTree (0:1) × Bottom [missing, missing, missing]
 
-
-### Chaining pipelines
+## Chaining Pipelines
 
 Given a series of pipelines, the `chain_of` constructor creates their
 *composition* pipeline, which transforms the input vector by sequentially
@@ -126,8 +121,7 @@ In general, pipeline constructors that take one or more pipelines as arguments
 are called pipeline *combinators*.  Combinators are used to assemble elementary
 pipelines into complex pipeline expressions.
 
-
-### Working with composite vectors
+## Composite Vectors
 
 In `DataKnots`, composite data is represented as a tree of vectors with regular
 `Vector` objects at the leaves and composite vectors such as `TupleVector` and
@@ -199,8 +193,7 @@ elements of a `BlockVector`.
      (department = "FIRE", employee = ["Jose S", "Charles S"])
     =#
 
-
-### Specialized pipelines
+## Specialized Pipelines
 
 Not every data transformation can be implemented with lifting.  `DataKnots`
 provide pipeline constructors for some common transformation tasks.
@@ -248,9 +241,7 @@ Pages = ["pipelines.jl"]
 Public = false
 ```
 
-
 ## Test Suite
-
 
 ### Lifting
 

@@ -1,8 +1,5 @@
 # Column Store
 
-
-## Overview
-
 This section describes how `DataKnots` implements an in-memory column store.
 We will need the following definitions:
 
@@ -25,8 +22,7 @@ We will need the following definitions:
         x1to1,
         x1toN
 
-
-### Tabular data and `TupleVector`
+## Tabular Data and `TupleVector`
 
 Structured data can often be represented in a tabular form.  For example,
 information about city employees can be arranged in the following table.
@@ -81,7 +77,7 @@ column-oriented data using regular tuple and vector literals.
     ]
 
 
-### Hierarchical data and `BlockVector`
+## Hierarchical Data and `BlockVector`
 
 Structured data could also be organized in hierarchical fashion.  For example,
 consider a collection of departments, where each department contains a list of
@@ -151,7 +147,7 @@ regular vector literals.
     ]
 
 
-### Optional values
+## Optional Values
 
 As we arrange data in a tabular form, we may need to leave some cells blank.
 
@@ -221,7 +217,7 @@ As usual, we could create this data from tuple and vector literals.
     ]
 
 
-### Nested data
+## Nested Data
 
 When data does not fit a single table, it can often be presented in a top-down
 fashion.  For example, HR data can be seen as a collection of departments, each

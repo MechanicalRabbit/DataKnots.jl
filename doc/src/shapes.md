@@ -1,8 +1,5 @@
 # Shapes and Signatures
 
-
-## Overview
-
 To describe data shapes and pipeline signatures, we need the following
 definitions.
 
@@ -46,8 +43,7 @@ definitions.
         x1to1,
         x1toN
 
-
-### Data shapes
+## Data Shapes
 
 In `DataKnots`, the structure of composite data is represented using *shape*
 objects.
@@ -116,8 +112,7 @@ collection.
                                  x1toN))
     =#
 
-
-### Traversing nested data
+## Traversing Nested Data
 
 A record field gives rise to a pipeline that maps the records to the field
 values.  For example, the field *employee* corresponds to a pipeline which maps
@@ -204,8 +199,7 @@ flow.
     dept_employee_card|emp_rate_card == dept_employee_rate_card
     #-> true
 
-
-### Flow and scope
+## Flow and Scope
 
 Elementwise composition is a sequential composition with special handling of
 two types of containers: *flow* and *scope*.
@@ -285,9 +279,7 @@ Pages = ["shapes.jl"]
 Public = false
 ```
 
-
 ## Test Suite
-
 
 ### Cardinality
 

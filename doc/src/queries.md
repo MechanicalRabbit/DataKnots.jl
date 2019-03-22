@@ -1,8 +1,5 @@
 # Query Algebra
 
-
-## Overview
-
 In this section, we sketch the design and implementation of the query algebra.
 We will need the following definitions.
 
@@ -32,6 +29,8 @@ We will need the following definitions.
         trivial_pipe,
         target_pipe,
         uncover
+
+## Example Dataset
 
 As a running example, we will use the following dataset of city departments
 with associated employees.  This dataset is serialized as a nested structure
@@ -64,8 +63,7 @@ holds associated employee records.
     │ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…
     =#
 
-
-### Constructing queries
+## Constructing Queries
 
 In DataKnots, we query data by assembling and running `Query` objects.  Queries
 are constructed algebraically: they either come a set of atomic *primitive*
@@ -192,8 +190,7 @@ designed to let the user construct queries incrementally, with each step being
 individually crafted and tested.  It also encourages the user to create
 reusable query components and remix them in creative ways.
 
-
-### Compiling queries
+## Compiling Queries
 
 In DataKnots, applying a query to the input data is a two-phase process.
 First, the query generates a pipeline.  Second, this pipeline transforms
@@ -310,14 +307,12 @@ Applying this pipeline to the input data gives us the output of the query.
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
     =#
 
-
 ## API Reference
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["queries.jl"]
 Public = false
 ```
-
 
 ## Test Suite
 
