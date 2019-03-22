@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "DataKnots.jl",
     "category": "section",
-    "text": "DataKnots is a Julia library for querying data with an extensible, practical and coherent algebra of query combinators.At this time, while we welcome feedback and contributions, DataKnots is not yet usable for general audiences.Pages = [\n    \"tutorial.md\",\n    \"reference.md\",\n    \"implementation.md\",\n]\nDepth=2"
+    "text": "DataKnots is a Julia library for querying data with an extensible, practical and coherent algebra of query combinators.At this time, while we welcome feedback and contributions, DataKnots is not yet usable for general audiences.Pages = [\n    \"tutorial.md\",\n    \"reference.md\",\n]\nDepth=2The following documents outline conceptual topics and implementation details.Pages = [\n    \"primer.md\",\n    \"vectors.md\",\n    \"pipelines.md\",\n    \"shapes.md\",\n    \"knots.md\",\n    \"queries.md\",\n]\nDepth=1"
 },
 
 {
@@ -329,19 +329,91 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "implementation/#",
-    "page": "Implementation Notes",
-    "title": "Implementation Notes",
+    "location": "primer/#",
+    "page": "Primer",
+    "title": "Primer",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "implementation/#Implementation-Notes-1",
-    "page": "Implementation Notes",
-    "title": "Implementation Notes",
+    "location": "primer/#Primer-1",
+    "page": "Primer",
+    "title": "Primer",
     "category": "section",
-    "text": "Pages = [\n    \"vectors.md\",\n    \"pipelines.md\",\n    \"shapes.md\",\n    \"knots.md\",\n    \"queries.md\",\n]\nDepth = 3"
+    "text": "DataKnots is a Julia library for building database queries. In DataKnots, queries are assembled algebraically: they either come from a set of atomic primitives or are built from other queries using combinators. This is a conceptual guide.To start working with DataKnots, we import the package:using DataKnots"
+},
+
+{
+    "location": "primer/#The-Unit-Knot-1",
+    "page": "Primer",
+    "title": "The Unit Knot",
+    "category": "section",
+    "text": "A DataKnot, or just knot, is a container having structured, vectorized data. The unitknot is a trivial knot used as the starting point for constructing other knots.unitknot\n#=>\n│ It │\n┼────┼\n│    │\n=#The unit knot has a single value, nothing. You could get the value of any knot using Julia\'s get function.show(get(unitknot))\n#-> nothing"
+},
+
+{
+    "location": "primer/#Constant-Queries-1",
+    "page": "Primer",
+    "title": "Constant Queries",
+    "category": "section",
+    "text": "Any Julia value could be converted to a query using the Lift constructor. Queries constructed this way are constant: for each input element they receive, they output the given value. Consider the query Hello, lifted from the string value \"Hello World\".Hello = Lift(\"Hello World\")To query unitknot with Hello, we use indexing notation unitknot[Hello]. In this case, Hello receives nothing from unitknot and produces the value, \"Hello World\".unitknot[Hello]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#A Tuple lifted to a constant query is displayed as a table.unitknot[Lift((name=\"DataKnots\", version=\"0.1\"))]\n#=>\n│ name       version │\n┼────────────────────┼\n│ DataKnots  0.1     │\n=#A missing value lifted to a constant query produces no output.unitknot[Lift(missing)]\n#=>\n│ It │\n┼────┼\n=#A Vector lifted to a constant query will produce plural output.unitknot[Lift(\'a\':\'c\')]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n=#We call queries constructed this way primitives, as they do not rely upon any other query. There are also combinators, which build new queries from existing ones."
+},
+
+{
+    "location": "primer/#Composition-and-Identity-1",
+    "page": "Primer",
+    "title": "Composition & Identity",
+    "category": "section",
+    "text": "Two queries can be connected sequentially using the composition combinator (>>). Consider the composition Lift(1:3) >> Hello. Since Hello produces a value for each input element, preceding it with Lift(1:3) generates three copies of \"Hello World\".unitknot[Lift(1:3) >> Hello]\n#=>\n  │ It          │\n──┼─────────────┼\n1 │ Hello World │\n2 │ Hello World │\n3 │ Hello World │\n=#If we compose two plural queries, Lift(1:2) and Lift(\'a\':\'c\'), the output will contain the elements of \'a\':\'c\' repeated twice.unitknot[Lift(1:2) >> Lift(\'a\':\'c\')]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ b  │\n3 │ c  │\n4 │ a  │\n5 │ b  │\n6 │ c  │\n=#The identity with respect to query composition is called It. This primitive can be composed with any query without changing the query\'s output.unitknot[Hello >> It]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#The identity primitive, It, can be used to construct queries which rely upon the output from previous processing.Increment = It .+ 1\nunitknot[Lift(1:3) >> Increment]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  3 │\n3 │  4 │\n=#In DataKnots, queries are built algebraically, starting with query primitives, such as constants (Lift) or the identity (It), and then arranged with with combinators, such as composition (>>). This lets us define sophisticated query components and remix them in creative ways."
+},
+
+{
+    "location": "primer/#Lifting-Functions-1",
+    "page": "Primer",
+    "title": "Lifting Functions",
+    "category": "section",
+    "text": "Any function could be integrated into a DataKnots query. Consider the function double(x) that, when applied to a Number, produces a Number:double(x) = 2x\ndouble(3) #-> 6What we want is an analogue to double which, instead of operating on numbers, operates on queries. Such functions are called query combinators. We can convert any function to a combinator by passing the function and its arguments to Lift.Double(X) = Lift(double, (X,))In this case, double expects a scalar value. Therefore, for a query X, the combinator Double(X) evaluates X and then runs each output element though double. Thus, the query Double(It) would simply double its input.unitknot[Lift(1:3) >> Double(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  4 │\n3 │  6 │\n=#Broadcasting a function over a query argument performs a Lift implicitly, building a query component.unitknot[Lift(1:3) >> double.(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  4 │\n3 │  6 │\n=#Any existing function could be broadcast this way. For example, we could broadcast getfield to get a field value from a tuple.unitknot[Lift((x=1,y=2)) >> getfield.(It, :y)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#Getting a field value is common enough to have its own notation, properties of It, such as It.y, are used for field access.unitknot[Lift((x=1,y=2)) >> It.y]\n#=>\n│ y │\n┼───┼\n│ 2 │\n=#Implicit lifting also applies to built-in Julia operators (+) and values (1). The expression It .+ 1 is a query component that increments each of its input elements.unitknot[Lift(1:3) >> (It .+ 1)]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  3 │\n3 │  4 │\n=#In Julia, broadcasting lets the function\'s arguments control how the function is applied. When a function is broadcasted over queries, the result is a query. However, to make sure it works, we need to ensure that at least one argument is a query, and we can do this by wrapping at least one argument with Lift.OneTo(N) = UnitRange.(1, Lift(N))Note that the unit range constructor is vector-valued. Therefore, the resulting combinator builds queries with plural output.unitknot[OneTo(3)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  2 │\n3 │  3 │\n=#This automated lifting lets us access rich statistical and data processing functions from within our queries."
+},
+
+{
+    "location": "primer/#Aggregate-Queries-1",
+    "page": "Primer",
+    "title": "Aggregate Queries",
+    "category": "section",
+    "text": "There are query operations which cannot be lifted from Julia functions. We\'ve met a few already, including the identity (It) and query composition (>>). There are many others involving aggregation, filtering, and paging.So far queries have been elementwise; that is, for each input element, they produce zero or more output elements. Consider the Count primitive; it returns the number of its input elements.unitknot[OneTo(3) >> Count]\n#=>\n│ It │\n┼────┼\n│  3 │\n=#An aggregate query such as Count is computed over the input as a whole, and not for each individual element. The semantics of aggregates require discussion. Consider OneTo(3) >> OneTo(It).unitknot[OneTo(3) >> OneTo(It)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  1 │\n3 │  2 │\n4 │  1 │\n5 │  2 │\n6 │  3 │\n=#By appending >> Sum we could aggregate the entire input flow, producing a single output element.unitknot[OneTo(3) >> OneTo(It) >> Sum]\n#=>\n│ It │\n┼────┼\n│ 10 │\n=#What if we wanted to produce sums by the outer query, OneTo(3)? Since query composition (>>) is associative, adding parenthesis around OneTo(It) >> Sum will not change the result.unitknot[OneTo(3) >> (OneTo(It) >> Sum)]\n#=>\n│ It │\n┼────┼\n│ 10 │\n=#We need the Each combinator, which acts as an elementwise barrier. For each input element, Each evaluates its argument, and then collects the outputs.unitknot[OneTo(3) >> Each(OneTo(It) >> Sum)]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  3 │\n3 │  6 │\n=#Following is an equivalent query, using the Sum combinator. Here, Sum(X) produces the same output as Each(X >> Sum). Although Sum(X) performs numerical aggregation, it is not an aggregate query since its input is treated elementwise.unitknot[OneTo(3) >> Sum(OneTo(It))]\n#=>\n  │ It │\n──┼────┼\n1 │  1 │\n2 │  3 │\n3 │  6 │\n=#Julia functions taking a vector argument, such as mean, can be lifted to a combinator taking a plural query. When performed, the plural output is converted into the function\'s vector argument.using Statistics\nMean(X) = mean.(X)\nunitknot[Mean(OneTo(3) >> Sum(OneTo(It)))]\n#=>\n│ It      │\n┼─────────┼\n│ 3.33333 │\n=#To use Mean as a query primitive, we use Then to build a query that aggregates elements from its input. Next, we register this query so it is used when Mean is treated as a query.DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)Once these are done, one could take an average of sums as follows:unitknot[Lift(1:3) >> Sum(OneTo(It)) >> Mean]\n#=>\n│ It      │\n┼─────────┼\n│ 3.33333 │\n=#In DataKnots, summary operations are expressed as aggregate query primitives or as query combinators taking a plural query argument. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra."
+},
+
+{
+    "location": "primer/#Filtering-1",
+    "page": "Primer",
+    "title": "Filtering",
+    "category": "section",
+    "text": "The Filter combinator has one parameter, a predicate query that, for each input element, decides if this element should be included in the output.unitknot[OneTo(6) >> Filter(It .> 3)]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#Being a combinator, Filter builds a query component, which could then be composed with any data generating query.KeepEven = Filter(iseven.(It))\nunitknot[OneTo(6) >> KeepEven]\n#=>\n  │ It │\n──┼────┼\n1 │  2 │\n2 │  4 │\n3 │  6 │\n=#Filter can work in a nested context.unitknot[Lift(1:3) >> Filter(Sum(OneTo(It)) .> 5)]\n#=>\n  │ It │\n──┼────┼\n1 │  3 │\n=#The Filter combinator is elementwise. Furthermore, the predicate argument is evaluated for each input element. If the predicate evaluation is true for a given element, then that element is reproduced, otherwise it is discarded."
+},
+
+{
+    "location": "primer/#Paging-Data-1",
+    "page": "Primer",
+    "title": "Paging Data",
+    "category": "section",
+    "text": "Like Filter, the Take and Drop combinators can be used to choose elements from an input: Drop is used to skip over input, while Take ignores input past a particular point.unitknot[OneTo(9) >> Drop(3) >> Take(3)]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#Unlike Filter, which evaluates its argument for each element, the argument to Take is evaluated once, in the context of the input\'s source.unitknot[OneTo(3) >> Each(Lift(\'a\':\'c\') >> Take(It))]\n#=>\n  │ It │\n──┼────┼\n1 │ a  │\n2 │ a  │\n3 │ b  │\n4 │ a  │\n5 │ b  │\n6 │ c  │\n=#In this example, the argument of Take evaluates in the context of OneTo(3). Therefore, Take will be performed three times, where It has the values 1, 2, and 3."
+},
+
+{
+    "location": "primer/#Records-and-Labels-1",
+    "page": "Primer",
+    "title": "Records & Labels",
+    "category": "section",
+    "text": "Data objects can be created using the Record combinator. Values can be labeled using Julia\'s Pair syntax. The entire result as a whole may also be named.GM = Record(:name => \"GARRY M\", :salary => 260004)\nunitknot[GM]\n#=>\n│ name     salary │\n┼─────────────────┼\n│ GARRY M  260004 │\n=#Field access is possible via Get query constructor, which takes a label\'s name. Here Get(:name) is an elementwise query that returns the value of a given label when found.unitknot[GM >> Get(:name)]\n#=>\n│ name    │\n┼─────────┼\n│ GARRY M │\n=#For syntactic convenience, It can be used for dotted access.unitknot[GM >> It.name]\n#=>\n│ name    │\n┼─────────┼\n│ GARRY M │\n=#The Label combinator provides a name to any expression.unitknot[Lift(\"Hello World\") >> Label(:greeting)]\n#=>\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n=#Alternatively, Julia\'s pair constructor (=>) and and a Symbol denoted by a colon (:) can be used to label an expression.Hello =\n  :greeting => Lift(\"Hello World\")\n\nunitknot[Hello]\n#=>\n│ greeting    │\n┼─────────────┼\n│ Hello World │\n=#Records can be used to make tables. Here are some statistics.Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)\nunitknot[Lift(1:3) >> Stats]\n#=>\n  │ n¹  n²  n³ │\n──┼────────────┼\n1 │  1   1   1 │\n2 │  2   4   8 │\n3 │  3   9  27 │\n=#By accessing names, calculations can be performed on records.unitknot[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]\n#=>\n  │ It │\n──┼────┼\n1 │  3 │\n2 │ 14 │\n3 │ 39 │\n=#Using records, it is possible to represent complex, hierarchical data. It is then possible to access and compute with this data."
+},
+
+{
+    "location": "primer/#Query-Parameters-1",
+    "page": "Primer",
+    "title": "Query Parameters",
+    "category": "section",
+    "text": "With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.unitknot[\"Hello \" .* Get(:WHO), WHO=\"World\"]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#To make Get convenient, It provides a shorthand syntax.unitknot[\"Hello \" .* It.WHO, WHO=\"World\"]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#Query parameters are available anywhere in the query. They could, for example be used within a filter.query = OneTo(6) >> Filter(It .> It.START)\nunitknot[query, START=3]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#Parameters can also be defined as part of a query using Given. This combinator takes set of pairs (=>) that map symbols (:name) onto query expressions. The subsequent argument is then evaluated in a naming context where the defined parameters are available for reuse.unitknot[Given(:WHO => \"World\", \"Hello \" .* Get(:WHO))]\n#=>\n│ It          │\n┼─────────────┼\n│ Hello World │\n=#Query parameters can be especially useful when managing aggregates, or with expressions that one may wish to repeat more than once.GreaterThanAverage(X) =\n  Given(:AVG => Mean(X),\n        X >> Filter(It .> Get(:AVG)))\n\nunitknot[GreaterThanAverage(OneTo(6))]\n#=>\n  │ It │\n──┼────┼\n1 │  4 │\n2 │  5 │\n3 │  6 │\n=#In DataKnots, query parameters permit external data to be used within query expressions. Parameters that are defined with Given can be used to remember values and reuse them."
 },
 
 {
@@ -357,45 +429,37 @@ var documenterSearchIndex = {"docs": [
     "page": "Column Store",
     "title": "Column Store",
     "category": "section",
-    "text": ""
-},
-
-{
-    "location": "vectors/#Overview-1",
-    "page": "Column Store",
-    "title": "Overview",
-    "category": "section",
     "text": "This section describes how DataKnots implements an in-memory column store. We will need the following definitions:using DataKnots:\n    @VectorTree,\n    BlockVector,\n    Cardinality,\n    TupleVector,\n    cardinality,\n    column,\n    columns,\n    elements,\n    ismandatory,\n    issingular,\n    labels,\n    offsets,\n    width,\n    x0to1,\n    x0toN,\n    x1to1,\n    x1toN"
 },
 
 {
-    "location": "vectors/#Tabular-data-and-TupleVector-1",
+    "location": "vectors/#Tabular-Data-and-TupleVector-1",
     "page": "Column Store",
-    "title": "Tabular data and TupleVector",
+    "title": "Tabular Data and TupleVector",
     "category": "section",
     "text": "Structured data can often be represented in a tabular form.  For example, information about city employees can be arranged in the following table.name position salary\nJEFFERY A SERGEANT 101442\nJAMES A FIRE ENGINEER-EMT 103350\nTERRY A POLICE OFFICER 93354Internally, a database engine stores tabular data using composite data structures such as tuples and vectors.A tuple is a fixed-size collection of heterogeneous values and can represent a table row.(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442)A vector is a variable-size collection of homogeneous values and can store a table column.[\"JEFFERY A\", \"JAMES A\", \"TERRY A\"]For a table as a whole, we have two options: either store it as a vector of tuples or store it as a tuple of vectors.  The former is called a row-oriented format, commonly used in programming and traditional database engines.[(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442),\n (name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350),\n (name = \"TERRY A\", position = \"POLICE OFFICER\", salary = 93354)]The other option, \"tuple of vectors\" layout, is called a column-oriented format.  It is often used by analytical databases as it is more suited for processing complex analytical queries.The DataKnots package implements data structures to support column-oriented data format.  In particular, tabular data is represented using TupleVector objects.TupleVector(:name => [\"JEFFERY A\", \"JAMES A\", \"TERRY A\"],\n            :position => [\"SERGEANT\", \"FIRE ENGINEER-EMT\", \"POLICE OFFICER\"],\n            :salary => [101442, 103350, 93354])Since creating TupleVector objects by hand is tedious and error prone, DataKnots provides a convenient macro @VectorTree, which lets you create column-oriented data using regular tuple and vector literals.@VectorTree (name = String, position = String, salary = Int) [\n    (name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442),\n    (name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350),\n    (name = \"TERRY A\", position = \"POLICE OFFICER\", salary = 93354),\n]"
 },
 
 {
-    "location": "vectors/#Hierarchical-data-and-BlockVector-1",
+    "location": "vectors/#Hierarchical-Data-and-BlockVector-1",
     "page": "Column Store",
-    "title": "Hierarchical data and BlockVector",
+    "title": "Hierarchical Data and BlockVector",
     "category": "section",
     "text": "Structured data could also be organized in hierarchical fashion.  For example, consider a collection of departments, where each department contains a list of associated employees.name employee\nPOLICE JEFFERY A; NANCY A\nFIRE JAMES A; DANIEL A\nOEMC LAKENYA A; DORIS AIn the row-oriented format, this data is represented using nested vectors.[(name = \"POLICE\", employee = [\"JEFFERY A\", \"NANCY A\"]),\n (name = \"FIRE\", employee = [\"JAMES A\", \"DANIEL A\"]),\n (name = \"OEMC\", employee = [\"LAKENYA A\", \"DORIS A\"])]To represent this data in column-oriented format, we need to serialize name and employee as column vectors.  The name column is straightforward.name_col = [\"POLICE\", \"FIRE\", \"OEMC\"]As for the employee column, naively, we could store it as a vector of vectors.[[\"JEFFERY A\", \"NANCY A\"], [\"JAMES A\", \"DANIEL A\"], [\"LAKENYA A\", \"DORIS A\"]]However, this representation loses the advantages of the column-oriented format since the data is no longer serialized with a fixed number of vectors. Instead, we should keep the column data in a tightly-packed vector of elements.employee_elts = [\"JEFFERY A\", \"NANCY A\", \"JAMES A\", \"DANIEL A\", \"LAKENYA A\", \"DORIS A\"]This vector could be partitioned into separate blocks by the vector of offsets.employee_offs = [1, 3, 5, 7]Each pair of adjacent offsets corresponds a slice of the element vector.employee_elts[employee_offs[1]:employee_offs[2]-1]\n#-> [\"JEFFERY A\", \"NANCY A\"]\nemployee_elts[employee_offs[2]:employee_offs[3]-1]\n#-> [\"JAMES A\", \"DANIEL A\"]\nemployee_elts[employee_offs[3]:employee_offs[4]-1]\n#-> [\"LAKENYA A\", \"DORIS A\"]Together, elements and offsets faithfully reproduce the layout of the column. A pair of the offset and the element vectors is encapsulated with a BlockVector object, which represents a column-oriented encoding of a vector of variable-size blocks.employee_col = BlockVector(employee_offs, employee_elts)Now we can wrap the columns using TupleVector.TupleVector(:name => name_col, :employee => employee_col)@VectorTree provides a convenient way to create BlockVector objects from regular vector literals.@VectorTree (name = String, employee = (0:N)String) [\n    (name = \"POLICE\", employee = [\"JEFFERY A\", \"NANCY A\"]),\n    (name = \"FIRE\", employee = [\"JAMES A\", \"DANIEL A\"]),\n    (name = \"OEMC\", employee = [\"LAKENYA A\", \"DORIS A\"]),\n]"
 },
 
 {
-    "location": "vectors/#Optional-values-1",
+    "location": "vectors/#Optional-Values-1",
     "page": "Column Store",
-    "title": "Optional values",
+    "title": "Optional Values",
     "category": "section",
     "text": "As we arrange data in a tabular form, we may need to leave some cells blank.For example, consider that a city employee could be compensated either with salary or with hourly pay.  To display the compensation data in a table, we add two columns: the annual salary and the hourly rate.  However, only one of the columns per each row is filled.name position salary rate\nJEFFERY A SERGEANT 101442 \nJAMES A FIRE ENGINEER-EMT 103350 \nTERRY A POLICE OFFICER 93354 \nLAKENYA A CROSSING GUARD  17.68As in the previous section, the cells in this table may contain a variable number of values.  Therefore, the table columns could be represented using BlockVector objects.  We start with packing the column data as element vectors.salary_elts = [101442, 103350, 93354]\nrate_elts = [17.68]Element vectors are partitioned into table cells by offset vectors.salary_offs = [1, 2, 3, 4, 4]\nrate_offs = [1, 1, 1, 1, 2]The pairs of element and offset vectors are wrapped as BlockVector objects.salary_col = BlockVector(salary_offs, salary_elts, x0to1)\nrate_col = BlockVector(rate_offs, rate_elts, x0to1)Here, the last parameter of the BlockVector constructor is the cardinality constraint on the size of the blocks.  The constraint x0to1 indicates that each block should contain from 0 to 1 elements.  The default constraint x0toN does not restrict the block size.The first two columns of the table do not contain empty cells, and therefore could be represented by regular vectors.  If we choose to wrap these columns with BlockVector, we should use the constraint x1to1 to indicate that each block must contain exactly one element.  Alternatively, BlockVector provides the following shorthand notation.name_col = BlockVector(:, [\"JEFFERY A\", \"JAMES A\", \"TERRY A\", \"LAKENYA A\"])\nposition_col = BlockVector(:, [\"SERGEANT\", \"FIRE ENGINEER-EMT\", \"POLICE OFFICER\", \"CROSSING GUARD\"])To represent the whole table, the columns should be wrapped with a TupleVector.TupleVector(\n    :name => name_col,\n    :position => position_col,\n    :salary => salary_col,\n    :rate => rate_col)As usual, we could create this data from tuple and vector literals.@VectorTree (name = (1:1)String,\n             position = (1:1)String,\n             salary = (0:1)Int,\n             rate = (0:1)Float64) [\n    (name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing),\n    (name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing),\n    (name = \"TERRY A\", position = \"POLICE OFFICER\", salary = 93354, rate = missing),\n    (name = \"LAKENYA A\", position = \"CROSSING GUARD\", salary = missing, rate = 17.68),\n]"
 },
 
 {
-    "location": "vectors/#Nested-data-1",
+    "location": "vectors/#Nested-Data-1",
     "page": "Column Store",
-    "title": "Nested data",
+    "title": "Nested Data",
     "category": "section",
     "text": "When data does not fit a single table, it can often be presented in a top-down fashion.  For example, HR data can be seen as a collection of departments, each of which containing the associated employees.  Such data is serialized using nested data structures, which, in row-oriented format, may look as follows:[(name = \"POLICE\",\n  employee = [(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing),\n              (name = \"NANCY A\", position = \"POLICE OFFICER\", salary = 80016, rate = missing)]),\n (name = \"FIRE\",\n  employee = [(name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing),\n              (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", salary = 95484, rate = missing)]),\n (name = \"OEMC\",\n  employee = [(name = \"LAKENYA A\", position = \"CROSSING GUARD\", salary = missing, rate = 17.68),\n              (name = \"DORIS A\", position = \"CROSSING GUARD\", salary = missing, rate = 19.38)])]To store this data in a column-oriented format, we should use nested TupleVector and BlockVector instances.  We start with representing employee data.employee_elts =\n    TupleVector(\n        :name => [\"JEFFERY A\", \"NANCY A\", \"JAMES A\", \"DANIEL A\", \"LAKENYA A\", \"DORIS A\"],\n        :position => [\"SERGEANT\", \"POLICE OFFICER\", \"FIRE ENGINEER-EMT\", \"FIRE FIGHTER-EMT\", \"CROSSING GUARD\", \"CROSSING GUARD\"],\n        :salary => BlockVector([1, 2, 3, 4, 5, 5, 5], [101442, 80016, 103350, 95484], x0to1),\n        :rate => BlockVector([1, 1, 1, 1, 1, 2, 3], [17.68, 19.38], x0to1))Then we partition employee data by departments:employee_col = BlockVector([1, 3, 5, 7], employee_elts)Adding a column of department names, we obtain HR data in a column-oriented format.TupleVector(\n    :name => [\"POLICE\", \"FIRE\", \"OEMC\"],\n    :employee => employee_col)Another way to assemble this data in column-oriented format is to use @VectorTree.@VectorTree (name = String,\n             employee = [(name = String,\n                          position = String,\n                          salary = (0:1)Int,\n                          rate = (0:1)Float64)]) [\n    (name = \"POLICE\",\n     employee = [(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing),\n                 (name = \"NANCY A\", position = \"POLICE OFFICER\", salary = 80016, rate = missing)]),\n    (name = \"FIRE\",\n     employee = [(name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing),\n                 (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", salary = 95484, rate = missing)]),\n    (name = \"OEMC\",\n     employee = [(name = \"LAKENYA A\", position = \"CROSSING GUARD\", salary = missing, rate = 17.68),\n                 (name = \"DORIS A\", position = \"CROSSING GUARD\", salary = missing, rate = 19.38)])\n]"
 },
@@ -509,45 +573,37 @@ var documenterSearchIndex = {"docs": [
     "page": "Pipeline Algebra",
     "title": "Pipeline Algebra",
     "category": "section",
-    "text": ""
-},
-
-{
-    "location": "pipelines/#Overview-1",
-    "page": "Pipeline Algebra",
-    "title": "Overview",
-    "category": "section",
     "text": "This section describes the Pipeline interface of vectorized data transformations.  We will use the following definitions:using DataKnots:\n    @VectorTree,\n    Pipeline,\n    Runtime,\n    adapt_missing,\n    adapt_tuple,\n    adapt_vector,\n    block_any,\n    block_filler,\n    block_length,\n    block_lift,\n    chain_of,\n    column,\n    distribute,\n    distribute_all,\n    filler,\n    flatten,\n    lift,\n    null_filler,\n    pass,\n    sieve,\n    slice,\n    tuple_lift,\n    tuple_of,\n    with_column,\n    with_elements,\n    wrap,\n    x1toN"
 },
 
 {
-    "location": "pipelines/#Lifting-and-fillers-1",
+    "location": "pipelines/#Lifting-and-Fillers-1",
     "page": "Pipeline Algebra",
-    "title": "Lifting and fillers",
+    "title": "Lifting and Fillers",
     "category": "section",
     "text": "DataKnots stores structured data in a column-oriented format, serialized using specialized composite vector types.  Consequently, operations on data must also be adapted to the column-oriented format.In DataKnots, operations on column-oriented data are called pipelines.  A pipeline is a vectorized transformation: it takes a vector of input values and produces a vector of the same size containing output values.Any unary scalar function could be vectorized, which gives us a simple method for creating new pipelines.  Consider, for example, function titlecase(), which transforms the input string by capitalizing the first letter of each word and converting every other character to lowercase.titlecase(\"JEFFERY A\")      #-> \"Jeffery A\"This function can be converted to a pipeline or lifted, using the lift pipeline constructor.p = lift(titlecase)\np([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery A\", \"James A\", \"Terry A\"]A scalar function with N arguments could be lifted by tuple_lift to make a pipeline that transforms a TupleVector with N columns.  For example, a binary predicate > gives rise to a pipeline tuple_lift(>) that transforms a TupleVector with two columns into a Boolean vector.p = tuple_lift(>)\np(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])\n#-> Bool[1, 0, 0]In a similar manner, a function with a vector argument can be lifted by block_lift to make a pipeline that expects a BlockVector input.  For example, function length(), which returns the length of a vector, could be converted to a pipeline block_lift(length) that transforms a block vector to an integer vector containing block lengths.p = block_lift(length)\np(@VectorTree [String] [[\"JEFFERY A\", \"NANCY A\"], [\"JAMES A\"]])\n#-> [2, 1]Not just functions, but also regular values could give rise to pipelines.  The filler constructor makes a pipeline from any scalar value.  This pipeline maps any input vector to a vector filled with the given scalar.p = filler(200000)\np([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [200000, 200000, 200000]Similarly, block_filler makes a pipeline from any vector value.  This pipeline produces a BlockVector filled with the given vector.p = block_filler([\"POLICE\", \"FIRE\"])\np([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree (0:N) × String [[\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"], [\"POLICE\", \"FIRE\"]]A variant of block_filler called null_filler makes a pipeline that produces a BlockVector filled with empty blocks.p = null_filler()\np([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree (0:1) × Bottom [missing, missing, missing]"
 },
 
 {
-    "location": "pipelines/#Chaining-pipelines-1",
+    "location": "pipelines/#Chaining-Pipelines-1",
     "page": "Pipeline Algebra",
-    "title": "Chaining pipelines",
+    "title": "Chaining Pipelines",
     "category": "section",
     "text": "Given a series of pipelines, the chain_of constructor creates their composition pipeline, which transforms the input vector by sequentially applying the given pipelines.p = chain_of(lift(split), lift(first), lift(titlecase))\np([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"Jeffery\", \"James\", \"Terry\"]The degenerate composition of an empty sequence of pipelines has its own name, pass(). It passes its input to the output unchanged.chain_of()\n#-> pass()\n\np = pass()\np([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> [\"JEFFERY A\", \"JAMES A\", \"TERRY A\"]In general, pipeline constructors that take one or more pipelines as arguments are called pipeline combinators.  Combinators are used to assemble elementary pipelines into complex pipeline expressions."
 },
 
 {
-    "location": "pipelines/#Working-with-composite-vectors-1",
+    "location": "pipelines/#Composite-Vectors-1",
     "page": "Pipeline Algebra",
-    "title": "Working with composite vectors",
+    "title": "Composite Vectors",
     "category": "section",
     "text": "In DataKnots, composite data is represented as a tree of vectors with regular Vector objects at the leaves and composite vectors such as TupleVector and BlockVector at the intermediate nodes.  We demonstrated how to create and transform regular vectors using filler and lift.  Now let us show how to do the same with composite vectors.TupleVector is a vector of tuples composed of a sequence of column vectors. Any collection of vectors could be used as columns as long as they all have the same length.  One way to obtain N columns for a TupleVector is to apply N pipelines to the same input vector.  This is precisely the action of the tuple_of combinator.p = tuple_of(:first => chain_of(lift(split), lift(first), lift(titlecase)),\n             :last => lift(last))\np([\"JEFFERY A\", \"JAMES A\", \"TERRY A\"])\n#-> @VectorTree (first = String, last = Char) [(first = \"Jeffery\", last = \'A\') … ]In the opposite direction, the column constructor makes a pipeline that extracts the specified column from the input TupleVector.p = column(:salary)\np(@VectorTree (name=String, salary=Int) [(\"JEFFERY A\", 101442), (\"JAMES A\", 103350), (\"TERRY A\", 93354)])\n#-> [101442, 103350, 93354]BlockVector is a vector of vectors serialized as a partitioned vector of elements.  Any input vector could be transformed to a BlockVector by the pipeline wrap(), which wraps the vector elements into one-element blocks.p = wrap()\np([\"GARRY M\", \"ANTHONY R\", \"DANA A\"])\n#-> @VectorTree (1:1) × String [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]Dual to wrap() is the pipeline flatten(), which transforms a nested BlockVector by flattening its nested blocks.p = flatten()\np(@VectorTree [[String]] [[[\"GARRY M\"], [\"ANTHONY R\", \"DANA A\"]], [[], [\"JOSE S\"], [\"CHARLES S\"]]])\n#-> @VectorTree (0:N) × String [[\"GARRY M\", \"ANTHONY R\", \"DANA A\"], [\"JOSE S\", \"CHARLES S\"]]The distribute constructor makes a pipeline that rearranges a TupleVector with a specified BlockVector column.  Specifically, it takes each tuple, where a specific field must contain a block value, and transforms it to a block of tuples by distributing the block value over the tuple.p = distribute(:employee)\np(@VectorTree (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]]) |> display\n#=>\n@VectorTree of 2 × (0:N) × (department = String, employee = String):\n [(department = \"POLICE\", employee = \"GARRY M\"), (department = \"POLICE\", employee = \"ANTHONY R\"), (department = \"POLICE\", employee = \"DANA A\")]\n [(department = \"FIRE\", employee = \"JOSE S\"), (department = \"FIRE\", employee = \"CHARLES S\")]\n=#Often we need to transform only a part of a composite vector, leaving the rest of the structure intact.  This can be achieved using with_column and with_elements combinators.  Specifically, with_column transforms a specific column of a TupleVector while with_elements transforms the vector of elements of a BlockVector.p = with_column(:employee, with_elements(lift(titlecase)))\np(@VectorTree (department = String, employee = [String]) [\n    \"POLICE\"    [\"GARRY M\", \"ANTHONY R\", \"DANA A\"]\n    \"FIRE\"      [\"JOSE S\", \"CHARLES S\"]]) |> display\n#=>\n@VectorTree of 2 × (department = String, employee = (0:N) × String):\n (department = \"POLICE\", employee = [\"Garry M\", \"Anthony R\", \"Dana A\"])\n (department = \"FIRE\", employee = [\"Jose S\", \"Charles S\"])\n=#"
 },
 
 {
-    "location": "pipelines/#Specialized-pipelines-1",
+    "location": "pipelines/#Specialized-Pipelines-1",
     "page": "Pipeline Algebra",
-    "title": "Specialized pipelines",
+    "title": "Specialized Pipelines",
     "category": "section",
     "text": "Not every data transformation can be implemented with lifting.  DataKnots provide pipeline constructors for some common transformation tasks.For example, data filtering is implemented with the pipeline sieve().  As input, it expects a TupleVector of pairs containing a value and a Bool flag.  sieve() transforms the input to a BlockVector containing 0- and 1-element blocks.  When the flag is false, it is mapped to an empty block, otherwise, it is mapped to a one-element block containing the data value.p = sieve()\np(@VectorTree (String, Bool) [(\"JEFFERY A\", true), (\"JAMES A\", true), (\"TERRY A\", false)])\n#-> @VectorTree (0:1) × String [\"JEFFERY A\", \"JAMES A\", missing]If DataKnots does not provide a specific transformation, it is easy to create a new one.  For example, let us create a pipeline constructor double which makes a pipeline that doubles the elements of the input vector.We need to provide two definitions: to create a Pipeline object and to perform the tranformation on the given input vector.double() = Pipeline(double)\ndouble(::Runtime, input::AbstractVector{<:Number}) = input .* 2\n\np = double()\np([260004, 185364, 170112])\n#-> [520008, 370728, 340224]It is also easy to create new pipeline combinators.  Let us create a combinator twice, which applies the given pipeline to the input two times.twice(p) = Pipeline(twice, p)\ntwice(rt::Runtime, input, p) = p(rt, p(rt, input))\n\np = twice(double())\np([260004, 185364, 170112])\n#-> [1040016, 741456, 680448]"
 },
@@ -877,37 +933,29 @@ var documenterSearchIndex = {"docs": [
     "page": "Shapes and Signatures",
     "title": "Shapes and Signatures",
     "category": "section",
-    "text": ""
-},
-
-{
-    "location": "shapes/#Overview-1",
-    "page": "Shapes and Signatures",
-    "title": "Overview",
-    "category": "section",
     "text": "To describe data shapes and pipeline signatures, we need the following definitions.using DataKnots:\n    @VectorTree,\n    AnyShape,\n    BlockOf,\n    BlockVector,\n    IsFlow,\n    IsLabeled,\n    IsScope,\n    NoShape,\n    Signature,\n    TupleOf,\n    TupleVector,\n    ValueOf,\n    cardinality,\n    chain_of,\n    column,\n    columns,\n    compose,\n    context,\n    designate,\n    domain,\n    elements,\n    fits,\n    label,\n    labels,\n    replace_column,\n    replace_elements,\n    shapeof,\n    signature,\n    source,\n    subject,\n    target,\n    tuple_lift,\n    tuple_of,\n    wrap,\n    x0to1,\n    x0toN,\n    x1to1,\n    x1toN"
 },
 
 {
-    "location": "shapes/#Data-shapes-1",
+    "location": "shapes/#Data-Shapes-1",
     "page": "Shapes and Signatures",
-    "title": "Data shapes",
+    "title": "Data Shapes",
     "category": "section",
     "text": "In DataKnots, the structure of composite data is represented using shape objects.For example, consider a collection of departments with associated employees.depts =\n    @VectorTree (name = (1:1)String,\n                 employee = (1:N)(name = (1:1)String,\n                                  position = (1:1)String,\n                                  salary = (0:1)Int,\n                                  rate = (0:1)Float64)) [\n        (name = \"POLICE\",\n         employee = [(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing),\n                     (name = \"NANCY A\", position = \"POLICE OFFICER\", salary = 80016, rate = missing)]),\n        (name = \"FIRE\",\n         employee = [(name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing),\n                     (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", salary = 95484, rate = missing)]),\n        (name = \"OEMC\",\n         employee = [(name = \"LAKENYA A\", position = \"CROSSING GUARD\", salary = missing, rate = 17.68),\n                     (name = \"DORIS A\", position = \"CROSSING GUARD\", salary = missing, rate = 19.38)])\n    ]In this collection, each department record has two fields: name and employee.  Each employee record has four fields: name, position, salary, and rate.  The employee field is plural; salary and rate are optional.Physically, this collection is stored as a tree of interleaving TupleVector and BlockVector objects with regular Vector objects as the leaves.  Its structure is described by a congruent tree composed of TupleOf, BlockOf and ValueOf objects.ValueOf corresponds to regular Julia Vector objects and specifies the type of the vector elements.ValueOf(String)\n#-> ValueOf(String)BlockOf specifies the shape of the elements and the cardinality of a BlockVector.  As a shorthand, a regular Julia type is accepted in place of a ValueOf shape, and the cardinality x0toN is assumed by default.BlockOf(ValueOf(String), x1to1)\n#-> BlockOf(String, x1to1)TupleOf describes a TupleVector object with the given labels and the shapes of the columns.emp_shp = TupleOf(:name => BlockOf(String, x1to1),\n                  :position => BlockOf(String, x1to1),\n                  :salary => BlockOf(Int, x0to1),\n                  :rate => BlockOf(Float64, x0to1))Using nested shape objects, we can accurately specify the structure of a nested collection.dept_shp = TupleOf(:name => BlockOf(String, x1to1),\n                   :employee => BlockOf(emp_shp, x1toN))\n#=>\nTupleOf(:name => BlockOf(String, x1to1),\n        :employee => BlockOf(TupleOf(:name => BlockOf(String, x1to1),\n                                     :position => BlockOf(String, x1to1),\n                                     :salary => BlockOf(Int, x0to1),\n                                     :rate => BlockOf(Float64, x0to1)),\n                             x1toN))\n=#"
 },
 
 {
-    "location": "shapes/#Traversing-nested-data-1",
+    "location": "shapes/#Traversing-Nested-Data-1",
     "page": "Shapes and Signatures",
-    "title": "Traversing nested data",
+    "title": "Traversing Nested Data",
     "category": "section",
     "text": "A record field gives rise to a pipeline that maps the records to the field values.  For example, the field employee corresponds to a pipeline which maps a collection of departments to associated employees.dept_employee = column(:employee)\n\ndept_employee(depts) |> display\n#=>\n@VectorTree of 3 × (1:N) × (name = (1:1) × String,\n                            position = (1:1) × String,\n                            salary = (0:1) × Int,\n                            rate = (0:1) × Float64):\n [(name = \"JEFFERY A\", position = \"SERGEANT\", salary = 101442, rate = missing), (name = \"NANCY A\", position = \"POLICE OFFICER\", salary = 80016, rate = missing)]\n [(name = \"JAMES A\", position = \"FIRE ENGINEER-EMT\", salary = 103350, rate = missing), (name = \"DANIEL A\", position = \"FIRE FIGHTER-EMT\", salary = 95484, rate = missing)]\n [(name = \"LAKENYA A\", position = \"CROSSING GUARD\", salary = missing, rate = 17.68), (name = \"DORIS A\", position = \"CROSSING GUARD\", salary = missing, rate = 19.38)]\n=#The expected input and output of a pipeline can be specified by its signature.dept_employee =\n    dept_employee |> designate(dept_shp, BlockOf(emp_shp, x1toN) |> IsFlow)Here, we also annotate the output shape with IsFlow to indicate its special role in pipeline composition.Two adjacent field pipelines may form a path.  For example, consider the rate pipeline.emp_rate =\n    column(:rate) |> designate(emp_shp, BlockOf(Float64, x0to1) |> IsFlow)\n\nsignature(emp_rate)\n#=>\nSignature(TupleOf(:name => BlockOf(String, x1to1),\n                  :position => BlockOf(String, x1to1),\n                  :salary => BlockOf(Int, x0to1),\n                  :rate => BlockOf(Float64, x0to1)),\n          BlockOf(Float64, x0to1) |> IsFlow)\n=#We wish to form a path through the fields employee and rate.  However, the pipelines dept_employee and emp_rate cannot be chained into chain_of(dept_employee, emp_rate) because their intermediate shapes do not match.fits(target(dept_employee), source(emp_rate))   #-> falseOn the other hand, these pipelines could be composed using the elementwise composition combinator.dept_employee_rate = compose(dept_employee, emp_rate)\n#-> chain_of(column(:employee), chain_of(with_elements(column(:rate)), flatten()))\n\ndept_employee_rate(depts)\n#-> @VectorTree (0:N) × Float64 [[], [], [17.68, 19.38]]\n\nsignature(dept_employee_rate)\n#=>\nSignature(TupleOf(:name => BlockOf(String, x1to1),\n                  :employee =>\n                      BlockOf(TupleOf(:name => BlockOf(String, x1to1),\n                                      :position => BlockOf(String, x1to1),\n                                      :salary => BlockOf(Int, x0to1),\n                                      :rate => BlockOf(Float64, x0to1)),\n                              x1toN)),\n          BlockOf(Float64) |> IsFlow)\n=#Elementwise composition connects the pipelines by fusing their output flows. The least upper bound of the flow cardinalities is the cardinality of the fused flow.dept_employee_card = cardinality(target(dept_employee))\n#-> x1toN\n\nemp_rate_card = cardinality(target(emp_rate))\n#-> x0to1\n\ndept_employee_rate_card = cardinality(target(dept_employee_rate))\n#-> x0toN\n\ndept_employee_card|emp_rate_card == dept_employee_rate_card\n#-> true"
 },
 
 {
-    "location": "shapes/#Flow-and-scope-1",
+    "location": "shapes/#Flow-and-Scope-1",
     "page": "Shapes and Signatures",
-    "title": "Flow and scope",
+    "title": "Flow and Scope",
     "category": "section",
     "text": "Elementwise composition is a sequential composition with special handling of two types of containers: flow and scope.The flow is a BlockVector that wraps the output of the pipeline.  When two pipelines are composed, their output flows are fused together.The scope is a TupleVector that augments the input data with extra context parameters.  When pipelines are composed, the context is passed along the composition.For example, consider a pipeline that wraps the function round and expects the precision to be passed as a context parameter :P.round_digits(x, d) = round(x, digits=d)\n\nround_it =\n    chain_of(\n        tuple_of(chain_of(column(1)),\n                 chain_of(column(2), column(:P))),\n        tuple_lift(round_digits),\n        wrap())\n\nround_it(@VectorTree (Float64, (P = (1:1)Int,)) [(17.68, (P = 1,)), (19.38, (P = 1,))])\n#-> @VectorTree (1:1) × Float64 [17.7, 19.4]To be able to use this pipeline in composition, we assign it its signature.round_it =\n    round_it |> designate(TupleOf(Float64, TupleOf(:P => Float64)) |> IsScope,\n                          BlockOf(Float64, x1to1) |> IsFlow)When two pipelines have compatible intermediate domains, they could be composed.domain(target(dept_employee_rate))\n#-> ValueOf(Float64)\n\ndomain(source(round_it))\n#-> ValueOf(Float64)\n\ndept_employee_round_rate = compose(dept_employee_rate, round_it)The composition also has a signature assigned to it.  The input of the composition should contain the department data together with a parameter P.signature(dept_employee_round_rate)\n#=>\nSignature(TupleOf(TupleOf(:name => BlockOf(String, x1to1),\n                          :employee =>\n                              BlockOf(TupleOf(\n                                          :name => BlockOf(String, x1to1),\n                                          :position => BlockOf(String, x1to1),\n                                          :salary => BlockOf(Int, x0to1),\n                                          :rate => BlockOf(Float64, x0to1)),\n                                      x1toN)),\n                  TupleOf(:P => Float64)) |>\n          IsScope,\n          BlockOf(Float64) |> IsFlow)\n=#To run this pipeline, we pack the input data together with parameters.slots = @VectorTree (P = Int,) [(P = 1,), (P = 1,), (P = 1,)]\n\ninput = TupleVector(:depts => depts, :slots => slots)\n\ndept_employee_round_rate(input)\n#-> @VectorTree (0:N) × Float64 [[], [], [17.7, 19.4]]"
 },
@@ -993,7 +1041,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "shapes/#Data-shapes-2",
+    "location": "shapes/#Data-shapes-1",
     "page": "Shapes and Signatures",
     "title": "Data shapes",
     "category": "section",
@@ -1045,7 +1093,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Data Knots",
     "title": "Data Knots",
     "category": "section",
-    "text": ""
+    "text": "A DataKnot object contains a single data value serialized in a column-oriented form.using DataKnots:\n    @VectorTree,\n    DataKnot,\n    It,\n    ValueOf,\n    cell,\n    shape,\n    unitknot"
 },
 
 {
@@ -1053,7 +1101,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Data Knots",
     "title": "Overview",
     "category": "section",
-    "text": "A DataKnot object contains a single data value serialized in a column-oriented form.using DataKnots:\n    @VectorTree,\n    DataKnot,\n    It,\n    ValueOf,\n    cell,\n    shape,\n    unitknotAny Julia value can be converted to a DataKnot.hello = convert(DataKnot, \"Hello World!\")\n#=>\n│ It           │\n┼──────────────┼\n│ Hello World! │\n=#To obtain a Julia value from a DataKnot object, we use the get() function.get(hello)\n#-> \"Hello World!\"To preserve the column-oriented structure of the data, DataKnot keeps the value in a one-element vector.cell(hello)\n#-> [\"Hello World!\"]DataKnot also stores the shape of the data.shape(hello)\n#-> ValueOf(String)We use indexing notation to apply a Query to a DataKnot.  The output of a query is also a DataKnot object.hello[length.(It)]\n#=>\n│ It │\n┼────┼\n│ 12 │\n=#"
+    "text": "Any Julia value can be converted to a DataKnot.hello = convert(DataKnot, \"Hello World!\")\n#=>\n│ It           │\n┼──────────────┼\n│ Hello World! │\n=#To obtain a Julia value from a DataKnot object, we use the get() function.get(hello)\n#-> \"Hello World!\"To preserve the column-oriented structure of the data, DataKnot keeps the value in a one-element vector.cell(hello)\n#-> [\"Hello World!\"]DataKnot also stores the shape of the data.shape(hello)\n#-> ValueOf(String)We use indexing notation to apply a Query to a DataKnot.  The output of a query is also a DataKnot object.hello[length.(It)]\n#=>\n│ It │\n┼────┼\n│ 12 │\n=#"
 },
 
 {
@@ -1101,29 +1149,29 @@ var documenterSearchIndex = {"docs": [
     "page": "Query Algebra",
     "title": "Query Algebra",
     "category": "section",
-    "text": ""
+    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Each,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Keep,\n    Label,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Sum,\n    Tag,\n    Take,\n    assemble,\n    elements,\n    optimize,\n    trivial_pipe,\n    target_pipe,\n    uncover"
 },
 
 {
-    "location": "queries/#Overview-1",
+    "location": "queries/#Example-Dataset-1",
     "page": "Query Algebra",
-    "title": "Overview",
+    "title": "Example Dataset",
     "category": "section",
-    "text": "In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.using DataKnots:\n    @VectorTree,\n    Count,\n    DataKnot,\n    Drop,\n    Each,\n    Environment,\n    Filter,\n    Get,\n    Given,\n    It,\n    Keep,\n    Label,\n    Lift,\n    Max,\n    Min,\n    Record,\n    Sum,\n    Tag,\n    Take,\n    assemble,\n    elements,\n    optimize,\n    trivial_pipe,\n    target_pipe,\n    uncoverAs a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(Any, chicago_data, :x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
+    "text": "As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.chicago_data =\n    @VectorTree (department = [(name     = (1:1)String,\n                                employee = [(name     = (1:1)String,\n                                             position = (1:1)String,\n                                             salary   = (0:1)Int,\n                                             rate     = (0:1)Float64)])],) [\n        (department = [\n            (name     = \"POLICE\",\n             employee = [\"JEFFERY A\"  \"SERGEANT\"           101442   missing\n                         \"NANCY A\"    \"POLICE OFFICER\"     80016    missing]),\n            (name     = \"FIRE\",\n             employee = [\"JAMES A\"    \"FIRE ENGINEER-EMT\"  103350   missing\n                         \"DANIEL A\"   \"FIRE FIGHTER-EMT\"   95484    missing]),\n            (name     = \"OEMC\",\n             employee = [\"LAKENYA A\"  \"CROSSING GUARD\"     missing  17.68\n                         \"DORIS A\"    \"CROSSING GUARD\"     missing  19.38])],\n        )\n    ]\n\nchicago = DataKnot(Any, chicago_data, :x1to1)\n#=>\n│ department                                                                   …\n┼──────────────────────────────────────────────────────────────────────────────…\n│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…\n=#"
 },
 
 {
-    "location": "queries/#Constructing-queries-1",
+    "location": "queries/#Constructing-Queries-1",
     "page": "Query Algebra",
-    "title": "Constructing queries",
+    "title": "Constructing Queries",
     "category": "section",
     "text": "In DataKnots, we query data by assembling and running Query objects.  Queries are constructed algebraically: they either come a set of atomic primitive queries, or are built from other queries using query combinators.For example, consider the query:Employees = Get(:department) >> Get(:employee)\n#-> Get(:department) >> Get(:employee)This query traverses the dataset through fields department and employee. It is constructed from two primitive queries Get(:department) and Get(:employee) connected using the query composition combinator >>.Since attribute traversal is so common, DataKnots provides a shorthand notation.Employees = It.department.employee\n#-> It.department.employeeTo apply a query to a DataKnot, we use indexing notation.  The output of a query is also a DataKnot.chicago[Employees]\n#=>\n  │ employee                                    │\n  │ name       position           salary  rate  │\n──┼─────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442        │\n2 │ NANCY A    POLICE OFFICER      80016        │\n3 │ JAMES A    FIRE ENGINEER-EMT  103350        │\n4 │ DANIEL A   FIRE FIGHTER-EMT    95484        │\n5 │ LAKENYA A  CROSSING GUARD             17.68 │\n6 │ DORIS A    CROSSING GUARD             19.38 │\n=#Regular Julia values and functions could be used to create query components. Specifically, any Julia value could be converted to a query primitive, and any Julia function could be converted to a query combinator.For example, let us find find employees whose salary is greater than $100k. For this purpose, we need to construct a predicate query that compares the salary field with a specific number.If we were constructing an ordinary predicate function, we would write:salary_over_100k(emp) = emp.salary > 100000An equivalent query is constructed as follows:SalaryOver100K = Lift(>, (Get(:salary), Lift(100000)))\n#-> Lift(>, (Get(:salary), Lift(100000)))This query expression is constructed from two primitive components: Get(:salary) and Lift(100000), which serve as parameters of the Lift(>) combinator.  Here, Lift is used twice.  Lift applied to a regular Julia value converts it to a constant query primitive while Lift applied to a function lifts it to a query combinator.As a shorthand notation for lifting functions and operators, DataKnots supports broadcasting syntax:SalaryOver100K = It.salary .> 100000\n#-> It.salary .> 100000To test this query, we can append it to the Employees query using the composition combinator.chicago[Employees >> SalaryOver100K]\n#=>\n  │ It    │\n──┼───────┼\n1 │  true │\n2 │ false │\n3 │  true │\n4 │ false │\n=#However, this only gives us a list of bare Boolean values disconnected from the respective employees.  To contextualize this output, we can use the Record combinator.chicago[Employees >> Record(It.name,\n                            It.salary,\n                            :salary_over_100k => SalaryOver100K)]\n#=>\n  │ employee                            │\n  │ name       salary  salary_over_100k │\n──┼─────────────────────────────────────┼\n1 │ JEFFERY A  101442              true │\n2 │ NANCY A     80016             false │\n3 │ JAMES A    103350              true │\n4 │ DANIEL A    95484             false │\n5 │ LAKENYA A                           │\n6 │ DORIS A                             │\n=#To actually filter the data using this predicate query, we need to use the Filter combinator.EmployeesWithSalaryOver100K = Employees >> Filter(SalaryOver100K)\n#-> It.department.employee >> Filter(It.salary .> 100000)\n\nchicago[EmployeesWithSalaryOver100K]\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#DataKnots provides a number of useful query constructors.  For example, to find the number of items produced by a query, we can use the Count combinator.chicago[Count(EmployeesWithSalaryOver100K)]\n#=>\n│ It │\n┼────┼\n│  2 │\n=#In general, query algebra forms an XPath-like domain-specific language.  It is designed to let the user construct queries incrementally, with each step being individually crafted and tested.  It also encourages the user to create reusable query components and remix them in creative ways."
 },
 
 {
-    "location": "queries/#Compiling-queries-1",
+    "location": "queries/#Compiling-Queries-1",
     "page": "Query Algebra",
-    "title": "Compiling queries",
+    "title": "Compiling Queries",
     "category": "section",
     "text": "In DataKnots, applying a query to the input data is a two-phase process. First, the query generates a pipeline.  Second, this pipeline transforms the input data to the output data.Let us elaborate on the role of pipelines and queries.  In DataKnots, just like pipelines are used to transform data, a query can transform pipelines.  That is, a query can be applied to a pipeline to produce a new pipeline.To run a query on the given data, we apply the query to a trivial pipeline. The generated pipeline is used to actually transform the data.To demonstrate how to apply a query, let us use EmployeesWithSalaryOver100K from the previous section.  Recall that it could be represented as follows:Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)\n#-> Get(:department) >> Get(:employee) >> Filter(Get(:salary) .> 100000)This query is constructed using a composition combinator.  A query composition transforms a pipeline by sequentially applying the component queries. Therefore, to find the pipeline of EmployeesWithSalaryOver100K, we need to start with a trivial pipeline and sequentially tranfrorm it with the queries Get(:department), Get(:employee) and Filter(SalaryOver100K).The trivial pipeline can be obtained from the input data.p0 = trivial_pipe(chicago)\n#-> pass()We use the function assemble() to apply a query to a pipeline.  To run assemble() we need to create the environment object.env = Environment()\n\np1 = assemble(Get(:department), env, p0)\n#-> chain_of(with_elements(column(:department)), flatten())The pipeline p1 fetches the attribute department from the input data.  In general, Get(name) maps a pipeline to its monadic composition with column(name).  For example, when we apply Get(:employee) to p1, what we get is the result of compose(p1, column(:employee)).p2 = assemble(Get(:employee), env, p1)\n#=>\nchain_of(chain_of(with_elements(column(:department)), flatten()),\n         chain_of(with_elements(column(:employee)), flatten()))\n=#To finish assembling the pipeline, we apply Filter(SalaryOver100K) to p2. Filter acts on the input pipeline as follows.  First, it assembles the predicate pipeline by applying the predicate query to a trivial pipeline.pc0 = target_pipe(p2)\n#-> wrap()\n\npc1 = assemble(SalaryOver100K, env, pc0)\n#=>\nchain_of(wrap(),\n         chain_of(\n             with_elements(\n                 chain_of(\n                     chain_of(\n                         ⋮\n                         tuple_lift(>)),\n                     adapt_missing())),\n             flatten()))\n=#Filter(SalaryOver100K) then combines the pipelines p2 and pc1 using the pipeline primitive sieve().p3 = assemble(Filter(SalaryOver100K), env, p2)\n#=>\nchain_of(\n    chain_of(chain_of(with_elements(column(:department)), flatten()),\n             chain_of(with_elements(column(:employee)), flatten())),\n    chain_of(\n        with_elements(\n            chain_of(\n                ⋮\n                sieve())),\n        flatten()))\n=#The resulting pipeline could be compacted by simplifying the pipeline expression.p = optimize(uncover(p3))\n#=>\nchain_of(with_elements(chain_of(column(:department),\n                                with_elements(column(:employee)))),\n         flatten(),\n         flatten(),\n         with_elements(chain_of(tuple_of(pass(),\n                                         chain_of(tuple_of(column(:salary),\n                                                           chain_of(\n                                                               filler(100000),\n                                                               wrap())),\n                                                  tuple_lift(>),\n                                                  adapt_missing(),\n                                                  block_any())),\n                                sieve())),\n         flatten())\n=#Applying this pipeline to the input data gives us the output of the query.p(chicago)\n#=>\n  │ employee                                   │\n  │ name       position           salary  rate │\n──┼────────────────────────────────────────────┼\n1 │ JEFFERY A  SERGEANT           101442       │\n2 │ JAMES A    FIRE ENGINEER-EMT  103350       │\n=#"
 },
