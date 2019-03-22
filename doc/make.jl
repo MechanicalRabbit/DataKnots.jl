@@ -12,16 +12,21 @@ Markdown.Code(code) = Markdown.Code("julia", code)
 
 makedocs(
     sitename = "DataKnots.jl",
+    format = Documenter.HTML(prettyurls=("CI" in keys(ENV))),
     pages = [
         "Home" => "index.md",
-        "tutorial.md",
-        "reference.md",
-        "primer.md",
-        "vectors.md",
-        "pipelines.md",
-        "shapes.md",
-        "knots.md",
-        "queries.md",
+        "Manual" => [
+            "tutorial.md",
+            "reference.md",
+        ],
+        "Concepts" => [
+            "primer.md",
+            "vectors.md",
+            "pipelines.md",
+            "shapes.md",
+            "knots.md",
+            "queries.md",
+        ],
     ],
     modules = [DataKnots])
 
