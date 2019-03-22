@@ -74,7 +74,7 @@ optional.
 
 Physically, this collection is stored as a tree of interleaving `TupleVector`
 and `BlockVector` objects with regular `Vector` objects as the leaves.  Its
-structure is described by a congruent tree composed of `TupleOf`, `BlockOf` and
+shape is described by a congruent tree composed of `TupleOf`, `BlockOf` and
 `ValueOf` objects.
 
 `ValueOf` corresponds to regular Julia `Vector` objects and specifies the type
@@ -114,7 +114,7 @@ collection.
 
 ## Traversing Nested Data
 
-A record field gives rise to a pipeline that maps the records to the field
+A field gives rise to a pipeline that maps the records to the field
 values.  For example, the field *employee* corresponds to a pipeline which maps
 a collection of departments to associated employees.
 

@@ -229,7 +229,7 @@ We use the function `assemble()` to apply a query to a pipeline.  To run
     #-> chain_of(with_elements(column(:department)), flatten())
 
 The pipeline `p1` fetches the attribute *department* from the input data.  In
-general, `Get(name)` maps a pipeline to its monadic composition with
+general, `Get(name)` maps a pipeline to its elementwise composition with
 `column(name)`.  For example, when we apply `Get(:employee)` to `p1`, what we
 get is the result of `compose(p1, column(:employee))`.
 

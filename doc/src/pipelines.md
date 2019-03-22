@@ -124,16 +124,15 @@ pipelines into complex pipeline expressions.
 ## Composite Vectors
 
 In `DataKnots`, composite data is represented as a tree of vectors with regular
-`Vector` objects at the leaves and composite vectors such as `TupleVector` and
-`BlockVector` at the intermediate nodes.  We demonstrated how to create and
-transform regular vectors using `filler` and `lift`.  Now let us show how to do
-the same with composite vectors.
+`Vector` objects at the leaves and composite vectors, such as `TupleVector` and
+`BlockVector`, at the intermediate nodes. Pipelines that operate and rearrange
+this tree are described here.
 
+The `tuple_of` pipeline combinator permits us to construct a `TupleVector`.
 `TupleVector` is a vector of tuples composed of a sequence of column vectors.
 Any collection of vectors could be used as columns as long as they all have the
 same length.  One way to obtain *N* columns for a `TupleVector` is to apply *N*
-pipelines to the same input vector.  This is precisely the action of the
-`tuple_of` combinator.
+pipelines to the same input vector.
 
     p = tuple_of(:first => chain_of(lift(split), lift(first), lift(titlecase)),
                  :last => lift(last))
@@ -147,9 +146,10 @@ extracts the specified column from the input `TupleVector`.
     p(@VectorTree (name=String, salary=Int) [("JEFFERY A", 101442), ("JAMES A", 103350), ("TERRY A", 93354)])
     #-> [101442, 103350, 93354]
 
+The `wrap()` pipeline primitive is used to create a `BlockVector`.
 `BlockVector` is a vector of vectors serialized as a partitioned vector of
-elements.  Any input vector could be transformed to a `BlockVector` by the
-pipeline `wrap()`, which wraps the vector elements into one-element blocks.
+elements.  Any input vector could be transformed to a `BlockVector` by
+partitioning its elements into one-element blocks.
 
     p = wrap()
     p(["GARRY M", "ANTHONY R", "DANA A"])
@@ -163,9 +163,10 @@ Dual to `wrap()` is the pipeline `flatten()`, which transforms a nested
     #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"]]
 
 The `distribute` constructor makes a pipeline that rearranges a `TupleVector`
-with a specified `BlockVector` column.  Specifically, it takes each tuple,
-where a specific field must contain a block value, and transforms it to a block
-of tuples by distributing the block value over the tuple.
+with a `BlockVector` column. This operation exchanges their positions, pushing
+tuples down and pulling blocks up. Specifically, it takes each tuple, where a
+specific field must contain a block value, and transforms it to a block of
+tuples by distributing the block value over the tuple.
 
     p = distribute(:employee)
     p(@VectorTree (department = String, employee = [String]) [
