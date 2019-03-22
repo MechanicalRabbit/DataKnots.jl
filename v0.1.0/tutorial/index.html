@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li class="current"><a class="toctext" href>Tutorial</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Our-First-Query-1">Our First Query</a></li><li><a class="toctext" href="#Navigation-1">Navigation</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Context-and-Counting-1">Context &amp; Counting</a></li><li><a class="toctext" href="#Record-Construction-1">Record Construction</a></li><li><a class="toctext" href="#Reusable-Queries-1">Reusable Queries</a></li><li><a class="toctext" href="#Filtering-Data-1">Filtering Data</a></li><li><a class="toctext" href="#Incremental-Composition-1">Incremental Composition</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Summarizing-Data-1">Summarizing Data</a></li><li><a class="toctext" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></li><li><a class="toctext" href="#Keeping-Values-1">Keeping Values</a></li><li><a class="toctext" href="#Paging-Data-1">Paging Data</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Query-Functions-1">Query Functions</a></li><li><a class="toctext" href="#Extracting-Data-1">Extracting Data</a></li></ul></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Tutorial</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Tutorial</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Tutorial-1" href="#Tutorial-1">Tutorial</a></h1><p>DataKnots is an embedded query language designed so that accidental programmers can more easily analyze complex data. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
+  (department = [
+    (name = &quot;POLICE&quot;,
+     employee = [
+      (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
+      (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016)]),
+    (name = &quot;FIRE&quot;,
+     employee = [
+      (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484)])],)</code></pre><p>In this hierarchical Chicago dataset, the root is a <code>NamedTuple</code> with a field <code>department</code>, which is a <code>Vector</code> of department records, and so on.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
+chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-First-Query-1" href="#Our-First-Query-1">Our First Query</a></h2><p>Let&#39;s say we want to return the list of department names from this dataset. We query the <code>chicago</code> knot using Julia&#39;s index notation with <code>It.department.name</code>.</p><pre><code class="language-julia">department_names = chicago[It.department.name]
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+=#</code></pre><p>The output, <code>department_names</code>, is also a DataKnot. The content of this output knot could be accessed via <code>get</code> function.</p><pre><code class="language-julia">get(department_names)
+#-&gt; [&quot;POLICE&quot;, &quot;FIRE&quot;]</code></pre><h2><a class="nav-anchor" id="Navigation-1" href="#Navigation-1">Navigation</a></h2><p>In DataKnot queries, <code>It</code> means &quot;the current input&quot;. The dotted notation lets one navigate a hierarchical dataset. Let&#39;s continue our dataset exploration by listing employee names.</p><pre><code class="language-julia">chicago[It.department.employee.name]
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ JEFFERY A │
+2 │ NANCY A   │
+3 │ DANIEL A  │
+=#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset. When a field label, such as <code>employee</code>, can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">chicago[It.employee]
+#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating through <code>department</code> tuples. When tuples are returned, they are displayed as a table.</p><pre><code class="language-julia">chicago[It.department.employee]
+#=&gt;
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ NANCY A    POLICE OFFICER     80016 │
+3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>Notice that nested vectors traversed during navigation are flattened into a single output vector.</p><h2><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h2><p>Dotted navigation, such as <code>It.department.name</code>, is a syntax shorthand for the <code>Get()</code> primitive together with query composition (<code>&gt;&gt;</code>).</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:name)]
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+=#</code></pre><p>The <code>Get()</code> primitive returns values that match a given label. Query composition (<code>&gt;&gt;</code>) chains two queries serially, with the output of the first query as input to the second.</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:employee)]
+#=&gt;
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ NANCY A    POLICE OFFICER     80016 │
+3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>The <code>It</code> query simply reproduces its input, which makes it the identity with respect to composition (<code>&gt;&gt;</code>). Hence, <code>It</code> can be woven into any composition without changing the result.</p><pre><code class="language-julia">chicago[It &gt;&gt; Get(:department) &gt;&gt; Get(:name)]
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+=#</code></pre><p>This motivates our clever use of <code>It</code> as a syntax shorthand.</p><pre><code class="language-julia">chicago[It.department.name]
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+=#</code></pre><p>In DataKnots, queries are either <em>primitives</em>, such as <code>Get</code> and <code>It</code>, or built from other queries with <em>combinators</em>, such as composition (<code>&gt;&gt;</code>). Let&#39;s explore some other combinators.</p><h2><a class="nav-anchor" id="Context-and-Counting-1" href="#Context-and-Counting-1">Context &amp; Counting</a></h2><p>To count the number of departments in this <code>chicago</code> dataset we write the query <code>Count(It.department)</code>. Observe that the argument provided to <code>Count()</code>, <code>It.department</code>, is itself a query.</p><pre><code class="language-julia">chicago[Count(It.department)]
+#=&gt;
+│ It │
+┼────┼
+│  2 │
+=#</code></pre><p>We could also count the total number of employees across all departments.</p><pre><code class="language-julia">chicago[Count(It.department.employee)]
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>What if we wanted to count employees by department? Using query composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Count(It.employee)]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  2 │
+2 │  1 │
+=#</code></pre><p>In this output, we see that one department has <code>2</code> employees, while the other has only <code>1</code>.</p><h2><a class="nav-anchor" id="Record-Construction-1" href="#Record-Construction-1">Record Construction</a></h2><p>Let&#39;s improve the previous query by including each department&#39;s name alongside employee counts. This can be done by using the <code>Record</code> combinator.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           Count(It.employee))]
+#=&gt;
+  │ department │
+  │ name    #B │
+──┼────────────┼
+1 │ POLICE   2 │
+2 │ FIRE     1 │
+=#</code></pre><p>To label a record field we use Julia&#39;s <code>Pair</code> syntax, (<code>=&gt;</code>).</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           :employee_count =&gt;
+               Count(It.employee))]
+#=&gt;
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+2 │ FIRE                 1 │
+=#</code></pre><p>This is syntax shorthand for the <code>Label</code> primitive.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           Count(It.employee) &gt;&gt;
+           Label(:employee_count))]
+#=&gt;
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+2 │ FIRE                 1 │
+=#</code></pre><p>Records can be nested. The following listing includes, for each department, employees&#39; name and salary.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           It.employee &gt;&gt;
+           Record(It.name,
+                  It.salary))]
+#=&gt;
+  │ department                                │
+  │ name    employee                          │
+──┼───────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
+2 │ FIRE    DANIEL A, 95484                   │
+=#</code></pre><p>In this output, commas separate tuple fields and semi-colons separate vector elements.</p><h2><a class="nav-anchor" id="Reusable-Queries-1" href="#Reusable-Queries-1">Reusable Queries</a></h2><p>Queries can be reused. Let&#39;s define <code>EmployeeCount</code> to be a query that computes the number of employees in a department.</p><pre><code class="language-julia">EmployeeCount =
+    :employee_count =&gt;
+        Count(It.employee)</code></pre><p>This query can be used in different ways.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
+#=&gt;
+│ It │
+┼────┼
+│  2 │
+=#
+
+chicago[
+    It.department &gt;&gt;
+    Record(It.name,
+           EmployeeCount)]
+#=&gt;
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+2 │ FIRE                 1 │
+=#</code></pre><h2><a class="nav-anchor" id="Filtering-Data-1" href="#Filtering-Data-1">Filtering Data</a></h2><p>Let&#39;s extend the previous query to only show departments with more than one employee. This can be done using the <code>Filter</code> combinator.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name, EmployeeCount) &gt;&gt;
+    Filter(It.employee_count .&gt; 1)]
+#=&gt;
+  │ department             │
+  │ name    employee_count │
+──┼────────────────────────┼
+1 │ POLICE               2 │
+=#</code></pre><p>To use regular operators in query expressions, we need to use broadcasting notation, such as <code>.&gt;</code> rather than <code>&gt;</code> ; forgetting the period is an easy mistake to make.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Record(It.name, EmployeeCount) &gt;&gt;
+    Filter(It.employee_count &gt; 1)]
+#=&gt;
+ERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)
+⋮
+=#</code></pre><h2><a class="nav-anchor" id="Incremental-Composition-1" href="#Incremental-Composition-1">Incremental Composition</a></h2><p>Combinators let us construct queries incrementally. Let&#39;s explore our Chicago data starting with a list of employees.</p><pre><code class="language-julia">Q = It.department.employee
+
+chicago[Q]
+#=&gt;
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ NANCY A    POLICE OFFICER     80016 │
+3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k.</p><pre><code class="language-julia">Q &gt;&gt;= Record(It.name,
+             It.salary,
+             :gt100k =&gt;
+                 It.salary .&gt; 100000)</code></pre><p>The query definition is tracked automatically.</p><pre><code class="language-julia">Q
+#=&gt;
+It.department.employee &gt;&gt;
+Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
+=#</code></pre><p>Let&#39;s run <code>Q</code> again.</p><pre><code class="language-julia">chicago[Q]
+#=&gt;
+  │ employee                  │
+  │ name       salary  gt100k │
+──┼───────────────────────────┼
+1 │ JEFFERY A  101442    true │
+2 │ NANCY A     80016   false │
+3 │ DANIEL A    95484   false │
+=#</code></pre><p>We can now filter the dataset to include only high-paid employees.</p><pre><code class="language-julia">Q &gt;&gt;= Filter(It.gt100k)
+#=&gt;
+It.department.employee &gt;&gt;
+Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000) &gt;&gt;
+Filter(It.gt100k)
+=#</code></pre><p>Let&#39;s run <code>Q</code> again.</p><pre><code class="language-julia">chicago[Q]
+#=&gt;
+  │ employee                  │
+  │ name       salary  gt100k │
+──┼───────────────────────────┼
+1 │ JEFFERY A  101442    true │
+=#</code></pre><p>Well-tested queries may benefit from a <code>Tag</code> so that their definitions are suppressed in larger compositions.</p><pre><code class="language-julia">HighlyCompensated = Tag(:HighlyCompensated, Q)
+#-&gt; HighlyCompensated
+
+chicago[HighlyCompensated]
+#=&gt;
+  │ employee                  │
+  │ name       salary  gt100k │
+──┼───────────────────────────┼
+1 │ JEFFERY A  101442    true │
+=#</code></pre><p>This tagging can make subsequent compositions easier to read.</p><pre><code class="language-julia">Q = HighlyCompensated &gt;&gt; It.name
+#=&gt;
+HighlyCompensated &gt;&gt; It.name
+=#
+
+chicago[Q]
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ JEFFERY A │
+=#</code></pre><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>We&#39;ve demonstrated the <code>Count</code> combinator, but <code>Count</code> could also be used as a query. In this next example, <code>Count</code> receives employees as input, and produces their number as output.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Count]
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>Previously we&#39;ve only seen <em>elementwise</em> queries, which emit an output for each of its input elements. The <code>Count</code> query is an <em>aggregate</em>, which means it emits an output for its entire input.</p><p>We may wish to count employees by department. Contrary to expectation, adding parentheses will not change the output.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; (It.employee &gt;&gt; Count)]
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>To count employees in <em>each</em> department, we use the <code>Each()</code> combinator, which evaluates its argument elementwise.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Each(It.employee &gt;&gt; Count)]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  2 │
+2 │  1 │
+=#</code></pre><p>Alternatively, we could use the <code>Count()</code> combinator to get the same result.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Count(It.employee)]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  2 │
+2 │  1 │
+=#</code></pre><p>Which form of <code>Count</code> to use depends upon what is notationally convenient. For incremental construction, being able to simply append <code>&gt;&gt; Count</code> is often very helpful.</p><pre><code class="language-julia">Q = It.department.employee
+chicago[Q &gt;&gt; Count]
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>We could then refine the query, and run the exact same command.</p><pre><code class="language-julia">Q &gt;&gt;= Filter(It.salary .&gt; 100000)
+chicago[Q &gt;&gt; Count]
+#=&gt;
+│ It │
+┼────┼
+│  1 │
+=#</code></pre><h2><a class="nav-anchor" id="Summarizing-Data-1" href="#Summarizing-Data-1">Summarizing Data</a></h2><p>To summarize data, we could use combinators such as <code>Min</code>, <code>Max</code>, and <code>Sum</code>.</p><pre><code class="language-julia">Salary = It.department.employee.salary
+
+chicago[
+    Record(
+        :count =&gt; Count(Salary),
+        :min =&gt; Min(Salary),
+        :max =&gt; Max(Salary),
+        :sum =&gt; Sum(Salary))]
+#=&gt;
+│ count  min    max     sum    │
+┼──────────────────────────────┼
+│     3  80016  101442  276942 │
+=#</code></pre><p>Just as <code>Count</code> has an aggregate query form, so do <code>Min</code>, <code>Max</code>, and <code>Sum</code>.</p><pre><code class="language-julia">Salary = It.employee.salary
+
+chicago[
+    It.department &gt;&gt;
+    Record(
+        It.name,
+        :count =&gt; Salary &gt;&gt; Count,
+        :min =&gt; Salary &gt;&gt; Min,
+        :max =&gt; Salary &gt;&gt; Max,
+        :sum =&gt; Salary &gt;&gt; Sum)]
+#=&gt;
+  │ department                           │
+  │ name    count  min    max     sum    │
+──┼──────────────────────────────────────┼
+1 │ POLICE      2  80016  101442  181458 │
+2 │ FIRE        1  95484   95484   95484 │
+=#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
+    It.department.employee &gt;&gt;
+    titlecase.(It.name)]
+#=&gt;
+  │ It        │
+──┼───────────┼
+1 │ Jeffery A │
+2 │ Nancy A   │
+3 │ Daniel A  │
+=#</code></pre><p>Functions taking a vector argument, such as <code>mean</code>, can also be applied to queries. In this example, <code>mean</code> computes the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
+
+chicago[
+    It.department &gt;&gt;
+    Record(
+        It.name,
+        :mean_salary =&gt; mean.(It.employee.salary))]
+#=&gt;
+  │ department          │
+  │ name    mean_salary │
+──┼─────────────────────┼
+1 │ POLICE      90729.0 │
+2 │ FIRE        95484.0 │
+=#</code></pre><h2><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h2><p>Suppose we&#39;d like to list employee names together with their department. The naive approach won&#39;t work because <code>department</code> is not available in the context of an employee.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    It.employee &gt;&gt;
+    Record(It.name, It.department.name)]
+#-&gt; ERROR: cannot find &quot;department&quot; ⋮</code></pre><p>This can be overcome by using <code>Keep</code> to label an expression&#39;s result, so that it is available within subsequent computations.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Keep(:dept_name =&gt; It.name) &gt;&gt;
+    It.employee &gt;&gt;
+    Record(It.name, It.dept_name)]
+#=&gt;
+  │ employee             │
+  │ name       dept_name │
+──┼──────────────────────┼
+1 │ JEFFERY A  POLICE    │
+2 │ NANCY A    POLICE    │
+3 │ DANIEL A   FIRE      │
+=#</code></pre><p>This pattern also emerges when a filter condition uses a parameter calculated in a parent context. For example, let&#39;s list employees with a higher than average salary for their department.</p><pre><code class="language-julia">chicago[
+    It.department &gt;&gt;
+    Keep(:mean_salary =&gt; mean.(It.employee.salary)) &gt;&gt;
+    It.employee &gt;&gt;
+    Filter(It.salary .&gt; It.mean_salary)]
+#=&gt;
+  │ employee                    │
+  │ name       position  salary │
+──┼─────────────────────────────┼
+1 │ JEFFERY A  SERGEANT  101442 │
+=#</code></pre><h2><a class="nav-anchor" id="Paging-Data-1" href="#Paging-Data-1">Paging Data</a></h2><p>Sometimes query results can be quite large. In this case it&#39;s helpful to <code>Take</code> or <code>Drop</code> items from the input. Let&#39;s start by listing all 3 employees of our toy database.</p><pre><code class="language-julia">Employee = It.department.employee
+chicago[Employee]
+#=&gt;
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ NANCY A    POLICE OFFICER     80016 │
+3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>To return only the first 2 records, we use <code>Take</code>.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(2)]
+#=&gt;
+  │ employee                          │
+  │ name       position        salary │
+──┼───────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT        101442 │
+2 │ NANCY A    POLICE OFFICER   80016 │
+=#</code></pre><p>A negative index counts records from the end of the input. So, to return all the records but the last two, we write:</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(-2)]
+#=&gt;
+  │ employee                    │
+  │ name       position  salary │
+──┼─────────────────────────────┼
+1 │ JEFFERY A  SERGEANT  101442 │
+=#</code></pre><p>To skip the first two records, returning the rest, we use <code>Drop</code>.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Drop(2)]
+#=&gt;
+  │ employee                           │
+  │ name      position          salary │
+──┼────────────────────────────────────┼
+1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>To return the 1st half of the employees in the database, we could use <code>Take</code> with an argument that computes how many to take.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(Count(Employee) .÷ 2)]
+#=&gt;
+  │ employee                    │
+  │ name       position  salary │
+──┼─────────────────────────────┼
+1 │ JEFFERY A  SERGEANT  101442 │
+=#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>Parameters let us reuse complex queries without changing their definition. Here we construct a query that depends upon the parameter <code>AMT</code>, which is capitalized by convention.</p><pre><code class="language-julia">PaidOverAmt =
+    It.department &gt;&gt;
+    It.employee &gt;&gt;
+    Filter(It.salary .&gt; It.AMT) &gt;&gt;
+    It.name</code></pre><p>Query parameters are passed as keyword arguments.</p><pre><code class="language-julia">chicago[AMT=100000, PaidOverAmt]
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ JEFFERY A │
+=#</code></pre><p>What if we want to return employees who have a greater than average salary? This average could be computed first.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
+mean_salary = chicago[MeanSalary]
+#=&gt;
+│ It      │
+┼─────────┼
+│ 92314.0 │
+=#</code></pre><p>Then, this value could be passed as our parameter.</p><pre><code class="language-julia">chicago[PaidOverAmt, AMT=mean_salary]
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ JEFFERY A │
+2 │ DANIEL A  │
+=#</code></pre><p>This approach performs composition outside of the query language. To evaluate a query and immediately use it as a parameter within the same query expression, we could use the <code>Given</code> combinator.</p><pre><code class="language-julia">chicago[Given(:AMT =&gt; MeanSalary, PaidOverAmt)]
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ JEFFERY A │
+2 │ DANIEL A  │
+=#</code></pre><h2><a class="nav-anchor" id="Query-Functions-1" href="#Query-Functions-1">Query Functions</a></h2><p>Let&#39;s make a function <code>EmployeesOver</code> that produces employees with a salary greater than the given threshold. The threshold value <code>AMT</code> is evaluated and then made available in the context of each employee with the <code>Given</code> combinator.</p><pre><code class="language-julia">EmployeesOver(X) =
+    Given(:AMT =&gt; X,
+        It.department &gt;&gt;
+        It.employee &gt;&gt;
+        Filter(It.salary .&gt; It.AMT))
+
+chicago[EmployeesOver(100000)]
+#=&gt;
+  │ employee                    │
+  │ name       position  salary │
+──┼─────────────────────────────┼
+1 │ JEFFERY A  SERGEANT  101442 │
+=#</code></pre><p><code>EmployeesOver</code> can take another query as an argument. For example, let&#39;s find employees with higher than average salary.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
+
+chicago[EmployeesOver(MeanSalary)]
+#=&gt;
+  │ employee                            │
+  │ name       position          salary │
+──┼─────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT          101442 │
+2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+=#</code></pre><p>Note that this combination is yet another query that could be further refined.</p><pre><code class="language-julia">chicago[EmployeesOver(MeanSalary) &gt;&gt; It.name]
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ JEFFERY A │
+2 │ DANIEL A  │
+=#</code></pre><p>Alternatively, this query function could have been defined using <code>Keep</code>. We use <code>Given</code> because it doesn&#39;t leak parameters. Specifically, <code>It.AMT</code> is not available outside <code>EmployeesOver()</code>.</p><pre><code class="language-julia">chicago[EmployeesOver(MeanSalary) &gt;&gt; It.AMT]
+#-&gt; ERROR: cannot find &quot;AMT&quot; ⋮</code></pre><h2><a class="nav-anchor" id="Extracting-Data-1" href="#Extracting-Data-1">Extracting Data</a></h2><p>Given any <code>DataKnot</code>, its content can be extracted using <code>get</code>. For singular output, <code>get</code> returns a scalar value.</p><pre><code class="language-julia">get(chicago[Count(It.department)])
+#-&gt; 2</code></pre><p>For plural output, <code>get</code> returns a <code>Vector</code>.</p><pre><code class="language-julia">get(chicago[It.department.employee.name])
+#-&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;DANIEL A&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, which is an <code>AbstractVector</code> specialized for column-oriented storage.</p><pre><code class="language-julia">query = It.department &gt;&gt;
+        Record(It.name,
+               :employee_count =&gt; Count(It.employee))
+vt = get(chicago[query])
+display(vt)
+#=&gt;
+@VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
+ (name = &quot;POLICE&quot;, employee_count = 2)
+ (name = &quot;FIRE&quot;, employee_count = 1)
+=#</code></pre><footer><hr/><a class="previous" href="../"><span class="direction">Previous</span><span class="title">Home</span></a><a class="next" href="../reference/"><span class="direction">Next</span><span class="title">Reference</span></a></footer></article></body></html>
