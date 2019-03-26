@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Shapes and Signatures · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li class="current"><a class="toctext" href>Shapes and Signatures</a><ul class="internal"><li><a class="toctext" href="#Data-Shapes-1">Data Shapes</a></li><li><a class="toctext" href="#Traversing-Nested-Data-1">Traversing Nested Data</a></li><li><a class="toctext" href="#Flow-and-Scope-1">Flow and Scope</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Shapes and Signatures</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/shapes.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Shapes and Signatures</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Shapes-and-Signatures-1" href="#Shapes-and-Signatures-1">Shapes and Signatures</a></h1><p>To describe data shapes and pipeline signatures, we need the following definitions.</p><pre><code class="language-julia">using DataKnots:
+    @VectorTree,
+    AnyShape,
+    BlockOf,
+    BlockVector,
+    IsFlow,
+    IsLabeled,
+    IsScope,
+    NoShape,
+    Signature,
+    TupleOf,
+    TupleVector,
+    ValueOf,
+    cardinality,
+    chain_of,
+    column,
+    columns,
+    compose,
+    context,
+    designate,
+    domain,
+    elements,
+    fits,
+    label,
+    labels,
+    replace_column,
+    replace_elements,
+    shapeof,
+    signature,
+    source,
+    subject,
+    target,
+    tuple_lift,
+    tuple_of,
+    wrap,
+    x0to1,
+    x0toN,
+    x1to1,
+    x1toN</code></pre><h2><a class="nav-anchor" id="Data-Shapes-1" href="#Data-Shapes-1">Data Shapes</a></h2><p>In <code>DataKnots</code>, the structure of composite data is represented using <em>shape</em> objects.</p><p>For example, consider a collection of departments with associated employees.</p><pre><code class="language-julia">depts =
+    @VectorTree (name = (1:1)String,
+                 employee = (1:N)(name = (1:1)String,
+                                  position = (1:1)String,
+                                  salary = (0:1)Int,
+                                  rate = (0:1)Float64)) [
+        (name = &quot;POLICE&quot;,
+         employee = [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442, rate = missing),
+                     (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016, rate = missing)]),
+        (name = &quot;FIRE&quot;,
+         employee = [(name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350, rate = missing),
+                     (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484, rate = missing)]),
+        (name = &quot;OEMC&quot;,
+         employee = [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68),
+                     (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)])
+    ]</code></pre><p>In this collection, each department record has two fields: <em>name</em> and <em>employee</em>.  Each employee record has four fields: <em>name</em>, <em>position</em>, <em>salary</em>, and <em>rate</em>.  The <em>employee</em> field is plural; <em>salary</em> and <em>rate</em> are optional.</p><p>Physically, this collection is stored as a tree of interleaving <code>TupleVector</code> and <code>BlockVector</code> objects with regular <code>Vector</code> objects as the leaves.  Its shape is described by a congruent tree composed of <code>TupleOf</code>, <code>BlockOf</code> and <code>ValueOf</code> objects.</p><p><code>ValueOf</code> corresponds to regular Julia <code>Vector</code> objects and specifies the type of the vector elements.</p><pre><code class="language-julia">ValueOf(String)
+#-&gt; ValueOf(String)</code></pre><p><code>BlockOf</code> specifies the shape of the elements and the cardinality of a <code>BlockVector</code>.  As a shorthand, a regular Julia type is accepted in place of a <code>ValueOf</code> shape, and the cardinality <code>x0toN</code> is assumed by default.</p><pre><code class="language-julia">BlockOf(ValueOf(String), x1to1)
+#-&gt; BlockOf(String, x1to1)</code></pre><p><code>TupleOf</code> describes a <code>TupleVector</code> object with the given labels and the shapes of the columns.</p><pre><code class="language-julia">emp_shp = TupleOf(:name =&gt; BlockOf(String, x1to1),
+                  :position =&gt; BlockOf(String, x1to1),
+                  :salary =&gt; BlockOf(Int, x0to1),
+                  :rate =&gt; BlockOf(Float64, x0to1))</code></pre><p>Using nested shape objects, we can accurately specify the structure of a nested collection.</p><pre><code class="language-julia">dept_shp = TupleOf(:name =&gt; BlockOf(String, x1to1),
+                   :employee =&gt; BlockOf(emp_shp, x1toN))
+#=&gt;
+TupleOf(:name =&gt; BlockOf(String, x1to1),
+        :employee =&gt; BlockOf(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                                     :position =&gt; BlockOf(String, x1to1),
+                                     :salary =&gt; BlockOf(Int, x0to1),
+                                     :rate =&gt; BlockOf(Float64, x0to1)),
+                             x1toN))
+=#</code></pre><h2><a class="nav-anchor" id="Traversing-Nested-Data-1" href="#Traversing-Nested-Data-1">Traversing Nested Data</a></h2><p>A field gives rise to a pipeline that maps the records to the field values.  For example, the field <em>employee</em> corresponds to a pipeline which maps a collection of departments to associated employees.</p><pre><code class="language-julia">dept_employee = column(:employee)
+
+dept_employee(depts) |&gt; display
+#=&gt;
+@VectorTree of 3 × (1:N) × (name = (1:1) × String,
+                            position = (1:1) × String,
+                            salary = (0:1) × Int,
+                            rate = (0:1) × Float64):
+ [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442, rate = missing), (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016, rate = missing)]
+ [(name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350, rate = missing), (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484, rate = missing)]
+ [(name = &quot;LAKENYA A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 17.68), (name = &quot;DORIS A&quot;, position = &quot;CROSSING GUARD&quot;, salary = missing, rate = 19.38)]
+=#</code></pre><p>The expected input and output of a pipeline can be specified by its <em>signature</em>.</p><pre><code class="language-julia">dept_employee =
+    dept_employee |&gt; designate(dept_shp, BlockOf(emp_shp, x1toN) |&gt; IsFlow)</code></pre><p>Here, we also annotate the output shape with <code>IsFlow</code> to indicate its special role in pipeline composition.</p><p>Two adjacent field pipelines may form a <em>path</em>.  For example, consider the <em>rate</em> pipeline.</p><pre><code class="language-julia">emp_rate =
+    column(:rate) |&gt; designate(emp_shp, BlockOf(Float64, x0to1) |&gt; IsFlow)
+
+signature(emp_rate)
+#=&gt;
+Signature(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                  :position =&gt; BlockOf(String, x1to1),
+                  :salary =&gt; BlockOf(Int, x0to1),
+                  :rate =&gt; BlockOf(Float64, x0to1)),
+          BlockOf(Float64, x0to1) |&gt; IsFlow)
+=#</code></pre><p>We wish to form a path through the fields <em>employee</em> and <em>rate</em>.  However, the pipelines <code>dept_employee</code> and <code>emp_rate</code> cannot be chained into <code>chain_of(dept_employee, emp_rate)</code> because their intermediate shapes do not match.</p><pre><code class="language-julia">fits(target(dept_employee), source(emp_rate))   #-&gt; false</code></pre><p>On the other hand, these pipelines could be composed using the <em>elementwise composition</em> combinator.</p><pre><code class="language-julia">dept_employee_rate = compose(dept_employee, emp_rate)
+#-&gt; chain_of(column(:employee), chain_of(with_elements(column(:rate)), flatten()))
+
+dept_employee_rate(depts)
+#-&gt; @VectorTree (0:N) × Float64 [[], [], [17.68, 19.38]]
+
+signature(dept_employee_rate)
+#=&gt;
+Signature(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                  :employee =&gt;
+                      BlockOf(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                                      :position =&gt; BlockOf(String, x1to1),
+                                      :salary =&gt; BlockOf(Int, x0to1),
+                                      :rate =&gt; BlockOf(Float64, x0to1)),
+                              x1toN)),
+          BlockOf(Float64) |&gt; IsFlow)
+=#</code></pre><p>Elementwise composition connects the pipelines by fusing their output flows. The least upper bound of the flow cardinalities is the cardinality of the fused flow.</p><pre><code class="language-julia">dept_employee_card = cardinality(target(dept_employee))
+#-&gt; x1toN
+
+emp_rate_card = cardinality(target(emp_rate))
+#-&gt; x0to1
+
+dept_employee_rate_card = cardinality(target(dept_employee_rate))
+#-&gt; x0toN
+
+dept_employee_card|emp_rate_card == dept_employee_rate_card
+#-&gt; true</code></pre><h2><a class="nav-anchor" id="Flow-and-Scope-1" href="#Flow-and-Scope-1">Flow and Scope</a></h2><p>Elementwise composition is a sequential composition with special handling of two types of containers: <em>flow</em> and <em>scope</em>.</p><p>The flow is a <code>BlockVector</code> that wraps the output of the pipeline.  When two pipelines are composed, their output flows are fused together.</p><p>The scope is a <code>TupleVector</code> that augments the input data with extra context parameters.  When pipelines are composed, the context is passed along the composition.</p><p>For example, consider a pipeline that wraps the function <code>round</code> and expects the precision to be passed as a context parameter <code>:P</code>.</p><pre><code class="language-julia">round_digits(x, d) = round(x, digits=d)
+
+round_it =
+    chain_of(
+        tuple_of(chain_of(column(1)),
+                 chain_of(column(2), column(:P))),
+        tuple_lift(round_digits),
+        wrap())
+
+round_it(@VectorTree (Float64, (P = (1:1)Int,)) [(17.68, (P = 1,)), (19.38, (P = 1,))])
+#-&gt; @VectorTree (1:1) × Float64 [17.7, 19.4]</code></pre><p>To be able to use this pipeline in composition, we assign it its signature.</p><pre><code class="language-julia">round_it =
+    round_it |&gt; designate(TupleOf(Float64, TupleOf(:P =&gt; Float64)) |&gt; IsScope,
+                          BlockOf(Float64, x1to1) |&gt; IsFlow)</code></pre><p>When two pipelines have compatible intermediate domains, they could be composed.</p><pre><code class="language-julia">domain(target(dept_employee_rate))
+#-&gt; ValueOf(Float64)
+
+domain(source(round_it))
+#-&gt; ValueOf(Float64)
+
+dept_employee_round_rate = compose(dept_employee_rate, round_it)</code></pre><p>The composition also has a signature assigned to it.  The input of the composition should contain the department data together with a parameter <code>P</code>.</p><pre><code class="language-julia">signature(dept_employee_round_rate)
+#=&gt;
+Signature(TupleOf(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                          :employee =&gt;
+                              BlockOf(TupleOf(
+                                          :name =&gt; BlockOf(String, x1to1),
+                                          :position =&gt; BlockOf(String, x1to1),
+                                          :salary =&gt; BlockOf(Int, x0to1),
+                                          :rate =&gt; BlockOf(Float64, x0to1)),
+                                      x1toN)),
+                  TupleOf(:P =&gt; Float64)) |&gt;
+          IsScope,
+          BlockOf(Float64) |&gt; IsFlow)
+=#</code></pre><p>To run this pipeline, we pack the input data together with parameters.</p><pre><code class="language-julia">slots = @VectorTree (P = Int,) [(P = 1,), (P = 1,), (P = 1,)]
+
+input = TupleVector(:depts =&gt; depts, :slots =&gt; slots)
+
+dept_employee_round_rate(input)
+#-&gt; @VectorTree (0:N) × Float64 [[], [], [17.7, 19.4]]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.AbstractShape" href="#DataKnots.AbstractShape"><code>DataKnots.AbstractShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">AbstractShape</code></pre><p>Describes the structure of column-oriented data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L16-L20">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.AnyShape" href="#DataKnots.AnyShape"><code>DataKnots.AnyShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">AnyShape()</code></pre><p>Nothing is known about the data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L54-L58">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.BlockOf" href="#DataKnots.BlockOf"><code>DataKnots.BlockOf</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">BlockOf(elts::AbstractShape, card::Cardinality=x0toN)</code></pre><p>Shape of a <code>BlockVector</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L196-L200">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.IsLabeled" href="#DataKnots.IsLabeled"><code>DataKnots.IsLabeled</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">sub |&gt; IsLabeled(::Symbol)</code></pre><p>The shape has an attached label.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L256-L260">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.NoShape" href="#DataKnots.NoShape"><code>DataKnots.NoShape</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">NoShape()</code></pre><p>Inconsistent constraints on the data.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L70-L74">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Signature" href="#DataKnots.Signature"><code>DataKnots.Signature</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Signature(::AbstractShape, ::AbstractShape)</code></pre><p>Shapes of a pipeline source and tagret.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L412-L416">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.fits" href="#DataKnots.fits"><code>DataKnots.fits</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">fits(x::T, y::T) :: Bool</code></pre><p>Checks if constraint <code>x</code> implies constraint <code>y</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/936dfaf264d36c1d3f6b3172c88db13f50b07743/src/shapes.jl#L342-L346">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Cardinality-1" href="#Cardinality-1">Cardinality</a></h3><p><code>Cardinality</code> constraints are partially ordered.  For two <code>Cardinality</code> constraints, we can determine whether one is more strict than the other.</p><pre><code class="language-julia">fits(x0to1, x1toN)          #-&gt; false
+fits(x1to1, x0toN)          #-&gt; true</code></pre><h3><a class="nav-anchor" id="Data-shapes-1" href="#Data-shapes-1">Data shapes</a></h3><p>The structure of composite data is specified with <em>shape</em> objects.</p><p>A regular vector containing values of a specific type is indicated by the <code>ValueOf</code> shape.</p><pre><code class="language-julia">str_shp = ValueOf(String)
+#-&gt; ValueOf(String)
+
+eltype(str_shp)
+#-&gt; String</code></pre><p>The structure of a <code>BlockVector</code> object is described using <code>BlockOf</code> shape.</p><pre><code class="language-julia">rate_shp = BlockOf(Float64, x0to1)
+#-&gt; BlockOf(Float64, x0to1)
+
+cardinality(rate_shp)
+#-&gt; x0to1
+
+elements(rate_shp)
+#-&gt; ValueOf(Float64)
+
+eltype(rate_shp)
+#-&gt; Union{Missing, Float64}</code></pre><p>For a <code>TupleVector</code>, the column shapes and their labels are described with <code>TupleOf</code>.</p><pre><code class="language-julia">emp_shp = TupleOf(:name =&gt; BlockOf(String, x1to1),
+                  :position =&gt; BlockOf(String, x1to1),
+                  :salary =&gt; BlockOf(Int, x0to1),
+                  :rate =&gt; BlockOf(Float64, x0to1))
+#=&gt;
+TupleOf(:name =&gt; BlockOf(String, x1to1),
+        :position =&gt; BlockOf(String, x1to1),
+        :salary =&gt; BlockOf(Int, x0to1),
+        :rate =&gt; BlockOf(Float64, x0to1))
+=#
+
+labels(emp_shp)
+#-&gt; Symbol[:name, :position, :salary, :rate]
+
+label(emp_shp, 4)
+#-&gt; :rate
+
+columns(emp_shp)
+#-&gt; DataKnots.AbstractShape[BlockOf(String, x1to1), BlockOf(String, x1to1), BlockOf(Int, x0to1), BlockOf(Float64, x0to1)]
+
+column(emp_shp, :rate)
+#-&gt; BlockOf(Float64, x0to1)
+
+column(emp_shp, 4)
+#-&gt; BlockOf(Float64, x0to1)</code></pre><p>It is possible to specify the shape of a <code>TupleVector</code> without labels.</p><pre><code class="language-julia">cmp_shp = TupleOf(BlockOf(Int, x0to1), BlockOf(Int, x1to1))
+#-&gt; TupleOf(BlockOf(Int, x0to1), BlockOf(Int, x1to1))</code></pre><p>In this case, the columns will be assigned <em>ordinal</em> labels.</p><pre><code class="language-julia">label(cmp_shp, 1)   #-&gt; Symbol(&quot;#A&quot;)
+label(cmp_shp, 2)   #-&gt; Symbol(&quot;#B&quot;)</code></pre><h3><a class="nav-anchor" id="Annotations-1" href="#Annotations-1">Annotations</a></h3><p>Any shape can be assigned a label using <code>IsLabeled</code> annotation.</p><pre><code class="language-julia">lbl_shp = BlockOf(String, x1to1) |&gt; IsLabeled(:name)
+
+subject(lbl_shp)
+#-&gt; BlockOf(String, x1to1)
+
+label(lbl_shp)
+#-&gt; :name</code></pre><p>A <code>BlockOf</code> shape is annotated with <code>IsFlow</code> to indicate that the container holds the output flow of a pipeline.</p><pre><code class="language-julia">flw_shp = BlockOf(String, x1to1) |&gt; IsFlow
+
+subject(flw_shp)
+#-&gt; BlockOf(String, x1to1)</code></pre><p>The shape of the flow elements could be easily accessed or replaced.</p><pre><code class="language-julia">elements(flw_shp)
+#-&gt; ValueOf(String)
+
+replace_elements(flw_shp, ValueOf(Int))
+#-&gt; BlockOf(Int, x1to1) |&gt; IsFlow</code></pre><p>A <code>TupleOf</code> shape is annotated with <code>IsScope</code> to indicate that the container holds the scoping context of a pipeline.</p><pre><code class="language-julia">scp_shp = TupleOf(Float64, TupleOf(:P =&gt; Int)) |&gt; IsScope
+
+subject(scp_shp)
+#-&gt; TupleOf(Float64, TupleOf(:P =&gt; Int))</code></pre><p>We can get the shapes of the input data and the context parameters.</p><pre><code class="language-julia">context(scp_shp)
+#-&gt; TupleOf(:P =&gt; Int)
+
+column(scp_shp)
+#-&gt; ValueOf(Float64)
+
+replace_column(scp_shp, ValueOf(Int))
+#-&gt; TupleOf(Int, TupleOf(:P =&gt; Int)) |&gt; IsScope</code></pre><h3><a class="nav-anchor" id="Shape-ordering-1" href="#Shape-ordering-1">Shape ordering</a></h3><p>A single vector instance may satisfy many different shape constraints.</p><pre><code class="language-julia">bv = BlockVector(:, [&quot;Chicago&quot;])
+
+fits(bv, BlockOf(String, x1to1))        #-&gt; true
+fits(bv, BlockOf(AbstractString))       #-&gt; true
+fits(bv, AnyShape())                    #-&gt; true</code></pre><p>We can tell, for any two shape constraints, if one of them is more specific than the other.</p><pre><code class="language-julia">fits(ValueOf(Int), ValueOf(Number))     #-&gt; true
+fits(ValueOf(Int), ValueOf(String))     #-&gt; false
+
+fits(BlockOf(Int, x1to1),
+     BlockOf(Number, x0to1))            #-&gt; true
+fits(BlockOf(Int, x1toN),
+     BlockOf(Number, x0to1))            #-&gt; false
+fits(BlockOf(Int, x1to1),
+     BlockOf(String, x0to1))            #-&gt; false
+
+fits(TupleOf(BlockOf(Int, x1to1),
+             BlockOf(String, x0to1)),
+     TupleOf(BlockOf(Number, x1to1),
+             BlockOf(String, x0toN)))   #-&gt; true
+fits(TupleOf(BlockOf(Int, x0to1),
+             BlockOf(String, x1to1)),
+     TupleOf(BlockOf(Number, x1to1),
+             BlockOf(String, x0toN)))   #-&gt; false
+fits(TupleOf(BlockOf(Int, x1to1)),
+     TupleOf(BlockOf(Number, x1to1),
+             BlockOf(String, x0toN)))   #-&gt; false</code></pre><p>Shapes of different kinds are typically not compatible with each other.  The exceptions are <code>AnyShape()</code> and <code>NoShape()</code>.</p><pre><code class="language-julia">fits(ValueOf(Int), BlockOf(Int))        #-&gt; false
+fits(ValueOf(Int), AnyShape())          #-&gt; true
+fits(NoShape(), ValueOf(Int))           #-&gt; true</code></pre><p>Column labels are treated as additional shape constraints.</p><pre><code class="language-julia">fits(TupleOf(:name =&gt; String),
+     TupleOf(:name =&gt; String))          #-&gt; true
+fits(TupleOf(String),
+     TupleOf(:position =&gt; String))      #-&gt; false
+fits(TupleOf(:name =&gt; String),
+     TupleOf(String))                   #-&gt; true
+fits(TupleOf(:name =&gt; String),
+     TupleOf(:position =&gt; String))      #-&gt; false</code></pre><p>Similarly, annotations are treated as shape constraints.</p><pre><code class="language-julia">fits(String |&gt; IsLabeled(:name),
+     String |&gt; IsLabeled(:name))        #-&gt; true
+fits(ValueOf(String),
+     String |&gt; IsLabeled(:position))    #-&gt; false
+fits(String |&gt; IsLabeled(:name),
+     ValueOf(String))                   #-&gt; true
+fits(String |&gt; IsLabeled(:name),
+     String |&gt; IsLabeled(:position))    #-&gt; false
+
+fits(BlockOf(String, x1to1) |&gt; IsFlow,
+     BlockOf(String, x0toN) |&gt; IsFlow)  #-&gt; true
+fits(BlockOf(String, x1to1),
+     BlockOf(String, x0toN) |&gt; IsFlow)  #-&gt; false
+fits(BlockOf(String, x1to1) |&gt; IsFlow,
+     BlockOf(String, x0toN))            #-&gt; true
+
+fits(TupleOf(Int, TupleOf(:X =&gt; Int))
+     |&gt; IsScope,
+     TupleOf(Int, TupleOf(:X =&gt; Int))
+     |&gt; IsScope)                        #-&gt; true
+fits(TupleOf(Int, TupleOf(:X =&gt; Int)),
+     TupleOf(Int, TupleOf(:X =&gt; Int))
+     |&gt; IsScope)                        #-&gt; false
+fits(TupleOf(Int, TupleOf(:X =&gt; Int))
+     |&gt; IsScope,
+     TupleOf(Int, TupleOf(:X =&gt; Int)))  #-&gt; true</code></pre><h3><a class="nav-anchor" id="Shape-of-a-vector-1" href="#Shape-of-a-vector-1">Shape of a vector</a></h3><p>Function <code>shapeof()</code> determines the shape of a given vector.</p><pre><code class="language-julia">shapeof([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; ValueOf(String)
+
+shapeof(@VectorTree ((1:1)String, (0:1)Int) [])
+#-&gt; TupleOf(BlockOf(String, x1to1), BlockOf(Int, x0to1))
+
+shapeof(@VectorTree (name = String, employee = [String]) [])
+#-&gt; TupleOf(:name =&gt; String, :employee =&gt; BlockOf(String))</code></pre><h3><a class="nav-anchor" id="Pipeline-signature-1" href="#Pipeline-signature-1">Pipeline signature</a></h3><p>A <code>Signature</code> object describes the shapes of a pipeline&#39;s input and output.</p><pre><code class="language-julia">sig = Signature(ValueOf(UInt),
+                BlockOf(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                                :employee =&gt; BlockOf(UInt, x0toN))) |&gt; IsFlow)
+#=&gt;
+Signature(ValueOf(UInt),
+          BlockOf(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                          :employee =&gt; BlockOf(UInt))) |&gt;
+          IsFlow)
+=#</code></pre><p>Components of the signature can be easily extracted.</p><pre><code class="language-julia">target(sig)
+#=&gt;
+BlockOf(TupleOf(:name =&gt; BlockOf(String, x1to1),
+                :employee =&gt; BlockOf(UInt))) |&gt;
+IsFlow
+=#
+
+source(sig)
+#-&gt; ValueOf(UInt)</code></pre><footer><hr/><a class="previous" href="../pipelines/"><span class="direction">Previous</span><span class="title">Pipeline Algebra</span></a><a class="next" href="../knots/"><span class="direction">Next</span><span class="title">Data Knots</span></a></footer></article></body></html>
