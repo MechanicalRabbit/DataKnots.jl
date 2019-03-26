@@ -23,8 +23,8 @@ transformations.  We will use the following definitions:
         lift,
         null_filler,
         pass,
-        sieve,
-        slice,
+        sieve_by,
+        slice_by,
         tuple_lift,
         tuple_of,
         with_column,
@@ -199,13 +199,13 @@ elements of a `BlockVector`.
 Not every data transformation can be implemented with lifting.  `DataKnots`
 provide pipeline constructors for some common transformation tasks.
 
-For example, data filtering is implemented with the pipeline `sieve()`.  As
+For example, data filtering is implemented with the pipeline `sieve_by()`.  As
 input, it expects a `TupleVector` of pairs containing a value and a `Bool`
-flag.  `sieve()` transforms the input to a `BlockVector` containing 0- and
+flag.  `sieve_by()` transforms the input to a `BlockVector` containing 0- and
 1-element blocks.  When the flag is `false`, it is mapped to an empty block,
 otherwise, it is mapped to a one-element block containing the data value.
 
-    p = sieve()
+    p = sieve_by()
     p(@VectorTree (String, Bool) [("JEFFERY A", true), ("JAMES A", true), ("TERRY A", false)])
     #-> @VectorTree (0:1) × String ["JEFFERY A", "JAMES A", missing]
 
@@ -508,10 +508,10 @@ have any `true` values.
 
 ### Filtering
 
-The pipeline `sieve()` filters a vector of pairs by the second column.
+The pipeline `sieve_by()` filters a vector of pairs by the second column.
 
-    p = sieve()
-    #-> sieve()
+    p = sieve_by()
+    #-> sieve_by()
 
     p(@VectorTree (Int, Bool) [260004 true; 185364 false; 170112 false])
     #-> @VectorTree (0:1) × Int [260004, missing, missing]
@@ -519,41 +519,41 @@ The pipeline `sieve()` filters a vector of pairs by the second column.
 
 ### Slicing
 
-The pipeline `slice(N)` transforms a block vector by keeping the first `N`
+The pipeline `slice_by(N)` transforms a block vector by keeping the first `N`
 elements of each block.
 
-    p = slice(2)
-    #-> slice(2, false)
+    p = slice_by(2)
+    #-> slice_by(2, false)
 
     p(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
     #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S", "CHARLES S"], []]
 
-When `N` is negative, `slice(N)` drops the last `-N` elements of each block.
+When `N` is negative, `slice_by(N)` drops the last `-N` elements of each block.
 
-    p = slice(-1)
+    p = slice_by(-1)
 
     p(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
     #-> @VectorTree (0:N) × String [["GARRY M", "ANTHONY R"], ["JOSE S"], []]
 
-The pipeline `slice(N, true)` drops the first `N` elements (or keeps the last
-`-N` elements if `N` is negative).
+The pipeline `slice_by(N, true)` drops the first `N` elements (or keeps the
+last `-N` elements if `N` is negative).
 
-    p = slice(2, true)
+    p = slice_by(2, true)
 
     p(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
     #-> @VectorTree (0:N) × String [["DANA A"], [], []]
 
-    p = slice(-1, true)
+    p = slice_by(-1, true)
 
     p(@VectorTree [String] [["GARRY M", "ANTHONY R", "DANA A"], ["JOSE S", "CHARLES S"], missing])
     #-> @VectorTree (0:N) × String [["DANA A"], ["CHARLES S"], []]
 
-A variant of this pipeline `slice()` expects a tuple vector with two columns:
-the first column containing the blocks and the second column with the number of
-elements to keep.
+A variant of this pipeline `slice_by()` expects a tuple vector with two
+columns: the first column containing the blocks and the second column with the
+number of elements to keep.
 
-    p = slice()
-    #-> slice(false)
+    p = slice_by()
+    #-> slice_by(false)
 
     p(@VectorTree ([String], Int) [(["GARRY M", "ANTHONY R", "DANA A"], 1), (["JOSE S", "CHARLES S"], -1), (missing, 0)])
     #-> @VectorTree (0:N) × String [["GARRY M"], ["JOSE S"], []]

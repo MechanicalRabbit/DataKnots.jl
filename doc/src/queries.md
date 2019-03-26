@@ -260,7 +260,7 @@ predicate pipeline by applying the predicate query to a trivial pipeline.
     =#
 
 `Filter(SalaryOver100K)` then combines the pipelines `p2` and `pc1` using the
-pipeline primitive `sieve()`.
+pipeline primitive `sieve_by()`.
 
     p3 = assemble(Filter(SalaryOver100K), env, p2)
     #=>
@@ -271,7 +271,7 @@ pipeline primitive `sieve()`.
             with_elements(
                 chain_of(
                     ⋮
-                    sieve())),
+                    sieve_by())),
             flatten()))
     =#
 
@@ -292,7 +292,7 @@ expression.
                                                       tuple_lift(>),
                                                       adapt_missing(),
                                                       block_any())),
-                                    sieve())),
+                                    sieve_by())),
              flatten())
     =#
 

@@ -1290,7 +1290,7 @@ function assemble_filter(p::Pipeline, x::Pipeline)
     fits(target(x), BlockOf(ValueOf(Bool))) || error("expected a predicate")
     q = chain_of(tuple_of(pass(),
                           chain_of(x, block_any())),
-                 sieve(),
+                 sieve_by(),
     ) |> designate(source(x), BlockOf(source(x), x0to1) |> IsFlow)
     compose(p, q)
 end
@@ -1344,23 +1344,23 @@ end
 # Take and Drop combinators.
 #
 
-function assemble_take(p::Pipeline, n::Union{Int,Missing}, rev::Bool)
+function assemble_take(p::Pipeline, n::Union{Int,Missing}, inv::Bool)
     elts = elements(target(p))
     card = cardinality(target(p))|x0to1
     chain_of(
         p,
-        slice(n, rev),
+        slice_by(n, inv),
     ) |> designate(source(p), BlockOf(elts, card) |> IsFlow)
 end
 
-function assemble_take(p::Pipeline, n::Pipeline, rev::Bool)
+function assemble_take(p::Pipeline, n::Pipeline, inv::Bool)
     n = uncover(n)
     fits(target(n), BlockOf(ValueOf(Int), x0to1)) || error("expected a singular integer")
     src = source(p)
     tgt = BlockOf(elements(target(p)), cardinality(target(p))|x0to1) |> IsFlow
     chain_of(
         tuple_of(p, n),
-        slice(rev),
+        slice_by(inv),
     ) |> designate(src, tgt)
 end
 
@@ -1416,12 +1416,12 @@ julia> unitknot[Lift('a':'c') >> Drop(-2)]
 Drop(N) =
     Query(Drop, N)
 
-Take(env::Environment, p::Pipeline, n::Union{Int,Missing}, rev::Bool=false) =
-    assemble_take(p, n, rev)
+Take(env::Environment, p::Pipeline, n::Union{Int,Missing}, inv::Bool=false) =
+    assemble_take(p, n, inv)
 
-function Take(env::Environment, p::Pipeline, N, rev::Bool=false)
+function Take(env::Environment, p::Pipeline, N, inv::Bool=false)
     n = assemble(N, env, source_pipe(p))
-    assemble_take(p, n, rev)
+    assemble_take(p, n, inv)
 end
 
 Drop(env::Environment, p::Pipeline, N) =

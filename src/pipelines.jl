@@ -673,21 +673,21 @@ end
 #
 
 """
-    sieve() :: Pipeline
+    sieve_by() :: Pipeline
 
 This pipeline filters a vector of pairs by the second column.  It expects a
 pair vector, whose second column is a `Bool` vector, and produces a block
 vector with 0- or 1-element blocks containing the elements of the first column.
 """
-sieve() = Pipeline(sieve)
+sieve_by() = Pipeline(sieve_by)
 
-function sieve(rt::Runtime, input::AbstractVector)
+function sieve_by(rt::Runtime, input::AbstractVector)
     @assert input isa TupleVector && width(input) == 2 && eltype(column(input, 2)) <: Bool
     val_col, pred_col = columns(input)
-    _sieve(val_col, pred_col)
+    _sieve_by(val_col, pred_col)
 end
 
-function _sieve(@nospecialize(v), bv)
+function _sieve_by(@nospecialize(v), bv)
     len = length(bv)
     sz = count(bv)
     if sz == len
@@ -714,24 +714,24 @@ end
 #
 
 """
-    slice(N::Int, rev::Bool=false) :: Pipeline
+    slice_by(N::Int, inv::Bool=false) :: Pipeline
 
 This pipeline transforms a block vector by keeping the first `N` elements of
-each block.  If `rev` is true, the pipeline drops the first `N` elements of
+each block.  If `inv` is true, the pipeline drops the first `N` elements of
 each block.
 """
-slice(N::Union{Int,Missing}, rev::Bool=false) =
-    Pipeline(slice, N, rev)
+slice_by(N::Union{Int,Missing}, inv::Bool=false) =
+    Pipeline(slice_by, N, inv)
 
-function slice(rt::Runtime, input::AbstractVector, N::Missing, rev::Bool)
+function slice_by(rt::Runtime, input::AbstractVector, ::Missing, inv::Bool)
     @assert input isa BlockVector
-    offs′ = !rev ? offsets(input) : fill(1, length(input)+1)
-    elts′ = !rev ? elements(input) : elements(input)[Int[]]
+    offs′ = !inv ? offsets(input) : fill(1, length(input)+1)
+    elts′ = !inv ? elements(input) : elements(input)[Int[]]
     card = cardinality(input)|x0to1
     return BlockVector(offs′, elts′, card)
 end
 
-function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
+function slice_by(rt::Runtime, input::AbstractVector, N::Int, inv::Bool)
     @assert input isa BlockVector
     len = length(input)
     offs = offsets(input)
@@ -741,7 +741,7 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
     for k = 1:len
         L = R
         @inbounds R = offs[k+1]
-        (l, r) = _slice_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, inv)
         sz += r - l + 1
     end
     if sz == length(elts)
@@ -754,7 +754,7 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
     for k = 1:len
         L = R
         @inbounds R = offs[k+1]
-        (l, r) = _slice_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, inv)
         for j = (L + l - 1):(L + r - 1)
             perm[top] = j
             top += 1
@@ -767,25 +767,25 @@ function slice(rt::Runtime, input::AbstractVector, N::Int, rev::Bool)
 end
 
 """
-    slice(rev::Bool=false) :: Pipeline
+    slice_by(inv::Bool=false) :: Pipeline
 
 This pipeline takes a pair vector of blocks and integers, and returns the first
-column with blocks restricted by the second column.
+column sliced by the second column.
 """
-slice(rev::Bool=false) =
-    Pipeline(slice, rev)
+slice_by(inv::Bool=false) =
+    Pipeline(slice_by, inv)
 
-function slice(rt::Runtime, input::AbstractVector, rev::Bool)
+function slice_by(rt::Runtime, input::AbstractVector, inv::Bool)
     @assert input isa TupleVector
     cols = columns(input)
     @assert length(cols) == 2
     vals, Ns = cols
     @assert vals isa BlockVector
     @assert eltype(Ns) <: Union{Missing,Int}
-    _slice(elements(vals), offsets(vals), cardinality(vals), Ns, rev)
+    _slice_by(elements(vals), offsets(vals), cardinality(vals), Ns, inv)
 end
 
-function _slice(@nospecialize(elts), offs, card, Ns, rev)
+function _slice_by(@nospecialize(elts), offs, card, Ns, inv)
     card′ = card|x0to1
     len = length(Ns)
     R = 1
@@ -794,7 +794,7 @@ function _slice(@nospecialize(elts), offs, card, Ns, rev)
         L = R
         @inbounds N = Ns[k]
         @inbounds R = offs[k+1]
-        (l, r) = _slice_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, inv)
         sz += r - l + 1
     end
     if sz == length(elts)
@@ -808,7 +808,7 @@ function _slice(@nospecialize(elts), offs, card, Ns, rev)
         L = R
         @inbounds N = Ns[k]
         @inbounds R = offs[k+1]
-        (l, r) = _slice_range(N, R-L, rev)
+        (l, r) = _slice_range(N, R-L, inv)
         for j = (L + l - 1):(L + r - 1)
             perm[top] = j
             top += 1
@@ -819,15 +819,15 @@ function _slice(@nospecialize(elts), offs, card, Ns, rev)
     return BlockVector(offs′, elts′, card′)
 end
 
-@inline _slice_range(n::Int, l::Int, rev::Bool) =
-    if !rev
+@inline _slice_range(n::Int, l::Int, inv::Bool) =
+    if !inv
         (1, n >= 0 ? min(l, n) : max(0, l + n))
     else
         (n >= 0 ? min(l + 1, n + 1) : max(1, l + n + 1), l)
     end
 
-@inline _slice_range(::Missing, l::Int, rev::Bool) =
-    !rev ? (1, l) : (1, 0)
+@inline _slice_range(::Missing, l::Int, inv::Bool) =
+    !inv ? (1, l) : (1, 0)
 
 
 #

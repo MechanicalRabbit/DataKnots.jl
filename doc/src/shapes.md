@@ -218,7 +218,7 @@ the precision to be passed as a context parameter `:P`.
 
     round_it =
         chain_of(
-            tuple_of(chain_of(column(1)),
+            tuple_of(column(1),
                      chain_of(column(2), column(:P))),
             tuple_lift(round_digits),
             wrap())
