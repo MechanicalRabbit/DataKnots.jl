@@ -135,6 +135,14 @@ convert(::Type{DataKnot}, elt) =
         DataKnot(Any, [elt]);
     end
 
+convert(::Type{DataKnot}, pair::Pair{Symbol, T}) where {T}=
+    let knot = convert(DataKnot, pair.second)
+        cell = TupleVector([pair.first], 1,
+                           AbstractVector[knot.cell])
+        shp = TupleOf([pair.first], [knot.shp])
+        DataKnot(shp, cell)
+    end
+
 const unitknot = convert(DataKnot, nothing)
 
 get(db::DataKnot) = db.cell[1]

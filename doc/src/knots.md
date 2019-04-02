@@ -87,8 +87,10 @@ job guessing each columns' datatype.
 
 This data could be converted to a DataKnot.
 
-    knot = convert(DataKnot, file)
+    knot = convert(DataKnot, :table => file)
+    knot[It.table]
     #=>
+      │ table                                                   │
       │ name       department  position           salary  rate  │
     ──┼─────────────────────────────────────────────────────────┼
     1 │ JEFFERY A  POLICE      SERGEANT           101442        │
@@ -114,7 +116,6 @@ could be provided to indicate this.
     ┼────────┼
     │ 101442 │
     =#
-
 
 ## API Reference
 ```@autodocs
