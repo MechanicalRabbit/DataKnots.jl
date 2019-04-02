@@ -12,6 +12,12 @@ column-oriented form.
         shape,
         unitknot
 
+To integrate with other tabular systems, we need the following:
+
+    using Tables
+    using CSV
+    using DataFrames
+
 ## Overview
 
 Any Julia value can be converted to a `DataKnot`.
@@ -49,13 +55,59 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
+## Reading CSV Files
+
+Consider a Comma Separated Variable ("CSV") file of employee data
+from the city of Chicago.
+
+    data = IOBuffer("""
+    name,department,position,salary,rate
+    "JEFFERY A", "POLICE", "SERGEANT", 101442,
+    "NANCY A", "POLICE", "POLICE OFFICER", 80016,
+    "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
+    "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
+    "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
+    "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
+    """)
+
+This could be parsed using the `CSV` library, which does a lovely
+job guessing each columns' datatype.
+
+    file = CSV.File(data, allowmissing=:auto)
+    #=>
+    CSV.File("<Base.GenericIOBuffer{Array{UInt8,1}}>", rows=6):
+    Tables.Schema:
+     :name        String
+     :department  String
+     :position    String
+     :salary      Union{Missing, Int}
+     :rate        Union{Missing, Float64}
+    =#
+
+This data could be converted to a DataKnot.
+This isn't the right way though.
+
+    using DataKnots: ToTupleVector
+    tv = ToTupleVector(file)
+    dn = convert(DataKnot, tv)
+    #=>
+      │ name       department  position           salary  rate  │
+    ──┼─────────────────────────────────────────────────────────┼
+    1 │ JEFFERY A  POLICE      SERGEANT           101442        │
+    2 │ NANCY A    POLICE      POLICE OFFICER      80016        │
+    3 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350        │
+    4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484        │
+    5 │ LAKENYA A  OEMC        CROSSING GUARD             17.68 │
+    6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
+    =#
+
+
 ## API Reference
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["knots.jl"]
 Public = false
 ```
-
 
 ## Test Suite
 
@@ -290,4 +342,6 @@ decimal point.
     1 │ 35.6  │
     2 │  2.65 │
     =#
+
+
 

@@ -1,12 +1,13 @@
 #
-# DataKnot definition and operations.
+# DataKnot definition, integration, and operations.
 #
+
+using Tables
 
 import Base:
     convert,
     get,
     show
-
 
 #
 # Definition.
@@ -138,6 +139,36 @@ shape(db::DataKnot) = db.shp
 quoteof(db::DataKnot) =
     Symbol("DataKnot( … )")
 
+#
+# Interfaces.
+#
+
+function ToTupleVector(table::Any)
+    if ~Tables.istable(table)
+        throw(ArgumentError("not a table: $(typeof(table))"))
+    end
+    schema = Tables.schema(table)
+    cols = Tables.columns(table)
+    head = Symbol[]
+    vals = AbstractVector[]
+    len = nothing
+    for (t, n) in zip(schema.types, schema.names)
+        push!(head, n)
+        c = getproperty(cols, n)
+        len = length(c)
+        if t >: Missing
+            push!(vals, adapt_missing(Runtime(), c))
+        else
+            push!(vals, BlockVector(:, c))
+        end
+    end
+    return TupleVector(head, len, vals)
+end
+
+function ToDataKnot(ds::Pair{Symbol, Any})
+    return convert(DataKnot,
+             ToTupleVector(ds.second))
+end
 
 #
 # Rendering.
