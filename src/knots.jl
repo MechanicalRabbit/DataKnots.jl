@@ -125,8 +125,15 @@ convert(::Type{DataKnot}, elts::AbstractVector) =
 convert(::Type{DataKnot}, ::Missing) =
     DataKnot(Any, Union{}[], x0to1)
 
-convert(::Type{DataKnot}, elt) =
+convert(::Type{DataKnot}, elt::Union{Tuple, NamedTuple}) =
     DataKnot(Any, [elt])
+
+convert(::Type{DataKnot}, elt) =
+    if Tables.schema(elt) !== nothing
+       fromtable(:table, elt)
+   else
+       DataKnot(Any, [elt]);
+   end
 
 const unitknot = convert(DataKnot, nothing)
 
@@ -151,18 +158,12 @@ function maketable(table::Any)
     cols = Tables.columns(table)
     head = Symbol[]
     vals = AbstractVector[]
-    len = nothing
     for (t, n) in zip(schema.types, schema.names)
         push!(head, n)
         c = getproperty(cols, n)
-        len = length(c)
-        if t >: Missing
-            push!(vals, adapt_missing(Runtime(), c))
-        else
-            push!(vals, BlockVector(:, c))
-        end
+        push!(vals, c)
     end
-    return TupleVector(head, len, vals)
+    return TupleVector(head, length(vals[1]), vals)
 end
 
 function fromtable(name::Symbol, table::Any,

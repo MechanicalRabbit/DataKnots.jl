@@ -87,10 +87,10 @@ job guessing each columns' datatype.
 
 This data could be converted to a DataKnot.
 
-    knot = fromtable(:data, file)
-    knot[It.data]
+    knot = convert(DataKnot, file)
+    knot[It.table]
     #=>
-      │ data                                                    │
+      │ table                                                   │
       │ name       department  position           salary  rate  │
     ──┼─────────────────────────────────────────────────────────┼
     1 │ JEFFERY A  POLICE      SERGEANT           101442        │
