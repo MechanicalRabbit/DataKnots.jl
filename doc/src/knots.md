@@ -88,9 +88,7 @@ job guessing each columns' datatype.
 This data could be converted to a DataKnot.
 
     knot = convert(DataKnot, file)
-    knot[It.table]
     #=>
-      │ table                                                   │
       │ name       department  position           salary  rate  │
     ──┼─────────────────────────────────────────────────────────┼
     1 │ JEFFERY A  POLICE      SERGEANT           101442        │
@@ -109,8 +107,8 @@ could be provided to indicate this.
     "JEFFERY A", "POLICE", "SERGEANT", 101442
     """)
     file = CSV.File(data)
-    knot = fromtable(:data, file, :x1to1)
-    knot[It.data.salary]
+    knot = fromtable(file, :x1to1)
+    knot[It.salary]
     #=>
     │ salary │
     ┼────────┼

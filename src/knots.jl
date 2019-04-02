@@ -130,10 +130,10 @@ convert(::Type{DataKnot}, elt::Union{Tuple, NamedTuple}) =
 
 convert(::Type{DataKnot}, elt) =
     if Tables.schema(elt) !== nothing
-       fromtable(:table, elt)
-   else
-       DataKnot(Any, [elt]);
-   end
+        fromtable(elt)
+    else
+        DataKnot(Any, [elt]);
+    end
 
 const unitknot = convert(DataKnot, nothing)
 
@@ -150,11 +150,13 @@ quoteof(db::DataKnot) =
 # Interfaces.
 #
 
-function maketable(table::Any)
-    if ~Tables.istable(table)
+function fromtable(table::Any,
+                   card::Union{Cardinality, Symbol} = x0toN)
+    schema = Tables.schema(table)
+    if schema === nothing
         throw(ArgumentError("not a table: $(typeof(table))"))
     end
-    schema = Tables.schema(table)
+    card = convert(Cardinality, card)
     cols = Tables.columns(table)
     head = Symbol[]
     vals = AbstractVector[]
@@ -163,16 +165,9 @@ function maketable(table::Any)
         c = getproperty(cols, n)
         push!(vals, c)
     end
-    return TupleVector(head, length(vals[1]), vals)
-end
-
-function fromtable(name::Symbol, table::Any,
-                   card::Union{Cardinality, Symbol} = x0toN)
-    card = convert(Cardinality, card)
-    tv = maketable(table)
+    tv = TupleVector(head, length(vals[1]), vals)
     bv = BlockVector([1, length(tv)+1], tv, card)
-    ov = TupleVector([name], 1, AbstractVector[bv])
-    return DataKnot(shapeof(ov), ov)
+    return DataKnot(shapeof(bv), bv)
 end
 
 #
