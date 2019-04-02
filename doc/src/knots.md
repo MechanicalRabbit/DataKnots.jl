@@ -9,6 +9,7 @@ column-oriented form.
         It,
         ValueOf,
         cell,
+        fromtable,
         shape,
         unitknot
 
@@ -85,12 +86,11 @@ job guessing each columns' datatype.
     =#
 
 This data could be converted to a DataKnot.
-This isn't the right way though.
 
-    using DataKnots: ToTupleVector
-    tv = ToTupleVector(file)
-    dn = convert(DataKnot, tv)
+    knot = fromtable(:data, file)
+    knot[It.data]
     #=>
+      │ data                                                    │
       │ name       department  position           salary  rate  │
     ──┼─────────────────────────────────────────────────────────┼
     1 │ JEFFERY A  POLICE      SERGEANT           101442        │
@@ -99,6 +99,22 @@ This isn't the right way though.
     4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484        │
     5 │ LAKENYA A  OEMC        CROSSING GUARD             17.68 │
     6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
+    =#
+
+If the `CSV` file has exactly one row, cardinality
+could be provided to indicate this.
+
+    data = IOBuffer("""
+    name,department,position,salary
+    "JEFFERY A", "POLICE", "SERGEANT", 101442
+    """)
+    file = CSV.File(data)
+    knot = fromtable(:data, file, :x1to1)
+    knot[It.data.salary]
+    #=>
+    │ salary │
+    ┼────────┼
+    │ 101442 │
     =#
 
 

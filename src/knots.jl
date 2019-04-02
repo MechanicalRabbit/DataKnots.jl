@@ -143,7 +143,7 @@ quoteof(db::DataKnot) =
 # Interfaces.
 #
 
-function ToTupleVector(table::Any)
+function maketable(table::Any)
     if ~Tables.istable(table)
         throw(ArgumentError("not a table: $(typeof(table))"))
     end
@@ -165,9 +165,13 @@ function ToTupleVector(table::Any)
     return TupleVector(head, len, vals)
 end
 
-function ToDataKnot(ds::Pair{Symbol, Any})
-    return convert(DataKnot,
-             ToTupleVector(ds.second))
+function fromtable(name::Symbol, table::Any,
+                   card::Union{Cardinality, Symbol} = x0toN)
+    card = convert(Cardinality, card)
+    tv = maketable(table)
+    bv = BlockVector([1, length(tv)+1], tv, card)
+    ov = TupleVector([name], 1, AbstractVector[bv])
+    return DataKnot(shapeof(ov), ov)
 end
 
 #
