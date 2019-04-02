@@ -125,7 +125,7 @@ end
 TupleOf() =
     TupleOf(Symbol[], AbstractShape[])
 
-TupleOf(cols::Vector{AbstractShape}) =
+TupleOf(cols::Vector{<:AbstractShape}) =
     TupleOf(Symbol[], cols)
 
 TupleOf(cols::Union{AbstractShape,Type}...) =

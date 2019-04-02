@@ -12,6 +12,7 @@ export
     Filter,
     Get,
     Given,
+    Group,
     It,
     Keep,
     Label,

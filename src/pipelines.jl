@@ -830,6 +830,88 @@ end
     !inv ? (1, l) : (1, 0)
 
 
+
+#
+# Grouping.
+#
+
+group_by() = Pipeline(group_by)
+
+function group_by(::Runtime, input::AbstractVector)
+    @assert input isa BlockVector
+    card = cardinality(input)
+    offs = offsets(input)
+    elts = elements(input)
+    @assert elts isa TupleVector
+    cols = columns(elts)
+    @assert length(cols) == 2
+    vals, keys = cols
+    perm = collect(1:length(elts))
+    sep = falses(length(elts)+1)
+    for off in offs
+        sep[off] = true
+    end
+    _group_by!(keys, sep, perm)
+    sz = 0
+    l = 1
+    for k = 1:length(input)
+        r = offs[k+1]
+        for n = l+1:r
+            sz += sep[n]
+        end
+        l = r
+    end
+    offs_inner = Vector{Int}(undef, sz+1)
+    offs_inner[1] = 1
+    offs_outer = Vector{Int}(undef, length(offs))
+    offs_outer[1] = top = 1
+    l = 1
+    for k = 1:length(input)
+        r = offs[k+1]
+        for n = l+1:r
+            if sep[n]
+                top += 1
+                offs_inner[top] = n
+            end
+        end
+        offs_outer[k+1] = top
+        l = r
+    end
+    card′ = card & x1toN
+    vals′ = BlockVector{card′}(offs_inner, vals[perm])
+    keys′ = keys[perm[view(offs_inner, 1:sz)]]
+    output = BlockVector{card}(offs_outer, TupleVector(sz, AbstractVector[vals′, keys′]))
+    output
+end
+
+function _group_by!(keys::TupleVector, sep, perm)
+    for col in columns(keys)
+        _group_by!(col, sep, perm)
+    end
+end
+
+function _group_by!(keys, sep, perm)
+    o = Base.Perm(Base.Forward, keys)
+    l = 1
+    for r = 2:length(sep)
+        if sep[r]
+            if l < r-1
+                sort!(perm, l, r-1, QuickSort, o)
+            end
+            da = o.data[perm[l]]
+            for n = l+1:r-1
+                db = o.data[perm[n]]
+                if Base.lt(o.order, da, db)
+                    sep[n] = true
+                end
+                da = db
+            end
+            l = r
+        end
+    end
+end
+
+
 #
 # Optimizing a pipeline expression.
 #

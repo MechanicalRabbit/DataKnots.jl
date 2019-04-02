@@ -513,6 +513,7 @@ function Record(env::Environment, p::Pipeline, Xs...)
     assemble_record(p, xs)
 end
 
+
 #
 # Lifting Julia values and functions.
 #
@@ -1426,4 +1427,72 @@ end
 
 Drop(env::Environment, p::Pipeline, N) =
     Take(env, p, N, true)
+
+
+#
+# Group combinator.
+#
+
+function assemble_group(p::Pipeline, xs::Vector{Pipeline})
+    lbls = Symbol[]
+    ks = Pipeline[]
+    seen = Dict{Symbol,Int}()
+    for (i, x) in enumerate(xs)
+        x = uncover(x)
+        lbl = getlabel(x, nothing)
+        if lbl !== nothing
+            x = relabel(x, nothing)
+        else
+            lbl = ordinal_label(i)
+        end
+        if lbl in keys(seen)
+            lbls[seen[lbl]] = ordinal_label(seen[lbl])
+        end
+        seen[lbl] = i
+        push!(lbls, lbl)
+        push!(ks, x)
+    end
+    p0 = uncover(target_pipe(p))
+    lbl = getlabel(p0, nothing)
+    if lbl !== nothing
+        p0 = relabel(p0, nothing)
+    else
+        lbl = ordinal_label(length(xs)+1)
+    end
+    if lbl in keys(seen)
+        lbls[seen[lbl]] = ordinal_label(seen[lbl])
+    end
+    push!(lbls, lbl)
+    src = elements(target(p))
+    tgt = TupleOf(target(p0), TupleOf(target.(ks)))
+    q = tuple_of(p0, tuple_of(Symbol[], ks)) |> designate(src, tgt)
+    r = uncover(compose(p, cover(q)))
+    cols = Pipeline[]
+    for (i, k) in enumerate(ks)
+        col = chain_of(column(2), column(i)) |> designate(elements(target(r)), target(k))
+        push!(cols, col)
+    end
+    card = cardinality(target(r)) & x1toN
+    col = chain_of(column(1), flatten()) |> designate(elements(target(r)),
+                                                      BlockOf(elements(target(p0)), card))
+    push!(cols, col)
+    src = source(r)
+    tgt = replace_elements(target(r), TupleOf(lbls, target.(cols)))
+    chain_of(
+        r,
+        group_by(),
+        with_elements(tuple_of(lbls, cols)),
+    ) |> designate(src, tgt) |> cover
+end
+
+Group(Xs...) =
+    Query(Group, Xs...)
+
+function Group(env::Environment, p::Pipeline, Xs...)
+    xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
+    assemble_group(p, xs)
+end
+
+Lift(::typeof(Group)) =
+    Then(Record)
 
