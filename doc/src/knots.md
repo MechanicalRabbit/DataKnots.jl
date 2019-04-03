@@ -87,7 +87,7 @@ job guessing each columns' datatype.
 
 This data could be converted to a DataKnot.
 
-    knot = convert(DataKnot, :table => file)
+    knot = DataKnot(:table => file)
     knot[It.table]
     #=>
       │ table                                                   │
