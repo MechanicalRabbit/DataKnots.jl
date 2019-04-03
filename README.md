@@ -73,7 +73,7 @@ public data and convert it into a *knot*.
 
     using DataKnots, CSV
 
-    chicago_data = ("""
+    chicago_data = """
         name,department,position,salary,rate
         "JEFFERY A", "POLICE", "SERGEANT", 101442,
         "NANCY A", "POLICE", "POLICE OFFICER", 80016,
@@ -82,7 +82,7 @@ public data and convert it into a *knot*.
         "ASKEW K", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
         "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
         "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
-    """)
+        """
     file = CSV.File(IOBuffer(chicago_data), allowmissing=:auto)
     knot = DataKnot(:employee => file)
 
