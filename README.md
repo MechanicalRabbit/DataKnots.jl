@@ -71,7 +71,7 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 Here is a very simple use of DataKnots. Let's take some Chicago
 public data and convert it into a *knot*.
 
-    using DataKnots, Statistics, CSV
+    using DataKnots, CSV
 
     chicago_data = ("""
         name,department,position,salary,rate
@@ -79,27 +79,29 @@ public data and convert it into a *knot*.
         "NANCY A", "POLICE", "POLICE OFFICER", 80016,
         "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
         "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
+        "ASKEW K", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
         "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
         "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
     """)
     file = CSV.File(IOBuffer(chicago_data), allowmissing=:auto)
     knot = DataKnot(:employee => file)
 
-We could then query it to return statistics by department.
+We could then query this data return employees with salaries
+greater than the average for their department.
 
+    using Statistics: mean
     knot[It.employee >>
          Group(It.department) >>
-         Record(It.department,
-                :no_staff => Count(It.employee),
-                :max_rate => Max(It.employee.rate),
-                :avg_salary => mean.(It.employee.salary))]
-    #=>
-      │ department  no_staff  max_rate  avg_salary │
-    ──┼────────────────────────────────────────────┼
-    1 │ FIRE               2               99417.0 │
-    2 │ OEMC               2     19.38       NaN   │
-    3 │ POLICE             2               90729.0 │
-    =#
+         Keep(:avg_salary => mean.(It.employee.salary)) >>
+         It.employee >>
+         Filter(It.salary .> It.avg_salary)]
+     #=>
+       │ employee                                               │
+       │ name       department  position           salary  rate │
+     ──┼────────────────────────────────────────────────────────┼
+     1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
+     2 │ JEFFERY A  POLICE      SERGEANT           101442       │
+     =#
 
 There's much more to DataKnots. It's a tool for constucting
 domain specific query languages (DSQLs).
