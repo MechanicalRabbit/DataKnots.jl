@@ -830,6 +830,28 @@ end
     !inv ? (1, l) : (1, 0)
 
 
+#
+# Ordering extensions.
+#
+
+struct LexOrdering{O<:Base.Ordering} <: Base.Ordering
+    order::O
+end
+
+Base.@propagate_inbounds function Base.lt(o::LexOrdering, a, b)
+    b > zero(b) && (a == zero(a) || Base.lt(o.order, a, b))
+end
+
+Base.ordtype(o::LexOrdering, vs::AbstractArray) = ordtype(o.order, vs)
+
+ord_eq(o::Base.ForwardOrdering, a, b) = isequal(a, b)
+ord_eq(o::Base.ReverseOrdering, a, b) = ord_eq(o.fwd, b, a)
+ord_eq(o::Base.By, a, b) = isequal(o.by(a), o.by(b))
+ord_eq(o::Base.Lt, a, b) = !o.lt(a, b) && !o.lt(b, a)
+Base.@propagate_inbounds ord_eq(o::Base.Perm, a, b) =
+    ord_eq(o.order, o.data[a], o.data[b])   # intentionally does not match `lt(::Perm)`
+Base.@propagate_inbounds ord_eq(o::LexOrdering, a, b) =
+    isequal(a, b) || (a > zero(a) && b > zero(b) && ord_eq(o.order, a, b))
 
 #
 # Grouping.
@@ -846,12 +868,15 @@ function group_by(::Runtime, input::AbstractVector)
     cols = columns(elts)
     @assert length(cols) == 2
     vals, keys = cols
-    perm = collect(1:length(elts))
-    sep = falses(length(elts)+1)
+    len = length(elts)
+    perm = collect(1:len)
+    sep = falses(len+1)
     for off in offs
         sep[off] = true
     end
-    _group_by!(keys, sep, perm)
+    if len > 1
+        _group_by!(keys, sep, perm, OneTo(len))
+    end
     sz = 0
     l = 1
     for k = 1:length(input)
@@ -884,14 +909,67 @@ function group_by(::Runtime, input::AbstractVector)
     output
 end
 
-function _group_by!(keys::TupleVector, sep, perm)
+function _group_by!(keys::TupleVector, sep, perm, idxs)
     for col in columns(keys)
-        _group_by!(col, sep, perm)
+        _group_by!(col, sep, perm, idxs)
     end
 end
 
-function _group_by!(keys, sep, perm)
-    o = Base.Perm(Base.Forward, keys)
+_group_by!(keys::BlockVector{CARD,OneTo{Int}}, sep, perm, idxs) where {CARD} =
+    _group_by!(elements(keys), sep, perm, idxs)
+
+function _group_by!(keys::BlockVector{CARD}, sep, perm, idxs) where {CARD}
+    if CARD == x1to1
+        return _group_by!(elements(keys), sep, perm, idxs)
+    end
+    offs = offsets(keys)
+    elts = elements(keys)
+    pos = 0
+    idxs′ = Vector{Int}(undef, length(perm))
+    done = false
+    while !done
+        for k = 1:length(perm)
+            idx = idxs[k]
+            l = offs[idx]
+            r = offs[idx+1]
+            if l + pos < r
+                idxs′[k] = l + pos
+            else
+                idxs′[k] = 0
+            end
+        end
+        done = true
+        p = idxs′[perm[1]]
+        for k = 2:length(perm)
+            q = idxs′[perm[k]]
+            if !sep[k] && p != q
+                done = false
+                break
+            end
+            p = q
+        end
+        if !done
+            _group_by!(elts, sep, perm, idxs′)
+        end
+        if CARD == x0to1
+            done = true
+        end
+        pos += 1
+    end
+end
+
+_group_order(keys, ::OneTo) =
+    Base.Perm(Base.Forward, keys)
+
+_group_order(keys, idxs) =
+    Base.Perm(LexOrdering(Base.Perm(Base.Forward, keys)), idxs)
+
+function _group_by!(keys, sep, perm, idxs)
+    o = _group_order(keys, idxs)
+    _group_by!(o, sep, perm)
+end
+
+function _group_by!(o::Base.Perm, sep, perm)
     l = 1
     for r = 2:length(sep)
         if sep[r]
@@ -901,7 +979,7 @@ function _group_by!(keys, sep, perm)
             da = o.data[perm[l]]
             for n = l+1:r-1
                 db = o.data[perm[n]]
-                if Base.lt(o.order, da, db)
+                if !ord_eq(o.order, da, db)
                     sep[n] = true
                 end
                 da = db
