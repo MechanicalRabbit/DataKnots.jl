@@ -9,6 +9,7 @@
     Filter,
     Get,
     Given,
+    Group,
     It,
     Keep,
     Label,
@@ -160,7 +161,7 @@ chain_of(with_elements(chain_of(column(:department),
 ──┼────────────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f75fdfa027d2be5673bd855b0d239ba4faac2d52/src/queries.jl#L160-L164">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f75fdfa027d2be5673bd855b0d239ba4faac2d52/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f75fdfa027d2be5673bd855b0d239ba4faac2d52/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c375287404c401d79cc4865779372c1cbb384202/src/queries.jl#L160-L164">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c375287404c401d79cc4865779372c1cbb384202/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c375287404c401d79cc4865779372c1cbb384202/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -809,4 +810,60 @@ chicago[Q]
 Q = Take(Employee &gt;&gt; It.name)
 
 chicago[Q]
-#-&gt; ERROR: expected a singular integer</code></pre><footer><hr/><a class="previous" href="../knots/"><span class="direction">Previous</span><span class="title">Data Knots</span></a></footer></article></body></html>
+#-&gt; ERROR: expected a singular integer</code></pre><h3><a class="nav-anchor" id="Group-1" href="#Group-1"><code>Group</code></a></h3><p>We use the <code>Group</code> combinator to group the input by the given key.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
+    Group(It.position)
+#-&gt; It.department.employee &gt;&gt; Group(It.position)
+
+chicago[Q]
+#=&gt;
+  │ position              employee                                             …
+──┼────────────────────────────────────────────────────────────────────────────…
+1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…
+2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing          …
+3 │ FIRE FIGHTER-EMT      DANIEL A, FIRE FIGHTER-EMT, 95484, missing           …
+4 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing              …
+5 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
+6 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
+=#</code></pre><p>Arbitrary key expressions are supported.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Group(:size =&gt; Count(It.employee)) &gt;&gt;
+    Record(It.size, :count =&gt; Count(It.department))
+
+chicago[Q]
+#=&gt;
+  │ size  count │
+──┼─────────────┼
+1 │    2      2 │
+2 │    3      1 │
+=#</code></pre><p>Empty keys are placed on top.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
+    Group(:grade =&gt; It.salary .÷ 10000) &gt;&gt;
+    Record(It.grade, :n =&gt; Count(It.employee))
+
+chicago[Q]
+#=&gt;
+  │ grade  n │
+──┼──────────┼
+1 │        2 │
+2 │     6  1 │
+3 │     8  1 │
+4 │     9  1 │
+5 │    10  2 │
+=#</code></pre><p>More than one key column could be provided.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
+    Group(ismissing.(It.salary),
+          ismissing.(It.rate)) &gt;&gt;
+    Record(It.A, It.B, Count(It.employee))
+
+chicago[Q]
+#=&gt;
+  │ #A     #B     #C │
+──┼──────────────────┼
+1 │ false   true   5 │
+2 │  true  false   2 │
+=#</code></pre><p>In the query form, <code>Group</code> creates a one-element record with its input.</p><pre><code class="language-julia">Q = It.department.employee.name &gt;&gt; Group
+#-&gt; It.department.employee.name &gt;&gt; Group
+
+chicago[Q]
+#=&gt;
+│ name                                                                │
+┼─────────────────────────────────────────────────────────────────────┼
+│ JEFFERY A; NANCY A; JAMES A; DANIEL A; LAKENYA A; DORIS A; BRENDA B │
+=#</code></pre><footer><hr/><a class="previous" href="../knots/"><span class="direction">Previous</span><span class="title">Data Knots</span></a></footer></article></body></html>
