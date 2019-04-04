@@ -13,6 +13,7 @@ We will need the following definitions.
         Filter,
         Get,
         Given,
+        Group,
         It,
         Keep,
         Label,
@@ -1203,4 +1204,83 @@ source and must produce a singular integer.
 
     chicago[Q]
     #-> ERROR: expected a singular integer
+
+
+### `Group`
+
+We use the `Group` combinator to group the input by the given key.
+
+    Q = It.department.employee >>
+        Group(It.position)
+    #-> It.department.employee >> Group(It.position)
+
+    chicago[Q]
+    #=>
+      │ position              employee                                             …
+    ──┼────────────────────────────────────────────────────────────────────────────…
+    1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…
+    2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing          …
+    3 │ FIRE FIGHTER-EMT      DANIEL A, FIRE FIGHTER-EMT, 95484, missing           …
+    4 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing              …
+    5 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
+    6 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
+    =#
+
+Arbitrary key expressions are supported.
+
+    Q = It.department >>
+        Group(:size => Count(It.employee)) >>
+        Record(It.size, :count => Count(It.department))
+
+    chicago[Q]
+    #=>
+      │ size  count │
+    ──┼─────────────┼
+    1 │    2      2 │
+    2 │    3      1 │
+    =#
+
+Empty keys are placed on top.
+
+    Q = It.department.employee >>
+        Group(:grade => It.salary .÷ 10000) >>
+        Record(It.grade, :n => Count(It.employee))
+
+    chicago[Q]
+    #=>
+      │ grade  n │
+    ──┼──────────┼
+    1 │        2 │
+    2 │     6  1 │
+    3 │     8  1 │
+    4 │     9  1 │
+    5 │    10  2 │
+    =#
+
+More than one key column could be provided.
+
+    Q = It.department.employee >>
+        Group(ismissing.(It.salary),
+              ismissing.(It.rate)) >>
+        Record(It.A, It.B, Count(It.employee))
+
+    chicago[Q]
+    #=>
+      │ #A     #B     #C │
+    ──┼──────────────────┼
+    1 │ false   true   5 │
+    2 │  true  false   2 │
+    =#
+
+In the query form, `Group` creates a one-element record with its input.
+
+    Q = It.department.employee.name >> Group
+    #-> It.department.employee.name >> Group
+
+    chicago[Q]
+    #=>
+    │ name                                                                │
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ JEFFERY A; NANCY A; JAMES A; DANIEL A; LAKENYA A; DORIS A; BRENDA B │
+    =#
 
