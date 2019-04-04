@@ -68,8 +68,7 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 
 ## Showcase
 
-Here is a very simple use of DataKnots. Let's take some Chicago
-public data and convert it into a *knot*.
+Let's take some Chicago public data and convert it into a *knot*.
 
     using DataKnots, CSV
 
@@ -79,15 +78,15 @@ public data and convert it into a *knot*.
         "NANCY A", "POLICE", "POLICE OFFICER", 80016,
         "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
         "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
-        "ASKEW K", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
+        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
         "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
         "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
         """
     file = CSV.File(IOBuffer(chicago_data), allowmissing=:auto)
     knot = DataKnot(:employee => file)
 
-We could then query this data return employees with salaries
-greater than the average for their department.
+We could then query this data to return employees with salaries
+greater than their department's average.
 
     using Statistics: mean
     knot[It.employee >>
@@ -102,9 +101,6 @@ greater than the average for their department.
      1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
      2 │ JEFFERY A  POLICE      SERGEANT           101442       │
      =#
-
-There's much more to DataKnots. It's a tool for constucting
-domain specific query languages (DSQLs).
 
 ## Support
 

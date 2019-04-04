@@ -158,6 +158,49 @@ quoteof(db::DataKnot) =
 # Interfaces.
 #
 
+Tables.istable(::Type{<:DataKnot}) = true
+Tables.columnaccess(::Type{<:DataKnot}) = true
+
+function tuple_labels(length, label)
+    if length > 1 || label == nothing
+        return [ordinal_label(n) for n in 1:length]
+    else
+        return [Symbol(label)]
+    end
+end
+
+function schema(shp::TupleOf, label=nothing)
+    names = labels(shp)
+    types = eltype.(columns(shp))
+    if isempty(names)
+        names = tuple_labels(length(types), label)
+    end
+    return Tables.Schema(names, types)
+end
+
+function schema(shp::ValueOf, label=nothing)
+    typ = eltype(shp)
+    if typ <: Tuple
+        types = typ.parameters
+        names = tuple_labels(length(types), label)
+        return Tables.Schema(names, types)
+    elseif typ <: NamedTuple
+        names = typ.parameters[1]
+        types = typ.parameters[2].parameters
+        return Tables.Schema(names, types)
+    else
+        names = [label==nothing ? :it : label]
+        return Tables.Schema(names, [typ])
+    end
+end
+
+schema(shp::BlockOf, label=nothing) =
+   schema(elements(shp), label)
+schema(shp::IsLabeled, ignored=nothing) =
+   schema(subject(shp), label(shp))
+
+Tables.schema(knot::DataKnot) = schema(shape(knot))
+
 function fromtable(table::Any,
                    card::Union{Cardinality, Symbol} = x0toN)
     schema = Tables.schema(table)

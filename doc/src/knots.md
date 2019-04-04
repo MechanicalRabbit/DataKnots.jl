@@ -248,6 +248,88 @@ A `Ref` object is converted into the referenced value.
     shape(int_ty)
     #-> ValueOf(Type{Int})
 
+### Exporting to Tables
+
+Exporting to `DataFrame` and other kinds of tabular entities can
+be done via the `Tables.jl` interface.
+
+    using Tables: schema, columns
+
+    schema(unitknot["Hello"])
+    #=>
+    Tables.Schema:
+     :it  String
+    =#
+
+    schema(unitknot[:label => 42])
+    #=>
+    Tables.Schema:
+     :label  Int
+    =#
+
+    schema(unitknot[[1,2]])
+    #=>
+    Tables.Schema:
+     :it  Int
+    =#
+
+    schema(unitknot[:label => [1,2]])
+    #=>
+    Tables.Schema:
+     :label  Int
+    =#
+
+    schema(unitknot[:label => (1,)])
+    #=>
+    Tables.Schema:
+     :label  Int
+    =#
+
+    schema(unitknot[(a=42.0,b="Hi")])
+    #=>
+    Tables.Schema:
+     :a  Float64
+     :b  String 
+    =#
+
+    schema(unitknot[(42.0,"Hi")])
+    #=>
+    Tables.Schema:
+     Symbol("#A")  Float64
+     Symbol("#B")  String 
+    =#
+
+    schema(unitknot[(["A","B"],[1,2])])
+    #=>
+    Tables.Schema:
+     Symbol("#A")  Array{String,1}
+     Symbol("#B")  Array{Int,1} 
+    =#
+
+These functions also work with combinator structures.
+
+    using DataKnots: Record, Lift
+
+    schema(unitknot[Record(:a=>42.0, :b=>"Hello")])
+    #=>
+    Tables.Schema:
+     :a  Float64
+     :b  String 
+    =#
+
+    schema(unitknot[Record(42.0, "Hello")])
+    #=>
+    Tables.Schema:
+     Symbol("#A")  Float64
+     Symbol("#B")  String 
+    =#
+
+    schema(unitknot[Lift(1:3) >> Record(:val => It, It .*2)])
+    #=>
+    Tables.Schema:
+     :val          Int
+     Symbol("#B")  Int
+    =#
 
 ### Rendering
 
