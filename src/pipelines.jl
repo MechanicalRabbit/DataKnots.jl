@@ -930,10 +930,14 @@ function _group_by!(keys::BlockVector{CARD}, sep, perm, idxs) where {CARD}
     while !done
         for k = 1:length(perm)
             idx = idxs[k]
-            l = offs[idx]
-            r = offs[idx+1]
-            if l + pos < r
-                idxs′[k] = l + pos
+            if idx > 0
+                l = offs[idx]
+                r = offs[idx+1]
+                if l + pos < r
+                    idxs′[k] = l + pos
+                else
+                    idxs′[k] = 0
+                end
             else
                 idxs′[k] = 0
             end
