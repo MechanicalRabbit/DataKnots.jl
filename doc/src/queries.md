@@ -53,7 +53,7 @@ holds associated employee records.
                 (name     = "OEMC",
                  employee = ["LAKENYA A"  "CROSSING GUARD"          missing     17.68
                              "DORIS A"    "CROSSING GUARD"          missing     19.38
-                             "ASKEW A"    "TRAFFIC CONTROL AIDE"    64392       missing])],
+                             "BRENDA B"   "TRAFFIC CONTROL AIDE"    64392       missing])],
             )
         ]
 
@@ -98,7 +98,7 @@ query is also a `DataKnot`.
     4 │ DANIEL A   FIRE FIGHTER-EMT       95484        │
     5 │ LAKENYA A  CROSSING GUARD                17.68 │
     6 │ DORIS A    CROSSING GUARD                19.38 │
-    7 │ ASKEW A    TRAFFIC CONTROL AIDE   64392        │
+    7 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
     =#
 
 Regular Julia values and functions could be used to create query components.
@@ -161,7 +161,7 @@ combinator.
     4 │ DANIEL A    95484             false │
     5 │ LAKENYA A                           │
     6 │ DORIS A                             │
-    7 │ ASKEW A     64392             false │
+    7 │ BRENDA B    64392             false │
     =#
 
 To actually filter the data using this predicate query, we need to use the
@@ -433,12 +433,12 @@ Similarly, when there are duplicate labels, only the last one survives.
 
     chicago[Q]
     #=>
-      │ department                          │
-      │ #A      name                        │
-    ──┼─────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A; NANCY A          │
-    2 │ FIRE    JAMES A; DANIEL A           │
-    3 │ OEMC    LAKENYA A; DORIS A; ASKEW A │
+      │ department                           │
+      │ #A      name                         │
+    ──┼──────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A; NANCY A           │
+    2 │ FIRE    JAMES A; DANIEL A            │
+    3 │ OEMC    LAKENYA A; DORIS A; BRENDA B │
     =#
 
 
@@ -534,7 +534,7 @@ Functions of multiple arguments are also supported.
     4 │ DANIEL A    95484  false │
     5 │ LAKENYA A                │
     6 │ DORIS A                  │
-    7 │ ASKEW A     64392  false │
+    7 │ BRENDA B    64392  false │
     =#
 
 Just as functions with no arguments.
@@ -806,7 +806,7 @@ Same notation is used to extract values of context parameters defined with
     4 │ FIRE       DANIEL A  │
     5 │ OEMC       LAKENYA A │
     6 │ OEMC       DORIS A   │
-    7 │ OEMC       ASKEW A   │
+    7 │ OEMC       BRENDA B  │
     =#
 
 A context parameter is preferred if it has the same name as a record field.
@@ -907,7 +907,7 @@ We use the combinator `Keep()` to assign a value to a context parameter.
     4 │ FIRE       DANIEL A  │
     5 │ OEMC       LAKENYA A │
     6 │ OEMC       DORIS A   │
-    7 │ OEMC       ASKEW A   │
+    7 │ OEMC       BRENDA B  │
     =#
 
 Several context parameters could be defined together.
@@ -953,7 +953,7 @@ Several context parameters could be defined together.
     4 │ DANIEL A     │
     5 │ LAKENYA A    │
     6 │ DORIS A      │
-    7 │ ASKEW A      │
+    7 │ BRENDA B     │
     =#
 
 Combinator `Given()` is used to evaluate a query with the given context
@@ -996,7 +996,7 @@ parameters.
     4 │ DANIEL A  │
     5 │ LAKENYA A │
     6 │ DORIS A   │
-    7 │ ASKEW A   │
+    7 │ BRENDA B  │
     =#
 
 
@@ -1151,7 +1151,7 @@ We use `Take(N)` and `Drop(N)` to pass or drop the first `N` input elements.
     ──┼────────────────────────────────────────────────┼
     1 │ LAKENYA A  CROSSING GUARD                17.68 │
     2 │ DORIS A    CROSSING GUARD                19.38 │
-    3 │ ASKEW A    TRAFFIC CONTROL AIDE   64392        │
+    3 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
     =#
 
 `Take(-N)` drops the last `N` elements, while `Drop(-N)` keeps the last `N`
@@ -1179,7 +1179,7 @@ elements.
     1 │ DANIEL A   FIRE FIGHTER-EMT       95484        │
     2 │ LAKENYA A  CROSSING GUARD                17.68 │
     3 │ DORIS A    CROSSING GUARD                19.38 │
-    4 │ ASKEW A    TRAFFIC CONTROL AIDE   64392        │
+    4 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
     =#
 
 `Take` and `Drop` accept a query argument, which is evaluated against the input
