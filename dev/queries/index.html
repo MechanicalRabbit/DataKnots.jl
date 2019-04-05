@@ -33,15 +33,18 @@
                                              rate     = (0:1)Float64)])],) [
         (department = [
             (name     = &quot;POLICE&quot;,
-             employee = [&quot;JEFFERY A&quot;  &quot;SERGEANT&quot;                101442      missing
-                         &quot;NANCY A&quot;    &quot;POLICE OFFICER&quot;          80016       missing]),
+             employee = [&quot;JEFFERY A&quot;    &quot;SERGEANT&quot;              101442      missing
+                         &quot;NANCY A&quot;      &quot;POLICE OFFICER&quot;        80016       missing
+                         &quot;ANTHONY A&quot;    &quot;POLICE OFFICER&quot;        72510       missing
+                         &quot;ALBA M&quot;       &quot;POLICE CADET&quot;          missing     9.46]),
             (name     = &quot;FIRE&quot;,
-             employee = [&quot;JAMES A&quot;    &quot;FIRE ENGINEER-EMT&quot;       103350      missing
-                         &quot;DANIEL A&quot;   &quot;FIRE FIGHTER-EMT&quot;        95484       missing]),
+             employee = [&quot;JAMES A&quot;      &quot;FIRE ENGINEER-EMT&quot;     103350      missing
+                         &quot;DANIEL A&quot;     &quot;FIREFIGHTER-EMT&quot;       95484       missing
+                         &quot;VICTOR A&quot;     &quot;FIREFIGHTER-EMT&quot;       99324       missing]),
             (name     = &quot;OEMC&quot;,
-             employee = [&quot;LAKENYA A&quot;  &quot;CROSSING GUARD&quot;          missing     17.68
-                         &quot;DORIS A&quot;    &quot;CROSSING GUARD&quot;          missing     19.38
-                         &quot;BRENDA B&quot;   &quot;TRAFFIC CONTROL AIDE&quot;    64392       missing])],
+             employee = [&quot;LAKENYA A&quot;    &quot;CROSSING GUARD&quot;        missing     17.68
+                         &quot;DORIS A&quot;      &quot;CROSSING GUARD&quot;        missing     19.38
+                         &quot;BRENDA B&quot;     &quot;TRAFFIC CONTROL AIDE&quot;  64392       missing])],
         )
     ]
 
@@ -54,16 +57,19 @@ chicago = DataKnot(Any, chicago_data, :x1to1)
 #-&gt; Get(:department) &gt;&gt; Get(:employee)</code></pre><p>This query traverses the dataset through fields <em>department</em> and <em>employee</em>. It is constructed from two primitive queries <code>Get(:department)</code> and <code>Get(:employee)</code> connected using the query composition combinator <code>&gt;&gt;</code>.</p><p>Since attribute traversal is so common, DataKnots provides a shorthand notation.</p><pre><code class="language-julia">Employees = It.department.employee
 #-&gt; It.department.employee</code></pre><p>To apply a query to a <code>DataKnot</code>, we use indexing notation.  The output of a query is also a <code>DataKnot</code>.</p><pre><code class="language-julia">chicago[Employees]
 #=&gt;
-  │ employee                                       │
-  │ name       position              salary  rate  │
-──┼────────────────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT              101442        │
-2 │ NANCY A    POLICE OFFICER         80016        │
-3 │ JAMES A    FIRE ENGINEER-EMT     103350        │
-4 │ DANIEL A   FIRE FIGHTER-EMT       95484        │
-5 │ LAKENYA A  CROSSING GUARD                17.68 │
-6 │ DORIS A    CROSSING GUARD                19.38 │
-7 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+   │ employee                                       │
+   │ name       position              salary  rate  │
+───┼────────────────────────────────────────────────┼
+ 1 │ JEFFERY A  SERGEANT              101442        │
+ 2 │ NANCY A    POLICE OFFICER         80016        │
+ 3 │ ANTHONY A  POLICE OFFICER         72510        │
+ 4 │ ALBA M     POLICE CADET                   9.46 │
+ 5 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+ 6 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+ 7 │ VICTOR A   FIREFIGHTER-EMT        99324        │
+ 8 │ LAKENYA A  CROSSING GUARD                17.68 │
+ 9 │ DORIS A    CROSSING GUARD                19.38 │
+10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
 =#</code></pre><p>Regular Julia values and functions could be used to create query components. Specifically, any Julia value could be converted to a query primitive, and any Julia function could be converted to a query combinator.</p><p>For example, let us find find employees whose salary is greater than $100k. For this purpose, we need to construct a predicate query that compares the <em>salary</em> field with a specific number.</p><p>If we were constructing an ordinary predicate function, we would write:</p><pre><code class="language-julia">salary_over_100k(emp) = emp.salary &gt; 100000</code></pre><p>An equivalent query is constructed as follows:</p><pre><code class="language-julia">SalaryOver100K = Lift(&gt;, (Get(:salary), Lift(100000)))
 #-&gt; Lift(&gt;, (Get(:salary), Lift(100000)))</code></pre><p>This query expression is constructed from two primitive components: <code>Get(:salary)</code> and <code>Lift(100000)</code>, which serve as parameters of the <code>Lift(&gt;)</code> combinator.  Here, <code>Lift</code> is used twice.  <code>Lift</code> applied to a regular Julia value converts it to a <em>constant</em> query primitive while <code>Lift</code> applied to a function <em>lifts</em> it to a query combinator.</p><p>As a shorthand notation for lifting functions and operators, DataKnots supports broadcasting syntax:</p><pre><code class="language-julia">SalaryOver100K = It.salary .&gt; 100000
 #-&gt; It.salary .&gt; 100000</code></pre><p>To test this query, we can append it to the <code>Employees</code> query using the composition combinator.</p><pre><code class="language-julia">chicago[Employees &gt;&gt; SalaryOver100K]
@@ -72,23 +78,28 @@ chicago = DataKnot(Any, chicago_data, :x1to1)
 ──┼───────┼
 1 │  true │
 2 │ false │
-3 │  true │
-4 │ false │
+3 │ false │
+4 │  true │
 5 │ false │
+6 │ false │
+7 │ false │
 =#</code></pre><p>However, this only gives us a list of bare Boolean values disconnected from the respective employees.  To contextualize this output, we can use the <code>Record</code> combinator.</p><pre><code class="language-julia">chicago[Employees &gt;&gt; Record(It.name,
                             It.salary,
                             :salary_over_100k =&gt; SalaryOver100K)]
 #=&gt;
-  │ employee                            │
-  │ name       salary  salary_over_100k │
-──┼─────────────────────────────────────┼
-1 │ JEFFERY A  101442              true │
-2 │ NANCY A     80016             false │
-3 │ JAMES A    103350              true │
-4 │ DANIEL A    95484             false │
-5 │ LAKENYA A                           │
-6 │ DORIS A                             │
-7 │ BRENDA B    64392             false │
+   │ employee                            │
+   │ name       salary  salary_over_100k │
+───┼─────────────────────────────────────┼
+ 1 │ JEFFERY A  101442              true │
+ 2 │ NANCY A     80016             false │
+ 3 │ ANTHONY A   72510             false │
+ 4 │ ALBA M                              │
+ 5 │ JAMES A    103350              true │
+ 6 │ DANIEL A    95484             false │
+ 7 │ VICTOR A    99324             false │
+ 8 │ LAKENYA A                           │
+ 9 │ DORIS A                             │
+10 │ BRENDA B    64392             false │
 =#</code></pre><p>To actually filter the data using this predicate query, we need to use the <code>Filter</code> combinator.</p><pre><code class="language-julia">EmployeesWithSalaryOver100K = Employees &gt;&gt; Filter(SalaryOver100K)
 #-&gt; It.department.employee &gt;&gt; Filter(It.salary .&gt; 100000)
 
@@ -161,7 +172,7 @@ chain_of(with_elements(chain_of(column(:department),
 ──┼────────────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c375287404c401d79cc4865779372c1cbb384202/src/queries.jl#L160-L164">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c375287404c401d79cc4865779372c1cbb384202/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c375287404c401d79cc4865779372c1cbb384202/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2c257a246eb659779af643348bdf00cba7a18e32/src/queries.jl#L160-L164">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2c257a246eb659779af643348bdf00cba7a18e32/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2c257a246eb659779af643348bdf00cba7a18e32/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -214,8 +225,8 @@ chicago[Q]
   │ department   │
   │ name    size │
 ──┼──────────────┼
-1 │ POLICE     2 │
-2 │ FIRE       2 │
+1 │ POLICE     4 │
+2 │ FIRE       3 │
 3 │ OEMC       3 │
 =#</code></pre><p>If a field has no label, an ordinal label (<code>#A</code>, <code>#B</code> … <code>#AA</code>, <code>#AB</code> …) is assigned.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Record(It.name, Count(It.employee))
 #-&gt; It.department &gt;&gt; Record(It.name, Count(It.employee))
@@ -225,20 +236,20 @@ chicago[Q]
   │ department │
   │ name    #B │
 ──┼────────────┼
-1 │ POLICE   2 │
-2 │ FIRE     2 │
+1 │ POLICE   4 │
+2 │ FIRE     3 │
 3 │ OEMC     3 │
 =#</code></pre><p>Similarly, when there are duplicate labels, only the last one survives.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Record(It.name, It.employee.name)
 #-&gt; It.department &gt;&gt; Record(It.name, It.employee.name)
 
 chicago[Q]
 #=&gt;
-  │ department                           │
-  │ #A      name                         │
-──┼──────────────────────────────────────┼
-1 │ POLICE  JEFFERY A; NANCY A           │
-2 │ FIRE    JAMES A; DANIEL A            │
-3 │ OEMC    LAKENYA A; DORIS A; BRENDA B │
+  │ department                                    │
+  │ #A      name                                  │
+──┼───────────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
+2 │ FIRE    JAMES A; DANIEL A; VICTOR A           │
+3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
 =#</code></pre><h3><a class="nav-anchor" id="Lift-1" href="#Lift-1"><code>Lift</code></a></h3><p>The <code>Lift</code> constructor is used to convert Julia values and functions to queries.</p><p><code>Lift(val)</code> makes a query primitive from a Julia value.</p><pre><code class="language-julia">Q = Lift(&quot;Hello World!&quot;)
 #-&gt; Lift(&quot;Hello World!&quot;)
 
@@ -295,16 +306,19 @@ Record(It.name, It.salary, Lift(&gt;, (It.salary, 100000)))
 
 chicago[Q]
 #=&gt;
-  │ employee                 │
-  │ name       salary  #C    │
-──┼──────────────────────────┼
-1 │ JEFFERY A  101442   true │
-2 │ NANCY A     80016  false │
-3 │ JAMES A    103350   true │
-4 │ DANIEL A    95484  false │
-5 │ LAKENYA A                │
-6 │ DORIS A                  │
-7 │ BRENDA B    64392  false │
+   │ employee                 │
+   │ name       salary  #C    │
+───┼──────────────────────────┼
+ 1 │ JEFFERY A  101442   true │
+ 2 │ NANCY A     80016  false │
+ 3 │ ANTHONY A   72510  false │
+ 4 │ ALBA M                   │
+ 5 │ JAMES A    103350   true │
+ 6 │ DANIEL A    95484  false │
+ 7 │ VICTOR A    99324  false │
+ 8 │ LAKENYA A                │
+ 9 │ DORIS A                  │
+10 │ BRENDA B    64392  false │
 =#</code></pre><p>Just as functions with no arguments.</p><pre><code class="language-julia">using Random: seed!
 
 seed!(0)
@@ -328,7 +342,7 @@ chicago[Q]
 #=&gt;
 │ It      │
 ┼─────────┼
-│ 88936.8 │
+│ 88074.0 │
 =#</code></pre><p>Just like with regular values, <code>missing</code> and vector results are interpreted as no and plural output.</p><pre><code class="language-julia">Q = Inc(missing)
 #-&gt; Lift(x -&gt; x + 1, (missing,))
 
@@ -357,7 +371,7 @@ chicago[Q]
 #=&gt;
 │ It      │
 ┼─────────┼
-│ 88936.8 │
+│ 88074.0 │
 =#</code></pre><h3><a class="nav-anchor" id="Each-1" href="#Each-1"><code>Each</code></a></h3><p><code>Each</code> serves as a barrier for aggregate queries.</p><pre><code class="language-julia">Q = It.department &gt;&gt; (It.employee &gt;&gt; Count)
 #-&gt; It.department &gt;&gt; It.employee &gt;&gt; Count
 
@@ -365,7 +379,7 @@ chicago[Q]
 #=&gt;
 │ It │
 ┼────┼
-│  7 │
+│ 10 │
 =#
 
 Q = It.department &gt;&gt; Each(It.employee &gt;&gt; Count)
@@ -375,8 +389,8 @@ chicago[Q]
 #=&gt;
   │ It │
 ──┼────┼
-1 │  2 │
-2 │  2 │
+1 │  4 │
+2 │  3 │
 3 │  3 │
 =#</code></pre><p>Note that <code>Record</code> and <code>Lift</code> also serve as natural barriers for aggregate queries.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Record(It.name, It.employee &gt;&gt; Count)
@@ -387,8 +401,8 @@ chicago[Q]
   │ department │
   │ name    #B │
 ──┼────────────┼
-1 │ POLICE   2 │
-2 │ FIRE     2 │
+1 │ POLICE   4 │
+2 │ FIRE     3 │
 3 │ OEMC     3 │
 =#
 
@@ -400,8 +414,8 @@ chicago[Q]
 #=&gt;
   │ It │
 ──┼────┼
-1 │  2 │
-2 │  2 │
+1 │  4 │
+2 │  3 │
 3 │  3 │
 =#</code></pre><h3><a class="nav-anchor" id="Label-1" href="#Label-1"><code>Label</code></a></h3><p>We use the <code>Label()</code> primitive to assign a label to the output.</p><pre><code class="language-julia">Q = Count(It.department) &gt;&gt; Label(:num_dept)
 #-&gt; Count(It.department) &gt;&gt; Label(:num_dept)
@@ -433,8 +447,8 @@ chicago[Q]
   │ department        │
   │ name    dept_size │
 ──┼───────────────────┼
-1 │ POLICE          2 │
-2 │ FIRE            2 │
+1 │ POLICE          4 │
+2 │ FIRE            3 │
 3 │ OEMC            3 │
 =#</code></pre><p><code>Tag()</code> is also used to assign a name to a query combinator.</p><pre><code class="language-julia">SalaryOver(X) = It.salary .&gt; X
 
@@ -485,8 +499,8 @@ chicago[Q]
 #=&gt;
   │ It │
 ──┼────┼
-1 │  2 │
-2 │  2 │
+1 │  4 │
+2 │  3 │
 3 │  3 │
 =#</code></pre><p>Same notation is used to extract values of context parameters defined with <code>Keep()</code> or <code>Given()</code>.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(:dept_name =&gt; It.name) &gt;&gt;
@@ -495,16 +509,19 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ employee             │
-  │ dept_name  name      │
-──┼──────────────────────┼
-1 │ POLICE     JEFFERY A │
-2 │ POLICE     NANCY A   │
-3 │ FIRE       JAMES A   │
-4 │ FIRE       DANIEL A  │
-5 │ OEMC       LAKENYA A │
-6 │ OEMC       DORIS A   │
-7 │ OEMC       BRENDA B  │
+   │ employee             │
+   │ dept_name  name      │
+───┼──────────────────────┼
+ 1 │ POLICE     JEFFERY A │
+ 2 │ POLICE     NANCY A   │
+ 3 │ POLICE     ANTHONY A │
+ 4 │ POLICE     ALBA M    │
+ 5 │ FIRE       JAMES A   │
+ 6 │ FIRE       DANIEL A  │
+ 7 │ FIRE       VICTOR A  │
+ 8 │ OEMC       LAKENYA A │
+ 9 │ OEMC       DORIS A   │
+10 │ OEMC       BRENDA B  │
 =#</code></pre><p>A context parameter is preferred if it has the same name as a record field.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(It.name) &gt;&gt;
     It.employee &gt;&gt;
@@ -512,16 +529,19 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ employee                     │
-  │ name    position             │
-──┼──────────────────────────────┼
-1 │ POLICE  SERGEANT             │
-2 │ POLICE  POLICE OFFICER       │
-3 │ FIRE    FIRE ENGINEER-EMT    │
-4 │ FIRE    FIRE FIGHTER-EMT     │
-5 │ OEMC    CROSSING GUARD       │
-6 │ OEMC    CROSSING GUARD       │
-7 │ OEMC    TRAFFIC CONTROL AIDE │
+   │ employee                     │
+   │ name    position             │
+───┼──────────────────────────────┼
+ 1 │ POLICE  SERGEANT             │
+ 2 │ POLICE  POLICE OFFICER       │
+ 3 │ POLICE  POLICE OFFICER       │
+ 4 │ POLICE  POLICE CADET         │
+ 5 │ FIRE    FIRE ENGINEER-EMT    │
+ 6 │ FIRE    FIREFIGHTER-EMT      │
+ 7 │ FIRE    FIREFIGHTER-EMT      │
+ 8 │ OEMC    CROSSING GUARD       │
+ 9 │ OEMC    CROSSING GUARD       │
+10 │ OEMC    TRAFFIC CONTROL AIDE │
 =#</code></pre><p>If there is no attribute with the given name, an error is reported.</p><pre><code class="language-julia">Q = It.department.employee.ssn
 
 chicago[Q]
@@ -577,16 +597,19 @@ Record(It.dept_name, It.name)
 
 chicago[Q]
 #=&gt;
-  │ employee             │
-  │ dept_name  name      │
-──┼──────────────────────┼
-1 │ POLICE     JEFFERY A │
-2 │ POLICE     NANCY A   │
-3 │ FIRE       JAMES A   │
-4 │ FIRE       DANIEL A  │
-5 │ OEMC       LAKENYA A │
-6 │ OEMC       DORIS A   │
-7 │ OEMC       BRENDA B  │
+   │ employee             │
+   │ dept_name  name      │
+───┼──────────────────────┼
+ 1 │ POLICE     JEFFERY A │
+ 2 │ POLICE     NANCY A   │
+ 3 │ POLICE     ANTHONY A │
+ 4 │ POLICE     ALBA M    │
+ 5 │ FIRE       JAMES A   │
+ 6 │ FIRE       DANIEL A  │
+ 7 │ FIRE       VICTOR A  │
+ 8 │ OEMC       LAKENYA A │
+ 9 │ OEMC       DORIS A   │
+10 │ OEMC       BRENDA B  │
 =#</code></pre><p>Several context parameters could be defined together.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(:size =&gt; Count(It.employee),
          :half =&gt; It.size .÷ 2) &gt;&gt;
@@ -598,8 +621,9 @@ chicago[Q]
   │ name       position           salary  rate  │
 ──┼─────────────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT           101442        │
-2 │ JAMES A    FIRE ENGINEER-EMT  103350        │
-3 │ LAKENYA A  CROSSING GUARD             17.68 │
+2 │ NANCY A    POLICE OFFICER      80016        │
+3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+4 │ LAKENYA A  CROSSING GUARD             17.68 │
 =#</code></pre><p><code>Keep()</code> requires that the parameter is labeled.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(Count(It.employee))
 
@@ -607,6 +631,7 @@ chicago[Q]
 #-&gt; ERROR: parameter name is not specified</code></pre><p><code>Keep()</code> will override an existing parameter with the same name.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(:current_name =&gt; It.name) &gt;&gt;
     It.employee &gt;&gt;
+    Filter(It.current_name .== &quot;POLICE&quot;) &gt;&gt;
     Keep(:current_name =&gt; It.name) &gt;&gt;
     It.current_name
 
@@ -616,11 +641,8 @@ chicago[Q]
 ──┼──────────────┼
 1 │ JEFFERY A    │
 2 │ NANCY A      │
-3 │ JAMES A      │
-4 │ DANIEL A     │
-5 │ LAKENYA A    │
-6 │ DORIS A      │
-7 │ BRENDA B     │
+3 │ ANTHONY A    │
+4 │ ALBA M       │
 =#</code></pre><p>Combinator <code>Given()</code> is used to evaluate a query with the given context parameters.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Given(:size =&gt; Count(It.employee),
           :half =&gt; It.size .÷ 2,
@@ -637,8 +659,9 @@ chicago[Q]
   │ name       position           salary  rate  │
 ──┼─────────────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT           101442        │
-2 │ JAMES A    FIRE ENGINEER-EMT  103350        │
-3 │ LAKENYA A  CROSSING GUARD             17.68 │
+2 │ NANCY A    POLICE OFFICER      80016        │
+3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+4 │ LAKENYA A  CROSSING GUARD             17.68 │
 =#</code></pre><p><code>Given()</code> does not let any parameters defined within its scope escape it.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Given(Keep(It.name)) &gt;&gt;
     It.employee &gt;&gt;
@@ -646,53 +669,56 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ name      │
-──┼───────────┼
-1 │ JEFFERY A │
-2 │ NANCY A   │
-3 │ JAMES A   │
-4 │ DANIEL A  │
-5 │ LAKENYA A │
-6 │ DORIS A   │
-7 │ BRENDA B  │
-=#</code></pre><h3><a class="nav-anchor" id="Count,-Sum,-Max,-Min-1" href="#Count,-Sum,-Max,-Min-1"><code>Count</code>, <code>Sum</code>, <code>Max</code>, <code>Min</code></a></h3><p><code>Count(X)</code>, <code>Sum(X)</code>, <code>Max(X)</code>, <code>Min(X)</code> evaluate the <code>X</code> and emit the number of elements, their sum, maximum, and minimum respectively.</p><pre><code class="language-julia">Salary = It.department.employee.salary
+   │ name      │
+───┼───────────┼
+ 1 │ JEFFERY A │
+ 2 │ NANCY A   │
+ 3 │ ANTHONY A │
+ 4 │ ALBA M    │
+ 5 │ JAMES A   │
+ 6 │ DANIEL A  │
+ 7 │ VICTOR A  │
+ 8 │ LAKENYA A │
+ 9 │ DORIS A   │
+10 │ BRENDA B  │
+=#</code></pre><h3><a class="nav-anchor" id="Count,-Sum,-Max,-Min-1" href="#Count,-Sum,-Max,-Min-1"><code>Count</code>, <code>Sum</code>, <code>Max</code>, <code>Min</code></a></h3><p><code>Count(X)</code>, <code>Sum(X)</code>, <code>Max(X)</code>, <code>Min(X)</code> evaluate the <code>X</code> and emit the number of elements, their sum, maximum, and minimum respectively.</p><pre><code class="language-julia">Rate = It.department.employee.rate
 
-Q = Record(Salary,
-           :count =&gt; Count(Salary),
-           :sum =&gt; Sum(Salary),
-           :max =&gt; Max(Salary),
-           :min =&gt; Min(Salary))
+Q = Record(Rate,
+           :count =&gt; Count(Rate),
+           :sum =&gt; Sum(Rate),
+           :max =&gt; Max(Rate),
+           :min =&gt; Min(Rate))
 #=&gt;
-Record(It.department.employee.salary,
-       :count =&gt; Count(It.department.employee.salary),
-       :sum =&gt; Sum(It.department.employee.salary),
-       :max =&gt; Max(It.department.employee.salary),
-       :min =&gt; Min(It.department.employee.salary))
+Record(It.department.employee.rate,
+       :count =&gt; Count(It.department.employee.rate),
+       :sum =&gt; Sum(It.department.employee.rate),
+       :max =&gt; Max(It.department.employee.rate),
+       :min =&gt; Min(It.department.employee.rate))
 =#
 
 chicago[Q]
 #=&gt;
-│ salary                               count  sum     max     min   │
-┼───────────────────────────────────────────────────────────────────┼
-│ 101442; 80016; 103350; 95484; 64392      5  444684  103350  64392 │
-=#</code></pre><p><code>Count</code>, <code>Sum</code>, <code>Max</code>, and <code>Min</code> could also be used as aggregate primitives.</p><pre><code class="language-julia">Q = Record(Salary,
-           :count =&gt; Salary &gt;&gt; Count,
-           :sum =&gt; Salary &gt;&gt; Sum,
-           :max =&gt; Salary &gt;&gt; Max,
-           :min =&gt; Salary &gt;&gt; Min)
+│ rate                count  sum    max    min  │
+┼───────────────────────────────────────────────┼
+│ 9.46; 17.68; 19.38      3  46.52  19.38  9.46 │
+=#</code></pre><p><code>Count</code>, <code>Sum</code>, <code>Max</code>, and <code>Min</code> could also be used as aggregate primitives.</p><pre><code class="language-julia">Q = Record(Rate,
+           :count =&gt; Rate &gt;&gt; Count,
+           :sum =&gt; Rate &gt;&gt; Sum,
+           :max =&gt; Rate &gt;&gt; Max,
+           :min =&gt; Rate &gt;&gt; Min)
 #=&gt;
-Record(It.department.employee.salary,
-       :count =&gt; It.department.employee.salary &gt;&gt; Count,
-       :sum =&gt; It.department.employee.salary &gt;&gt; Sum,
-       :max =&gt; It.department.employee.salary &gt;&gt; Max,
-       :min =&gt; It.department.employee.salary &gt;&gt; Min)
+Record(It.department.employee.rate,
+       :count =&gt; It.department.employee.rate &gt;&gt; Count,
+       :sum =&gt; It.department.employee.rate &gt;&gt; Sum,
+       :max =&gt; It.department.employee.rate &gt;&gt; Max,
+       :min =&gt; It.department.employee.rate &gt;&gt; Min)
 =#
 
 chicago[Q]
 #=&gt;
-│ salary                               count  sum     max     min   │
-┼───────────────────────────────────────────────────────────────────┼
-│ 101442; 80016; 103350; 95484; 64392      5  444684  103350  64392 │
+│ rate                count  sum    max    min  │
+┼───────────────────────────────────────────────┼
+│ 9.46; 17.68; 19.38      3  46.52  19.38  9.46 │
 =#</code></pre><p>When applied to an empty input, <code>Sum</code> emits <code>0</code>, <code>Min</code> and <code>Max</code> emit no output.</p><pre><code class="language-julia">Rate = It.employee.rate
 
 Q = It.department &gt;&gt;
@@ -708,7 +734,7 @@ chicago[Q]
   │ department                                       │
   │ name    rate          count  sum    max    min   │
 ──┼──────────────────────────────────────────────────┼
-1 │ POLICE                    0   0.0                │
+1 │ POLICE  9.46              1   9.46   9.46   9.46 │
 2 │ FIRE                      0   0.0                │
 3 │ OEMC    17.68; 19.38      2  37.06  19.38  17.68 │
 =#</code></pre><h3><a class="nav-anchor" id="Filter-1" href="#Filter-1"><code>Filter</code></a></h3><p>We use <code>Filter()</code> to filter the input by the given predicate.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
@@ -738,73 +764,69 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ department            │
-  │ name    salary        │
-──┼───────────────────────┼
-1 │ POLICE  101442; 80016 │
-2 │ FIRE    103350; 95484 │
-=#</code></pre><h3><a class="nav-anchor" id="Take-and-Drop-1" href="#Take-and-Drop-1"><code>Take</code> and <code>Drop</code></a></h3><p>We use <code>Take(N)</code> and <code>Drop(N)</code> to pass or drop the first <code>N</code> input elements.</p><pre><code class="language-julia">Employee = It.department.employee
+  │ department                   │
+  │ name    salary               │
+──┼──────────────────────────────┼
+1 │ POLICE  101442; 80016; 72510 │
+2 │ FIRE    103350; 95484; 99324 │
+=#</code></pre><h3><a class="nav-anchor" id="Take-and-Drop-1" href="#Take-and-Drop-1"><code>Take</code> and <code>Drop</code></a></h3><p>We use <code>Take(N)</code> and <code>Drop(N)</code> to pass or drop the first <code>N</code> input elements.</p><pre><code class="language-julia">Employee =
+    It.department &gt;&gt;
+    Filter(It.name .== &quot;POLICE&quot;) &gt;&gt;
+    It.employee
 
-Q = Employee &gt;&gt; Take(4)
-#-&gt; It.department.employee &gt;&gt; Take(4)
+Q = Employee &gt;&gt; Take(3)
+#-&gt; It.department &gt;&gt; Filter(It.name .== &quot;POLICE&quot;) &gt;&gt; It.employee &gt;&gt; Take(3)
 
 chicago[Q]
 #=&gt;
-  │ employee                                   │
-  │ name       position           salary  rate │
-──┼────────────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT           101442       │
-2 │ NANCY A    POLICE OFFICER      80016       │
-3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
-4 │ DANIEL A   FIRE FIGHTER-EMT    95484       │
+  │ employee                                │
+  │ name       position        salary  rate │
+──┼─────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT        101442       │
+2 │ NANCY A    POLICE OFFICER   80016       │
+3 │ ANTHONY A  POLICE OFFICER   72510       │
 =#
 
-Q = Employee &gt;&gt; Drop(4)
-#-&gt; It.department.employee &gt;&gt; Drop(4)
+Q = Employee &gt;&gt; Drop(3)
+#-&gt; It.department &gt;&gt; Filter(It.name .== &quot;POLICE&quot;) &gt;&gt; It.employee &gt;&gt; Drop(3)
 
 chicago[Q]
 #=&gt;
-  │ employee                                       │
-  │ name       position              salary  rate  │
-──┼────────────────────────────────────────────────┼
-1 │ LAKENYA A  CROSSING GUARD                17.68 │
-2 │ DORIS A    CROSSING GUARD                19.38 │
-3 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
-=#</code></pre><p><code>Take(-N)</code> drops the last <code>N</code> elements, while <code>Drop(-N)</code> keeps the last <code>N</code> elements.</p><pre><code class="language-julia">Q = Employee &gt;&gt; Take(-4)
+  │ employee                           │
+  │ name    position      salary  rate │
+──┼────────────────────────────────────┼
+1 │ ALBA M  POLICE CADET          9.46 │
+=#</code></pre><p><code>Take(-N)</code> drops the last <code>N</code> elements, while <code>Drop(-N)</code> keeps the last <code>N</code> elements.</p><pre><code class="language-julia">Q = Employee &gt;&gt; Take(-3)
 
 chicago[Q]
 #=&gt;
-  │ employee                                   │
-  │ name       position           salary  rate │
-──┼────────────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT           101442       │
-2 │ NANCY A    POLICE OFFICER      80016       │
-3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+  │ employee                          │
+  │ name       position  salary  rate │
+──┼───────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT  101442       │
 =#
 
-Q = Employee &gt;&gt; Drop(-4)
+Q = Employee &gt;&gt; Drop(-3)
 
 chicago[Q]
 #=&gt;
-  │ employee                                       │
-  │ name       position              salary  rate  │
-──┼────────────────────────────────────────────────┼
-1 │ DANIEL A   FIRE FIGHTER-EMT       95484        │
-2 │ LAKENYA A  CROSSING GUARD                17.68 │
-3 │ DORIS A    CROSSING GUARD                19.38 │
-4 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+  │ employee                                │
+  │ name       position        salary  rate │
+──┼─────────────────────────────────────────┼
+1 │ NANCY A    POLICE OFFICER   80016       │
+2 │ ANTHONY A  POLICE OFFICER   72510       │
+3 │ ALBA M     POLICE CADET            9.46 │
 =#</code></pre><p><code>Take</code> and <code>Drop</code> accept a query argument, which is evaluated against the input source and must produce a singular integer.</p><pre><code class="language-julia">Half = Count(Employee) .÷ 2
 
 Q = Employee &gt;&gt; Take(Half)
 
 chicago[Q]
 #=&gt;
-  │ employee                                   │
-  │ name       position           salary  rate │
-──┼────────────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT           101442       │
-2 │ NANCY A    POLICE OFFICER      80016       │
-3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+  │ employee                                │
+  │ name       position        salary  rate │
+──┼─────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT        101442       │
+2 │ NANCY A    POLICE OFFICER   80016       │
 =#
 
 Q = Take(Employee &gt;&gt; It.name)
@@ -820,10 +842,11 @@ chicago[Q]
 ──┼────────────────────────────────────────────────────────────────────────────…
 1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…
 2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing          …
-3 │ FIRE FIGHTER-EMT      DANIEL A, FIRE FIGHTER-EMT, 95484, missing           …
-4 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing              …
-5 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
-6 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
+3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; VICTOR A, …
+4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46                  …
+5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; ANTHONY A, P…
+6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
+7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
 =#</code></pre><p>Arbitrary key expressions are supported.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Group(:size =&gt; Count(It.employee)) &gt;&gt;
     Record(It.size, :count =&gt; Count(It.department))
@@ -832,8 +855,8 @@ chicago[Q]
 #=&gt;
   │ size  count │
 ──┼─────────────┼
-1 │    2      2 │
-2 │    3      1 │
+1 │    3      2 │
+2 │    4      1 │
 =#</code></pre><p>Empty keys are placed on top.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
     Group(:grade =&gt; It.salary .÷ 10000) &gt;&gt;
     Record(It.grade, :n =&gt; Count(It.employee))
@@ -842,11 +865,12 @@ chicago[Q]
 #=&gt;
   │ grade  n │
 ──┼──────────┼
-1 │        2 │
+1 │        3 │
 2 │     6  1 │
-3 │     8  1 │
-4 │     9  1 │
-5 │    10  2 │
+3 │     7  1 │
+4 │     8  1 │
+5 │     9  2 │
+6 │    10  2 │
 =#</code></pre><p>More than one key column could be provided.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
     Group(ismissing.(It.salary),
           ismissing.(It.rate)) &gt;&gt;
@@ -856,14 +880,14 @@ chicago[Q]
 #=&gt;
   │ #A     #B     #C │
 ──┼──────────────────┼
-1 │ false   true   5 │
-2 │  true  false   2 │
-=#</code></pre><p>In the query form, <code>Group</code> creates a one-element record with its input.</p><pre><code class="language-julia">Q = It.department.employee.name &gt;&gt; Group
-#-&gt; It.department.employee.name &gt;&gt; Group
+1 │ false   true   7 │
+2 │  true  false   3 │
+=#</code></pre><p>In the query form, <code>Group</code> creates a one-element record with its input.</p><pre><code class="language-julia">Q = It.department.employee.salary &gt;&gt; Group
+#-&gt; It.department.employee.salary &gt;&gt; Group
 
 chicago[Q]
 #=&gt;
-│ name                                                                │
-┼─────────────────────────────────────────────────────────────────────┼
-│ JEFFERY A; NANCY A; JAMES A; DANIEL A; LAKENYA A; DORIS A; BRENDA B │
+│ salary                                            │
+┼───────────────────────────────────────────────────┼
+│ 101442; 80016; 72510; 103350; 95484; 99324; 64392 │
 =#</code></pre><footer><hr/><a class="previous" href="../knots/"><span class="direction">Previous</span><span class="title">Data Knots</span></a></footer></article></body></html>
