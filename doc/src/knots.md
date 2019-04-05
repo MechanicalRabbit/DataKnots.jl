@@ -289,21 +289,21 @@ be done via the `Tables.jl` interface.
     #=>
     Tables.Schema:
      :a  Float64
-     :b  String 
+     :b  String
     =#
 
     schema(unitknot[(42.0,"Hi")])
     #=>
     Tables.Schema:
      Symbol("#A")  Float64
-     Symbol("#B")  String 
+     Symbol("#B")  String
     =#
 
     schema(unitknot[(["A","B"],[1,2])])
     #=>
     Tables.Schema:
      Symbol("#A")  Array{String,1}
-     Symbol("#B")  Array{Int,1} 
+     Symbol("#B")  Array{Int,1}
     =#
 
 These functions also work with combinator structures.
@@ -314,14 +314,14 @@ These functions also work with combinator structures.
     #=>
     Tables.Schema:
      :a  Float64
-     :b  String 
+     :b  String
     =#
 
     schema(unitknot[Record(42.0, "Hello")])
     #=>
     Tables.Schema:
      Symbol("#A")  Float64
-     Symbol("#B")  String 
+     Symbol("#B")  String
     =#
 
     schema(unitknot[Lift(1:3) >> Record(:val => It, It .*2)])
