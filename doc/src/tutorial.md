@@ -15,10 +15,12 @@ represented as nested `NamedTuple` and `Vector` objects.
         (name = "POLICE",
          employee = [
           (name = "JEFFERY A", position = "SERGEANT", salary = 101442),
-          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016)]),
+          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016),
+          (name = "TONY A", position = "POLICE OFFICER", salary = 72510)]),
         (name = "FIRE",
          employee = [
-          (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484)])],)
+          (name = "DANIEL A", position = "FIREFIGHTER-EMT", salary = 95484),
+          (name = "VICTOR A", position = "FIREFIGHTER-EMT", salary = 99324)])],)
 
 In this hierarchical Chicago dataset, the root is a `NamedTuple`
 with a field `department`, which is a `Vector` of department
@@ -61,7 +63,9 @@ our dataset exploration by listing employee names.
     ──┼───────────┼
     1 │ JEFFERY A │
     2 │ NANCY A   │
-    3 │ DANIEL A  │
+    3 │ TONY A    │
+    4 │ DANIEL A  │
+    5 │ VICTOR A  │
     =#
 
 Navigation context matters. For example, `employee` tuples are not
@@ -78,12 +82,14 @@ as a table.
 
     chicago[It.department.employee]
     #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ NANCY A    POLICE OFFICER    80016 │
+    3 │ TONY A     POLICE OFFICER    72510 │
+    4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
 Notice that nested vectors traversed during navigation are
@@ -109,12 +115,14 @@ output of the first query as input to the second.
 
     chicago[Get(:department) >> Get(:employee)]
     #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ NANCY A    POLICE OFFICER    80016 │
+    3 │ TONY A     POLICE OFFICER    72510 │
+    4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
 The `It` query simply reproduces its input, which makes it the
@@ -163,7 +171,7 @@ departments.
     #=>
     │ It │
     ┼────┼
-    │  3 │
+    │  5 │
     =#
 
 What if we wanted to count employees by department? Using query
@@ -173,12 +181,12 @@ composition (`>>`), we can perform `Count` in a nested context.
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │  1 │
+    1 │  3 │
+    2 │  2 │
     =#
 
-In this output, we see that one department has `2` employees,
-while the other has only `1`.
+In this output, we see that one department has `3` employees,
+while the other has `2`.
 
 ## Record Construction
 
@@ -194,8 +202,8 @@ name alongside employee counts. This can be done by using the
       │ department │
       │ name    #B │
     ──┼────────────┼
-    1 │ POLICE   2 │
-    2 │ FIRE     1 │
+    1 │ POLICE   3 │
+    2 │ FIRE     2 │
     =#
 
 To label a record field we use Julia's `Pair` syntax, (`=>`).
@@ -209,8 +217,8 @@ To label a record field we use Julia's `Pair` syntax, (`=>`).
       │ department             │
       │ name    employee_count │
     ──┼────────────────────────┼
-    1 │ POLICE               2 │
-    2 │ FIRE                 1 │
+    1 │ POLICE               3 │
+    2 │ FIRE                 2 │
     =#
 
 This is syntax shorthand for the `Label` primitive.
@@ -224,8 +232,8 @@ This is syntax shorthand for the `Label` primitive.
       │ department             │
       │ name    employee_count │
     ──┼────────────────────────┼
-    1 │ POLICE               2 │
-    2 │ FIRE                 1 │
+    1 │ POLICE               3 │
+    2 │ FIRE                 2 │
     =#
 
 Records can be nested. The following listing includes, for each
@@ -238,11 +246,11 @@ department, employees' name and salary.
                Record(It.name,
                       It.salary))]
     #=>
-      │ department                                │
-      │ name    employee                          │
-    ──┼───────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016 │
-    2 │ FIRE    DANIEL A, 95484                   │
+      │ department                                               │
+      │ name    employee                                         │
+    ──┼──────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016; TONY A, 72510 │
+    2 │ FIRE    DANIEL A, 95484; VICTOR A, 99324                 │
     =#
 
 In this output, commas separate tuple fields and semi-colons
@@ -263,7 +271,7 @@ This query can be used in different ways.
     #=>
     │ It │
     ┼────┼
-    │  2 │
+    │  3 │
     =#
 
     chicago[
@@ -274,8 +282,8 @@ This query can be used in different ways.
       │ department             │
       │ name    employee_count │
     ──┼────────────────────────┼
-    1 │ POLICE               2 │
-    2 │ FIRE                 1 │
+    1 │ POLICE               3 │
+    2 │ FIRE                 2 │
     =#
 
 ## Filtering Data
@@ -286,12 +294,12 @@ than one employee. This can be done using the `Filter` combinator.
     chicago[
         It.department >>
         Record(It.name, EmployeeCount) >>
-        Filter(It.employee_count .> 1)]
+        Filter(It.employee_count .> 2)]
     #=>
       │ department             │
       │ name    employee_count │
     ──┼────────────────────────┼
-    1 │ POLICE               2 │
+    1 │ POLICE               3 │
     =#
 
 To use regular operators in query expressions, we need to use
@@ -301,7 +309,7 @@ the period is an easy mistake to make.
     chicago[
         It.department >>
         Record(It.name, EmployeeCount) >>
-        Filter(It.employee_count > 1)]
+        Filter(It.employee_count > 2)]
     #=>
     ERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)
     ⋮
@@ -316,12 +324,14 @@ our Chicago data starting with a list of employees.
 
     chicago[Q]
     #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ NANCY A    POLICE OFFICER    80016 │
+    3 │ TONY A     POLICE OFFICER    72510 │
+    4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
 Let's extend this query to show if the salary is over 100k.
@@ -348,7 +358,9 @@ Let's run `Q` again.
     ──┼───────────────────────────┼
     1 │ JEFFERY A  101442    true │
     2 │ NANCY A     80016   false │
-    3 │ DANIEL A    95484   false │
+    3 │ TONY A      72510   false │
+    4 │ DANIEL A    95484   false │
+    5 │ VICTOR A    99324   false │
     =#
 
 We can now filter the dataset to include only high-paid employees.
@@ -408,7 +420,7 @@ employees as input, and produces their number as output.
     #=>
     │ It │
     ┼────┼
-    │  3 │
+    │  5 │
     =#
 
 Previously we've only seen *elementwise* queries, which emit an
@@ -422,7 +434,7 @@ expectation, adding parentheses will not change the output.
     #=>
     │ It │
     ┼────┼
-    │  3 │
+    │  5 │
     =#
 
 To count employees in *each* department, we use the `Each()`
@@ -432,8 +444,8 @@ combinator, which evaluates its argument elementwise.
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │  1 │
+    1 │  3 │
+    2 │  2 │
     =#
 
 Alternatively, we could use the `Count()` combinator to get the
@@ -443,8 +455,8 @@ same result.
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │  1 │
+    1 │  3 │
+    2 │  2 │
     =#
 
 Which form of `Count` to use depends upon what is notationally
@@ -456,7 +468,7 @@ append `>> Count` is often very helpful.
     #=>
     │ It │
     ┼────┼
-    │  3 │
+    │  5 │
     =#
 
 We could then refine the query, and run the exact same command.
@@ -485,7 +497,7 @@ and `Sum`.
     #=>
     │ count  min    max     sum    │
     ┼──────────────────────────────┼
-    │     3  80016  101442  276942 │
+    │     5  72510  101442  448776 │
     =#
 
 Just as `Count` has an aggregate query form, so do `Min`, `Max`,
@@ -505,8 +517,8 @@ and `Sum`.
       │ department                           │
       │ name    count  min    max     sum    │
     ──┼──────────────────────────────────────┼
-    1 │ POLICE      2  80016  101442  181458 │
-    2 │ FIRE        1  95484   95484   95484 │
+    1 │ POLICE      3  72510  101442  253968 │
+    2 │ FIRE        2  95484   99324  194808 │
     =#
 
 ## Broadcasting over Queries
@@ -522,7 +534,9 @@ broadcasting notation.
     ──┼───────────┼
     1 │ Jeffery A │
     2 │ Nancy A   │
-    3 │ Daniel A  │
+    3 │ Tony A    │
+    4 │ Daniel A  │
+    5 │ Victor A  │
     =#
 
 Functions taking a vector argument, such as `mean`, can also be
@@ -540,8 +554,8 @@ employee salary by department.
       │ department          │
       │ name    mean_salary │
     ──┼─────────────────────┼
-    1 │ POLICE      90729.0 │
-    2 │ FIRE        95484.0 │
+    1 │ POLICE      84656.0 │
+    2 │ FIRE        97404.0 │
     =#
 
 ## Keeping Values
@@ -570,7 +584,9 @@ result, so that it is available within subsequent computations.
     ──┼──────────────────────┼
     1 │ JEFFERY A  POLICE    │
     2 │ NANCY A    POLICE    │
-    3 │ DANIEL A   FIRE      │
+    3 │ TONY A     POLICE    │
+    4 │ DANIEL A   FIRE      │
+    5 │ VICTOR A   FIRE      │
     =#
 
 This pattern also emerges when a filter condition uses a parameter
@@ -583,27 +599,30 @@ with a higher than average salary for their department.
         It.employee >>
         Filter(It.salary .> It.mean_salary)]
     #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
 ## Paging Data
 
 Sometimes query results can be quite large. In this case it's
 helpful to `Take` or `Drop` items from the input. Let's start by
-listing all 3 employees of our toy database.
+listing all 5 employees of our toy database.
 
     Employee = It.department.employee
     chicago[Employee]
     #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ NANCY A    POLICE OFFICER     80016 │
-    3 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ NANCY A    POLICE OFFICER    80016 │
+    3 │ TONY A     POLICE OFFICER    72510 │
+    4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
 To return only the first 2 records, we use `Take`.
@@ -622,20 +641,24 @@ return all the records but the last two, we write:
 
     chicago[Employee >> Take(-2)]
     #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    3 │ TONY A     POLICE OFFICER   72510 │
     =#
 
 To skip the first two records, returning the rest, we use `Drop`.
 
     chicago[Employee >> Drop(2)]
     #=>
-      │ employee                           │
-      │ name      position          salary │
-    ──┼────────────────────────────────────┼
-    1 │ DANIEL A  FIRE FIGHTER-EMT   95484 │
+      │ employee                          │
+      │ name      position         salary │
+    ──┼───────────────────────────────────┼
+    1 │ TONY A    POLICE OFFICER    72510 │
+    2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
+    3 │ VICTOR A  FIREFIGHTER-EMT   99324 │
     =#
 
 To return the 1st half of the employees in the database, we could
@@ -643,10 +666,11 @@ use `Take` with an argument that computes how many to take.
 
     chicago[Employee >> Take(Count(Employee) .÷ 2)]
     #=>
-      │ employee                    │
-      │ name       position  salary │
-    ──┼─────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT  101442 │
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
     =#
 
 ## Query Parameters
@@ -678,7 +702,7 @@ salary? This average could be computed first.
     #=>
     │ It      │
     ┼─────────┼
-    │ 92314.0 │
+    │ 89755.2 │
     =#
 
 Then, this value could be passed as our parameter.
@@ -689,6 +713,7 @@ Then, this value could be passed as our parameter.
     ──┼───────────┼
     1 │ JEFFERY A │
     2 │ DANIEL A  │
+    3 │ VICTOR A  │
     =#
 
 This approach performs composition outside of the query language.
@@ -701,6 +726,7 @@ the same query expression, we could use the `Given` combinator.
     ──┼───────────┼
     1 │ JEFFERY A │
     2 │ DANIEL A  │
+    3 │ VICTOR A  │
     =#
 
 ## Query Functions
@@ -731,11 +757,12 @@ example, let's find employees with higher than average salary.
 
     chicago[EmployeesOver(MeanSalary)]
     #=>
-      │ employee                            │
-      │ name       position          salary │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT          101442 │
-    2 │ DANIEL A   FIRE FIGHTER-EMT   95484 │
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    3 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
 Note that this combination is yet another query that could be
@@ -747,6 +774,7 @@ further refined.
     ──┼───────────┼
     1 │ JEFFERY A │
     2 │ DANIEL A  │
+    3 │ VICTOR A  │
     =#
 
 Alternatively, this query function could have been defined using
@@ -767,7 +795,7 @@ For singular output, `get` returns a scalar value.
 For plural output, `get` returns a `Vector`.
 
     get(chicago[It.department.employee.name])
-    #-> ["JEFFERY A", "NANCY A", "DANIEL A"]
+    #-> ["JEFFERY A", "NANCY A", "TONY A", "DANIEL A", "VICTOR A"]
 
 For more complex outputs, `get` may return a `@VectorTree`, which
 is an `AbstractVector` specialized for column-oriented storage.
@@ -779,8 +807,8 @@ is an `AbstractVector` specialized for column-oriented storage.
     display(vt)
     #=>
     @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
-     (name = "POLICE", employee_count = 2)
-     (name = "FIRE", employee_count = 1)
+     (name = "POLICE", employee_count = 3)
+     (name = "FIRE", employee_count = 2)
     =#
 
 
