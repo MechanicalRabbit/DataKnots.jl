@@ -46,15 +46,18 @@ holds associated employee records.
                                                  rate     = (0:1)Float64)])],) [
             (department = [
                 (name     = "POLICE",
-                 employee = ["JEFFERY A"  "SERGEANT"                101442      missing
-                             "NANCY A"    "POLICE OFFICER"          80016       missing]),
+                 employee = ["JEFFERY A"    "SERGEANT"              101442      missing
+                             "NANCY A"      "POLICE OFFICER"        80016       missing
+                             "ANTHONY A"    "POLICE OFFICER"        72510       missing
+                             "ALBA M"       "POLICE CADET"          missing     9.46]),
                 (name     = "FIRE",
-                 employee = ["JAMES A"    "FIRE ENGINEER-EMT"       103350      missing
-                             "DANIEL A"   "FIRE FIGHTER-EMT"        95484       missing]),
+                 employee = ["JAMES A"      "FIRE ENGINEER-EMT"     103350      missing
+                             "DANIEL A"     "FIREFIGHTER-EMT"       95484       missing
+                             "VICTOR A"     "FIREFIGHTER-EMT"       99324       missing]),
                 (name     = "OEMC",
-                 employee = ["LAKENYA A"  "CROSSING GUARD"          missing     17.68
-                             "DORIS A"    "CROSSING GUARD"          missing     19.38
-                             "BRENDA B"   "TRAFFIC CONTROL AIDE"    64392       missing])],
+                 employee = ["LAKENYA A"    "CROSSING GUARD"        missing     17.68
+                             "DORIS A"      "CROSSING GUARD"        missing     19.38
+                             "BRENDA B"     "TRAFFIC CONTROL AIDE"  64392       missing])],
             )
         ]
 
@@ -90,16 +93,19 @@ query is also a `DataKnot`.
 
     chicago[Employees]
     #=>
-      │ employee                                       │
-      │ name       position              salary  rate  │
-    ──┼────────────────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT              101442        │
-    2 │ NANCY A    POLICE OFFICER         80016        │
-    3 │ JAMES A    FIRE ENGINEER-EMT     103350        │
-    4 │ DANIEL A   FIRE FIGHTER-EMT       95484        │
-    5 │ LAKENYA A  CROSSING GUARD                17.68 │
-    6 │ DORIS A    CROSSING GUARD                19.38 │
-    7 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+       │ employee                                       │
+       │ name       position              salary  rate  │
+    ───┼────────────────────────────────────────────────┼
+     1 │ JEFFERY A  SERGEANT              101442        │
+     2 │ NANCY A    POLICE OFFICER         80016        │
+     3 │ ANTHONY A  POLICE OFFICER         72510        │
+     4 │ ALBA M     POLICE CADET                   9.46 │
+     5 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+     6 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+     7 │ VICTOR A   FIREFIGHTER-EMT        99324        │
+     8 │ LAKENYA A  CROSSING GUARD                17.68 │
+     9 │ DORIS A    CROSSING GUARD                19.38 │
+    10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
     =#
 
 Regular Julia values and functions could be used to create query components.
@@ -140,9 +146,11 @@ composition combinator.
     ──┼───────┼
     1 │  true │
     2 │ false │
-    3 │  true │
-    4 │ false │
+    3 │ false │
+    4 │  true │
     5 │ false │
+    6 │ false │
+    7 │ false │
     =#
 
 However, this only gives us a list of bare Boolean values disconnected from the
@@ -153,16 +161,19 @@ combinator.
                                 It.salary,
                                 :salary_over_100k => SalaryOver100K)]
     #=>
-      │ employee                            │
-      │ name       salary  salary_over_100k │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  101442              true │
-    2 │ NANCY A     80016             false │
-    3 │ JAMES A    103350              true │
-    4 │ DANIEL A    95484             false │
-    5 │ LAKENYA A                           │
-    6 │ DORIS A                             │
-    7 │ BRENDA B    64392             false │
+       │ employee                            │
+       │ name       salary  salary_over_100k │
+    ───┼─────────────────────────────────────┼
+     1 │ JEFFERY A  101442              true │
+     2 │ NANCY A     80016             false │
+     3 │ ANTHONY A   72510             false │
+     4 │ ALBA M                              │
+     5 │ JAMES A    103350              true │
+     6 │ DANIEL A    95484             false │
+     7 │ VICTOR A    99324             false │
+     8 │ LAKENYA A                           │
+     9 │ DORIS A                             │
+    10 │ BRENDA B    64392             false │
     =#
 
 To actually filter the data using this predicate query, we need to use the
@@ -406,8 +417,8 @@ The query `Record(X₁, X₂ … Xₙ)` emits records with the fields generated 
       │ department   │
       │ name    size │
     ──┼──────────────┼
-    1 │ POLICE     2 │
-    2 │ FIRE       2 │
+    1 │ POLICE     4 │
+    2 │ FIRE       3 │
     3 │ OEMC       3 │
     =#
 
@@ -422,8 +433,8 @@ is assigned.
       │ department │
       │ name    #B │
     ──┼────────────┼
-    1 │ POLICE   2 │
-    2 │ FIRE     2 │
+    1 │ POLICE   4 │
+    2 │ FIRE     3 │
     3 │ OEMC     3 │
     =#
 
@@ -434,12 +445,12 @@ Similarly, when there are duplicate labels, only the last one survives.
 
     chicago[Q]
     #=>
-      │ department                           │
-      │ #A      name                         │
-    ──┼──────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A; NANCY A           │
-    2 │ FIRE    JAMES A; DANIEL A            │
-    3 │ OEMC    LAKENYA A; DORIS A; BRENDA B │
+      │ department                                    │
+      │ #A      name                                  │
+    ──┼───────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
+    2 │ FIRE    JAMES A; DANIEL A; VICTOR A           │
+    3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
     =#
 
 
@@ -526,16 +537,19 @@ Functions of multiple arguments are also supported.
 
     chicago[Q]
     #=>
-      │ employee                 │
-      │ name       salary  #C    │
-    ──┼──────────────────────────┼
-    1 │ JEFFERY A  101442   true │
-    2 │ NANCY A     80016  false │
-    3 │ JAMES A    103350   true │
-    4 │ DANIEL A    95484  false │
-    5 │ LAKENYA A                │
-    6 │ DORIS A                  │
-    7 │ BRENDA B    64392  false │
+       │ employee                 │
+       │ name       salary  #C    │
+    ───┼──────────────────────────┼
+     1 │ JEFFERY A  101442   true │
+     2 │ NANCY A     80016  false │
+     3 │ ANTHONY A   72510  false │
+     4 │ ALBA M                   │
+     5 │ JAMES A    103350   true │
+     6 │ DANIEL A    95484  false │
+     7 │ VICTOR A    99324  false │
+     8 │ LAKENYA A                │
+     9 │ DORIS A                  │
+    10 │ BRENDA B    64392  false │
     =#
 
 Just as functions with no arguments.
@@ -567,7 +581,7 @@ Functions with vector arguments are supported.
     #=>
     │ It      │
     ┼─────────┼
-    │ 88936.8 │
+    │ 88074.0 │
     =#
 
 Just like with regular values, `missing` and vector results are interpreted as
@@ -605,7 +619,7 @@ Julia functions are lifted when they are broadcasted over queries.
     #=>
     │ It      │
     ┼─────────┼
-    │ 88936.8 │
+    │ 88074.0 │
     =#
 
 
@@ -620,7 +634,7 @@ Julia functions are lifted when they are broadcasted over queries.
     #=>
     │ It │
     ┼────┼
-    │  7 │
+    │ 10 │
     =#
 
     Q = It.department >> Each(It.employee >> Count)
@@ -630,8 +644,8 @@ Julia functions are lifted when they are broadcasted over queries.
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │  2 │
+    1 │  4 │
+    2 │  3 │
     3 │  3 │
     =#
 
@@ -647,8 +661,8 @@ queries.
       │ department │
       │ name    #B │
     ──┼────────────┼
-    1 │ POLICE   2 │
-    2 │ FIRE     2 │
+    1 │ POLICE   4 │
+    2 │ FIRE     3 │
     3 │ OEMC     3 │
     =#
 
@@ -660,8 +674,8 @@ queries.
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │  2 │
+    1 │  4 │
+    2 │  3 │
     3 │  3 │
     =#
 
@@ -711,8 +725,8 @@ We use `Tag()` constructor to assign a name to a query.
       │ department        │
       │ name    dept_size │
     ──┼───────────────────┼
-    1 │ POLICE          2 │
-    2 │ FIRE            2 │
+    1 │ POLICE          4 │
+    2 │ FIRE            3 │
     3 │ OEMC            3 │
     =#
 
@@ -783,8 +797,8 @@ preserved.
     #=>
       │ It │
     ──┼────┼
-    1 │  2 │
-    2 │  2 │
+    1 │  4 │
+    2 │  3 │
     3 │  3 │
     =#
 
@@ -798,16 +812,19 @@ Same notation is used to extract values of context parameters defined with
 
     chicago[Q]
     #=>
-      │ employee             │
-      │ dept_name  name      │
-    ──┼──────────────────────┼
-    1 │ POLICE     JEFFERY A │
-    2 │ POLICE     NANCY A   │
-    3 │ FIRE       JAMES A   │
-    4 │ FIRE       DANIEL A  │
-    5 │ OEMC       LAKENYA A │
-    6 │ OEMC       DORIS A   │
-    7 │ OEMC       BRENDA B  │
+       │ employee             │
+       │ dept_name  name      │
+    ───┼──────────────────────┼
+     1 │ POLICE     JEFFERY A │
+     2 │ POLICE     NANCY A   │
+     3 │ POLICE     ANTHONY A │
+     4 │ POLICE     ALBA M    │
+     5 │ FIRE       JAMES A   │
+     6 │ FIRE       DANIEL A  │
+     7 │ FIRE       VICTOR A  │
+     8 │ OEMC       LAKENYA A │
+     9 │ OEMC       DORIS A   │
+    10 │ OEMC       BRENDA B  │
     =#
 
 A context parameter is preferred if it has the same name as a record field.
@@ -819,16 +836,19 @@ A context parameter is preferred if it has the same name as a record field.
 
     chicago[Q]
     #=>
-      │ employee                     │
-      │ name    position             │
-    ──┼──────────────────────────────┼
-    1 │ POLICE  SERGEANT             │
-    2 │ POLICE  POLICE OFFICER       │
-    3 │ FIRE    FIRE ENGINEER-EMT    │
-    4 │ FIRE    FIRE FIGHTER-EMT     │
-    5 │ OEMC    CROSSING GUARD       │
-    6 │ OEMC    CROSSING GUARD       │
-    7 │ OEMC    TRAFFIC CONTROL AIDE │
+       │ employee                     │
+       │ name    position             │
+    ───┼──────────────────────────────┼
+     1 │ POLICE  SERGEANT             │
+     2 │ POLICE  POLICE OFFICER       │
+     3 │ POLICE  POLICE OFFICER       │
+     4 │ POLICE  POLICE CADET         │
+     5 │ FIRE    FIRE ENGINEER-EMT    │
+     6 │ FIRE    FIREFIGHTER-EMT      │
+     7 │ FIRE    FIREFIGHTER-EMT      │
+     8 │ OEMC    CROSSING GUARD       │
+     9 │ OEMC    CROSSING GUARD       │
+    10 │ OEMC    TRAFFIC CONTROL AIDE │
     =#
 
 If there is no attribute with the given name, an error is reported.
@@ -899,16 +919,19 @@ We use the combinator `Keep()` to assign a value to a context parameter.
 
     chicago[Q]
     #=>
-      │ employee             │
-      │ dept_name  name      │
-    ──┼──────────────────────┼
-    1 │ POLICE     JEFFERY A │
-    2 │ POLICE     NANCY A   │
-    3 │ FIRE       JAMES A   │
-    4 │ FIRE       DANIEL A  │
-    5 │ OEMC       LAKENYA A │
-    6 │ OEMC       DORIS A   │
-    7 │ OEMC       BRENDA B  │
+       │ employee             │
+       │ dept_name  name      │
+    ───┼──────────────────────┼
+     1 │ POLICE     JEFFERY A │
+     2 │ POLICE     NANCY A   │
+     3 │ POLICE     ANTHONY A │
+     4 │ POLICE     ALBA M    │
+     5 │ FIRE       JAMES A   │
+     6 │ FIRE       DANIEL A  │
+     7 │ FIRE       VICTOR A  │
+     8 │ OEMC       LAKENYA A │
+     9 │ OEMC       DORIS A   │
+    10 │ OEMC       BRENDA B  │
     =#
 
 Several context parameters could be defined together.
@@ -924,8 +947,9 @@ Several context parameters could be defined together.
       │ name       position           salary  rate  │
     ──┼─────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442        │
-    2 │ JAMES A    FIRE ENGINEER-EMT  103350        │
-    3 │ LAKENYA A  CROSSING GUARD             17.68 │
+    2 │ NANCY A    POLICE OFFICER      80016        │
+    3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+    4 │ LAKENYA A  CROSSING GUARD             17.68 │
     =#
 
 `Keep()` requires that the parameter is labeled.
@@ -941,6 +965,7 @@ Several context parameters could be defined together.
     Q = It.department >>
         Keep(:current_name => It.name) >>
         It.employee >>
+        Filter(It.current_name .== "POLICE") >>
         Keep(:current_name => It.name) >>
         It.current_name
 
@@ -950,11 +975,8 @@ Several context parameters could be defined together.
     ──┼──────────────┼
     1 │ JEFFERY A    │
     2 │ NANCY A      │
-    3 │ JAMES A      │
-    4 │ DANIEL A     │
-    5 │ LAKENYA A    │
-    6 │ DORIS A      │
-    7 │ BRENDA B     │
+    3 │ ANTHONY A    │
+    4 │ ALBA M       │
     =#
 
 Combinator `Given()` is used to evaluate a query with the given context
@@ -976,8 +998,9 @@ parameters.
       │ name       position           salary  rate  │
     ──┼─────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442        │
-    2 │ JAMES A    FIRE ENGINEER-EMT  103350        │
-    3 │ LAKENYA A  CROSSING GUARD             17.68 │
+    2 │ NANCY A    POLICE OFFICER      80016        │
+    3 │ JAMES A    FIRE ENGINEER-EMT  103350        │
+    4 │ LAKENYA A  CROSSING GUARD             17.68 │
     =#
 
 `Given()` does not let any parameters defined within its scope escape it.
@@ -989,15 +1012,18 @@ parameters.
 
     chicago[Q]
     #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    2 │ NANCY A   │
-    3 │ JAMES A   │
-    4 │ DANIEL A  │
-    5 │ LAKENYA A │
-    6 │ DORIS A   │
-    7 │ BRENDA B  │
+       │ name      │
+    ───┼───────────┼
+     1 │ JEFFERY A │
+     2 │ NANCY A   │
+     3 │ ANTHONY A │
+     4 │ ALBA M    │
+     5 │ JAMES A   │
+     6 │ DANIEL A  │
+     7 │ VICTOR A  │
+     8 │ LAKENYA A │
+     9 │ DORIS A   │
+    10 │ BRENDA B  │
     =#
 
 
@@ -1006,48 +1032,48 @@ parameters.
 `Count(X)`, `Sum(X)`, `Max(X)`, `Min(X)` evaluate the `X` and emit the number
 of elements, their sum, maximum, and minimum respectively.
 
-    Salary = It.department.employee.salary
+    Rate = It.department.employee.rate
 
-    Q = Record(Salary,
-               :count => Count(Salary),
-               :sum => Sum(Salary),
-               :max => Max(Salary),
-               :min => Min(Salary))
+    Q = Record(Rate,
+               :count => Count(Rate),
+               :sum => Sum(Rate),
+               :max => Max(Rate),
+               :min => Min(Rate))
     #=>
-    Record(It.department.employee.salary,
-           :count => Count(It.department.employee.salary),
-           :sum => Sum(It.department.employee.salary),
-           :max => Max(It.department.employee.salary),
-           :min => Min(It.department.employee.salary))
+    Record(It.department.employee.rate,
+           :count => Count(It.department.employee.rate),
+           :sum => Sum(It.department.employee.rate),
+           :max => Max(It.department.employee.rate),
+           :min => Min(It.department.employee.rate))
     =#
 
     chicago[Q]
     #=>
-    │ salary                               count  sum     max     min   │
-    ┼───────────────────────────────────────────────────────────────────┼
-    │ 101442; 80016; 103350; 95484; 64392      5  444684  103350  64392 │
+    │ rate                count  sum    max    min  │
+    ┼───────────────────────────────────────────────┼
+    │ 9.46; 17.68; 19.38      3  46.52  19.38  9.46 │
     =#
 
 `Count`, `Sum`, `Max`, and `Min` could also be used as aggregate primitives.
 
-    Q = Record(Salary,
-               :count => Salary >> Count,
-               :sum => Salary >> Sum,
-               :max => Salary >> Max,
-               :min => Salary >> Min)
+    Q = Record(Rate,
+               :count => Rate >> Count,
+               :sum => Rate >> Sum,
+               :max => Rate >> Max,
+               :min => Rate >> Min)
     #=>
-    Record(It.department.employee.salary,
-           :count => It.department.employee.salary >> Count,
-           :sum => It.department.employee.salary >> Sum,
-           :max => It.department.employee.salary >> Max,
-           :min => It.department.employee.salary >> Min)
+    Record(It.department.employee.rate,
+           :count => It.department.employee.rate >> Count,
+           :sum => It.department.employee.rate >> Sum,
+           :max => It.department.employee.rate >> Max,
+           :min => It.department.employee.rate >> Min)
     =#
 
     chicago[Q]
     #=>
-    │ salary                               count  sum     max     min   │
-    ┼───────────────────────────────────────────────────────────────────┼
-    │ 101442; 80016; 103350; 95484; 64392      5  444684  103350  64392 │
+    │ rate                count  sum    max    min  │
+    ┼───────────────────────────────────────────────┼
+    │ 9.46; 17.68; 19.38      3  46.52  19.38  9.46 │
     =#
 
 When applied to an empty input, `Sum` emits `0`, `Min` and `Max` emit no
@@ -1068,7 +1094,7 @@ output.
       │ department                                       │
       │ name    rate          count  sum    max    min   │
     ──┼──────────────────────────────────────────────────┼
-    1 │ POLICE                    0   0.0                │
+    1 │ POLICE  9.46              1   9.46   9.46   9.46 │
     2 │ FIRE                      0   0.0                │
     3 │ OEMC    17.68; 19.38      2  37.06  19.38  17.68 │
     =#
@@ -1114,11 +1140,11 @@ The input data is dropped when the output of the predicate contains only
 
     chicago[Q]
     #=>
-      │ department            │
-      │ name    salary        │
-    ──┼───────────────────────┼
-    1 │ POLICE  101442; 80016 │
-    2 │ FIRE    103350; 95484 │
+      │ department                   │
+      │ name    salary               │
+    ──┼──────────────────────────────┼
+    1 │ POLICE  101442; 80016; 72510 │
+    2 │ FIRE    103350; 95484; 99324 │
     =#
 
 
@@ -1126,61 +1152,58 @@ The input data is dropped when the output of the predicate contains only
 
 We use `Take(N)` and `Drop(N)` to pass or drop the first `N` input elements.
 
-    Employee = It.department.employee
+    Employee =
+        It.department >>
+        Filter(It.name .== "POLICE") >>
+        It.employee
 
-    Q = Employee >> Take(4)
-    #-> It.department.employee >> Take(4)
+    Q = Employee >> Take(3)
+    #-> It.department >> Filter(It.name .== "POLICE") >> It.employee >> Take(3)
 
     chicago[Q]
     #=>
-      │ employee                                   │
-      │ name       position           salary  rate │
-    ──┼────────────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT           101442       │
-    2 │ NANCY A    POLICE OFFICER      80016       │
-    3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
-    4 │ DANIEL A   FIRE FIGHTER-EMT    95484       │
+      │ employee                                │
+      │ name       position        salary  rate │
+    ──┼─────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442       │
+    2 │ NANCY A    POLICE OFFICER   80016       │
+    3 │ ANTHONY A  POLICE OFFICER   72510       │
     =#
 
-    Q = Employee >> Drop(4)
-    #-> It.department.employee >> Drop(4)
+    Q = Employee >> Drop(3)
+    #-> It.department >> Filter(It.name .== "POLICE") >> It.employee >> Drop(3)
 
     chicago[Q]
     #=>
-      │ employee                                       │
-      │ name       position              salary  rate  │
-    ──┼────────────────────────────────────────────────┼
-    1 │ LAKENYA A  CROSSING GUARD                17.68 │
-    2 │ DORIS A    CROSSING GUARD                19.38 │
-    3 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+      │ employee                           │
+      │ name    position      salary  rate │
+    ──┼────────────────────────────────────┼
+    1 │ ALBA M  POLICE CADET          9.46 │
     =#
 
 `Take(-N)` drops the last `N` elements, while `Drop(-N)` keeps the last `N`
 elements.
 
-    Q = Employee >> Take(-4)
+    Q = Employee >> Take(-3)
 
     chicago[Q]
     #=>
-      │ employee                                   │
-      │ name       position           salary  rate │
-    ──┼────────────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT           101442       │
-    2 │ NANCY A    POLICE OFFICER      80016       │
-    3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+      │ employee                          │
+      │ name       position  salary  rate │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT  101442       │
     =#
 
-    Q = Employee >> Drop(-4)
+    Q = Employee >> Drop(-3)
 
     chicago[Q]
     #=>
-      │ employee                                       │
-      │ name       position              salary  rate  │
-    ──┼────────────────────────────────────────────────┼
-    1 │ DANIEL A   FIRE FIGHTER-EMT       95484        │
-    2 │ LAKENYA A  CROSSING GUARD                17.68 │
-    3 │ DORIS A    CROSSING GUARD                19.38 │
-    4 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+      │ employee                                │
+      │ name       position        salary  rate │
+    ──┼─────────────────────────────────────────┼
+    1 │ NANCY A    POLICE OFFICER   80016       │
+    2 │ ANTHONY A  POLICE OFFICER   72510       │
+    3 │ ALBA M     POLICE CADET            9.46 │
     =#
 
 `Take` and `Drop` accept a query argument, which is evaluated against the input
@@ -1192,12 +1215,11 @@ source and must produce a singular integer.
 
     chicago[Q]
     #=>
-      │ employee                                   │
-      │ name       position           salary  rate │
-    ──┼────────────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT           101442       │
-    2 │ NANCY A    POLICE OFFICER      80016       │
-    3 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+      │ employee                                │
+      │ name       position        salary  rate │
+    ──┼─────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442       │
+    2 │ NANCY A    POLICE OFFICER   80016       │
     =#
 
     Q = Take(Employee >> It.name)
@@ -1220,10 +1242,11 @@ We use the `Group` combinator to group the input by the given key.
     ──┼────────────────────────────────────────────────────────────────────────────…
     1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…
     2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing          …
-    3 │ FIRE FIGHTER-EMT      DANIEL A, FIRE FIGHTER-EMT, 95484, missing           …
-    4 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing              …
-    5 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
-    6 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
+    3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; VICTOR A, …
+    4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46                  …
+    5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; ANTHONY A, P…
+    6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
+    7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
     =#
 
 Arbitrary key expressions are supported.
@@ -1236,8 +1259,8 @@ Arbitrary key expressions are supported.
     #=>
       │ size  count │
     ──┼─────────────┼
-    1 │    2      2 │
-    2 │    3      1 │
+    1 │    3      2 │
+    2 │    4      1 │
     =#
 
 Empty keys are placed on top.
@@ -1250,11 +1273,12 @@ Empty keys are placed on top.
     #=>
       │ grade  n │
     ──┼──────────┼
-    1 │        2 │
+    1 │        3 │
     2 │     6  1 │
-    3 │     8  1 │
-    4 │     9  1 │
-    5 │    10  2 │
+    3 │     7  1 │
+    4 │     8  1 │
+    5 │     9  2 │
+    6 │    10  2 │
     =#
 
 More than one key column could be provided.
@@ -1268,19 +1292,19 @@ More than one key column could be provided.
     #=>
       │ #A     #B     #C │
     ──┼──────────────────┼
-    1 │ false   true   5 │
-    2 │  true  false   2 │
+    1 │ false   true   7 │
+    2 │  true  false   3 │
     =#
 
 In the query form, `Group` creates a one-element record with its input.
 
-    Q = It.department.employee.name >> Group
-    #-> It.department.employee.name >> Group
+    Q = It.department.employee.salary >> Group
+    #-> It.department.employee.salary >> Group
 
     chicago[Q]
     #=>
-    │ name                                                                │
-    ┼─────────────────────────────────────────────────────────────────────┼
-    │ JEFFERY A; NANCY A; JAMES A; DANIEL A; LAKENYA A; DORIS A; BRENDA B │
+    │ salary                                            │
+    ┼───────────────────────────────────────────────────┼
+    │ 101442; 80016; 72510; 103350; 95484; 99324; 64392 │
     =#
 
