@@ -606,73 +606,6 @@ with a higher than average salary for their department.
     2 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
 
-## Paging Data
-
-Sometimes query results can be quite large. In this case it's
-helpful to `Take` or `Drop` items from the input. Let's start by
-listing all 5 employees of our toy database.
-
-    Employee = It.department.employee
-    chicago[Employee]
-    #=>
-      │ employee                           │
-      │ name       position         salary │
-    ──┼────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT         101442 │
-    2 │ NANCY A    POLICE OFFICER    80016 │
-    3 │ TONY A     POLICE OFFICER    72510 │
-    4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
-    5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
-    =#
-
-To return only the first 2 records, we use `Take`.
-
-    chicago[Employee >> Take(2)]
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
-
-A negative index counts records from the end of the input. So, to
-return all the records but the last two, we write:
-
-    chicago[Employee >> Take(-2)]
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    3 │ TONY A     POLICE OFFICER   72510 │
-    =#
-
-To skip the first two records, returning the rest, we use `Drop`.
-
-    chicago[Employee >> Drop(2)]
-    #=>
-      │ employee                          │
-      │ name      position         salary │
-    ──┼───────────────────────────────────┼
-    1 │ TONY A    POLICE OFFICER    72510 │
-    2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
-    3 │ VICTOR A  FIREFIGHTER-EMT   99324 │
-    =#
-
-To return the 1st half of the employees in the database, we could
-use `Take` with an argument that computes how many to take.
-
-    chicago[Employee >> Take(Count(Employee) .÷ 2)]
-    #=>
-      │ employee                          │
-      │ name       position        salary │
-    ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    =#
-
 ## Query Parameters
 
 Parameters let us reuse complex queries without changing their
@@ -783,6 +716,73 @@ Specifically, `It.AMT` is not available outside `EmployeesOver()`.
 
     chicago[EmployeesOver(MeanSalary) >> It.AMT]
     #-> ERROR: cannot find "AMT" ⋮
+
+## Paging Data
+
+Sometimes query results can be quite large. In this case it's
+helpful to `Take` or `Drop` items from the input. Let's start by
+listing all 5 employees of our toy database.
+
+    Employee = It.department.employee
+    chicago[Employee]
+    #=>
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ NANCY A    POLICE OFFICER    80016 │
+    3 │ TONY A     POLICE OFFICER    72510 │
+    4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+    =#
+
+To return only the first 2 records, we use `Take`.
+
+    chicago[Employee >> Take(2)]
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
+
+A negative index counts records from the end of the input. So, to
+return all the records but the last two, we write:
+
+    chicago[Employee >> Take(-2)]
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    3 │ TONY A     POLICE OFFICER   72510 │
+    =#
+
+To skip the first two records, returning the rest, we use `Drop`.
+
+    chicago[Employee >> Drop(2)]
+    #=>
+      │ employee                          │
+      │ name      position         salary │
+    ──┼───────────────────────────────────┼
+    1 │ TONY A    POLICE OFFICER    72510 │
+    2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
+    3 │ VICTOR A  FIREFIGHTER-EMT   99324 │
+    =#
+
+To return the 1st half of the employees in the database, we could
+use `Take` with an argument that computes how many to take.
+
+    chicago[Employee >> Take(Count(Employee) .÷ 2)]
+    #=>
+      │ employee                          │
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
 
 ## Extracting Data
 
