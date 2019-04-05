@@ -258,7 +258,7 @@ be done via the `Tables.jl` interface.
     schema(unitknot["Hello"])
     #=>
     Tables.Schema:
-     :it  String
+     :It  String
     =#
 
     schema(unitknot[:label => 42])
@@ -270,16 +270,10 @@ be done via the `Tables.jl` interface.
     schema(unitknot[[1,2]])
     #=>
     Tables.Schema:
-     :it  Int
+     :It  Int
     =#
 
     schema(unitknot[:label => [1,2]])
-    #=>
-    Tables.Schema:
-     :label  Int
-    =#
-
-    schema(unitknot[:label => (1,)])
     #=>
     Tables.Schema:
      :label  Int

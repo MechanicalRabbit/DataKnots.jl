@@ -161,50 +161,18 @@ quoteof(db::DataKnot) =
 Tables.istable(::Type{<:DataKnot}) = true
 Tables.columnaccess(::Type{<:DataKnot}) = true
 
-function tuple_labels(length, label)
-    if length > 1 || label == nothing
-        return [ordinal_label(n) for n in 1:length]
-    else
-        return [Symbol(label)]
-    end
-end
-
-function schema(shp::TupleOf, label=nothing)
-    names = labels(shp)
-    types = eltype.(columns(shp))
-    if isempty(names)
-        names = tuple_labels(length(types), label)
-    end
-    return Tables.Schema(names, types)
-end
-
-function schema(shp::ValueOf, label=nothing)
-    typ = eltype(shp)
-    if typ <: Tuple
-        types = typ.parameters
-        names = tuple_labels(length(types), label)
-        return Tables.Schema(names, types)
-    elseif typ <: NamedTuple
-        names = typ.parameters[1]
-        types = typ.parameters[2].parameters
-        return Tables.Schema(names, types)
-    else
-        names = [label==nothing ? :it : label]
-        return Tables.Schema(names, [typ])
-    end
-end
-
-schema(shp::BlockOf, label=nothing) =
-    schema(elements(shp), label)
-schema(shp::IsLabeled, ignored=nothing) =
-    schema(subject(shp), label(shp))
-
-#columns(tv::TupleVector, labels::Vector{Symbol})
-
 Tables.schema(knot::DataKnot) =
-    schema(shape(knot))
-#Tables.columns(knot::DataKnot) =
-#    columns(get(knot), schema(knot).names)
+    let data = Tables.columns(knot)
+        Tables.Schema(propertynames(data),
+                      eltype.(values(data)))
+    end
+
+Tables.columns(knot::DataKnot) =
+    let td = table_data(knot),
+        names = tuple([Symbol(x) for (x,y) in 
+                       td.head[size(td.head)[1],:]]...)
+        NamedTuple{names}(columns(td.body))
+    end
 
 function fromtable(table::Any,
                    card::Union{Cardinality, Symbol} = x0toN)
@@ -235,7 +203,7 @@ function show(io::IO, db::DataKnot)
 end
 
 function render_dataknot(maxx::Int, maxy::Int, db::DataKnot)
-    d = table_data(db, maxy)
+    d = tear_data(table_data(db), maxy)
     l = table_layout(d, maxx)
     c = table_draw(l, maxx)
     return lines!(c)
@@ -261,7 +229,7 @@ TableData(d::TableData; head=nothing, body=nothing, shp=nothing, idxs=nothing, t
               idxs !== nothing ? idxs : d.idxs,
               tear !== nothing ? tear : d.tear)
 
-function table_data(db::DataKnot, maxy::Int)
+function table_data(db::DataKnot)
     shp = shape(db)
     title = String(getlabel(shp, ""))
     shp = relabel(shp, nothing)
@@ -269,7 +237,7 @@ function table_data(db::DataKnot, maxy::Int)
     body = TupleVector(1, AbstractVector[cell(db)])
     shp = TupleOf(shp)
     d = TableData(head, body, shp)
-    return tear_data(default_data_header(focus_data(d, 1)), maxy)
+    return default_data_header(focus_data(d, 1))
 end
 
 focus_data(d::TableData, pos) =
