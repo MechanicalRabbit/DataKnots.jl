@@ -195,23 +195,24 @@ function schema(shp::ValueOf, label=nothing)
 end
 
 schema(shp::BlockOf, label=nothing) =
-   schema(elements(shp), label)
+    schema(elements(shp), label)
 schema(shp::IsLabeled, ignored=nothing) =
-   schema(subject(shp), label(shp))
+    schema(subject(shp), label(shp))
 
-Tables.schema(knot::DataKnot) = schema(shape(knot))
+#columns(tv::TupleVector, labels::Vector{Symbol})
+
+Tables.schema(knot::DataKnot) =
+    schema(shape(knot))
+#Tables.columns(knot::DataKnot) =
+#    columns(get(knot), schema(knot).names)
 
 function fromtable(table::Any,
                    card::Union{Cardinality, Symbol} = x0toN)
-    schema = Tables.schema(table)
-    if schema === nothing
-        throw(ArgumentError("not a table: $(typeof(table))"))
-    end
     card = convert(Cardinality, card)
     cols = Tables.columns(table)
     head = Symbol[]
     vals = AbstractVector[]
-    for (t, n) in zip(schema.types, schema.names)
+    for n in propertynames(cols)
         push!(head, n)
         c = getproperty(cols, n)
         push!(vals, c)
