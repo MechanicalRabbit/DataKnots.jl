@@ -668,6 +668,28 @@ broadcasting notation.
     5 │ Victor A  │
     =#
 
+This broadcast syntax is also used with operators. For example,
+let's display and compute a 2% Cost Of Living Adjustment ("COLA").
+
+    COLA = trunc.(Int, It.salary .* 0.02)
+
+    chicago[
+        It.department.employee >>
+        Record(It.name, 
+               :old_salary => It.salary, 
+               :cola       => "+" .* string.(COLA),
+               :new_salary => It.salary .+ COLA)]
+    #=>
+      │ employee                                 │
+      │ name       old_salary  cola   new_salary │
+    ──┼──────────────────────────────────────────┼
+    1 │ ANTHONY A       72510  +1450       73960 │
+    2 │ JEFFERY A      101442  +2028      103470 │
+    3 │ NANCY A         80016  +1600       81616 │
+    4 │ DANIEL A        95484  +1909       97393 │
+    5 │ VICTOR A        99324  +1986      101310 │
+    =#
+
 Functions taking a vector argument, such as `mean`, can also be
 applied to queries. In this example, `mean` computes the average
 employee salary by department.
