@@ -545,6 +545,20 @@ measures, such as `PayGap` and `AvgPay`.
     2 │ FIRE      7788  99378.0 │
     =#
 
+`Unique` is another combinator producing a summary value. Here, we
+use `Unique` to return distinct positions by department.
+
+    chicago[It.department >>
+            Record(It.name,
+                   Unique(It.employee.position))]
+    #=>
+      │ department                       │
+      │ name    position                 │
+    ──┼──────────────────────────────────┼
+    1 │ POLICE  POLICE OFFICER; SERGEANT │
+    2 │ FIRE    FIREFIGHTER-EMT          │
+    =#
+
 ## Grouping Data
 
 So far, we've navigated and summarized data by exploiting its
@@ -661,19 +675,6 @@ Further, grouping could be done with any number of expressions.
     2 │  false  POLICE OFFICER   ANTHONY A; NANCY A │
     3 │   true  FIREFIGHTER-EMT  ROBERT K           │
     4 │   true  SERGEANT         JEFFERY A          │
-    =#
-
-Of course, we could list unique positions.
-
-    chicago[It.department >>
-            Record(It.name,
-                   Unique(It.employee.position))]
-    #=>
-      │ department                       │
-      │ name    position                 │
-    ──┼──────────────────────────────────┼
-    1 │ POLICE  POLICE OFFICER; SERGEANT │
-    2 │ FIRE    FIREFIGHTER-EMT          │
     =#
 
 ## Broadcasting over Queries
