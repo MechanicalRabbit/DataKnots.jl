@@ -54,7 +54,7 @@ holds associated employee records.
                 (name     = "FIRE",
                  employee = ["JAMES A"      "FIRE ENGINEER-EMT"     103350      missing
                              "DANIEL A"     "FIREFIGHTER-EMT"       95484       missing
-                             "VICTOR A"     "FIREFIGHTER-EMT"       99324       missing]),
+                             "ROBERT K"     "FIREFIGHTER-EMT"       103272      missing]),
                 (name     = "OEMC",
                  employee = ["LAKENYA A"    "CROSSING GUARD"        missing     17.68
                              "DORIS A"      "CROSSING GUARD"        missing     19.38
@@ -103,7 +103,7 @@ query is also a `DataKnot`.
      4 │ ALBA M     POLICE CADET                   9.46 │
      5 │ JAMES A    FIRE ENGINEER-EMT     103350        │
      6 │ DANIEL A   FIREFIGHTER-EMT        95484        │
-     7 │ VICTOR A   FIREFIGHTER-EMT        99324        │
+     7 │ ROBERT K   FIREFIGHTER-EMT       103272        │
      8 │ LAKENYA A  CROSSING GUARD                17.68 │
      9 │ DORIS A    CROSSING GUARD                19.38 │
     10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
@@ -150,7 +150,7 @@ composition combinator.
     3 │ false │
     4 │  true │
     5 │ false │
-    6 │ false │
+    6 │  true │
     7 │ false │
     =#
 
@@ -171,7 +171,7 @@ combinator.
      4 │ ALBA M                              │
      5 │ JAMES A    103350              true │
      6 │ DANIEL A    95484             false │
-     7 │ VICTOR A    99324             false │
+     7 │ ROBERT K   103272              true │
      8 │ LAKENYA A                           │
      9 │ DORIS A                             │
     10 │ BRENDA B    64392             false │
@@ -190,6 +190,7 @@ To actually filter the data using this predicate query, we need to use the
     ──┼────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442       │
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+    3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
     =#
 
 DataKnots provides a number of useful query constructors.  For example, to find
@@ -199,7 +200,7 @@ the number of items produced by a query, we can use the `Count` combinator.
     #=>
     │ It │
     ┼────┼
-    │  2 │
+    │  3 │
     =#
 
 In general, query algebra forms an XPath-like domain-specific language.  It is
@@ -322,6 +323,7 @@ Applying this pipeline to the input data gives us the output of the query.
     ──┼────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442       │
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+    3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
     =#
 
 ## API Reference
@@ -450,7 +452,7 @@ Similarly, when there are duplicate labels, only the last one survives.
       │ #A      name                                  │
     ──┼───────────────────────────────────────────────┼
     1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
-    2 │ FIRE    JAMES A; DANIEL A; VICTOR A           │
+    2 │ FIRE    JAMES A; DANIEL A; ROBERT K           │
     3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
     =#
 
@@ -547,7 +549,7 @@ Functions of multiple arguments are also supported.
      4 │ ALBA M                   │
      5 │ JAMES A    103350   true │
      6 │ DANIEL A    95484  false │
-     7 │ VICTOR A    99324  false │
+     7 │ ROBERT K   103272   true │
      8 │ LAKENYA A                │
      9 │ DORIS A                  │
     10 │ BRENDA B    64392  false │
@@ -582,7 +584,7 @@ Functions with vector arguments are supported.
     #=>
     │ It      │
     ┼─────────┼
-    │ 88074.0 │
+    │ 88638.0 │
     =#
 
 Just like with regular values, `missing` and vector results are interpreted as
@@ -620,7 +622,7 @@ Julia functions are lifted when they are broadcasted over queries.
     #=>
     │ It      │
     ┼─────────┼
-    │ 88074.0 │
+    │ 88638.0 │
     =#
 
 
@@ -754,6 +756,7 @@ We use `Tag()` constructor to assign a name to a query.
     ──┼────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT           101442       │
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
+    3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
     =#
 
 
@@ -822,7 +825,7 @@ Same notation is used to extract values of context parameters defined with
      4 │ POLICE     ALBA M    │
      5 │ FIRE       JAMES A   │
      6 │ FIRE       DANIEL A  │
-     7 │ FIRE       VICTOR A  │
+     7 │ FIRE       ROBERT K  │
      8 │ OEMC       LAKENYA A │
      9 │ OEMC       DORIS A   │
     10 │ OEMC       BRENDA B  │
@@ -929,7 +932,7 @@ We use the combinator `Keep()` to assign a value to a context parameter.
      4 │ POLICE     ALBA M    │
      5 │ FIRE       JAMES A   │
      6 │ FIRE       DANIEL A  │
-     7 │ FIRE       VICTOR A  │
+     7 │ FIRE       ROBERT K  │
      8 │ OEMC       LAKENYA A │
      9 │ OEMC       DORIS A   │
     10 │ OEMC       BRENDA B  │
@@ -1021,7 +1024,7 @@ parameters.
      4 │ ALBA M    │
      5 │ JAMES A   │
      6 │ DANIEL A  │
-     7 │ VICTOR A  │
+     7 │ ROBERT K  │
      8 │ LAKENYA A │
      9 │ DORIS A   │
     10 │ BRENDA B  │
@@ -1141,11 +1144,11 @@ The input data is dropped when the output of the predicate contains only
 
     chicago[Q]
     #=>
-      │ department                   │
-      │ name    salary               │
-    ──┼──────────────────────────────┼
-    1 │ POLICE  101442; 80016; 72510 │
-    2 │ FIRE    103350; 95484; 99324 │
+      │ department                    │
+      │ name    salary                │
+    ──┼───────────────────────────────┼
+    1 │ POLICE  101442; 80016; 72510  │
+    2 │ FIRE    103350; 95484; 103272 │
     =#
 
 
@@ -1277,7 +1280,7 @@ We use the `Group` combinator to group the input by the given key.
     ──┼────────────────────────────────────────────────────────────────────────────…
     1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…
     2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing          …
-    3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; VICTOR A, …
+    3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; ROBERT K, …
     4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46                  …
     5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; ANTHONY A, P…
     6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
@@ -1312,8 +1315,8 @@ Empty keys are placed on top.
     2 │     6  1 │
     3 │     7  1 │
     4 │     8  1 │
-    5 │     9  2 │
-    6 │    10  2 │
+    5 │     9  1 │
+    6 │    10  3 │
     =#
 
 More than one key column could be provided.
