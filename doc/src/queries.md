@@ -24,6 +24,7 @@ We will need the following definitions.
         Sum,
         Tag,
         Take,
+        Unique,
         assemble,
         elements,
         optimize,
@@ -1228,7 +1229,41 @@ source and must produce a singular integer.
     #-> ERROR: expected a singular integer
 
 
-### `Group`
+### `Unique` and `Group`
+
+We use the `Unique` combinator to produce unique elements of a collection.
+
+    Q = It.department >>
+        Record(It.name, Unique(It.employee.position))
+    #-> It.department >> Record(It.name, Unique(It.employee.position))
+
+    chicago[Q]
+    #=>
+      │ department                                     │
+      │ name    position                               │
+    ──┼────────────────────────────────────────────────┼
+    1 │ POLICE  POLICE CADET; POLICE OFFICER; SERGEANT │
+    2 │ FIRE    FIRE ENGINEER-EMT; FIREFIGHTER-EMT     │
+    3 │ OEMC    CROSSING GUARD; TRAFFIC CONTROL AIDE   │
+    =#
+
+`Unique` also has a primitive query form.
+
+    Q = It.department.employee.position >> Unique
+    #-> It.department.employee.position >> Unique
+
+    chicago[Q]
+    #=>
+      │ position             │
+    ──┼──────────────────────┼
+    1 │ CROSSING GUARD       │
+    2 │ FIRE ENGINEER-EMT    │
+    3 │ FIREFIGHTER-EMT      │
+    4 │ POLICE CADET         │
+    5 │ POLICE OFFICER       │
+    6 │ SERGEANT             │
+    7 │ TRAFFIC CONTROL AIDE │
+    =#
 
 We use the `Group` combinator to group the input by the given key.
 
@@ -1294,17 +1329,5 @@ More than one key column could be provided.
     ──┼──────────────────┼
     1 │ false   true   7 │
     2 │  true  false   3 │
-    =#
-
-In the query form, `Group` creates a one-element record with its input.
-
-    Q = It.department.employee.salary >> Group
-    #-> It.department.employee.salary >> Group
-
-    chicago[Q]
-    #=>
-    │ salary                                            │
-    ┼───────────────────────────────────────────────────┼
-    │ 101442; 80016; 72510; 103350; 95484; 99324; 64392 │
     =#
 

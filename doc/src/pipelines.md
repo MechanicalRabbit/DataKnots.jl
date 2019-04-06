@@ -28,6 +28,7 @@ transformations.  We will use the following definitions:
         slice_by,
         tuple_lift,
         tuple_of,
+        unique_by,
         with_column,
         with_elements,
         wrap,
@@ -561,6 +562,20 @@ number of elements to keep.
 
 
 ### Grouping
+
+The pipeline `unique_by()` transforms a block vector by keeping one copy of
+each distinct value in each block.
+
+    p = unique_by()
+    #-> unique_by()
+
+    p(@VectorTree [String] [["FIRE", "POLICE", "POLICE", "FIRE"], ["FIRE", "OEMC", "OEMC"], []])
+    #-> @VectorTree (0:N) × String [["FIRE", "POLICE"], ["FIRE", "OEMC"], []]
+
+Compositve values are also supported.
+
+    p(@VectorTree [(0:1)String] [["POLICE", "FIRE", missing, "OEMC", "POLICE", missing]])
+    #-> @VectorTree (0:N) × ((0:1) × String) [[missing, "FIRE", "OEMC", "POLICE"]]
 
 The pipeline `group_by()` expects a block vector of pairs two columns values
 and keys.  The values are further partitioned into blocks by grouping the
