@@ -563,9 +563,9 @@ use `Unique` to return distinct positions by department.
 
 So far, we've navigated and summarized data by exploiting its
 hierarchical organization: the whole dataset $\to$ department
-$\to$ employee. But what if we need to work relative to an entity
-which is not reflected in the data hierarchy? For example, how
-could we calculate the number of employees per each *position*?
+$\to$ employee. But what if we want a query that isn't supported
+by the existing hierarchy? For example, how could we calculate the
+number of employees per each *position*?
 
 A list of distinct positions could be obtained using `Unique`.
 
@@ -578,9 +578,9 @@ A list of distinct positions could be obtained using `Unique`.
     3 │ SERGEANT        │
     =#
 
-However, using `Unique` is not sufficient because it does give us
-the associated employees. In order to get unique positions with
-associated employee records, we use the Group combinator:
+However, `Unique` is not sufficient because positions are not
+associated to the respective employees. To associate employee
+records to their positions, we use `Group` combinator:
 
     chicago[It.department.employee >> Group(It.position)]
     #=>
@@ -591,7 +591,7 @@ associated employee records, we use the Group combinator:
     3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
     =#
 
-The `Group(It.position)`  query rearranges the dataset into a new
+The `Group(It.position)` query rearranges the dataset into a new
 hierarchy: position $\to$ employee. We can use the new arrangement
 to show employee names for each unique position.
 
@@ -606,16 +606,14 @@ to show employee names for each unique position.
     3 │ SERGEANT         JEFFERY A          │
     =#
 
-We could also use summary combinators, which lets us answer the
+We could further use summary combinators, which lets us answer the
 original question: the number of employees per each position.
-
-    EmpCount =
-       :count => Count(It.employee)
 
     chicago[
         It.department.employee >>
         Group(It.position) >>
-        Record(It.position, EmpCount)]
+        Record(It.position,
+               :count => Count(It.employee))]
     #=>
       │ position         count │
     ──┼────────────────────────┼
@@ -637,16 +635,17 @@ Moreover, we could reuse the previously defined employee measures.
     chicago[
         It.department.employee >>
         Group(It.position) >>
-        Record(It.position, PayGap, AvgPay, EmpCount)]
+        Record(It.position, PayGap, AvgPay)]
     #=>
-      │ position         paygap  avgpay    count │
-    ──┼──────────────────────────────────────────┼
-    1 │ FIREFIGHTER-EMT    7788   99378.0      2 │
-    2 │ POLICE OFFICER     7506   76263.0      2 │
-    3 │ SERGEANT              0  101442.0      1 │
+      │ position         paygap  avgpay   │
+    ──┼───────────────────────────────────┼
+    1 │ FIREFIGHTER-EMT    7788   99378.0 │
+    2 │ POLICE OFFICER     7506   76263.0 │
+    3 │ SERGEANT              0  101442.0 │
     =#
 
-Grouping is not limited to existing fields. 
+One could group by any query; here we group employees based upon a
+salary threshold.
 
     GT100K =
         :gt100k => (It.salary .> 100000)
@@ -662,19 +661,19 @@ Grouping is not limited to existing fields.
     2 │   true  JEFFERY A; ROBERT K          │
     =#
 
-Further, grouping could be done with any number of expressions.
+We could also group by several queries. 
 
     chicago[
         It.department.employee >>
-        Group(GT100K, It.position) >>
-        Record(It.gt100k, It.position, It.employee.name)]
+        Group(It.position, GT100K) >>
+        Record(It.position, It.gt100k, It.employee.name)]
     #=>
-      │ gt100k  position         name               │
+      │ position         gt100k  name               │
     ──┼─────────────────────────────────────────────┼
-    1 │  false  FIREFIGHTER-EMT  DANIEL A           │
-    2 │  false  POLICE OFFICER   ANTHONY A; NANCY A │
-    3 │   true  FIREFIGHTER-EMT  ROBERT K           │
-    4 │   true  SERGEANT         JEFFERY A          │
+    1 │ FIREFIGHTER-EMT   false  DANIEL A           │
+    2 │ FIREFIGHTER-EMT    true  ROBERT K           │
+    3 │ POLICE OFFICER    false  ANTHONY A; NANCY A │
+    4 │ SERGEANT           true  JEFFERY A          │
     =#
 
 ## Broadcasting over Queries
