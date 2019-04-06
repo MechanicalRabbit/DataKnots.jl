@@ -483,8 +483,8 @@ We could then refine the query, and run the exact same command.
 
 ## Summarizing Data
 
-To summarize data, we could use combinators such as `Min`, `Max`,
-and `Sum`.
+To summarize data, we could use query combinators such as `Min`,
+`Max`, and `Sum`. Let's compute some salary statistics.
 
     Salary = It.department.employee.salary
 
@@ -501,7 +501,8 @@ and `Sum`.
     =#
 
 Just as `Count` has an aggregate query form, so do `Min`, `Max`,
-and `Sum`.
+and `Sum`. Like other query combinators, they are context aware.
+Hence, we could summarise salary statistics by department.
 
     Salary = It.employee.salary
 
@@ -519,6 +520,133 @@ and `Sum`.
     ──┼──────────────────────────────────────┼
     1 │ POLICE      3  72510  101442  253968 │
     2 │ FIRE        2  95484   99324  194808 │
+    =#
+
+These summary combinators can be used to define domain specific
+measures, such as `PayGap` and `AvgPay`.
+
+    PayGap =
+        :paygap => Max(Salary) .- Min(Salary)
+
+    AvgPay =
+        :avgpay => Sum(Salary) ./ Count(It.employee)
+
+    chicago[
+        It.department >>
+        Record(It.name, PayGap, AvgPay)]
+    #=>
+      │ department              │
+      │ name    paygap  avgpay  │
+    ──┼─────────────────────────┼
+    1 │ POLICE   28932  84656.0 │
+    2 │ FIRE      3840  97404.0 │
+    =#
+
+With our very limited data set, we see the `POLICE` department has
+a wide pay gap, but not the `FIRE` department. How can we show
+these summary statistics for each `position`?
+
+## Grouping Data
+
+So far, we've been navigating and summarizing data based upon
+three pre-existing entities: the dataset as a whole, for each
+`department`, and for each `employee`. What about `position`?
+
+    chicago[It.department.employee.position]
+    #=>
+      │ position        │
+    ──┼─────────────────┼
+    1 │ SERGEANT        │
+    2 │ POLICE OFFICER  │
+    3 │ POLICE OFFICER  │
+    4 │ FIREFIGHTER-EMT │
+    5 │ FIREFIGHTER-EMT │
+    =#
+
+We could show `Unique` positions.
+
+    chicago[It.department.employee.position >> Unique]
+    #=>
+      │ position        │
+    ──┼─────────────────┼
+    1 │ FIREFIGHTER-EMT │
+    2 │ POLICE OFFICER  │
+    3 │ SERGEANT        │
+    =#
+
+But, which employees are associated with each unique position?
+This can be obtained with the `Group` combinator.
+
+    chicago[It.department.employee >> Group(It.position)]
+    #=>
+      │ position         employee                                …
+    ──┼──────────────────────────────────────────────────────────…
+    1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; VICTOR…
+    2 │ POLICE OFFICER   NANCY A, POLICE OFFICER, 80016; TONY A, …
+    3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
+    =#
+
+We could then summarize the *complement* of the group, `employee`,
+to compute statistics by `position`.
+
+    EmpCount =
+       :count => Count(It.employee)
+
+    chicago[
+        It.department.employee >>
+        Group(It.position) >>
+        Record(It.position, EmpCount)]
+    #=>
+      │ position         count │
+    ──┼────────────────────────┼
+    1 │ FIREFIGHTER-EMT      2 │
+    2 │ POLICE OFFICER       2 │
+    3 │ SERGEANT             1 │
+    =#
+
+Moreover, our previously defined employee measures will now work.
+
+    chicago[
+        It.department.employee >>
+        Group(It.position) >>
+        Record(It.position, PayGap, AvgPay, EmpCount)]
+    #=>
+      │ position         paygap  avgpay    count │
+    ──┼──────────────────────────────────────────┼
+    1 │ FIREFIGHTER-EMT    3840   97404.0      2 │
+    2 │ POLICE OFFICER     7506   76263.0      2 │
+    3 │ SERGEANT              0  101442.0      1 │
+    =#
+
+Grouping isn't limited to existing values. It could be done for
+any expression.
+
+    GT100K =
+        :gt100k => (It.salary .> 100000)
+
+    chicago[
+        It.department.employee >>
+        Group(GT100K) >>
+        Record(It.gt100k, PayGap, AvgPay, EmpCount)]
+    #=>
+      │ gt100k  paygap  avgpay    count │
+    ──┼─────────────────────────────────┼
+    1 │  false   26814   86833.5      4 │
+    2 │   true       0  101442.0      1 │
+    =#
+
+Moreover, grouping could be done with any number of expressions.
+
+    chicago[
+        It.department.employee >>
+        Group(GT100K, It.position) >>
+        Record(It.gt100k, It.position, PayGap, AvgPay, EmpCount)]
+    #=>
+      │ gt100k  position         paygap  avgpay    count │
+    ──┼──────────────────────────────────────────────────┼
+    1 │  false  FIREFIGHTER-EMT    3840   97404.0      2 │
+    2 │  false  POLICE OFFICER     7506   76263.0      2 │
+    3 │   true  SERGEANT              0  101442.0      1 │
     =#
 
 ## Broadcasting over Queries
