@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li class="current"><a class="toctext" href>Tutorial</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Our-First-Query-1">Our First Query</a></li><li><a class="toctext" href="#Navigation-1">Navigation</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Context-and-Counting-1">Context &amp; Counting</a></li><li><a class="toctext" href="#Record-Construction-1">Record Construction</a></li><li><a class="toctext" href="#Reusable-Queries-1">Reusable Queries</a></li><li><a class="toctext" href="#Filtering-Data-1">Filtering Data</a></li><li><a class="toctext" href="#Incremental-Composition-1">Incremental Composition</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Summarizing-Data-1">Summarizing Data</a></li><li><a class="toctext" href="#Grouping-Data-1">Grouping Data</a></li><li><a class="toctext" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></li><li><a class="toctext" href="#Keeping-Values-1">Keeping Values</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Query-Functions-1">Query Functions</a></li><li><a class="toctext" href="#Paging-Data-1">Paging Data</a></li><li><a class="toctext" href="#Extracting-Data-1">Extracting Data</a></li></ul></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Tutorial</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Tutorial</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Tutorial-1" href="#Tutorial-1">Tutorial</a></h1><p>DataKnots is an embedded query language designed so that accidental programmers can more easily analyze complex data. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li class="current"><a class="toctext" href>-</a><ul class="internal"><li><a class="toctext" href="#Getting-Started-1">Getting Started</a></li><li><a class="toctext" href="#Our-First-Query-1">Our First Query</a></li><li><a class="toctext" href="#Navigation-1">Navigation</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Context-and-Counting-1">Context &amp; Counting</a></li><li><a class="toctext" href="#Record-Construction-1">Record Construction</a></li><li><a class="toctext" href="#Reusable-Queries-1">Reusable Queries</a></li><li><a class="toctext" href="#Filtering-Data-1">Filtering Data</a></li><li><a class="toctext" href="#Incremental-Composition-1">Incremental Composition</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Summarizing-Data-1">Summarizing Data</a></li><li><a class="toctext" href="#Grouping-Data-1">Grouping Data</a></li><li><a class="toctext" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></li><li><a class="toctext" href="#Keeping-Values-1">Keeping Values</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Query-Functions-1">Query Functions</a></li><li><a class="toctext" href="#Paging-Data-1">Paging Data</a></li><li><a class="toctext" href="#Extracting-Data-1">Extracting Data</a></li></ul></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>-</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/tutorial.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>-</span><a class="fa fa-bars" href="#"></a></div></header><p>Tutorial</p><p>DataKnots is an embedded query language designed so that accidental programmers can more easily analyze complex data. This tutorial shows how typical query operations can be performed upon a simplified in-memory dataset.</p><h2><a class="nav-anchor" id="Getting-Started-1" href="#Getting-Started-1">Getting Started</a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>NamedTuple</code> and <code>Vector</code> objects.</p><pre><code class="language-julia">chicago_data =
   (department = [
     (name = &quot;POLICE&quot;,
      employee = [
+      (name = &quot;ANTHONY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 72510),
       (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
-      (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016),
-      (name = &quot;TONY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 72510)]),
+      (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016)]),
     (name = &quot;FIRE&quot;,
      employee = [
       (name = &quot;DANIEL A&quot;, position = &quot;FIREFIGHTER-EMT&quot;, salary = 95484),
@@ -21,9 +21,9 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
 #=&gt;
   │ name      │
 ──┼───────────┼
-1 │ JEFFERY A │
-2 │ NANCY A   │
-3 │ TONY A    │
+1 │ ANTHONY A │
+2 │ JEFFERY A │
+3 │ NANCY A   │
 4 │ DANIEL A  │
 5 │ VICTOR A  │
 =#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset. When a field label, such as <code>employee</code>, can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">chicago[It.employee]
@@ -32,9 +32,9 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
   │ employee                           │
   │ name       position         salary │
 ──┼────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT         101442 │
-2 │ NANCY A    POLICE OFFICER    80016 │
-3 │ TONY A     POLICE OFFICER    72510 │
+1 │ ANTHONY A  POLICE OFFICER    72510 │
+2 │ JEFFERY A  SERGEANT         101442 │
+3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
 5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
 =#</code></pre><p>Notice that nested vectors traversed during navigation are flattened into a single output vector.</p><h2><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h2><p>Dotted navigation, such as <code>It.department.name</code>, is a syntax shorthand for the <code>Get()</code> primitive together with query composition (<code>&gt;&gt;</code>).</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:name)]
@@ -48,9 +48,9 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
   │ employee                           │
   │ name       position         salary │
 ──┼────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT         101442 │
-2 │ NANCY A    POLICE OFFICER    80016 │
-3 │ TONY A     POLICE OFFICER    72510 │
+1 │ ANTHONY A  POLICE OFFICER    72510 │
+2 │ JEFFERY A  SERGEANT         101442 │
+3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
 5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
 =#</code></pre><p>The <code>It</code> query simply reproduces its input, which makes it the identity with respect to composition (<code>&gt;&gt;</code>). Hence, <code>It</code> can be woven into any composition without changing the result.</p><pre><code class="language-julia">chicago[It &gt;&gt; Get(:department) &gt;&gt; Get(:name)]
@@ -120,11 +120,11 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
            Record(It.name,
                   It.salary))]
 #=&gt;
-  │ department                                               │
-  │ name    employee                                         │
-──┼──────────────────────────────────────────────────────────┼
-1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016; TONY A, 72510 │
-2 │ FIRE    DANIEL A, 95484; VICTOR A, 99324                 │
+  │ department                                                  │
+  │ name    employee                                            │
+──┼─────────────────────────────────────────────────────────────┼
+1 │ POLICE  ANTHONY A, 72510; JEFFERY A, 101442; NANCY A, 80016 │
+2 │ FIRE    DANIEL A, 95484; VICTOR A, 99324                    │
 =#</code></pre><p>In this output, commas separate tuple fields and semi-colons separate vector elements.</p><h2><a class="nav-anchor" id="Reusable-Queries-1" href="#Reusable-Queries-1">Reusable Queries</a></h2><p>Queries can be reused. Let&#39;s define <code>EmployeeCount</code> to be a query that computes the number of employees in a department.</p><pre><code class="language-julia">EmployeeCount =
     :employee_count =&gt;
         Count(It.employee)</code></pre><p>This query can be used in different ways.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
@@ -167,9 +167,9 @@ chicago[Q]
   │ employee                           │
   │ name       position         salary │
 ──┼────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT         101442 │
-2 │ NANCY A    POLICE OFFICER    80016 │
-3 │ TONY A     POLICE OFFICER    72510 │
+1 │ ANTHONY A  POLICE OFFICER    72510 │
+2 │ JEFFERY A  SERGEANT         101442 │
+3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
 5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
 =#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k.</p><pre><code class="language-julia">Q &gt;&gt;= Record(It.name,
@@ -184,9 +184,9 @@ Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
   │ employee                  │
   │ name       salary  gt100k │
 ──┼───────────────────────────┼
-1 │ JEFFERY A  101442    true │
-2 │ NANCY A     80016   false │
-3 │ TONY A      72510   false │
+1 │ ANTHONY A   72510   false │
+2 │ JEFFERY A  101442    true │
+3 │ NANCY A     80016   false │
 4 │ DANIEL A    95484   false │
 5 │ VICTOR A    99324   false │
 =#</code></pre><p>We can now filter the dataset to include only high-paid employees.</p><pre><code class="language-julia">Q &gt;&gt;= Filter(It.gt100k)
@@ -300,8 +300,8 @@ chicago[
 #=&gt;
   │ position        │
 ──┼─────────────────┼
-1 │ SERGEANT        │
-2 │ POLICE OFFICER  │
+1 │ POLICE OFFICER  │
+2 │ SERGEANT        │
 3 │ POLICE OFFICER  │
 4 │ FIREFIGHTER-EMT │
 5 │ FIREFIGHTER-EMT │
@@ -317,7 +317,7 @@ chicago[
   │ position         employee                                …
 ──┼──────────────────────────────────────────────────────────…
 1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; VICTOR…
-2 │ POLICE OFFICER   NANCY A, POLICE OFFICER, 80016; TONY A, …
+2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
 3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
 =#</code></pre><p>We could then summarize the <em>complement</em> of the group, <code>employee</code>, to compute statistics by <code>position</code>.</p><pre><code class="language-julia">EmpCount =
    :count =&gt; Count(It.employee)
@@ -366,15 +366,33 @@ chicago[
 3 │   true  SERGEANT              0  101442.0      1 │
 =#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
-    titlecase.(It.name)]
+    titlecase.(It.name) &gt;&gt;
+    Label(:titlecase)]
 #=&gt;
-  │ It        │
+  │ titlecase │
 ──┼───────────┼
-1 │ Jeffery A │
-2 │ Nancy A   │
-3 │ Tony A    │
+1 │ Anthony A │
+2 │ Jeffery A │
+3 │ Nancy A   │
 4 │ Daniel A  │
 5 │ Victor A  │
+=#</code></pre><p>This broadcast syntax is also used with operators. For example, let&#39;s display and compute a 2% Cost Of Living Adjustment (&quot;COLA&quot;).</p><pre><code class="language-julia">COLA = trunc.(Int, It.salary .* 0.02)
+
+chicago[
+    It.department.employee &gt;&gt;
+    Record(It.name, 
+           :old_salary =&gt; It.salary, 
+           :cola       =&gt; &quot;+&quot; .* string.(COLA),
+           :new_salary =&gt; It.salary .+ COLA)]
+#=&gt;
+  │ employee                                 │
+  │ name       old_salary  cola   new_salary │
+──┼──────────────────────────────────────────┼
+1 │ ANTHONY A       72510  +1450       73960 │
+2 │ JEFFERY A      101442  +2028      103470 │
+3 │ NANCY A         80016  +1600       81616 │
+4 │ DANIEL A        95484  +1909       97393 │
+5 │ VICTOR A        99324  +1986      101310 │
 =#</code></pre><p>Functions taking a vector argument, such as <code>mean</code>, can also be applied to queries. In this example, <code>mean</code> computes the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
 
 chicago[
@@ -401,9 +419,9 @@ chicago[
   │ employee             │
   │ name       dept_name │
 ──┼──────────────────────┼
-1 │ JEFFERY A  POLICE    │
-2 │ NANCY A    POLICE    │
-3 │ TONY A     POLICE    │
+1 │ ANTHONY A  POLICE    │
+2 │ JEFFERY A  POLICE    │
+3 │ NANCY A    POLICE    │
 4 │ DANIEL A   FIRE      │
 5 │ VICTOR A   FIRE      │
 =#</code></pre><p>This pattern also emerges when a filter condition uses a parameter calculated in a parent context. For example, let&#39;s list employees with a higher than average salary for their department.</p><pre><code class="language-julia">chicago[
@@ -482,9 +500,9 @@ chicago[Employee]
   │ employee                           │
   │ name       position         salary │
 ──┼────────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT         101442 │
-2 │ NANCY A    POLICE OFFICER    80016 │
-3 │ TONY A     POLICE OFFICER    72510 │
+1 │ ANTHONY A  POLICE OFFICER    72510 │
+2 │ JEFFERY A  SERGEANT         101442 │
+3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
 5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
 =#</code></pre><p>To return only the first 2 records, we use <code>Take</code>.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(2)]
@@ -492,22 +510,22 @@ chicago[Employee]
   │ employee                          │
   │ name       position        salary │
 ──┼───────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT        101442 │
-2 │ NANCY A    POLICE OFFICER   80016 │
+1 │ ANTHONY A  POLICE OFFICER   72510 │
+2 │ JEFFERY A  SERGEANT        101442 │
 =#</code></pre><p>A negative index counts records from the end of the input. So, to return all the records but the last two, we write:</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(-2)]
 #=&gt;
   │ employee                          │
   │ name       position        salary │
 ──┼───────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT        101442 │
-2 │ NANCY A    POLICE OFFICER   80016 │
-3 │ TONY A     POLICE OFFICER   72510 │
+1 │ ANTHONY A  POLICE OFFICER   72510 │
+2 │ JEFFERY A  SERGEANT        101442 │
+3 │ NANCY A    POLICE OFFICER   80016 │
 =#</code></pre><p>To skip the first two records, returning the rest, we use <code>Drop</code>.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Drop(2)]
 #=&gt;
   │ employee                          │
   │ name      position         salary │
 ──┼───────────────────────────────────┼
-1 │ TONY A    POLICE OFFICER    72510 │
+1 │ NANCY A   POLICE OFFICER    80016 │
 2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
 3 │ VICTOR A  FIREFIGHTER-EMT   99324 │
 =#</code></pre><p>To return the 1st half of the employees in the database, we could use <code>Take</code> with an argument that computes how many to take.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(Count(Employee) .÷ 2)]
@@ -515,11 +533,11 @@ chicago[Employee]
   │ employee                          │
   │ name       position        salary │
 ──┼───────────────────────────────────┼
-1 │ JEFFERY A  SERGEANT        101442 │
-2 │ NANCY A    POLICE OFFICER   80016 │
+1 │ ANTHONY A  POLICE OFFICER   72510 │
+2 │ JEFFERY A  SERGEANT        101442 │
 =#</code></pre><h2><a class="nav-anchor" id="Extracting-Data-1" href="#Extracting-Data-1">Extracting Data</a></h2><p>Given any <code>DataKnot</code>, its content can be extracted using <code>get</code>. For singular output, <code>get</code> returns a scalar value.</p><pre><code class="language-julia">get(chicago[Count(It.department)])
 #-&gt; 2</code></pre><p>For plural output, <code>get</code> returns a <code>Vector</code>.</p><pre><code class="language-julia">get(chicago[It.department.employee.name])
-#-&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;TONY A&quot;, &quot;DANIEL A&quot;, &quot;VICTOR A&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, which is an <code>AbstractVector</code> specialized for column-oriented storage.</p><pre><code class="language-julia">query = It.department &gt;&gt;
+#-&gt; [&quot;ANTHONY A&quot;, &quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;DANIEL A&quot;, &quot;VICTOR A&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, which is an <code>AbstractVector</code> specialized for column-oriented storage.</p><pre><code class="language-julia">query = It.department &gt;&gt;
         Record(It.name,
                :employee_count =&gt; Count(It.employee))
 vt = get(chicago[query])
