@@ -9,7 +9,7 @@
     (name = &quot;FIRE&quot;,
      employee = [
       (name = &quot;DANIEL A&quot;, position = &quot;FIREFIGHTER-EMT&quot;, salary = 95484),
-      (name = &quot;VICTOR A&quot;, position = &quot;FIREFIGHTER-EMT&quot;, salary = 99324)])],)</code></pre><p>In this hierarchical Chicago dataset, the root is a <code>NamedTuple</code> with a field <code>department</code>, which is a <code>Vector</code> of department records, and so on.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
+      (name = &quot;ROBERT K&quot;, position = &quot;FIREFIGHTER-EMT&quot;, salary = 103272)])],)</code></pre><p>In this hierarchical Chicago dataset, the root is a <code>NamedTuple</code> with a field <code>department</code>, which is a <code>Vector</code> of department records, and so on.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
 chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" id="Our-First-Query-1" href="#Our-First-Query-1">Our First Query</a></h2><p>Let&#39;s say we want to return the list of department names from this dataset. We query the <code>chicago</code> knot using Julia&#39;s index notation with <code>It.department.name</code>.</p><pre><code class="language-julia">department_names = chicago[It.department.name]
 #=&gt;
   │ name   │
@@ -25,7 +25,7 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
 2 │ JEFFERY A │
 3 │ NANCY A   │
 4 │ DANIEL A  │
-5 │ VICTOR A  │
+5 │ ROBERT K  │
 =#</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the dataset. When a field label, such as <code>employee</code>, can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">chicago[It.employee]
 #-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating through <code>department</code> tuples. When tuples are returned, they are displayed as a table.</p><pre><code class="language-julia">chicago[It.department.employee]
 #=&gt;
@@ -36,7 +36,7 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
 2 │ JEFFERY A  SERGEANT         101442 │
 3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
-5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+5 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><p>Notice that nested vectors traversed during navigation are flattened into a single output vector.</p><h2><a class="nav-anchor" id="Composition-and-Identity-1" href="#Composition-and-Identity-1">Composition &amp; Identity</a></h2><p>Dotted navigation, such as <code>It.department.name</code>, is a syntax shorthand for the <code>Get()</code> primitive together with query composition (<code>&gt;&gt;</code>).</p><pre><code class="language-julia">chicago[Get(:department) &gt;&gt; Get(:name)]
 #=&gt;
   │ name   │
@@ -52,7 +52,7 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
 2 │ JEFFERY A  SERGEANT         101442 │
 3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
-5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+5 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><p>The <code>It</code> query simply reproduces its input, which makes it the identity with respect to composition (<code>&gt;&gt;</code>). Hence, <code>It</code> can be woven into any composition without changing the result.</p><pre><code class="language-julia">chicago[It &gt;&gt; Get(:department) &gt;&gt; Get(:name)]
 #=&gt;
   │ name   │
@@ -124,7 +124,7 @@ chicago = convert(DataKnot, chicago_data)</code></pre><h2><a class="nav-anchor" 
   │ name    employee                                            │
 ──┼─────────────────────────────────────────────────────────────┼
 1 │ POLICE  ANTHONY A, 72510; JEFFERY A, 101442; NANCY A, 80016 │
-2 │ FIRE    DANIEL A, 95484; VICTOR A, 99324                    │
+2 │ FIRE    DANIEL A, 95484; ROBERT K, 103272                   │
 =#</code></pre><p>In this output, commas separate tuple fields and semi-colons separate vector elements.</p><h2><a class="nav-anchor" id="Reusable-Queries-1" href="#Reusable-Queries-1">Reusable Queries</a></h2><p>Queries can be reused. Let&#39;s define <code>EmployeeCount</code> to be a query that computes the number of employees in a department.</p><pre><code class="language-julia">EmployeeCount =
     :employee_count =&gt;
         Count(It.employee)</code></pre><p>This query can be used in different ways.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; EmployeeCount)]
@@ -171,7 +171,7 @@ chicago[Q]
 2 │ JEFFERY A  SERGEANT         101442 │
 3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
-5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+5 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><p>Let&#39;s extend this query to show if the salary is over 100k.</p><pre><code class="language-julia">Q &gt;&gt;= Record(It.name,
              It.salary,
              :gt100k =&gt;
@@ -188,7 +188,7 @@ Record(It.name, It.salary, :gt100k =&gt; It.salary .&gt; 100000)
 2 │ JEFFERY A  101442    true │
 3 │ NANCY A     80016   false │
 4 │ DANIEL A    95484   false │
-5 │ VICTOR A    99324   false │
+5 │ ROBERT K   103272    true │
 =#</code></pre><p>We can now filter the dataset to include only high-paid employees.</p><pre><code class="language-julia">Q &gt;&gt;= Filter(It.gt100k)
 #=&gt;
 It.department.employee &gt;&gt;
@@ -200,6 +200,7 @@ Filter(It.gt100k)
   │ name       salary  gt100k │
 ──┼───────────────────────────┼
 1 │ JEFFERY A  101442    true │
+2 │ ROBERT K   103272    true │
 =#</code></pre><p>Well-tested queries may benefit from a <code>Tag</code> so that their definitions are suppressed in larger compositions.</p><pre><code class="language-julia">HighlyCompensated = Tag(:HighlyCompensated, Q)
 #-&gt; HighlyCompensated
 
@@ -209,6 +210,7 @@ chicago[HighlyCompensated]
   │ name       salary  gt100k │
 ──┼───────────────────────────┼
 1 │ JEFFERY A  101442    true │
+2 │ ROBERT K   103272    true │
 =#</code></pre><p>This tagging can make subsequent compositions easier to read.</p><pre><code class="language-julia">Q = HighlyCompensated &gt;&gt; It.name
 #=&gt;
 HighlyCompensated &gt;&gt; It.name
@@ -219,6 +221,7 @@ chicago[Q]
   │ name      │
 ──┼───────────┼
 1 │ JEFFERY A │
+2 │ ROBERT K  │
 =#</code></pre><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>We&#39;ve demonstrated the <code>Count</code> combinator, but <code>Count</code> could also be used as a query. In this next example, <code>Count</code> receives employees as input, and produces their number as output.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Count]
 #=&gt;
 │ It │
@@ -252,7 +255,7 @@ chicago[Q &gt;&gt; Count]
 #=&gt;
 │ It │
 ┼────┼
-│  1 │
+│  2 │
 =#</code></pre><h2><a class="nav-anchor" id="Summarizing-Data-1" href="#Summarizing-Data-1">Summarizing Data</a></h2><p>To summarize data, we could use query combinators such as <code>Min</code>, <code>Max</code>, and <code>Sum</code>. Let&#39;s compute some salary statistics.</p><pre><code class="language-julia">Salary = It.department.employee.salary
 
 chicago[
@@ -264,8 +267,8 @@ chicago[
 #=&gt;
 │ count  min    max     sum    │
 ┼──────────────────────────────┼
-│     5  72510  101442  448776 │
-=#</code></pre><p>Just as <code>Count</code> has an aggregate query form, so do <code>Min</code>, <code>Max</code>, and <code>Sum</code>. Like other query combinators, they are context aware. Hence, we could summarise salary statistics by department.</p><pre><code class="language-julia">Salary = It.employee.salary
+│     5  72510  103272  452724 │
+=#</code></pre><p>Just as <code>Count</code> has an aggregate query form, so do <code>Min</code>, <code>Max</code>, and <code>Sum</code>. Let&#39;s use this aggregate form to summarize salary statistics by department.</p><pre><code class="language-julia">Salary = It.employee.salary
 
 chicago[
     It.department &gt;&gt;
@@ -280,10 +283,10 @@ chicago[
   │ name    count  min    max     sum    │
 ──┼──────────────────────────────────────┼
 1 │ POLICE      3  72510  101442  253968 │
-2 │ FIRE        2  95484   99324  194808 │
-=#</code></pre><p>These summary combinators can be used to define domain specific measures, such as <code>PayGap</code> and <code>AvgPay</code>.</p><pre><code class="language-julia">PayGap =
+2 │ FIRE        2  95484  103272  198756 │
+=#</code></pre><p>These summary combinators can be used to define domain specific measures, such as <code>PayGap</code> and <code>AvgPay</code>.</p><pre><code class="language-julia">Salary = It.employee.salary
+PayGap =
     :paygap =&gt; Max(Salary) .- Min(Salary)
-
 AvgPay =
     :avgpay =&gt; Sum(Salary) ./ Count(It.employee)
 
@@ -295,49 +298,31 @@ chicago[
   │ name    paygap  avgpay  │
 ──┼─────────────────────────┼
 1 │ POLICE   28932  84656.0 │
-2 │ FIRE      3840  97404.0 │
-=#</code></pre><p>With our very limited data set, we see the <code>POLICE</code> department has a wide pay gap, but not the <code>FIRE</code> department. How can we show these summary statistics for each <code>position</code>?</p><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve been navigating and summarizing data based upon three pre-existing entities: the dataset as a whole, for each <code>department</code>, and for each <code>employee</code>. What about <code>position</code>?</p><pre><code class="language-julia">chicago[It.department.employee.position]
-#=&gt;
-  │ position        │
-──┼─────────────────┼
-1 │ POLICE OFFICER  │
-2 │ SERGEANT        │
-3 │ POLICE OFFICER  │
-4 │ FIREFIGHTER-EMT │
-5 │ FIREFIGHTER-EMT │
-=#</code></pre><p>For each department, we could list <code>Unique</code> employee positions.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
-        Record(It.name,
-               Unique(It.employee.position))]
-#=&gt;
-  │ department                       │
-  │ name    position                 │
-──┼──────────────────────────────────┼
-1 │ POLICE  POLICE OFFICER; SERGEANT │
-2 │ FIRE    FIREFIGHTER-EMT          │
-=#</code></pre><p>We could also show <code>Unique</code> positions for the entire dataset.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
+2 │ FIRE      7788  99378.0 │
+=#</code></pre><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve navigated and summarized data by exploiting its hierarchical organization: the whole dataset <span>$\to$</span> department <span>$\to$</span> employee. But what if we need to work relative to an entity which is not reflected in the data hierarchy? For example, how could we calculate the number of employees per each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>Unique</code>.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
 #=&gt;
   │ position        │
 ──┼─────────────────┼
 1 │ FIREFIGHTER-EMT │
 2 │ POLICE OFFICER  │
 3 │ SERGEANT        │
-=#</code></pre><p>But, which employees are associated with each unique position? This can be obtained with the <code>Group</code> combinator.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Group(It.position)]
+=#</code></pre><p>However, using <code>Unique</code> is not sufficient because it does give us the associated employees. In order to get unique positions with associated employee records, we use the Group combinator:</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Group(It.position)]
 #=&gt;
   │ position         employee                                …
 ──┼──────────────────────────────────────────────────────────…
-1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; VICTOR…
+1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT…
 2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
 3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
-=#</code></pre><p>For each position, we could show only employee names.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
+=#</code></pre><p>The <code>Group(It.position)</code>  query rearranges the dataset into a new hierarchy: position <span>$\to$</span> employee. We can use the new arrangement to show employee names for each unique position.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
         Group(It.position) &gt;&gt;
         Record(It.position, It.employee.name)]
 #=&gt;
   │ position         name               │
 ──┼─────────────────────────────────────┼
-1 │ FIREFIGHTER-EMT  DANIEL A; VICTOR A │
+1 │ FIREFIGHTER-EMT  DANIEL A; ROBERT K │
 2 │ POLICE OFFICER   ANTHONY A; NANCY A │
 3 │ SERGEANT         JEFFERY A          │
-=#</code></pre><p>We could then summarize the <em>complement</em> of the group, <code>employee</code>, to compute statistics by <code>position</code>.</p><pre><code class="language-julia">EmpCount =
+=#</code></pre><p>We could also use summary combinators, which lets us answer the original question: the number of employees per each position.</p><pre><code class="language-julia">EmpCount =
    :count =&gt; Count(It.employee)
 
 chicago[
@@ -350,38 +335,56 @@ chicago[
 1 │ FIREFIGHTER-EMT      2 │
 2 │ POLICE OFFICER       2 │
 3 │ SERGEANT             1 │
-=#</code></pre><p>Moreover, our previously defined employee measures will now work.</p><pre><code class="language-julia">chicago[
+=#</code></pre><p>Moreover, we could reuse the previously defined employee measures.</p><pre><code class="language-julia">Salary = It.employee.salary
+
+PayGap =
+    :paygap =&gt; Max(Salary) .- Min(Salary)
+
+AvgPay =
+    :avgpay =&gt; Sum(Salary) ./ Count(It.employee)
+
+chicago[
     It.department.employee &gt;&gt;
     Group(It.position) &gt;&gt;
     Record(It.position, PayGap, AvgPay, EmpCount)]
 #=&gt;
   │ position         paygap  avgpay    count │
 ──┼──────────────────────────────────────────┼
-1 │ FIREFIGHTER-EMT    3840   97404.0      2 │
+1 │ FIREFIGHTER-EMT    7788   99378.0      2 │
 2 │ POLICE OFFICER     7506   76263.0      2 │
 3 │ SERGEANT              0  101442.0      1 │
-=#</code></pre><p>Grouping isn&#39;t limited to existing values. It could be done for any expression.</p><pre><code class="language-julia">GT100K =
+=#</code></pre><p>Grouping is not limited to existing fields. </p><pre><code class="language-julia">GT100K =
     :gt100k =&gt; (It.salary .&gt; 100000)
 
 chicago[
     It.department.employee &gt;&gt;
     Group(GT100K) &gt;&gt;
-    Record(It.gt100k, PayGap, AvgPay, EmpCount)]
+    Record(It.gt100k, It.employee.name)]
 #=&gt;
-  │ gt100k  paygap  avgpay    count │
-──┼─────────────────────────────────┼
-1 │  false   26814   86833.5      4 │
-2 │   true       0  101442.0      1 │
-=#</code></pre><p>Moreover, grouping could be done with any number of expressions.</p><pre><code class="language-julia">chicago[
+  │ gt100k  name                         │
+──┼──────────────────────────────────────┼
+1 │  false  ANTHONY A; NANCY A; DANIEL A │
+2 │   true  JEFFERY A; ROBERT K          │
+=#</code></pre><p>Further, grouping could be done with any number of expressions.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     Group(GT100K, It.position) &gt;&gt;
-    Record(It.gt100k, It.position, PayGap, AvgPay, EmpCount)]
+    Record(It.gt100k, It.position, It.employee.name)]
 #=&gt;
-  │ gt100k  position         paygap  avgpay    count │
-──┼──────────────────────────────────────────────────┼
-1 │  false  FIREFIGHTER-EMT    3840   97404.0      2 │
-2 │  false  POLICE OFFICER     7506   76263.0      2 │
-3 │   true  SERGEANT              0  101442.0      1 │
+  │ gt100k  position         name               │
+──┼─────────────────────────────────────────────┼
+1 │  false  FIREFIGHTER-EMT  DANIEL A           │
+2 │  false  POLICE OFFICER   ANTHONY A; NANCY A │
+3 │   true  FIREFIGHTER-EMT  ROBERT K           │
+4 │   true  SERGEANT         JEFFERY A          │
+=#</code></pre><p>Of course, we could list unique positions.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
+        Record(It.name,
+               Unique(It.employee.position))]
+#=&gt;
+  │ department                       │
+  │ name    position                 │
+──┼──────────────────────────────────┼
+1 │ POLICE  POLICE OFFICER; SERGEANT │
+2 │ FIRE    FIREFIGHTER-EMT          │
 =#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     titlecase.(It.name) &gt;&gt;
@@ -393,7 +396,7 @@ chicago[
 2 │ Jeffery A │
 3 │ Nancy A   │
 4 │ Daniel A  │
-5 │ Victor A  │
+5 │ Robert K  │
 =#</code></pre><p>This broadcast syntax is also used with operators. For example, let&#39;s display and compute a 2% Cost Of Living Adjustment (&quot;COLA&quot;).</p><pre><code class="language-julia">COLA = trunc.(Int, It.salary .* 0.02)
 
 chicago[
@@ -410,7 +413,7 @@ chicago[
 2 │ JEFFERY A      101442  +2028      103470 │
 3 │ NANCY A         80016  +1600       81616 │
 4 │ DANIEL A        95484  +1909       97393 │
-5 │ VICTOR A        99324  +1986      101310 │
+5 │ ROBERT K       103272  +2065      105337 │
 =#</code></pre><p>Functions taking a vector argument, such as <code>mean</code>, can also be applied to queries. In this example, <code>mean</code> computes the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
 
 chicago[
@@ -423,7 +426,7 @@ chicago[
   │ name    mean_salary │
 ──┼─────────────────────┼
 1 │ POLICE      84656.0 │
-2 │ FIRE        97404.0 │
+2 │ FIRE        99378.0 │
 =#</code></pre><h2><a class="nav-anchor" id="Keeping-Values-1" href="#Keeping-Values-1">Keeping Values</a></h2><p>Suppose we&#39;d like to list employee names together with their department. The naive approach won&#39;t work because <code>department</code> is not available in the context of an employee.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
     It.employee &gt;&gt;
@@ -441,7 +444,7 @@ chicago[
 2 │ JEFFERY A  POLICE    │
 3 │ NANCY A    POLICE    │
 4 │ DANIEL A   FIRE      │
-5 │ VICTOR A   FIRE      │
+5 │ ROBERT K   FIRE      │
 =#</code></pre><p>This pattern also emerges when a filter condition uses a parameter calculated in a parent context. For example, let&#39;s list employees with a higher than average salary for their department.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
     Keep(:mean_salary =&gt; mean.(It.employee.salary)) &gt;&gt;
@@ -452,7 +455,7 @@ chicago[
   │ name       position         salary │
 ──┼────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT         101442 │
-2 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+2 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>Parameters let us reuse complex queries without changing their definition. Here we construct a query that depends upon the parameter <code>AMT</code>, which is capitalized by convention.</p><pre><code class="language-julia">PaidOverAmt =
     It.department &gt;&gt;
     It.employee &gt;&gt;
@@ -462,26 +465,27 @@ chicago[
   │ name      │
 ──┼───────────┼
 1 │ JEFFERY A │
+2 │ ROBERT K  │
 =#</code></pre><p>What if we want to return employees who have a greater than average salary? This average could be computed first.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
 mean_salary = chicago[MeanSalary]
 #=&gt;
 │ It      │
 ┼─────────┼
-│ 89755.2 │
+│ 90544.8 │
 =#</code></pre><p>Then, this value could be passed as our parameter.</p><pre><code class="language-julia">chicago[PaidOverAmt, AMT=mean_salary]
 #=&gt;
   │ name      │
 ──┼───────────┼
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-3 │ VICTOR A  │
+3 │ ROBERT K  │
 =#</code></pre><p>This approach performs composition outside of the query language. To evaluate a query and immediately use it as a parameter within the same query expression, we could use the <code>Given</code> combinator.</p><pre><code class="language-julia">chicago[Given(:AMT =&gt; MeanSalary, PaidOverAmt)]
 #=&gt;
   │ name      │
 ──┼───────────┼
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-3 │ VICTOR A  │
+3 │ ROBERT K  │
 =#</code></pre><h2><a class="nav-anchor" id="Query-Functions-1" href="#Query-Functions-1">Query Functions</a></h2><p>Let&#39;s make a function <code>EmployeesOver</code> that produces employees with a salary greater than the given threshold. The threshold value <code>AMT</code> is evaluated and then made available in the context of each employee with the <code>Given</code> combinator.</p><pre><code class="language-julia">EmployeesOver(X) =
     Given(:AMT =&gt; X,
         It.department &gt;&gt;
@@ -490,10 +494,11 @@ mean_salary = chicago[MeanSalary]
 
 chicago[EmployeesOver(100000)]
 #=&gt;
-  │ employee                    │
-  │ name       position  salary │
-──┼─────────────────────────────┼
-1 │ JEFFERY A  SERGEANT  101442 │
+  │ employee                           │
+  │ name       position         salary │
+──┼────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT         101442 │
+2 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><p><code>EmployeesOver</code> can take another query as an argument. For example, let&#39;s find employees with higher than average salary.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
 
 chicago[EmployeesOver(MeanSalary)]
@@ -503,14 +508,14 @@ chicago[EmployeesOver(MeanSalary)]
 ──┼────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT         101442 │
 2 │ DANIEL A   FIREFIGHTER-EMT   95484 │
-3 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+3 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><p>Note that this combination is yet another query that could be further refined.</p><pre><code class="language-julia">chicago[EmployeesOver(MeanSalary) &gt;&gt; It.name]
 #=&gt;
   │ name      │
 ──┼───────────┼
 1 │ JEFFERY A │
 2 │ DANIEL A  │
-3 │ VICTOR A  │
+3 │ ROBERT K  │
 =#</code></pre><p>Alternatively, this query function could have been defined using <code>Keep</code>. We use <code>Given</code> because it doesn&#39;t leak parameters. Specifically, <code>It.AMT</code> is not available outside <code>EmployeesOver()</code>.</p><pre><code class="language-julia">chicago[EmployeesOver(MeanSalary) &gt;&gt; It.AMT]
 #-&gt; ERROR: cannot find &quot;AMT&quot; ⋮</code></pre><h2><a class="nav-anchor" id="Paging-Data-1" href="#Paging-Data-1">Paging Data</a></h2><p>Sometimes query results can be quite large. In this case it&#39;s helpful to <code>Take</code> or <code>Drop</code> items from the input. Let&#39;s start by listing all 5 employees of our toy database.</p><pre><code class="language-julia">Employee = It.department.employee
 chicago[Employee]
@@ -522,7 +527,7 @@ chicago[Employee]
 2 │ JEFFERY A  SERGEANT         101442 │
 3 │ NANCY A    POLICE OFFICER    80016 │
 4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
-5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
+5 │ ROBERT K   FIREFIGHTER-EMT  103272 │
 =#</code></pre><p>To return only the first 2 records, we use <code>Take</code>.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(2)]
 #=&gt;
   │ employee                          │
@@ -545,7 +550,7 @@ chicago[Employee]
 ──┼───────────────────────────────────┼
 1 │ NANCY A   POLICE OFFICER    80016 │
 2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
-3 │ VICTOR A  FIREFIGHTER-EMT   99324 │
+3 │ ROBERT K  FIREFIGHTER-EMT  103272 │
 =#</code></pre><p>To return the 1st half of the employees in the database, we could use <code>Take</code> with an argument that computes how many to take.</p><pre><code class="language-julia">chicago[Employee &gt;&gt; Take(Count(Employee) .÷ 2)]
 #=&gt;
   │ employee                          │
@@ -555,7 +560,7 @@ chicago[Employee]
 2 │ JEFFERY A  SERGEANT        101442 │
 =#</code></pre><h2><a class="nav-anchor" id="Extracting-Data-1" href="#Extracting-Data-1">Extracting Data</a></h2><p>Given any <code>DataKnot</code>, its content can be extracted using <code>get</code>. For singular output, <code>get</code> returns a scalar value.</p><pre><code class="language-julia">get(chicago[Count(It.department)])
 #-&gt; 2</code></pre><p>For plural output, <code>get</code> returns a <code>Vector</code>.</p><pre><code class="language-julia">get(chicago[It.department.employee.name])
-#-&gt; [&quot;ANTHONY A&quot;, &quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;DANIEL A&quot;, &quot;VICTOR A&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, which is an <code>AbstractVector</code> specialized for column-oriented storage.</p><pre><code class="language-julia">query = It.department &gt;&gt;
+#-&gt; [&quot;ANTHONY A&quot;, &quot;JEFFERY A&quot;, &quot;NANCY A&quot;, &quot;DANIEL A&quot;, &quot;ROBERT K&quot;]</code></pre><p>For more complex outputs, <code>get</code> may return a <code>@VectorTree</code>, which is an <code>AbstractVector</code> specialized for column-oriented storage.</p><pre><code class="language-julia">query = It.department &gt;&gt;
         Record(It.name,
                :employee_count =&gt; Count(It.employee))
 vt = get(chicago[query])
