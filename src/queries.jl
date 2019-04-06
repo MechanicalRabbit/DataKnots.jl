@@ -1430,8 +1430,25 @@ Drop(env::Environment, p::Pipeline, N) =
 
 
 #
-# Group combinator.
+# Unique and Group combinators.
 #
+
+function assemble_unique(p::Pipeline, x::Pipeline)
+    x = uncover(x)
+    q = chain_of(x, unique_by()) |> designate(source(x), target(x)) |> cover
+    compose(p, q)
+end
+
+Unique(X) =
+    Query(Unique, X)
+
+Lift(::typeof(Unique)) =
+    Then(Unique)
+
+function Unique(env::Environment, p::Pipeline, X)
+    x = assemble(X, env, target_pipe(p))
+    assemble_unique(p, x)
+end
 
 function assemble_group(p::Pipeline, xs::Vector{Pipeline})
     lbls = Symbol[]
@@ -1492,7 +1509,4 @@ function Group(env::Environment, p::Pipeline, Xs...)
     xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_group(p, xs)
 end
-
-Lift(::typeof(Group)) =
-    Then(Record)
 

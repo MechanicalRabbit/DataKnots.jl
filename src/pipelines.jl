@@ -857,6 +857,27 @@ Base.@propagate_inbounds ord_eq(o::LexOrdering, a, b) =
 # Grouping.
 #
 
+unique_by() = Pipeline(unique_by)
+
+function unique_by(::Runtime, input::AbstractVector)
+    @assert input isa BlockVector
+    card = cardinality(input)
+    offs = offsets(input)
+    elts = elements(input)
+    len = length(elts)
+    perm = collect(1:len)
+    sep = falses(len+1)
+    for off in offs
+        sep[off] = true
+    end
+    if len > 1
+        _group_by!(elts, sep, perm, OneTo(len))
+    end
+    offs_outer, offs_inner = _partition(offs, sep)
+    elts′ = elts[perm[view(offs_inner, 1:length(offs_inner)-1)]]
+    BlockVector{card}(offs_outer, elts′)
+end
+
 group_by() = Pipeline(group_by)
 
 function group_by(::Runtime, input::AbstractVector)
@@ -877,33 +898,10 @@ function group_by(::Runtime, input::AbstractVector)
     if len > 1
         _group_by!(keys, sep, perm, OneTo(len))
     end
-    sz = 0
-    l = 1
-    for k = 1:length(input)
-        r = offs[k+1]
-        for n = l+1:r
-            sz += sep[n]
-        end
-        l = r
-    end
-    offs_inner = Vector{Int}(undef, sz+1)
-    offs_inner[1] = 1
-    offs_outer = Vector{Int}(undef, length(offs))
-    offs_outer[1] = top = 1
-    l = 1
-    for k = 1:length(input)
-        r = offs[k+1]
-        for n = l+1:r
-            if sep[n]
-                top += 1
-                offs_inner[top] = n
-            end
-        end
-        offs_outer[k+1] = top
-        l = r
-    end
+    offs_outer, offs_inner = _partition(offs, sep)
     card′ = card & x1toN
     vals′ = BlockVector{card′}(offs_inner, vals[perm])
+    sz = length(vals′)
     keys′ = keys[perm[view(offs_inner, 1:sz)]]
     output = BlockVector{card}(offs_outer, TupleVector(sz, AbstractVector[vals′, keys′]))
     output
@@ -930,10 +928,14 @@ function _group_by!(keys::BlockVector{CARD}, sep, perm, idxs) where {CARD}
     while !done
         for k = 1:length(perm)
             idx = idxs[k]
-            l = offs[idx]
-            r = offs[idx+1]
-            if l + pos < r
-                idxs′[k] = l + pos
+            if idx > 0
+                l = offs[idx]
+                r = offs[idx+1]
+                if l + pos < r
+                    idxs′[k] = l + pos
+                else
+                    idxs′[k] = 0
+                end
             else
                 idxs′[k] = 0
             end
@@ -987,6 +989,35 @@ function _group_by!(o::Base.Perm, sep, perm)
             l = r
         end
     end
+end
+
+function _partition(offs, sep)
+    sz = 0
+    l = 1
+    for k = 1:length(offs)-1
+        r = offs[k+1]
+        for n = l+1:r
+            sz += sep[n]
+        end
+        l = r
+    end
+    offs_inner = Vector{Int}(undef, sz+1)
+    offs_inner[1] = 1
+    offs_outer = Vector{Int}(undef, length(offs))
+    offs_outer[1] = top = 1
+    l = 1
+    for k = 1:length(offs)-1
+        r = offs[k+1]
+        for n = l+1:r
+            if sep[n]
+                top += 1
+                offs_inner[top] = n
+            end
+        end
+        offs_outer[k+1] = top
+        l = r
+    end
+    return (offs_outer, offs_inner)
 end
 
 

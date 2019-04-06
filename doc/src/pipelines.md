@@ -20,6 +20,7 @@ transformations.  We will use the following definitions:
         distribute_all,
         filler,
         flatten,
+        group_by,
         lift,
         null_filler,
         pass,
@@ -27,6 +28,7 @@ transformations.  We will use the following definitions:
         slice_by,
         tuple_lift,
         tuple_of,
+        unique_by,
         with_column,
         with_elements,
         wrap,
@@ -557,4 +559,41 @@ number of elements to keep.
 
     p(@VectorTree ([String], Int) [(["GARRY M", "ANTHONY R", "DANA A"], 1), (["JOSE S", "CHARLES S"], -1), (missing, 0)])
     #-> @VectorTree (0:N) × String [["GARRY M"], ["JOSE S"], []]
+
+
+### Grouping
+
+The pipeline `unique_by()` transforms a block vector by keeping one copy of
+each distinct value in each block.
+
+    p = unique_by()
+    #-> unique_by()
+
+    p(@VectorTree [String] [["FIRE", "POLICE", "POLICE", "FIRE"], ["FIRE", "OEMC", "OEMC"], []])
+    #-> @VectorTree (0:N) × String [["FIRE", "POLICE"], ["FIRE", "OEMC"], []]
+
+Compositve values are also supported.
+
+    p(@VectorTree [(0:1)String] [["POLICE", "FIRE", missing, "OEMC", "POLICE", missing]])
+    #-> @VectorTree (0:N) × ((0:1) × String) [[missing, "FIRE", "OEMC", "POLICE"]]
+
+The pipeline `group_by()` expects a block vector of pairs two columns values
+and keys.  The values are further partitioned into blocks by grouping the
+values with equal keys.
+
+    p = group_by()
+    #-> group_by()
+
+    p(@VectorTree [(String, String)] [[("DANIEL A", "FIRE"), ("JEFFERY A", "POLICE"), ("JAMES A", "FIRE"), ("NANCY A", "POLICE")]])
+    #-> @VectorTree (0:N) × ((1:N) × String, String) [[(["DANIEL A", "JAMES A"], "FIRE"), (["JEFFERY A", "NANCY A"], "POLICE")]]
+
+The keys could be assembled from tuples and blocks.
+
+    p(@VectorTree [(String, (0:1)((0:1)Int, (0:1)Int))] [[("JEFFERY A", (10, missing)), ("NANCY A", (8, missing))], [("JAMES A", (10, missing)), ("DANIEL A", (10, missing))], [("LAKENYA A", (missing, 2)), ("DORIS A", (missing, 2)), ("ASKEW A", (6, missing)), ("MARY Z", missing)], []])
+    #-> @VectorTree (0:N) × ((1:N) × String, (0:1) × ((0:1) × Int, (0:1) × Int)) [[(["NANCY A"], (8, missing)), (["JEFFERY A"], (10, missing))], [(["JAMES A", "DANIEL A"], (10, missing))], [(["MARY Z"], missing), (["LAKENYA A", "DORIS A"], (missing, 2)), (["ASKEW A"], (6, missing))], []]
+
+Plural blocks could also serve as keys.
+
+    p(@VectorTree [(String, [String])] [[("ANTONIO", ["POLICE", "OEMC"]), ("DOLORES", ["FINANCE"]), ("MARY", ["FINANCE"]), ("CRYSTAL", ["POLICE", "OEMC"]), ("PIA", ["POLICE"]), ("CALVIN", [])]])
+    #-> @VectorTree (0:N) × ((1:N) × String, (0:N) × String) [[(["CALVIN"], []), (["DOLORES", "MARY"], ["FINANCE"]), (["PIA"], ["POLICE"]), (["ANTONIO", "CRYSTAL"], ["POLICE", "OEMC"])]]
 

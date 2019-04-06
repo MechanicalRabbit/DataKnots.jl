@@ -23,6 +23,7 @@ export
     Sum,
     Tag,
     Take,
+    Unique,
     unitknot
 
 include("layouts.jl")
