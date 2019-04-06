@@ -308,21 +308,21 @@ chicago[
 ──┼──────────────────────────────────┼
 1 │ POLICE  POLICE OFFICER; SERGEANT │
 2 │ FIRE    FIREFIGHTER-EMT          │
-=#</code></pre><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve navigated and summarized data by exploiting its hierarchical organization: the whole dataset <span>$\to$</span> department <span>$\to$</span> employee. But what if we need to work relative to an entity which is not reflected in the data hierarchy? For example, how could we calculate the number of employees per each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>Unique</code>.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
+=#</code></pre><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve navigated and summarized data by exploiting its hierarchical organization: the whole dataset <span>$\to$</span> department <span>$\to$</span> employee. But what if we want a query that isn&#39;t supported by the existing hierarchy? For example, how could we calculate the number of employees per each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>Unique</code>.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
 #=&gt;
   │ position        │
 ──┼─────────────────┼
 1 │ FIREFIGHTER-EMT │
 2 │ POLICE OFFICER  │
 3 │ SERGEANT        │
-=#</code></pre><p>However, using <code>Unique</code> is not sufficient because it does give us the associated employees. In order to get unique positions with associated employee records, we use the Group combinator:</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Group(It.position)]
+=#</code></pre><p>However, <code>Unique</code> is not sufficient because positions are not associated to the respective employees. To associate employee records to their positions, we use <code>Group</code> combinator:</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Group(It.position)]
 #=&gt;
   │ position         employee                                …
 ──┼──────────────────────────────────────────────────────────…
 1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT…
 2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
 3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
-=#</code></pre><p>The <code>Group(It.position)</code>  query rearranges the dataset into a new hierarchy: position <span>$\to$</span> employee. We can use the new arrangement to show employee names for each unique position.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
+=#</code></pre><p>The <code>Group(It.position)</code> query rearranges the dataset into a new hierarchy: position <span>$\to$</span> employee. We can use the new arrangement to show employee names for each unique position.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
         Group(It.position) &gt;&gt;
         Record(It.position, It.employee.name)]
 #=&gt;
@@ -331,13 +331,11 @@ chicago[
 1 │ FIREFIGHTER-EMT  DANIEL A; ROBERT K │
 2 │ POLICE OFFICER   ANTHONY A; NANCY A │
 3 │ SERGEANT         JEFFERY A          │
-=#</code></pre><p>We could also use summary combinators, which lets us answer the original question: the number of employees per each position.</p><pre><code class="language-julia">EmpCount =
-   :count =&gt; Count(It.employee)
-
-chicago[
+=#</code></pre><p>We could further use summary combinators, which lets us answer the original question: the number of employees per each position.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     Group(It.position) &gt;&gt;
-    Record(It.position, EmpCount)]
+    Record(It.position,
+           :count =&gt; Count(It.employee))]
 #=&gt;
   │ position         count │
 ──┼────────────────────────┼
@@ -355,14 +353,14 @@ AvgPay =
 chicago[
     It.department.employee &gt;&gt;
     Group(It.position) &gt;&gt;
-    Record(It.position, PayGap, AvgPay, EmpCount)]
+    Record(It.position, PayGap, AvgPay)]
 #=&gt;
-  │ position         paygap  avgpay    count │
-──┼──────────────────────────────────────────┼
-1 │ FIREFIGHTER-EMT    7788   99378.0      2 │
-2 │ POLICE OFFICER     7506   76263.0      2 │
-3 │ SERGEANT              0  101442.0      1 │
-=#</code></pre><p>Grouping is not limited to existing fields. </p><pre><code class="language-julia">GT100K =
+  │ position         paygap  avgpay   │
+──┼───────────────────────────────────┼
+1 │ FIREFIGHTER-EMT    7788   99378.0 │
+2 │ POLICE OFFICER     7506   76263.0 │
+3 │ SERGEANT              0  101442.0 │
+=#</code></pre><p>One could group by any query; here we group employees based upon a salary threshold.</p><pre><code class="language-julia">GT100K =
     :gt100k =&gt; (It.salary .&gt; 100000)
 
 chicago[
@@ -374,17 +372,17 @@ chicago[
 ──┼──────────────────────────────────────┼
 1 │  false  ANTHONY A; NANCY A; DANIEL A │
 2 │   true  JEFFERY A; ROBERT K          │
-=#</code></pre><p>Further, grouping could be done with any number of expressions.</p><pre><code class="language-julia">chicago[
+=#</code></pre><p>We could also group by several queries. </p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
-    Group(GT100K, It.position) &gt;&gt;
-    Record(It.gt100k, It.position, It.employee.name)]
+    Group(It.position, GT100K) &gt;&gt;
+    Record(It.position, It.gt100k, It.employee.name)]
 #=&gt;
-  │ gt100k  position         name               │
+  │ position         gt100k  name               │
 ──┼─────────────────────────────────────────────┼
-1 │  false  FIREFIGHTER-EMT  DANIEL A           │
-2 │  false  POLICE OFFICER   ANTHONY A; NANCY A │
-3 │   true  FIREFIGHTER-EMT  ROBERT K           │
-4 │   true  SERGEANT         JEFFERY A          │
+1 │ FIREFIGHTER-EMT   false  DANIEL A           │
+2 │ FIREFIGHTER-EMT    true  ROBERT K           │
+3 │ POLICE OFFICER    false  ANTHONY A; NANCY A │
+4 │ SERGEANT           true  JEFFERY A          │
 =#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     titlecase.(It.name) &gt;&gt;
