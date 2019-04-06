@@ -1,4 +1,4 @@
- Tutorial
+# Tutorial
 
 DataKnots is an embedded query language designed so that
 accidental programmers can more easily analyze complex data.
@@ -675,13 +675,13 @@ let's display and compute a 2% Cost Of Living Adjustment ("COLA").
 
     chicago[
         It.department.employee >>
-        Record(It.name, 
-               :old_salary => It.salary, 
-               :cola       => "+" .* string.(COLA),
+        Record(It.name,
+               :old_salary => It.salary,
+               :COLA       => "+" .* string.(COLA),
                :new_salary => It.salary .+ COLA)]
     #=>
       │ employee                                 │
-      │ name       old_salary  cola   new_salary │
+      │ name       old_salary  COLA   new_salary │
     ──┼──────────────────────────────────────────┼
     1 │ ANTHONY A       72510  +1450       73960 │
     2 │ JEFFERY A      101442  +2028      103470 │
