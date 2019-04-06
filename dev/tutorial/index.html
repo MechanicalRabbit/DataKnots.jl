@@ -305,7 +305,16 @@ chicago[
 3 │ POLICE OFFICER  │
 4 │ FIREFIGHTER-EMT │
 5 │ FIREFIGHTER-EMT │
-=#</code></pre><p>We could show <code>Unique</code> positions.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
+=#</code></pre><p>For each department, we could list <code>Unique</code> employee positions.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
+        Record(It.name,
+               Unique(It.employee.position))]
+#=&gt;
+  │ department                       │
+  │ name    position                 │
+──┼──────────────────────────────────┼
+1 │ POLICE  POLICE OFFICER; SERGEANT │
+2 │ FIRE    FIREFIGHTER-EMT          │
+=#</code></pre><p>We could also show <code>Unique</code> positions for the entire dataset.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
 #=&gt;
   │ position        │
 ──┼─────────────────┼
@@ -319,6 +328,15 @@ chicago[
 1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; VICTOR…
 2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
 3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
+=#</code></pre><p>For each position, we could show only employee names.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
+        Group(It.position) &gt;&gt;
+        Record(It.position, It.employee.name)]
+#=&gt;
+  │ position         name               │
+──┼─────────────────────────────────────┼
+1 │ FIREFIGHTER-EMT  DANIEL A; VICTOR A │
+2 │ POLICE OFFICER   ANTHONY A; NANCY A │
+3 │ SERGEANT         JEFFERY A          │
 =#</code></pre><p>We could then summarize the <em>complement</em> of the group, <code>employee</code>, to compute statistics by <code>position</code>.</p><pre><code class="language-julia">EmpCount =
    :count =&gt; Count(It.employee)
 
