@@ -299,6 +299,15 @@ chicago[
 ──┼─────────────────────────┼
 1 │ POLICE   28932  84656.0 │
 2 │ FIRE      7788  99378.0 │
+=#</code></pre><p><code>Unique</code> is another combinator producing a summary value. Here, we use <code>Unique</code> to return distinct positions by department.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
+        Record(It.name,
+               Unique(It.employee.position))]
+#=&gt;
+  │ department                       │
+  │ name    position                 │
+──┼──────────────────────────────────┼
+1 │ POLICE  POLICE OFFICER; SERGEANT │
+2 │ FIRE    FIREFIGHTER-EMT          │
 =#</code></pre><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve navigated and summarized data by exploiting its hierarchical organization: the whole dataset <span>$\to$</span> department <span>$\to$</span> employee. But what if we need to work relative to an entity which is not reflected in the data hierarchy? For example, how could we calculate the number of employees per each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>Unique</code>.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
 #=&gt;
   │ position        │
@@ -376,15 +385,6 @@ chicago[
 2 │  false  POLICE OFFICER   ANTHONY A; NANCY A │
 3 │   true  FIREFIGHTER-EMT  ROBERT K           │
 4 │   true  SERGEANT         JEFFERY A          │
-=#</code></pre><p>Of course, we could list unique positions.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
-        Record(It.name,
-               Unique(It.employee.position))]
-#=&gt;
-  │ department                       │
-  │ name    position                 │
-──┼──────────────────────────────────┼
-1 │ POLICE  POLICE OFFICER; SERGEANT │
-2 │ FIRE    FIREFIGHTER-EMT          │
 =#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     titlecase.(It.name) &gt;&gt;
