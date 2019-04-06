@@ -563,7 +563,20 @@ three pre-existing entities: the dataset as a whole, for each
     5 │ FIREFIGHTER-EMT │
     =#
 
-We could show `Unique` positions.
+For each department, we could list `Unique` employee positions.
+
+    chicago[It.department >>
+            Record(It.name,
+                   Unique(It.employee.position))]
+    #=>
+      │ department                       │
+      │ name    position                 │
+    ──┼──────────────────────────────────┼
+    1 │ POLICE  POLICE OFFICER; SERGEANT │
+    2 │ FIRE    FIREFIGHTER-EMT          │
+    =#
+
+We could also show `Unique` positions for the entire dataset.
 
     chicago[It.department.employee.position >> Unique]
     #=>
@@ -584,6 +597,19 @@ This can be obtained with the `Group` combinator.
     1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; VICTOR…
     2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
     3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
+    =#
+
+For each position, we could show only employee names.
+
+    chicago[It.department.employee >>
+            Group(It.position) >>
+            Record(It.position, It.employee.name)]
+    #=>
+      │ position         name               │
+    ──┼─────────────────────────────────────┼
+    1 │ FIREFIGHTER-EMT  DANIEL A; VICTOR A │
+    2 │ POLICE OFFICER   ANTHONY A; NANCY A │
+    3 │ SERGEANT         JEFFERY A          │
     =#
 
 We could then summarize the *complement* of the group, `employee`,
