@@ -3,7 +3,7 @@
 
 ## v0.2.0
 
-- Added `Group` combinator.
+- Added `Unique` and `Group` combinators.
 
 
 ## v0.1.1
