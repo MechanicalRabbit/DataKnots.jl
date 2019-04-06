@@ -1,4 +1,4 @@
-# Tutorial
+ Tutorial
 
 DataKnots is an embedded query language designed so that
 accidental programmers can more easily analyze complex data.
@@ -14,9 +14,9 @@ represented as nested `NamedTuple` and `Vector` objects.
       (department = [
         (name = "POLICE",
          employee = [
+          (name = "ANTHONY A", position = "POLICE OFFICER", salary = 72510),
           (name = "JEFFERY A", position = "SERGEANT", salary = 101442),
-          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016),
-          (name = "TONY A", position = "POLICE OFFICER", salary = 72510)]),
+          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016)]),
         (name = "FIRE",
          employee = [
           (name = "DANIEL A", position = "FIREFIGHTER-EMT", salary = 95484),
@@ -61,9 +61,9 @@ our dataset exploration by listing employee names.
     #=>
       │ name      │
     ──┼───────────┼
-    1 │ JEFFERY A │
-    2 │ NANCY A   │
-    3 │ TONY A    │
+    1 │ ANTHONY A │
+    2 │ JEFFERY A │
+    3 │ NANCY A   │
     4 │ DANIEL A  │
     5 │ VICTOR A  │
     =#
@@ -85,9 +85,9 @@ as a table.
       │ employee                           │
       │ name       position         salary │
     ──┼────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT         101442 │
-    2 │ NANCY A    POLICE OFFICER    80016 │
-    3 │ TONY A     POLICE OFFICER    72510 │
+    1 │ ANTHONY A  POLICE OFFICER    72510 │
+    2 │ JEFFERY A  SERGEANT         101442 │
+    3 │ NANCY A    POLICE OFFICER    80016 │
     4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
     5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
@@ -118,9 +118,9 @@ output of the first query as input to the second.
       │ employee                           │
       │ name       position         salary │
     ──┼────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT         101442 │
-    2 │ NANCY A    POLICE OFFICER    80016 │
-    3 │ TONY A     POLICE OFFICER    72510 │
+    1 │ ANTHONY A  POLICE OFFICER    72510 │
+    2 │ JEFFERY A  SERGEANT         101442 │
+    3 │ NANCY A    POLICE OFFICER    80016 │
     4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
     5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
@@ -246,11 +246,11 @@ department, employees' name and salary.
                Record(It.name,
                       It.salary))]
     #=>
-      │ department                                               │
-      │ name    employee                                         │
-    ──┼──────────────────────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A, 101442; NANCY A, 80016; TONY A, 72510 │
-    2 │ FIRE    DANIEL A, 95484; VICTOR A, 99324                 │
+      │ department                                                  │
+      │ name    employee                                            │
+    ──┼─────────────────────────────────────────────────────────────┼
+    1 │ POLICE  ANTHONY A, 72510; JEFFERY A, 101442; NANCY A, 80016 │
+    2 │ FIRE    DANIEL A, 95484; VICTOR A, 99324                    │
     =#
 
 In this output, commas separate tuple fields and semi-colons
@@ -327,9 +327,9 @@ our Chicago data starting with a list of employees.
       │ employee                           │
       │ name       position         salary │
     ──┼────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT         101442 │
-    2 │ NANCY A    POLICE OFFICER    80016 │
-    3 │ TONY A     POLICE OFFICER    72510 │
+    1 │ ANTHONY A  POLICE OFFICER    72510 │
+    2 │ JEFFERY A  SERGEANT         101442 │
+    3 │ NANCY A    POLICE OFFICER    80016 │
     4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
     5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
@@ -356,9 +356,9 @@ Let's run `Q` again.
       │ employee                  │
       │ name       salary  gt100k │
     ──┼───────────────────────────┼
-    1 │ JEFFERY A  101442    true │
-    2 │ NANCY A     80016   false │
-    3 │ TONY A      72510   false │
+    1 │ ANTHONY A   72510   false │
+    2 │ JEFFERY A  101442    true │
+    3 │ NANCY A     80016   false │
     4 │ DANIEL A    95484   false │
     5 │ VICTOR A    99324   false │
     =#
@@ -556,8 +556,8 @@ three pre-existing entities: the dataset as a whole, for each
     #=>
       │ position        │
     ──┼─────────────────┼
-    1 │ SERGEANT        │
-    2 │ POLICE OFFICER  │
+    1 │ POLICE OFFICER  │
+    2 │ SERGEANT        │
     3 │ POLICE OFFICER  │
     4 │ FIREFIGHTER-EMT │
     5 │ FIREFIGHTER-EMT │
@@ -582,7 +582,7 @@ This can be obtained with the `Group` combinator.
       │ position         employee                                …
     ──┼──────────────────────────────────────────────────────────…
     1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; VICTOR…
-    2 │ POLICE OFFICER   NANCY A, POLICE OFFICER, 80016; TONY A, …
+    2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
     3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
     =#
 
@@ -656,13 +656,14 @@ broadcasting notation.
 
     chicago[
         It.department.employee >>
-        titlecase.(It.name)]
+        titlecase.(It.name) >>
+        Label(:titlecase)]
     #=>
-      │ It        │
+      │ titlecase │
     ──┼───────────┼
-    1 │ Jeffery A │
-    2 │ Nancy A   │
-    3 │ Tony A    │
+    1 │ Anthony A │
+    2 │ Jeffery A │
+    3 │ Nancy A   │
     4 │ Daniel A  │
     5 │ Victor A  │
     =#
@@ -710,9 +711,9 @@ result, so that it is available within subsequent computations.
       │ employee             │
       │ name       dept_name │
     ──┼──────────────────────┼
-    1 │ JEFFERY A  POLICE    │
-    2 │ NANCY A    POLICE    │
-    3 │ TONY A     POLICE    │
+    1 │ ANTHONY A  POLICE    │
+    2 │ JEFFERY A  POLICE    │
+    3 │ NANCY A    POLICE    │
     4 │ DANIEL A   FIRE      │
     5 │ VICTOR A   FIRE      │
     =#
@@ -857,9 +858,9 @@ listing all 5 employees of our toy database.
       │ employee                           │
       │ name       position         salary │
     ──┼────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT         101442 │
-    2 │ NANCY A    POLICE OFFICER    80016 │
-    3 │ TONY A     POLICE OFFICER    72510 │
+    1 │ ANTHONY A  POLICE OFFICER    72510 │
+    2 │ JEFFERY A  SERGEANT         101442 │
+    3 │ NANCY A    POLICE OFFICER    80016 │
     4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
     5 │ VICTOR A   FIREFIGHTER-EMT   99324 │
     =#
@@ -871,8 +872,8 @@ To return only the first 2 records, we use `Take`.
       │ employee                          │
       │ name       position        salary │
     ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
+    1 │ ANTHONY A  POLICE OFFICER   72510 │
+    2 │ JEFFERY A  SERGEANT        101442 │
     =#
 
 A negative index counts records from the end of the input. So, to
@@ -883,9 +884,9 @@ return all the records but the last two, we write:
       │ employee                          │
       │ name       position        salary │
     ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
-    3 │ TONY A     POLICE OFFICER   72510 │
+    1 │ ANTHONY A  POLICE OFFICER   72510 │
+    2 │ JEFFERY A  SERGEANT        101442 │
+    3 │ NANCY A    POLICE OFFICER   80016 │
     =#
 
 To skip the first two records, returning the rest, we use `Drop`.
@@ -895,7 +896,7 @@ To skip the first two records, returning the rest, we use `Drop`.
       │ employee                          │
       │ name      position         salary │
     ──┼───────────────────────────────────┼
-    1 │ TONY A    POLICE OFFICER    72510 │
+    1 │ NANCY A   POLICE OFFICER    80016 │
     2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
     3 │ VICTOR A  FIREFIGHTER-EMT   99324 │
     =#
@@ -908,8 +909,8 @@ use `Take` with an argument that computes how many to take.
       │ employee                          │
       │ name       position        salary │
     ──┼───────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT        101442 │
-    2 │ NANCY A    POLICE OFFICER   80016 │
+    1 │ ANTHONY A  POLICE OFFICER   72510 │
+    2 │ JEFFERY A  SERGEANT        101442 │
     =#
 
 ## Extracting Data
@@ -923,7 +924,7 @@ For singular output, `get` returns a scalar value.
 For plural output, `get` returns a `Vector`.
 
     get(chicago[It.department.employee.name])
-    #-> ["JEFFERY A", "NANCY A", "TONY A", "DANIEL A", "VICTOR A"]
+    #-> ["ANTHONY A", "JEFFERY A", "NANCY A", "DANIEL A", "VICTOR A"]
 
 For more complex outputs, `get` may return a `@VectorTree`, which
 is an `AbstractVector` specialized for column-oriented storage.
