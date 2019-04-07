@@ -83,7 +83,7 @@ https://rbt-lang.github.io/DataKnots.jl/dev/
 [issues-img]: https://img.shields.io/github/issues/rbt-lang/DataKnots.jl.svg
 [issues-url]: https://github.com/rbt-lang/DataKnots.jl/issues
 [doc-dev-img]: https://img.shields.io/badge/doc-dev-blue.svg
-[doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/dev/
-[license-img]: https://img.shields.io/badge/license-MIT%2FApache%202-blue.svg
+[doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/stable/
+[license-img]: https://img.shields.io/badge/license-MIT-green.svg
 [license-url]: https://raw.githubusercontent.com/rbt-lang/DataKnots.jl/master/LICENSE.md
 [Query Combinators]: https://arxiv.org/abs/1702.08409
