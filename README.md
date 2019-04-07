@@ -9,7 +9,7 @@ DataKnots is not yet usable for general audiences.
 
 **Documentation** | **Build Status** | **Process**
 :---: | :---: | :---:
-[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Linux/OSX Build Status][travis-img]][travis-url] [![Windows Build Status][appveyor-img]][appveyor-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
+[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Linux/OSX Build Status][travis-img]][travis-url] [![Windows Build Status][appveyor-img]][appveyor-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Chat on Gitter][gitter-img]][gitter-url] [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
 
 DataKnots is designed to let data analysts and other
 accidental programmers query and analyze complex
@@ -83,6 +83,8 @@ https://rbt-lang.github.io/DataKnots.jl/dev/
 [doc-rel-img]: https://img.shields.io/badge/docs-stable-green.svg
 [doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/dev/
 [doc-rel-url]: https://rbt-lang.github.io/DataKnots.jl/stable/
-[license-img]: https://img.shields.io/badge/license-MIT-green.svg
+[license-img]: https://img.shields.io/badge/license-MIT-brightgreen.svg
 [license-url]: https://raw.githubusercontent.com/rbt-lang/DataKnots.jl/master/LICENSE.md
+[gitter-img]: https://img.shields.io/gitter/room/rbt-lang/rbt-proto.svg?color=%23753a88
+[gitter-url]: https://gitter.im/rbt-lang/rbt-proto/
 [Query Combinators]: https://arxiv.org/abs/1702.08409
