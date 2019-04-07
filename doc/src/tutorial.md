@@ -504,8 +504,21 @@ To summarize data, we could use query combinators such as `Min`,
     =#
 
 Just as `Count` has an aggregate query form, so do `Min`, `Max`,
-and `Sum`. Let's use this aggregate form to summarize salary
-statistics by department.
+and `Sum`. The previous query could be written in aggregate form.
+
+    chicago[
+        Record(
+            :count => Salary >> Count,
+            :min => Salary >> Min,
+            :max => Salary >> Max,
+            :sum => Salary >> Sum)]
+    #=>
+    │ count  min    max     sum    │
+    ┼──────────────────────────────┼
+    │     5  72510  103272  452724 │
+    =#
+
+Let's calculate salary statistics by department.
 
     Salary = It.employee.salary
 
@@ -513,10 +526,10 @@ statistics by department.
         It.department >>
         Record(
             It.name,
-            :count => Salary >> Count,
-            :min => Salary >> Min,
-            :max => Salary >> Max,
-            :sum => Salary >> Sum)]
+            :count => Count(Salary),
+            :min => Min(Salary),
+            :max => Max(Salary),
+            :sum => Sum(Salary))]
     #=>
       │ department                           │
       │ name    count  min    max     sum    │
@@ -525,7 +538,7 @@ statistics by department.
     2 │ FIRE        2  95484  103272  198756 │
     =#
 
-These summary combinators can be used to define domain specific
+Summary combinators can be used to define domain specific
 measures, such as `PayGap` and `AvgPay`.
 
     Salary = It.employee.salary
