@@ -143,7 +143,7 @@ in creative ways.
 
 ## Lifting Functions
 
-Any function could be used within a query. Consider the function
+Any function could be used to build queries. Consider the function
 `double(x)` that, when applied to a `Number`, produces a `Number`:
 
     double(x) = 2x
@@ -170,8 +170,8 @@ reproduces its input, `Double(It)` doubles its input.
     3 │  6 │
     =#
 
-Broadcasting a function over a query argument makes queries. For
-example, `double.(It)` is also a query that doubles its input.
+Broadcasting a function over a query argument also makes queries.
+For example, `double.(It)` is also a query that doubles its input.
 
     unitknot[Lift(1:3) >> double.(It)]
     #=>
@@ -182,9 +182,9 @@ example, `double.(It)` is also a query that doubles its input.
     3 │  6 │
     =#
 
-Broadcast lifting also applies to built-in operators. Here,
-parenthesis are required since `>>` has higher precedence than
-broadcast addition (`.+`).
+Broadcast lifting applies to built-in operators. The parenthesis
+in this next example are required since `>>` has higher precedence
+than broadcast addition (`.+`).
 
     unitknot[Lift(1:3) >> (It .+ It)]
     #=>
@@ -196,10 +196,9 @@ broadcast addition (`.+`).
     =#
 
 Broadcasting lets a function's arguments control how it is
-applied. This permits bare constants in a query expression without
-explicitly lifting them. In the query `It .+ 1`, the 1st argument
-is the query `It`, and hence the second argument, `1`, is
-automatically lifted to a query as well.
+applied. This permits bare constants to be used within a query
+expression without explicit lift, so long as at least one argument
+is already a query.
 
     unitknot[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -581,25 +580,177 @@ In DataKnots, query parameters permit external data to be used
 within query expressions. Parameters that are defined with `Given`
 can be used to remember values and reuse them.
 
-### Additional Topics
+## Julia Language Integration
 
-Any existing function could be broadcast this way. For example, we
-could broadcast `getfield` to get a field value from a tuple.
+The embedding of DataKnots queries into Julia's syntax works
+relatively well, but is imperfect.
 
-    unitknot[Lift((x=1,y=2)) >> getfield.(It, :y)]
+### NamedTuple Display & Access
+
+Often named tuples show up in data, especially tables that are
+modeled as a vector of named tuple. Consider this trivial dataset.
+
+    knot = convert(DataKnot, (value = 7,))
+
+When our display code sees a `NamedTuple` it provides special
+display to show the column headers.
+
+    knot
+    #=>
+    │ value │
+    ┼───────┼
+    │     7 │
+    =#
+
+Access to a `NamedTuple` values could happen though `getfield`.
+
+    knot[getfield.(It, :value) .* 6]
     #=>
     │ It │
     ┼────┼
-    │  2 │
+    │ 42 │
     =#
 
+Since field access is so common, special treatment to automate
+this is provided via the identity (`It`).
 
-Getting a field value is common enough to have its own notation:
-properties of `It`, such as `It.y`, are used for field access.
-
-    unitknot[Lift((x=1,y=2)) >> It.y]
+    knot[It.value .* 6]
     #=>
-    │ y │
-    ┼───┼
-    │ 2 │
+    │ It │
+    ┼────┼
+    │ 42 │
+    =#
+
+Both of these are there for convenience, they don't otherwise
+impact the semantics of the queries involved. In balance, these
+accomodiations help the user with commonly encountered data.
+
+### Composition Operator Precedence
+
+DataKnots uses Julia's bitshift operator (`>>`) for composition.
+
+This works visually, but the *precedence* of this operator is not
+what would be best for DataKnots. Operators with higher precedence
+include: syntax (`.`, `::`), exponentiation (`^`), and unary (`+`,
+`-`, `√`). Unfortunately, typical binary operators such as
+addition (`+`) have a lower precedence. This conflict of
+expectations can sometimes cause confusion.
+
+Consider the following query.
+
+    unitknot[Lift(1:3) >> (It .+ It)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  4 │
+    3 │  6 │
+    =#
+
+Suppose one forgets the parenthesis around `(It .+ It)`.
+
+    unitknot[Lift(1:3) >> It .+ It]
+    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+
+Since `>>` has higher precedence than `.+`, `Lift(1:3) >> It` is
+evaluated first, giving us, `Lift(1:3)`.
+
+    unitknot[Lift(1:3) .+ It]
+    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+
+The desugared version might be illustrative.
+
+    unitknot[Lift(+, (Lift(1:3), It))]
+    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+
+During broadcast, `Lift(1:3)` is converted to `1:3` and `It` is
+converted to `nothing`. In this very specific case, there is no
+operator that matches this signature, so we get an error.
+
+### Implicit Value Lifting
+
+So that it's easier to write DataKnots queries with Julia objects,
+there are many cases where values are automatically lifted. But,
+sometimes this can cause some confusion.
+
+    unitknot[1:3]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  2 │
+    3 │  3 │
+    =#
+
+    unitknot["Hello"]
+    #=>
+    │ It    │
+    ┼───────┼
+    │ Hello │
+    =#
+
+Since both of those work splendidly, one might expect this to also
+work, but it doesn't.
+
+    unitknot[1:3 >> "Hello"]
+    #-> ERROR: MethodError: no method matching >>(::Int, ::String)⋮
+
+If we make the 1st argument of `>>` a query, things work.
+
+    unitknot[Lift(1:3) >> "Hello"]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │ Hello │
+    2 │ Hello │
+    3 │ Hello │
+    =#
+
+### Forgotten Lift
+
+Sometimes forgetting a `Lift` doesn't result in an error, but
+instead results with unexpected output. This depends quite a bit
+based upon the exact function being used and the context.
+
+Imagine one would like to create a combinator `OneToRand(X)` that
+generates a sequential sequence of numbers having random length.
+As it turns out Julia has a function `rand` that could generate a
+random number for us.
+
+    using Random: seed!, rand
+    seed!(3)
+    rand(1:3)
+    #-> 1
+
+Let's lift this `rand` function to a combinator and try it.
+
+    unitknot[rand.(1:3)]
+    #=>
+      │ It                            │
+    ──┼───────────────────────────────┼
+    1 │ 0.988432                      │
+    2 │ 0.807622; 0.970091            │
+    3 │ 0.140061; 0.509444; 0.0586974 │
+    =#
+
+That was unexpected. Here, `rand.(1:3)` was evaluated before it
+was turned into a query. If we `Lift` the argument, it works.
+
+    unitknot[rand.(Lift(1:3))]
+    #=>
+    │ It │
+    ┼────┼
+    │  1 │
+    =#
+
+Then, we could build our random sequence generator.
+
+    OneToRand(X) = UnitRange.(1, rand.(UnitRange.(1, Lift(X))))
+    unitknot[OneToRand(5)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  2 │
+    3 │  3 │
     =#
