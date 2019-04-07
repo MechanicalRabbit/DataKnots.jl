@@ -191,17 +191,27 @@ Broadcast lifting applies to built-in operators.
     3 │  4 │
     =#
 
-Operators can be explicitly lifted without broadcasting.
+Unary operators can be broadcast as well.
 
-    Sqrt(X) = Lift(√, (It,))
-
-    unitknot[Lift(1:3) >> Sqrt(It)]
+    unitknot[Lift(1:3) >> (√).(It,)]
     #=>
       │ It      │
     ──┼─────────┼
     1 │ 1.0     │
     2 │ 1.41421 │
     3 │ 1.73205 │
+    =#
+
+When making a combinator that uses a function or an operator,
+using `Lift` is recommended since it also lifts the arguments.
+
+    Sqrt(X) = Lift(√, (X,))
+
+    unitknot[Sqrt(2)]
+    #=>
+    │ It      │
+    ┼─────────┼
+    │ 1.41421 │
     =#
 
 Vector-valued functions give rise to plural queries. Here, the
@@ -695,9 +705,8 @@ instead results with unexpected output. This depends quite a bit
 based upon the exact function being used and the context.
 
 Imagine one would like to create a combinator `OneToRand(X)` that
-generates a sequential sequence of numbers having random length.
-As it turns out Julia has a function `rand` that could generate a
-random number for us.
+generates sequential numbers having random length. Julia has a
+function `rand` that could generate a random length for us.
 
     using Random: seed!, rand
     seed!(3)
@@ -727,7 +736,8 @@ was turned into a query. If we `Lift` the argument, it works.
 
 Then, we could build our random sequence generator.
 
-    OneToRand(X) = UnitRange.(1, rand.(UnitRange.(1, Lift(X))))
+    OneToRand(X) = UnitRange.(1, rand.(Lift(:, (1, X))))
+
     unitknot[OneToRand(5)]
     #=>
       │ It │
@@ -736,3 +746,8 @@ Then, we could build our random sequence generator.
     2 │  2 │
     3 │  3 │
     =#
+
+Generally, we prefer to use broadcast notation when we know that
+at least one argument will always be a query. However, when making
+combinators, it's better to use `Lift` since it ensures all
+arguments are lifted. This permits use of bare constants.

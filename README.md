@@ -11,7 +11,8 @@ DataKnots is not yet usable for general audiences.
 [![Windows Build Status][appveyor-img]][appveyor-url]
 [![Code Coverage Status][codecov-img]][codecov-url]
 [![Open Issues][issues-img]][issues-url]
-[![Documentation][doc-dev-img]][doc-dev-url]
+[![Stable Documentation][doc-rel-img]][doc-rel-url]
+[![Development Documentation][doc-dev-img]][doc-dev-url]
 [![MIT License][license-img]][license-url]
 
 DataKnots is designed to let data analysts and other
@@ -82,8 +83,10 @@ https://rbt-lang.github.io/DataKnots.jl/dev/
 [codecov-url]: https://codecov.io/gh/rbt-lang/DataKnots.jl
 [issues-img]: https://img.shields.io/github/issues/rbt-lang/DataKnots.jl.svg
 [issues-url]: https://github.com/rbt-lang/DataKnots.jl/issues
-[doc-dev-img]: https://img.shields.io/badge/doc-dev-blue.svg
-[doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/stable/
+[doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[doc-rel-img]: https://img.shields.io/badge/docs-stable-green.svg
+[doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/dev/
+[doc-rel-url]: https://rbt-lang.github.io/DataKnots.jl/stable/
 [license-img]: https://img.shields.io/badge/license-MIT-green.svg
 [license-url]: https://raw.githubusercontent.com/rbt-lang/DataKnots.jl/master/LICENSE.md
 [Query Combinators]: https://arxiv.org/abs/1702.08409
