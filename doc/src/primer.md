@@ -180,23 +180,7 @@ For example, `double.(It)` is a query that doubles its input.
     3 │  6 │
     =#
 
-Broadcast lifting applies to built-in operators. The parenthesis
-in this next example are required since `>>` has higher precedence
-than broadcast addition (`.+`).
-
-    unitknot[Lift(1:3) >> (It .+ It)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
-    =#
-
-Broadcasting lets a function's arguments control how it is
-applied. This permits bare constants (such as `1`) to be used
-within a query expression without explicit lift, so long as at
-least one argument is already a query.
+Broadcast lifting applies to built-in operators.
 
     unitknot[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -207,10 +191,11 @@ least one argument is already a query.
     3 │  4 │
     =#
 
-Sometimes an operator, such as the square root (`√`), lacks a
-broadcast equivalent. These can be explicitly lifted.
+Operators can be explicitly lifted without broadcasting.
 
-    unitknot[Lift(1:3) >> Lift(√, (It,))]
+    Sqrt(X) = Lift(√, (It,))
+
+    unitknot[Lift(1:3) >> Sqrt(It)]
     #=>
       │ It      │
     ──┼─────────┼
@@ -663,8 +648,7 @@ operator that matches this signature, so we get an error.
 ### Implicit Value Lifting
 
 So that it's easier to write DataKnots queries with Julia objects,
-there are many cases where values are automatically lifted. But,
-sometimes this can cause some confusion.
+there are many cases where values are automatically lifted.
 
     unitknot[1:3]
     #=>
@@ -698,6 +682,11 @@ If we make the 1st argument of `>>` a query, things work.
     2 │ Hello │
     3 │ Hello │
     =#
+
+Broadcasting lets a function's arguments control how it is
+applied. This permits bare constants (such as `"Hello"`) to be
+used within a query expression without explicit lift, so long as
+at least one other argument is already a query.
 
 ### Forgotten Lift
 
