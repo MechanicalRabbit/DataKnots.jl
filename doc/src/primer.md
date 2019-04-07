@@ -156,10 +156,8 @@ combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-In this case, `double` expects a scalar value. For a given query
-`X`, the combinator `Double(X)` evaluates `X` and then runs each
-output element though the `double` function. Since the query `It`
-reproduces its input, `Double(It)` doubles its input.
+For a given query `X`, the combinator `Double(X)` evaluates `X`
+and then runs each output element though the `double` function.
 
     unitknot[Lift(1:3) >> Double(It)]
     #=>
@@ -171,7 +169,7 @@ reproduces its input, `Double(It)` doubles its input.
     =#
 
 Broadcasting a function over a query argument also makes queries.
-For example, `double.(It)` is also a query that doubles its input.
+For example, `double.(It)` is a query that doubles its input.
 
     unitknot[Lift(1:3) >> double.(It)]
     #=>
@@ -196,9 +194,9 @@ than broadcast addition (`.+`).
     =#
 
 Broadcasting lets a function's arguments control how it is
-applied. This permits bare constants to be used within a query
-expression without explicit lift, so long as at least one argument
-is already a query.
+applied. This permits bare constants (such as `1`) to be used
+within a query expression without explicit lift, so long as at
+least one argument is already a query.
 
     unitknot[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -209,20 +207,21 @@ is already a query.
     3 │  4 │
     =#
 
-Broadcasting can be used to build succinct query expressions from
-native functions and operators.
+Sometimes an operator, such as the square root (`√`), lacks a
+broadcast equivalent. These can be explicitly lifted.
 
-    unitknot[Lift(1:3) >> iseven.(It .+ 1)]
+    unitknot[Lift(1:3) >> Lift(√, (It,))]
     #=>
-      │ It    │
-    ──┼───────┼
-    1 │  true │
-    2 │ false │
-    3 │  true │
+      │ It      │
+    ──┼─────────┼
+    1 │ 1.0     │
+    2 │ 1.41421 │
+    3 │ 1.73205 │
     =#
 
-Sometimes an operator, such as the unit range constructor (`:`),
-lacks a broadcast equivalent. These can be explicitly lifted.
+Vector-valued functions give rise to plural queries. Here, the
+unit range constructor, which produces a vector output, is lifted
+to a query combinator that builds plural queries.
 
     OneTo(X) = Lift(:, (1, X))
 
@@ -235,9 +234,8 @@ lacks a broadcast equivalent. These can be explicitly lifted.
     3 │  3 │
     =#
 
-Vector-valued functions give rise to plural queries. Here, the
-unit range, which produces a vector output, is lifted into a query
-which produces a plural output.
+This semi-automated lifting lets us access rich statistical and
+data processing functions from within our queries.
 
 ## Aggregate Queries
 
