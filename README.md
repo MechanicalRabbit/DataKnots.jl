@@ -4,9 +4,6 @@
 an extensible, practical and coherent algebra of query
 combinators.*
 
-At this time, while we welcome feedback and contributions,
-DataKnots is not yet usable for general audiences.
-
 **Documentation** | **Build Status** | **Process**
 :---: | :---: | :---:
 [![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Linux/OSX Build Status][travis-img]][travis-url] [![Windows Build Status][appveyor-img]][appveyor-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Chat on Gitter][gitter-img]][gitter-url] [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
@@ -65,11 +62,14 @@ pkg> dev https://github.com/rbt-lang/DataKnots.jl
 
 ## Support
 
+At this time, while we welcome feedback and contributions,
+DataKnots is not yet usable for general audiences.
+
 Our development chat is currently hosted on Gitter:
 https://gitter.im/rbt-lang/rbt-proto
 
 Current documentation could be found at:
-https://rbt-lang.github.io/DataKnots.jl/dev/
+https://rbt-lang.github.io/DataKnots.jl/stable/
 
 [travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
 [travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl
