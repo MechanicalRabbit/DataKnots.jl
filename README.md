@@ -7,13 +7,9 @@ combinators.*
 At this time, while we welcome feedback and contributions,
 DataKnots is not yet usable for general audiences.
 
-[![Linux/OSX Build Status][travis-img]][travis-url]
-[![Windows Build Status][appveyor-img]][appveyor-url]
-[![Code Coverage Status][codecov-img]][codecov-url]
-[![Open Issues][issues-img]][issues-url]
-[![Stable Documentation][doc-rel-img]][doc-rel-url]
-[![Development Documentation][doc-dev-img]][doc-dev-url]
-[![MIT License][license-img]][license-url]
+**Documentation** | **Build Status** | **Process**
+:---: | :---: | :---:
+[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Linux/OSX Build Status][travis-img]][travis-url] [![Windows Build Status][appveyor-img]][appveyor-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
 
 DataKnots is designed to let data analysts and other
 accidental programmers query and analyze complex
