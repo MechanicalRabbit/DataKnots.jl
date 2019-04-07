@@ -143,9 +143,8 @@ in creative ways.
 
 ## Lifting Functions
 
-Any function could be integrated into a DataKnots query. Consider
-the function `double(x)` that, when applied to a `Number`,
-produces a `Number`:
+Any function could be used within a query. Consider the function
+`double(x)` that, when applied to a `Number`, produces a `Number`:
 
     double(x) = 2x
     double(3) #-> 6
@@ -157,10 +156,10 @@ combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
 
-In this case, `double` expects a scalar value. Therefore, for a
-query `X`, the combinator `Double(X)` evaluates `X` and then runs
-each output element though `double`. Thus, the query `Double(It)`
-would simply double its input.
+In this case, `double` expects a scalar value. For a given query
+`X`, the combinator `Double(X)` evaluates `X` and then runs each
+output element though the `double` function. Since the query `It`
+reproduces its input, `Double(It)` doubles its input.
 
     unitknot[Lift(1:3) >> Double(It)]
     #=>
@@ -171,8 +170,8 @@ would simply double its input.
     3 │  6 │
     =#
 
-Broadcasting a function over a query argument performs a `Lift`
-implicitly, building a query component.
+Broadcasting a function over a query argument makes queries. For
+example, `double.(It)` is also a query that doubles its input.
 
     unitknot[Lift(1:3) >> double.(It)]
     #=>
@@ -183,29 +182,24 @@ implicitly, building a query component.
     3 │  6 │
     =#
 
-Any existing function could be broadcast this way. For example, we
-could broadcast `getfield` to get a field value from a tuple.
+Broadcast lifting also applies to built-in operators. Here,
+parenthesis are required since `>>` has higher precedence than
+broadcast addition (`.+`).
 
-    unitknot[Lift((x=1,y=2)) >> getfield.(It, :y)]
+    unitknot[Lift(1:3) >> (It .+ It)]
     #=>
-    │ It │
-    ┼────┼
-    │  2 │
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  4 │
+    3 │  6 │
     =#
 
-Getting a field value is common enough to have its own notation,
-properties of `It`, such as `It.y`, are used for field access.
-
-    unitknot[Lift((x=1,y=2)) >> It.y]
-    #=>
-    │ y │
-    ┼───┼
-    │ 2 │
-    =#
-
-Implicit lifting also applies to built-in Julia operators (`+`)
-and values (`1`). The expression `It .+ 1` is a query component
-that increments each of its input elements.
+Broadcasting lets a function's arguments control how it is
+applied. This permits bare constants in a query expression without
+explicitly lifting them. In the query `It .+ 1`, the 1st argument
+is the query `It`, and hence the second argument, `1`, is
+automatically lifted to a query as well.
 
     unitknot[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -216,16 +210,22 @@ that increments each of its input elements.
     3 │  4 │
     =#
 
-In Julia, broadcasting lets the function's arguments control how
-the function is applied. When a function is broadcasted over
-queries, the result is a query. However, to make sure it works, we
-need to ensure that at least one argument is a query, and we can
-do this by wrapping at least one argument with `Lift`.
+Broadcasting can be used to build succinct query expressions from
+native functions and operators.
 
-    OneTo(N) = UnitRange.(1, Lift(N))
+    unitknot[Lift(1:3) >> iseven.(It .+ 1)]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │ false │
+    3 │  true │
+    =#
 
-Note that the unit range constructor is vector-valued. Therefore,
-the resulting combinator builds queries with plural output.
+Sometimes an operator, such as the unit range constructor (`:`),
+lacks a broadcast equivalent. These can be explicitly lifted.
+
+    OneTo(X) = Lift(:, (1, X))
 
     unitknot[OneTo(3)]
     #=>
@@ -236,15 +236,11 @@ the resulting combinator builds queries with plural output.
     3 │  3 │
     =#
 
-This automated lifting lets us access rich statistical and data
-processing functions from within our queries.
+Vector-valued functions give rise to plural queries. Here, the
+unit range, which produces a vector output, is lifted into a query
+which produces a plural output.
 
 ## Aggregate Queries
-
-There are query operations which cannot be lifted from Julia
-functions. We've met a few already, including the identity (`It`)
-and query composition (`>>`). There are many others involving
-aggregation, filtering, and paging.
 
 So far queries have been *elementwise*; that is, for each input
 element, they produce zero or more output elements. Consider the
@@ -295,7 +291,7 @@ around `OneTo(It) >> Sum` will not change the result.
     =#
 
 We need the `Each` combinator, which acts as an elementwise
-*barrier*. For each input element, `Each` evaluates its argument,
+barrier. For each input element, `Each` evaluates its argument,
 and then collects the outputs.
 
     unitknot[OneTo(3) >> Each(OneTo(It) >> Sum)]
@@ -309,8 +305,6 @@ and then collects the outputs.
 
 Following is an equivalent query, using the `Sum` combinator.
 Here, `Sum(X)` produces the same output as `Each(X >> Sum)`.
-Although `Sum(X)` performs numerical aggregation, it is not an
-aggregate query since its input is treated elementwise.
 
     unitknot[OneTo(3) >> Sum(OneTo(It))]
     #=>
@@ -355,6 +349,11 @@ Moreover, custom aggregates can be constructed from native Julia
 functions and lifted into the query algebra.
 
 ## Filtering
+
+There are query operations which cannot be lifted from Julia
+functions. We've met a few already, including the identity (`It`)
+and query composition (`>>`). There are many others involving
+filtering, aggregation, grouping, and paging.
 
 The `Filter` combinator has one parameter, a predicate query that,
 for each input element, decides if this element should be included
@@ -581,3 +580,26 @@ than once.
 In DataKnots, query parameters permit external data to be used
 within query expressions. Parameters that are defined with `Given`
 can be used to remember values and reuse them.
+
+### Additional Topics
+
+Any existing function could be broadcast this way. For example, we
+could broadcast `getfield` to get a field value from a tuple.
+
+    unitknot[Lift((x=1,y=2)) >> getfield.(It, :y)]
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
+
+Getting a field value is common enough to have its own notation:
+properties of `It`, such as `It.y`, are used for field access.
+
+    unitknot[Lift((x=1,y=2)) >> It.y]
+    #=>
+    │ y │
+    ┼───┼
+    │ 2 │
+    =#
