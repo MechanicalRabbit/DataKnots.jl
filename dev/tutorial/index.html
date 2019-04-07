@@ -268,23 +268,33 @@ chicago[
 │ count  min    max     sum    │
 ┼──────────────────────────────┼
 │     5  72510  103272  452724 │
-=#</code></pre><p>Just as <code>Count</code> has an aggregate query form, so do <code>Min</code>, <code>Max</code>, and <code>Sum</code>. Let&#39;s use this aggregate form to summarize salary statistics by department.</p><pre><code class="language-julia">Salary = It.employee.salary
+=#</code></pre><p>Just as <code>Count</code> has an aggregate query form, so do <code>Min</code>, <code>Max</code>, and <code>Sum</code>. The previous query could be written in aggregate form.</p><pre><code class="language-julia">chicago[
+    Record(
+        :count =&gt; Salary &gt;&gt; Count,
+        :min =&gt; Salary &gt;&gt; Min,
+        :max =&gt; Salary &gt;&gt; Max,
+        :sum =&gt; Salary &gt;&gt; Sum)]
+#=&gt;
+│ count  min    max     sum    │
+┼──────────────────────────────┼
+│     5  72510  103272  452724 │
+=#</code></pre><p>Let&#39;s calculate salary statistics by department.</p><pre><code class="language-julia">Salary = It.employee.salary
 
 chicago[
     It.department &gt;&gt;
     Record(
         It.name,
-        :count =&gt; Salary &gt;&gt; Count,
-        :min =&gt; Salary &gt;&gt; Min,
-        :max =&gt; Salary &gt;&gt; Max,
-        :sum =&gt; Salary &gt;&gt; Sum)]
+        :count =&gt; Count(Salary),
+        :min =&gt; Min(Salary),
+        :max =&gt; Max(Salary),
+        :sum =&gt; Sum(Salary))]
 #=&gt;
   │ department                           │
   │ name    count  min    max     sum    │
 ──┼──────────────────────────────────────┼
 1 │ POLICE      3  72510  101442  253968 │
 2 │ FIRE        2  95484  103272  198756 │
-=#</code></pre><p>These summary combinators can be used to define domain specific measures, such as <code>PayGap</code> and <code>AvgPay</code>.</p><pre><code class="language-julia">Salary = It.employee.salary
+=#</code></pre><p>Summary combinators can be used to define domain specific measures, such as <code>PayGap</code> and <code>AvgPay</code>.</p><pre><code class="language-julia">Salary = It.employee.salary
 PayGap =
     :paygap =&gt; Max(Salary) .- Min(Salary)
 AvgPay =
