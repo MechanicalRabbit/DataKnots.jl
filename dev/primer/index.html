@@ -57,14 +57,14 @@ unitknot[Lift(1:3) &gt;&gt; Increment]
 2 │  3 │
 3 │  4 │
 =#</code></pre><p>In DataKnots, queries are built algebraically, starting with query primitives, such as constants (<code>Lift</code>) or the identity (<code>It</code>), and then arranged with with combinators, such as composition (<code>&gt;&gt;</code>). This lets us define sophisticated query components and remix them in creative ways.</p><h2><a class="nav-anchor" id="Lifting-Functions-1" href="#Lifting-Functions-1">Lifting Functions</a></h2><p>Any function could be used to build queries. Consider the function <code>double(x)</code> that, when applied to a <code>Number</code>, produces a <code>Number</code>:</p><pre><code class="language-julia">double(x) = 2x
-double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any function to a combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>In this case, <code>double</code> expects a scalar value. For a given query <code>X</code>, the combinator <code>Double(X)</code> evaluates <code>X</code> and then runs each output element though the <code>double</code> function. Since the query <code>It</code> reproduces its input, <code>Double(It)</code> doubles its input.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Double(It)]
+double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query <em>combinators</em>. We can convert any function to a combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia">Double(X) = Lift(double, (X,))</code></pre><p>For a given query <code>X</code>, the combinator <code>Double(X)</code> evaluates <code>X</code> and then runs each output element though the <code>double</code> function.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Double(It)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Broadcasting a function over a query argument also makes queries. For example, <code>double.(It)</code> is also a query that doubles its input.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; double.(It)]
+=#</code></pre><p>Broadcasting a function over a query argument also makes queries. For example, <code>double.(It)</code> is a query that doubles its input.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; double.(It)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -78,21 +78,21 @@ double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</c
 1 │  2 │
 2 │  4 │
 3 │  6 │
-=#</code></pre><p>Broadcasting lets a function&#39;s arguments control how it is applied. This permits bare constants to be used within a query expression without explicit lift, so long as at least one argument is already a query.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (It .+ 1)]
+=#</code></pre><p>Broadcasting lets a function&#39;s arguments control how it is applied. This permits bare constants (such as <code>1</code>) to be used within a query expression without explicit lift, so long as at least one argument is already a query.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (It .+ 1)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  2 │
 2 │  3 │
 3 │  4 │
-=#</code></pre><p>Broadcasting can be used to build succinct query expressions from native functions and operators.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; iseven.(It .+ 1)]
+=#</code></pre><p>Sometimes an operator, such as the square root (<code>√</code>), lacks a broadcast equivalent. These can be explicitly lifted.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Lift(√, (It,))]
 #=&gt;
-  │ It    │
-──┼───────┼
-1 │  true │
-2 │ false │
-3 │  true │
-=#</code></pre><p>Sometimes an operator, such as the unit range constructor (<code>:</code>), lacks a broadcast equivalent. These can be explicitly lifted.</p><pre><code class="language-julia">OneTo(X) = Lift(:, (1, X))
+  │ It      │
+──┼─────────┼
+1 │ 1.0     │
+2 │ 1.41421 │
+3 │ 1.73205 │
+=#</code></pre><p>Vector-valued functions give rise to plural queries. Here, the unit range constructor, which produces a vector output, is lifted to a query combinator that builds plural queries.</p><pre><code class="language-julia">OneTo(X) = Lift(:, (1, X))
 
 unitknot[OneTo(3)]
 #=&gt;
@@ -101,7 +101,7 @@ unitknot[OneTo(3)]
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><p>Vector-valued functions give rise to plural queries. Here, the unit range, which produces a vector output, is lifted into a query which produces a plural output.</p><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider the <code>Count</code> primitive; it returns the number of its input elements.</p><pre><code class="language-julia">unitknot[OneTo(3) &gt;&gt; Count]
+=#</code></pre><p>This semi-automated lifting lets us access rich statistical and data processing functions from within our queries.</p><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider the <code>Count</code> primitive; it returns the number of its input elements.</p><pre><code class="language-julia">unitknot[OneTo(3) &gt;&gt; Count]
 #=&gt;
 │ It │
 ┼────┼
