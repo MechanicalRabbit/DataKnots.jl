@@ -347,88 +347,6 @@ primitives or as query combinators taking a plural query argument.
 Moreover, custom aggregates can be constructed from native Julia
 functions and lifted into the query algebra.
 
-## Filtering
-
-There are query operations which cannot be lifted from Julia
-functions. We've met a few already, including the identity (`It`)
-and query composition (`>>`). There are many others involving
-filtering, aggregation, grouping, and paging.
-
-The `Filter` combinator has one parameter, a predicate query that,
-for each input element, decides if this element should be included
-in the output.
-
-    unitknot[OneTo(6) >> Filter(It .> 3)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
-    =#
-
-Being a combinator, `Filter` builds a query component, which could
-then be composed with any data generating query.
-
-    KeepEven = Filter(iseven.(It))
-    unitknot[OneTo(6) >> KeepEven]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
-    =#
-
-Filter can work in a nested context.
-
-    unitknot[Lift(1:3) >> Filter(Sum(OneTo(It)) .> 5)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    =#
-
-The `Filter` combinator is elementwise. Furthermore, the predicate
-argument is evaluated for each input element. If the predicate
-evaluation is `true` for a given element, then that element is
-reproduced, otherwise it is discarded.
-
-## Paging Data
-
-Like `Filter`, the `Take` and `Drop` combinators can be used to
-choose elements from an input: `Drop` is used to skip over input,
-while `Take` ignores input past a particular point.
-
-    unitknot[OneTo(9) >> Drop(3) >> Take(3)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
-    =#
-
-Unlike `Filter`, which evaluates its argument for each element,
-the argument to `Take` is evaluated once, in the context of the
-input's *source*.
-
-    unitknot[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ a  │
-    3 │ b  │
-    4 │ a  │
-    5 │ b  │
-    6 │ c  │
-    =#
-
-In this example, the argument of `Take` evaluates in the context
-of `OneTo(3)`. Therefore, `Take` will be performed three times,
-where `It` has the values `1`, `2`, and `3`.
-
 ## Records & Labels
 
 Data objects can be created using the `Record` combinator. Values
@@ -510,6 +428,83 @@ By accessing names, calculations can be performed on records.
 
 Using records, it is possible to represent complex, hierarchical
 data. It is then possible to access and compute with this data.
+
+## Filtering
+
+The `Filter` combinator has one parameter, a predicate query that,
+for each input element, decides if this element should be included
+in the output.
+
+    unitknot[OneTo(6) >> Filter(It .> 3)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  4 │
+    2 │  5 │
+    3 │  6 │
+    =#
+
+Being a combinator, `Filter` builds a query component, which could
+then be composed with any data generating query.
+
+    KeepEven = Filter(iseven.(It))
+    unitknot[OneTo(6) >> KeepEven]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │  4 │
+    3 │  6 │
+    =#
+
+Filter can work in a nested context.
+
+    unitknot[Lift(1:3) >> Filter(Sum(OneTo(It)) .> 5)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  3 │
+    =#
+
+The `Filter` combinator is elementwise. Furthermore, the predicate
+argument is evaluated for each input element. If the predicate
+evaluation is `true` for a given element, then that element is
+reproduced, otherwise it is discarded.
+
+## Paging Data
+
+Like `Filter`, the `Take` and `Drop` combinators can be used to
+choose elements from an input: `Drop` is used to skip over input,
+while `Take` ignores input past a particular point.
+
+    unitknot[OneTo(9) >> Drop(3) >> Take(3)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  4 │
+    2 │  5 │
+    3 │  6 │
+    =#
+
+Unlike `Filter`, which evaluates its argument for each element,
+the argument to `Take` is evaluated once, in the context of the
+input's *source*.
+
+    unitknot[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ a  │
+    3 │ b  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
+    =#
+
+In this example, the argument of `Take` evaluates in the context
+of `OneTo(3)`. Therefore, `Take` will be performed three times,
+where `It` has the values `1`, `2`, and `3`.
 
 ## Query Parameters
 
@@ -650,18 +645,18 @@ Consider the following query.
 Suppose one forgets the parenthesis around `(It .+ It)`.
 
     unitknot[Lift(1:3) >> It .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
 
 Since `>>` has higher precedence than `.+`, `Lift(1:3) >> It` is
 evaluated first, giving us, `Lift(1:3)`.
 
     unitknot[Lift(1:3) .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
 
 The desugared version might be illustrative.
 
     unitknot[Lift(+, (Lift(1:3), It))]
-    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
 
 During broadcast, `Lift(1:3)` is converted to `1:3` and `It` is
 converted to `nothing`. In this very specific case, there is no
