@@ -78,15 +78,20 @@ double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</c
 1 │  2 │
 2 │  3 │
 3 │  4 │
-=#</code></pre><p>Operators can be explicitly lifted without broadcasting.</p><pre><code class="language-julia">Sqrt(X) = Lift(√, (It,))
-
-unitknot[Lift(1:3) &gt;&gt; Sqrt(It)]
+=#</code></pre><p>Unary operators can be broadcast as well.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (√).(It,)]
 #=&gt;
   │ It      │
 ──┼─────────┼
 1 │ 1.0     │
 2 │ 1.41421 │
 3 │ 1.73205 │
+=#</code></pre><p>When making a combinator that uses a function or an operator, using <code>Lift</code> is recommended since it also lifts the arguments.</p><pre><code class="language-julia">Sqrt(X) = Lift(√, (X,))
+
+unitknot[Sqrt(2)]
+#=&gt;
+│ It      │
+┼─────────┼
+│ 1.41421 │
 =#</code></pre><p>Vector-valued functions give rise to plural queries. Here, the unit range constructor, which produces a vector output, is lifted to a query combinator that builds plural queries.</p><pre><code class="language-julia">OneTo(X) = Lift(:, (1, X))
 
 unitknot[OneTo(3)]
@@ -309,7 +314,7 @@ unitknot[&quot;Hello&quot;]
 1 │ Hello │
 2 │ Hello │
 3 │ Hello │
-=#</code></pre><p>Broadcasting lets a function&#39;s arguments control how it is applied. This permits bare constants (such as <code>&quot;Hello&quot;</code>) to be used within a query expression without explicit lift, so long as at least one other argument is already a query.</p><h3><a class="nav-anchor" id="Forgotten-Lift-1" href="#Forgotten-Lift-1">Forgotten Lift</a></h3><p>Sometimes forgetting a <code>Lift</code> doesn&#39;t result in an error, but instead results with unexpected output. This depends quite a bit based upon the exact function being used and the context.</p><p>Imagine one would like to create a combinator <code>OneToRand(X)</code> that generates a sequential sequence of numbers having random length. As it turns out Julia has a function <code>rand</code> that could generate a random number for us.</p><pre><code class="language-julia">using Random: seed!, rand
+=#</code></pre><p>Broadcasting lets a function&#39;s arguments control how it is applied. This permits bare constants (such as <code>&quot;Hello&quot;</code>) to be used within a query expression without explicit lift, so long as at least one other argument is already a query.</p><h3><a class="nav-anchor" id="Forgotten-Lift-1" href="#Forgotten-Lift-1">Forgotten Lift</a></h3><p>Sometimes forgetting a <code>Lift</code> doesn&#39;t result in an error, but instead results with unexpected output. This depends quite a bit based upon the exact function being used and the context.</p><p>Imagine one would like to create a combinator <code>OneToRand(X)</code> that generates sequential numbers having random length. Julia has a function <code>rand</code> that could generate a random length for us.</p><pre><code class="language-julia">using Random: seed!, rand
 seed!(3)
 rand(1:3)
 #-&gt; 1</code></pre><p>Let&#39;s lift this <code>rand</code> function to a combinator and try it.</p><pre><code class="language-julia">unitknot[rand.(1:3)]
@@ -324,7 +329,8 @@ rand(1:3)
 │ It │
 ┼────┼
 │  1 │
-=#</code></pre><p>Then, we could build our random sequence generator.</p><pre><code class="language-julia">OneToRand(X) = UnitRange.(1, rand.(UnitRange.(1, Lift(X))))
+=#</code></pre><p>Then, we could build our random sequence generator.</p><pre><code class="language-julia">OneToRand(X) = UnitRange.(1, rand.(Lift(:, (1, X))))
+
 unitknot[OneToRand(5)]
 #=&gt;
   │ It │
@@ -332,4 +338,4 @@ unitknot[OneToRand(5)]
 1 │  1 │
 2 │  2 │
 3 │  3 │
-=#</code></pre><footer><hr/><a class="previous" href="../reference/"><span class="direction">Previous</span><span class="title">Reference</span></a><a class="next" href="../vectors/"><span class="direction">Next</span><span class="title">Column Store</span></a></footer></article></body></html>
+=#</code></pre><p>Generally, we prefer to use broadcast notation when we know that at least one argument will always be a query. However, when making combinators, it&#39;s better to use <code>Lift</code> since it ensures all arguments are lifted. This permits use of bare constants.</p><footer><hr/><a class="previous" href="../reference/"><span class="direction">Previous</span><span class="title">Reference</span></a><a class="next" href="../vectors/"><span class="direction">Next</span><span class="title">Column Store</span></a></footer></article></body></html>
