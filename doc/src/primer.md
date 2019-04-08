@@ -76,7 +76,7 @@ A `Vector` lifted to a constant query will produce plural output.
     3 │ c  │
     =#
 
-We call queries constructed this way *primitives*, as they do not
+We call queries constructed this way primitives, as they do not
 rely upon any other query. There are also combinators, which build
 new queries from existing ones.
 
@@ -151,7 +151,7 @@ Any function could be used to build queries. Consider the function
 
 What we want is an analogue to `double` which, instead of
 operating on numbers, operates on queries. Such functions are
-called query *combinators*. We can convert any function to a
+called query combinators. We can convert any function to a
 combinator by passing the function and its arguments to `Lift`.
 
     Double(X) = Lift(double, (X,))
@@ -313,6 +313,7 @@ plural output is converted into the function's vector argument.
 
     using Statistics
     Mean(X) = mean.(X)
+
     unitknot[Mean(OneTo(3) >> Sum(OneTo(It)))]
     #=>
     │ It      │
@@ -340,89 +341,12 @@ primitives or as query combinators taking a plural query argument.
 Moreover, custom aggregates can be constructed from native Julia
 functions and lifted into the query algebra.
 
-## Records & Labels
-
-Data objects can be created using the `Record` combinator. Values
-can be labeled using Julia's `Pair` syntax. The entire result as a
-whole may also be named.
-
-    GM = Record(:name => "GARRY M", :salary => 260004)
-    unitknot[GM]
-    #=>
-    │ name     salary │
-    ┼─────────────────┼
-    │ GARRY M  260004 │
-    =#
-
-Field access is possible via `Get` query constructor, which takes
-a label's name. Here `Get(:name)` is an elementwise query that
-returns the value of a given label when found.
-
-    unitknot[GM >> Get(:name)]
-    #=>
-    │ name    │
-    ┼─────────┼
-    │ GARRY M │
-    =#
-
-For syntactic convenience, `It` can be used for dotted access.
-
-    unitknot[GM >> It.name]
-    #=>
-    │ name    │
-    ┼─────────┼
-    │ GARRY M │
-    =#
-
-The `Label` combinator provides a name to any expression.
-
-    unitknot[Lift("Hello World") >> Label(:greeting)]
-    #=>
-    │ greeting    │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Alternatively, Julia's pair constructor (`=>`) and and a `Symbol`
-denoted by a colon (`:`) can be used to label an expression.
-
-    Hello =
-      :greeting => Lift("Hello World")
-
-    unitknot[Hello]
-    #=>
-    │ greeting    │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Records can be used to make tables. Here are some statistics.
-
-    Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)
-    unitknot[Lift(1:3) >> Stats]
-    #=>
-      │ n¹  n²  n³ │
-    ──┼────────────┼
-    1 │  1   1   1 │
-    2 │  2   4   8 │
-    3 │  3   9  27 │
-    =#
-
-By accessing names, calculations can be performed on records.
-
-    unitknot[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    2 │ 14 │
-    3 │ 39 │
-    =#
-
-Using records, it is possible to represent complex, hierarchical
-data. It is then possible to access and compute with this data.
-
 ## Filtering
+
+There are query operations which cannot be lifted from Julia
+functions. We've met a few already, including the identity (`It`)
+and query composition (`>>`). There are many others involving
+filtering, aggregation, grouping, and paging.
 
 The `Filter` combinator has one parameter, a predicate query that,
 for each input element, decides if this element should be included
@@ -499,6 +423,89 @@ In this example, the argument of `Take` evaluates in the context
 of `OneTo(3)`. Therefore, `Take` will be performed three times,
 where `It` has the values `1`, `2`, and `3`.
 
+## Records & Labels
+
+Data objects can be created using the `Record` combinator. Values
+can be labeled using Julia's `Pair` syntax. The entire result as a
+whole may also be named.
+
+    GM = Record(:name => "GARRY M", :salary => 260004)
+
+    unitknot[GM]
+    #=>
+    │ name     salary │
+    ┼─────────────────┼
+    │ GARRY M  260004 │
+    =#
+
+Field access is possible via `Get` query constructor, which takes
+a label's name. Here `Get(:name)` is an elementwise query that
+returns the value of a given label when found.
+
+    unitknot[GM >> Get(:name)]
+    #=>
+    │ name    │
+    ┼─────────┼
+    │ GARRY M │
+    =#
+
+For syntactic convenience, `It` can be used for dotted access.
+
+    unitknot[GM >> It.name]
+    #=>
+    │ name    │
+    ┼─────────┼
+    │ GARRY M │
+    =#
+
+The `Label` combinator provides a name to any expression.
+
+    unitknot[Lift("Hello World") >> Label(:greeting)]
+    #=>
+    │ greeting    │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Alternatively, Julia's pair constructor (`=>`) and and a `Symbol`
+denoted by a colon (`:`) can be used to label an expression.
+
+    Hello =
+      :greeting => Lift("Hello World")
+
+    unitknot[Hello]
+    #=>
+    │ greeting    │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Records can be used to make tables. Here are some statistics.
+
+    Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)
+    unitknot[Lift(1:3) >> Stats]
+    #=>
+      │ n¹  n²  n³ │
+    ──┼────────────┼
+    1 │  1   1   1 │
+    2 │  2   4   8 │
+    3 │  3   9  27 │
+    =#
+
+By accessing names, calculations can be performed on records.
+
+    unitknot[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  3 │
+    2 │ 14 │
+    3 │ 39 │
+    =#
+
+Using records, it is possible to represent complex, hierarchical
+data. It is then possible to access and compute with this data.
+
 ## Query Parameters
 
 With DataKnots, parameters can be provided so that static data can
@@ -525,6 +532,7 @@ Query parameters are available anywhere in the query. They could,
 for example be used within a filter.
 
     query = OneTo(6) >> Filter(It .> It.START)
+
     unitknot[query, START=3]
     #=>
       │ It │

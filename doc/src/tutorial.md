@@ -542,10 +542,8 @@ Summary combinators can be used to define domain specific
 measures, such as `PayGap` and `AvgPay`.
 
     Salary = It.employee.salary
-    PayGap =
-        :paygap => Max(Salary) .- Min(Salary)
-    AvgPay =
-        :avgpay => Sum(Salary) ./ Count(It.employee)
+    PayGap = :paygap => Max(Salary) .- Min(Salary)
+    AvgPay = :avgpay => Sum(Salary) ./ Count(It.employee)
 
     chicago[
         It.department >>
@@ -638,12 +636,8 @@ original question: the number of employees per each position.
 Moreover, we could reuse the previously defined employee measures.
 
     Salary = It.employee.salary
-
-    PayGap =
-        :paygap => Max(Salary) .- Min(Salary)
-
-    AvgPay =
-        :avgpay => Sum(Salary) ./ Count(It.employee)
+    PayGap = :paygap => Max(Salary) .- Min(Salary)
+    AvgPay = :avgpay => Sum(Salary) ./ Count(It.employee)
 
     chicago[
         It.department.employee >>
@@ -660,8 +654,7 @@ Moreover, we could reuse the previously defined employee measures.
 One could group by any query; here we group employees based upon a
 salary threshold.
 
-    GT100K =
-        :gt100k => (It.salary .> 100000)
+    GT100K = :gt100k => (It.salary .> 100000)
 
     chicago[
         It.department.employee >>
