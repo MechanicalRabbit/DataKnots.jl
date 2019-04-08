@@ -394,18 +394,40 @@ Like `Filter`, the `Take` and `Drop` combinators can be used to
 choose elements from an input: `Drop` is used to skip over input,
 while `Take` ignores input past a particular point.
 
-    unitknot[OneTo(9) >> Drop(3) >> Take(3)]
+    unitknot[Lift('a':'i') >> Drop(3) >> Take(3)]
     #=>
       │ It │
     ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
+    1 │  d │
+    2 │  e │
+    3 │  f │
     =#
 
-Unlike `Filter`, which evaluates its argument for each element,
-the argument to `Take` is evaluated once, in the context of the
-input's *source*.
+Unlike `Filter`, which processes input elementwise, `Take` and
+`Drop` are aggregate, considering their input as a whole. This
+permits us to count backwards.
+
+    unitknot[Lift('a':'f') >> Take(-3)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  a │
+    2 │  b │
+    3 │  c │
+    =#
+
+    unitknot[Lift('a':'f') >> Drop(-3)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  d │
+    2 │  e │
+    3 │  f │
+    =#
+
+Further unlike `Filter`, which evaluates its argument for each
+element, the argument to `Take` is evaluated once, in the context
+of the input's *source*.
 
     unitknot[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
@@ -422,6 +444,35 @@ input's *source*.
 In this example, the argument of `Take` evaluates in the context
 of `OneTo(3)`. Therefore, `Take` will be performed three times,
 where `It` has the values `1`, `2`, and `3`.
+
+## Unique Elements
+
+The `Unique` combinator is another aggregate which considers its
+input as a whole. It produces a sorted output of distinct values.
+
+    unitknot[Lift(["B","A","C","A","C"]) >> Unique]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ A  │
+    2 │ B  │
+    3 │ C  │
+    =#
+
+Unlike `Take`, this aggregate has a combinator form.
+
+    unitknot[Unique(["B","A","C","A","C"])]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ A  │
+    2 │ B  │
+    3 │ C  │
+    =#
+
+While it's possible to `Lift` the native `unique` and `sort`
+functions for this particular computation, for more complex cases
+a hand-coded combinator is required.
 
 ## Records & Labels
 
@@ -483,6 +534,7 @@ denoted by a colon (`:`) can be used to label an expression.
 Records can be used to make tables. Here are some statistics.
 
     Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)
+
     unitknot[Lift(1:3) >> Stats]
     #=>
       │ n¹  n²  n³ │
