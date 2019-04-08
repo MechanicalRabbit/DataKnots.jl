@@ -367,6 +367,15 @@ This combinator has an aggregate primitive form.
     3 │ c  │
     =#
 
+Of course, it's possible to count these unique values.
+
+    unitknot[Lift(["b","a","c","a","c"]) >> Unique >> Count]
+    #=>
+    │ It │
+    ┼────┼
+    │  3 │
+    =#
+
 ## Filtering
 
 The `Filter` combinator has one parameter, a predicate query that,
@@ -425,8 +434,8 @@ while `Take` ignores input past a particular point.
     =#
 
 Unlike `Filter`, which processes input elementwise, `Take` and
-`Drop` are aggregate, considering their input as a whole. This
-permits us to count backwards.
+`Drop` are aggregate and therefore consider their input as a
+whole. This permits us to count backwards.
 
     unitknot[Lift('a':'f') >> Take(-3)]
     #=>
@@ -469,8 +478,7 @@ where `It` has the values `1`, `2`, and `3`.
 ## Records & Labels
 
 Data objects can be created using the `Record` combinator. Values
-can be labeled using Julia's `Pair` syntax. The entire result as a
-whole may also be named.
+can be labeled using Julia's `Pair` syntax.
 
     GM = Record(:name => "GARRY M", :salary => 260004)
 
@@ -536,7 +544,7 @@ Records can be used to make tables. Here are some statistics.
     3 │  3   9  27 │
     =#
 
-By accessing names, calculations can be performed on records.
+Calculations can be performed using on records using field labels.
 
     unitknot[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]
     #=>
@@ -547,8 +555,99 @@ By accessing names, calculations can be performed on records.
     3 │ 39 │
     =#
 
-Using records, it is possible to represent complex, hierarchical
-data. It is then possible to access and compute with this data.
+## Group
+
+Before we can demonstrate `Group` we need an interesting dataset.
+Let's create a flat list of numbers and two characteristics.
+
+    Even(X) = :even => Lift(iseven, (X,))
+    Mod3(X) = :mod3 => Lift(%, (X .+ 2, 3)) >> Char.(It .+ 97)
+    DataRec = Record(:no => It, Even(It), Mod3(It))
+    DataSet = :data => Lift(1:9) >> DataRec
+
+    unitknot[DataSet]
+    #=>
+      │ data            │
+      │ no  even   mod3 │
+    ──┼─────────────────┼
+    1 │  1  false  a    │
+    2 │  2   true  b    │
+    3 │  3  false  c    │
+    4 │  4   true  a    │
+    5 │  5  false  b    │
+    6 │  6   true  c    │
+    7 │  7  false  a    │
+    8 │  8   true  b    │
+    9 │  9  false  c    │
+    =#
+
+We could collect unique values of `mod3`.  However, just looking
+at the dataset, how could we find correlated values?
+
+    unitknot[DataSet >> It.mod3 >> Unique]
+    #=>
+      │ mod3 │
+    ──┼──────┼
+    1 │ a    │
+    2 │ b    │
+    3 │ c    │
+    =#
+
+The `Group` combinator creates a new `Record`, one that buckets
+our unique values together with correlated data.
+
+    unitknot[DataSet >> Group(It.mod3)]
+    #=>
+      │ mod3  data                                 │
+    ──┼────────────────────────────────────────────┼
+    1 │ a     1, false, a; 4, true, a; 7, false, a │
+    2 │ b     2, true, b; 5, false, b; 8, true, b  │
+    3 │ c     3, false, c; 6, true, c; 9, false, c │
+    =#
+
+We could then list members of each group.
+
+    unitknot[DataSet >>
+             Group(It.mod3) >>
+             Record(It.mod3, It.data.no)]
+    #=>
+      │ mod3  no      │
+    ──┼───────────────┼
+    1 │ a     1; 4; 7 │
+    2 │ b     2; 5; 8 │
+    3 │ c     3; 6; 9 │
+    =#
+
+Or perhaps summarise them.
+
+    unitknot[DataSet >>
+             Group(It.mod3) >>
+             Record(It.mod3,
+                    :count => Count(It.data),
+                    :mean => mean.(It.data.no))]
+    #=>
+      │ mod3  count  mean │
+    ──┼───────────────────┼
+    1 │ a         3   4.0 │
+    2 │ b         3   5.0 │
+    3 │ c         3   6.0 │
+    =#
+
+It's possible to group by more than one parameter.
+
+    unitknot[DataSet >>
+             Group(It.even, It.mod3) >>
+             Record(It.even, It.mod3, It.data.no)]
+    #=>
+      │ even   mod3  no   │
+    ──┼───────────────────┼
+    1 │ false  a     1; 7 │
+    2 │ false  b     5    │
+    3 │ false  c     3; 9 │
+    4 │  true  a     4    │
+    5 │  true  b     2; 8 │
+    6 │  true  c     6    │
+    =#
 
 ## Query Parameters
 
