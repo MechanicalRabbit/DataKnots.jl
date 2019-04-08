@@ -905,34 +905,3 @@ at least one argument will always be a query. However, when making
 combinators, it's better to use `Lift` since it ensures all
 arguments are lifted. This permits use of bare constants.
 
-### When Implicit Lifting Fails
-
-Implicit lifting of bare constants doesn't always work. For
-example, in Julia 1.0.3, `Char` cannot be implicitly lifted.
-
-    unitknot[Lift('a') .== 'a']
-    #=>
-    │ It    │
-    ┼───────┼
-    │ false │
-    =#
-
-This doesn't work since `Char` values are already converted to
-one-element vectors by broadcasting.
-
-    Base.Broadcast.broadcastable('a')
-    #-> ['a']
-
-Hence, to compare `Char` values, an explicit lift is needed.
-
-    unitknot[Lift('a') .== Lift('a')]
-    #=>
-    │ It   │
-    ┼──────┼
-    │ true │
-    =#
-
-Luckily, the primary datatypes, numbers and strings, seem to lift
-implicitly just fine. However, this phenomena may not be limited
-to just `Char`. So, if the result isn't expected, perhaps explicit
-lifts are required.
