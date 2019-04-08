@@ -83,6 +83,7 @@ We could then query this data to return employees with salaries
 greater than their department's average.
 
     using Statistics: mean
+
     knot[It.employee >>
          Group(It.department) >>
          Keep(:avg_salary => mean.(It.employee.salary)) >>
@@ -95,6 +96,9 @@ greater than their department's average.
      1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
      2 │ JEFFERY A  POLICE      SERGEANT           101442       │
      =#
+
+Note: this showcase only works in development branch; use
+`Tables.jl` interface will be in v0.3.
 
 ## Support
 
