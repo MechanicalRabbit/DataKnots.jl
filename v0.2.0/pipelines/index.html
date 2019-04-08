@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Pipeline Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li class="current"><a class="toctext" href>Pipeline Algebra</a><ul class="internal"><li><a class="toctext" href="#Lifting-and-Fillers-1">Lifting and Fillers</a></li><li><a class="toctext" href="#Chaining-Pipelines-1">Chaining Pipelines</a></li><li><a class="toctext" href="#Composite-Vectors-1">Composite Vectors</a></li><li><a class="toctext" href="#Specialized-Pipelines-1">Specialized Pipelines</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Pipeline Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/pipelines.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Pipeline Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Pipeline-Algebra-1" href="#Pipeline-Algebra-1">Pipeline Algebra</a></h1><p>This section describes the <code>Pipeline</code> interface of vectorized data transformations.  We will use the following definitions:</p><pre><code class="language-julia">using DataKnots:
+    @VectorTree,
+    Pipeline,
+    Runtime,
+    adapt_missing,
+    adapt_tuple,
+    adapt_vector,
+    block_any,
+    block_filler,
+    block_length,
+    block_lift,
+    chain_of,
+    column,
+    distribute,
+    distribute_all,
+    filler,
+    flatten,
+    group_by,
+    lift,
+    null_filler,
+    pass,
+    sieve_by,
+    slice_by,
+    tuple_lift,
+    tuple_of,
+    unique_by,
+    with_column,
+    with_elements,
+    wrap,
+    x1toN</code></pre><h2><a class="nav-anchor" id="Lifting-and-Fillers-1" href="#Lifting-and-Fillers-1">Lifting and Fillers</a></h2><p><code>DataKnots</code> stores structured data in a column-oriented format, serialized using specialized composite vector types.  Consequently, operations on data must also be adapted to the column-oriented format.</p><p>In <code>DataKnots</code>, operations on column-oriented data are called <em>pipelines</em>.  A pipeline is a vectorized transformation: it takes a vector of input values and produces a vector of the same size containing output values.</p><p>Any unary scalar function could be vectorized, which gives us a simple method for creating new pipelines.  Consider, for example, function <code>titlecase()</code>, which transforms the input string by capitalizing the first letter of each word and converting every other character to lowercase.</p><pre><code class="language-julia">titlecase(&quot;JEFFERY A&quot;)      #-&gt; &quot;Jeffery A&quot;</code></pre><p>This function can be converted to a pipeline or <em>lifted</em>, using the <code>lift</code> pipeline constructor.</p><pre><code class="language-julia">p = lift(titlecase)
+p([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
+#-&gt; [&quot;Jeffery A&quot;, &quot;James A&quot;, &quot;Terry A&quot;]</code></pre><p>A scalar function with <code>N</code> arguments could be lifted by <code>tuple_lift</code> to make a pipeline that transforms a <code>TupleVector</code> with <code>N</code> columns.  For example, a binary predicate <code>&gt;</code> gives rise to a pipeline <code>tuple_lift(&gt;)</code> that transforms a <code>TupleVector</code> with two columns into a Boolean vector.</p><pre><code class="language-julia">p = tuple_lift(&gt;)
+p(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
+#-&gt; Bool[1, 0, 0]</code></pre><p>In a similar manner, a function with a vector argument can be lifted by <code>block_lift</code> to make a pipeline that expects a <code>BlockVector</code> input.  For example, function <code>length()</code>, which returns the length of a vector, could be converted to a pipeline <code>block_lift(length)</code> that transforms a block vector to an integer vector containing block lengths.</p><pre><code class="language-julia">p = block_lift(length)
+p(@VectorTree [String] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;]])
+#-&gt; [2, 1]</code></pre><p>Not just functions, but also regular values could give rise to pipelines.  The <code>filler</code> constructor makes a pipeline from any scalar value.  This pipeline maps any input vector to a vector filled with the given scalar.</p><pre><code class="language-julia">p = filler(200000)
+p([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
+#-&gt; [200000, 200000, 200000]</code></pre><p>Similarly, <code>block_filler</code> makes a pipeline from any vector value.  This pipeline produces a <code>BlockVector</code> filled with the given vector.</p><pre><code class="language-julia">p = block_filler([&quot;POLICE&quot;, &quot;FIRE&quot;])
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; @VectorTree (0:N) × String [[&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>A variant of <code>block_filler</code> called <code>null_filler</code> makes a pipeline that produces a <code>BlockVector</code> filled with empty blocks.</p><pre><code class="language-julia">p = null_filler()
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; @VectorTree (0:1) × Bottom [missing, missing, missing]</code></pre><h2><a class="nav-anchor" id="Chaining-Pipelines-1" href="#Chaining-Pipelines-1">Chaining Pipelines</a></h2><p>Given a series of pipelines, the <code>chain_of</code> constructor creates their <em>composition</em> pipeline, which transforms the input vector by sequentially applying the given pipelines.</p><pre><code class="language-julia">p = chain_of(lift(split), lift(first), lift(titlecase))
+p([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
+#-&gt; [&quot;Jeffery&quot;, &quot;James&quot;, &quot;Terry&quot;]</code></pre><p>The degenerate composition of an empty sequence of pipelines has its own name, <code>pass()</code>. It passes its input to the output unchanged.</p><pre><code class="language-julia">chain_of()
+#-&gt; pass()
+
+p = pass()
+p([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
+#-&gt; [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;]</code></pre><p>In general, pipeline constructors that take one or more pipelines as arguments are called pipeline <em>combinators</em>.  Combinators are used to assemble elementary pipelines into complex pipeline expressions.</p><h2><a class="nav-anchor" id="Composite-Vectors-1" href="#Composite-Vectors-1">Composite Vectors</a></h2><p>In <code>DataKnots</code>, composite data is represented as a tree of vectors with regular <code>Vector</code> objects at the leaves and composite vectors, such as <code>TupleVector</code> and <code>BlockVector</code>, at the intermediate nodes. Pipelines that operate and rearrange this tree are described here.</p><p>The <code>tuple_of</code> pipeline combinator permits us to construct a <code>TupleVector</code>. <code>TupleVector</code> is a vector of tuples composed of a sequence of column vectors. Any collection of vectors could be used as columns as long as they all have the same length.  One way to obtain <em>N</em> columns for a <code>TupleVector</code> is to apply <em>N</em> pipelines to the same input vector.</p><pre><code class="language-julia">p = tuple_of(:first =&gt; chain_of(lift(split), lift(first), lift(titlecase)),
+             :last =&gt; lift(last))
+p([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
+#-&gt; @VectorTree (first = String, last = Char) [(first = &quot;Jeffery&quot;, last = &#39;A&#39;) … ]</code></pre><p>In the opposite direction, the <code>column</code> constructor makes a pipeline that extracts the specified column from the input <code>TupleVector</code>.</p><pre><code class="language-julia">p = column(:salary)
+p(@VectorTree (name=String, salary=Int) [(&quot;JEFFERY A&quot;, 101442), (&quot;JAMES A&quot;, 103350), (&quot;TERRY A&quot;, 93354)])
+#-&gt; [101442, 103350, 93354]</code></pre><p>The <code>wrap()</code> pipeline primitive is used to create a <code>BlockVector</code>. <code>BlockVector</code> is a vector of vectors serialized as a partitioned vector of elements.  Any input vector could be transformed to a <code>BlockVector</code> by partitioning its elements into one-element blocks.</p><pre><code class="language-julia">p = wrap()
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; @VectorTree (1:1) × String [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>Dual to <code>wrap()</code> is the pipeline <code>flatten()</code>, which transforms a nested <code>BlockVector</code> by flattening its nested blocks.</p><pre><code class="language-julia">p = flatten()
+p(@VectorTree [[String]] [[[&quot;GARRY M&quot;], [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]], [[], [&quot;JOSE S&quot;], [&quot;CHARLES S&quot;]]])
+#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]</code></pre><p>The <code>distribute</code> constructor makes a pipeline that rearranges a <code>TupleVector</code> with a <code>BlockVector</code> column. This operation exchanges their positions, pushing tuples down and pulling blocks up. Specifically, it takes each tuple, where a specific field must contain a block value, and transforms it to a block of tuples by distributing the block value over the tuple.</p><pre><code class="language-julia">p = distribute(:employee)
+p(@VectorTree (department = String, employee = [String]) [
+    &quot;POLICE&quot;    [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
+    &quot;FIRE&quot;      [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]) |&gt; display
+#=&gt;
+@VectorTree of 2 × (0:N) × (department = String, employee = String):
+ [(department = &quot;POLICE&quot;, employee = &quot;GARRY M&quot;), (department = &quot;POLICE&quot;, employee = &quot;ANTHONY R&quot;), (department = &quot;POLICE&quot;, employee = &quot;DANA A&quot;)]
+ [(department = &quot;FIRE&quot;, employee = &quot;JOSE S&quot;), (department = &quot;FIRE&quot;, employee = &quot;CHARLES S&quot;)]
+=#</code></pre><p>Often we need to transform only a part of a composite vector, leaving the rest of the structure intact.  This can be achieved using <code>with_column</code> and <code>with_elements</code> combinators.  Specifically, <code>with_column</code> transforms a specific column of a <code>TupleVector</code> while <code>with_elements</code> transforms the vector of elements of a <code>BlockVector</code>.</p><pre><code class="language-julia">p = with_column(:employee, with_elements(lift(titlecase)))
+p(@VectorTree (department = String, employee = [String]) [
+    &quot;POLICE&quot;    [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
+    &quot;FIRE&quot;      [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]) |&gt; display
+#=&gt;
+@VectorTree of 2 × (department = String, employee = (0:N) × String):
+ (department = &quot;POLICE&quot;, employee = [&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;])
+ (department = &quot;FIRE&quot;, employee = [&quot;Jose S&quot;, &quot;Charles S&quot;])
+=#</code></pre><h2><a class="nav-anchor" id="Specialized-Pipelines-1" href="#Specialized-Pipelines-1">Specialized Pipelines</a></h2><p>Not every data transformation can be implemented with lifting.  <code>DataKnots</code> provide pipeline constructors for some common transformation tasks.</p><p>For example, data filtering is implemented with the pipeline <code>sieve_by()</code>.  As input, it expects a <code>TupleVector</code> of pairs containing a value and a <code>Bool</code> flag.  <code>sieve_by()</code> transforms the input to a <code>BlockVector</code> containing 0- and 1-element blocks.  When the flag is <code>false</code>, it is mapped to an empty block, otherwise, it is mapped to a one-element block containing the data value.</p><pre><code class="language-julia">p = sieve_by()
+p(@VectorTree (String, Bool) [(&quot;JEFFERY A&quot;, true), (&quot;JAMES A&quot;, true), (&quot;TERRY A&quot;, false)])
+#-&gt; @VectorTree (0:1) × String [&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, missing]</code></pre><p>If <code>DataKnots</code> does not provide a specific transformation, it is easy to create a new one.  For example, let us create a pipeline constructor <code>double</code> which makes a pipeline that doubles the elements of the input vector.</p><p>We need to provide two definitions: to create a <code>Pipeline</code> object and to perform the tranformation on the given input vector.</p><pre><code class="language-julia">double() = Pipeline(double)
+double(::Runtime, input::AbstractVector{&lt;:Number}) = input .* 2
+
+p = double()
+p([260004, 185364, 170112])
+#-&gt; [520008, 370728, 340224]</code></pre><p>It is also easy to create new pipeline combinators.  Let us create a combinator <code>twice</code>, which applies the given pipeline to the input two times.</p><pre><code class="language-julia">twice(p) = Pipeline(twice, p)
+twice(rt::Runtime, input, p) = p(rt, p(rt, input))
+
+p = twice(double())
+p([260004, 185364, 170112])
+#-&gt; [1040016, 741456, 680448]</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Pipeline" href="#DataKnots.Pipeline"><code>DataKnots.Pipeline</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Pipeline(op, args...)</code></pre><p>A pipeline object represents a vectorized data transformation.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments to be passed to the function.</p><p>The pipeline transforms any input vector by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(rt::Runtime, input::AbstractVector, args...)</code></pre><p>The result of <code>op</code> must be the output vector, which should be of the same length as the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L24-L39">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Runtime" href="#DataKnots.Runtime"><code>DataKnots.Runtime</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Runtime()</code></pre><p>Runtime state for pipeline evaluation.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L16-L20">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.adapt_missing-Tuple{}" href="#DataKnots.adapt_missing-Tuple{}"><code>DataKnots.adapt_missing</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">adapt_missing() :: Pipeline</code></pre><p>This pipeline transforms a vector that contains <code>missing</code> elements to a block vector with <code>missing</code> elements replaced by empty blocks.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L255-L260">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.adapt_tuple-Tuple{}" href="#DataKnots.adapt_tuple-Tuple{}"><code>DataKnots.adapt_tuple</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">adapt_tuple() :: Pipeline</code></pre><p>This pipeline transforms a vector of tuples to a tuple vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L317-L321">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.adapt_vector-Tuple{}" href="#DataKnots.adapt_vector-Tuple{}"><code>DataKnots.adapt_vector</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">adapt_vector() :: Pipeline</code></pre><p>This pipeline transforms a vector with vector elements to a block vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L291-L295">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_any-Tuple{}" href="#DataKnots.block_any-Tuple{}"><code>DataKnots.block_any</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">block_any() :: Pipeline</code></pre><p>This pipeline applies <code>any</code> to a block vector with <code>Bool</code> elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L638-L642">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_filler" href="#DataKnots.block_filler"><code>DataKnots.block_filler</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">block_filler(block::AbstractVector, card::Cardinality) :: Pipeline</code></pre><p>This pipeline produces a block vector filled with the given block.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L227-L231">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_length-Tuple{}" href="#DataKnots.block_length-Tuple{}"><code>DataKnots.block_length</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">block_length() :: Pipeline</code></pre><p>This pipeline converts a block vector to a vector of block lengths.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L614-L618">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.block_lift" href="#DataKnots.block_lift"><code>DataKnots.block_lift</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">block_lift(f) :: Pipeline
+block_lift(f, default) :: Pipeline</code></pre><p><code>f</code> is a function that expects a vector argument.</p><p>The pipeline applies <code>f</code> to each block of the input block vector.  When a block is empty, <code>default</code> (if specified) is used as the output value.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L162-L170">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.chain_of" href="#DataKnots.chain_of"><code>DataKnots.chain_of</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">chain_of(p₁::Pipeline, p₂::Pipeline … pₙ::Pipeline) :: Pipeline</code></pre><p>This pipeline sequentially applies <code>p₁</code>, <code>p₂</code> … <code>pₙ</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L365-L369">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.column-Tuple{Union{Int64, Symbol}}" href="#DataKnots.column-Tuple{Union{Int64, Symbol}}"><code>DataKnots.column</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">column(lbl::Union{Int,Symbol}) :: Pipeline</code></pre><p>This pipeline extracts the specified column of a tuple vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L435-L439">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.designate" href="#DataKnots.designate"><code>DataKnots.designate</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">designate(::Pipeline, ::Signature) :: Pipeline
+designate(::Pipeline, ::AbstractShape, ::AbstractShape) :: Pipeline
+p::Pipeline |&gt; designate(::Signature) :: Pipeline
+p::Pipeline |&gt; designate(::AbstractShape, ::AbstractShape) :: Pipeline</code></pre><p>Sets the pipeline signature.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L52-L59">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.distribute-Tuple{Any}" href="#DataKnots.distribute-Tuple{Any}"><code>DataKnots.distribute</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">distribute(lbl::Union{Int,Symbol}) :: Pipeline</code></pre><p>This pipeline transforms a tuple vector with a column of blocks to a block vector with tuple elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L520-L525">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.distribute_all-Tuple{}" href="#DataKnots.distribute_all-Tuple{}"><code>DataKnots.distribute_all</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">distribute_all() :: Pipeline</code></pre><p>This pipeline transforms a tuple vector with block columns to a block vector with tuple elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L566-L571">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.filler-Tuple{Any}" href="#DataKnots.filler-Tuple{Any}"><code>DataKnots.filler</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">filler(val) :: Pipeline</code></pre><p>This pipeline produces a vector filled with the given value.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L207-L211">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.flatten-Tuple{}" href="#DataKnots.flatten-Tuple{}"><code>DataKnots.flatten</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">flatten() :: Pipeline</code></pre><p>This pipeline flattens a nested block vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L494-L498">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.lift-Tuple{Any}" href="#DataKnots.lift-Tuple{Any}"><code>DataKnots.lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">lift(f) :: Pipeline</code></pre><p><code>f</code> is any scalar unary function.</p><p>The pipeline applies <code>f</code> to each element of the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L118-L124">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.null_filler-Tuple{}" href="#DataKnots.null_filler-Tuple{}"><code>DataKnots.null_filler</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">null_filler() :: Pipeline</code></pre><p>This pipeline produces a block vector with empty blocks.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L217-L221">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.optimize-Tuple{DataKnots.Pipeline}" href="#DataKnots.optimize-Tuple{DataKnots.Pipeline}"><code>DataKnots.optimize</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">optimize(::Pipeline) :: Pipeline</code></pre><p>Rewrites the pipeline to make it (hopefully) faster.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L105-L109">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.pass-Tuple{}" href="#DataKnots.pass-Tuple{}"><code>DataKnots.pass</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">pass() :: Pipeline</code></pre><p>This pipeline returns its input unchanged.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L355-L359">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.sieve_by-Tuple{}" href="#DataKnots.sieve_by-Tuple{}"><code>DataKnots.sieve_by</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">sieve_by() :: Pipeline</code></pre><p>This pipeline filters a vector of pairs by the second column.  It expects a pair vector, whose second column is a <code>Bool</code> vector, and produces a block vector with 0- or 1-element blocks containing the elements of the first column.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L675-L681">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.signature-Tuple{DataKnots.Pipeline}" href="#DataKnots.signature-Tuple{DataKnots.Pipeline}"><code>DataKnots.signature</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">signature(::Pipeline) :: Signature</code></pre><p>Returns the pipeline signature.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L74-L78">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.slice_by" href="#DataKnots.slice_by"><code>DataKnots.slice_by</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">slice_by(N::Int, inv::Bool=false) :: Pipeline</code></pre><p>This pipeline transforms a block vector by keeping the first <code>N</code> elements of each block.  If <code>inv</code> is true, the pipeline drops the first <code>N</code> elements of each block.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L716-L722">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.slice_by" href="#DataKnots.slice_by"><code>DataKnots.slice_by</code></a> — <span class="docstring-category">Function</span>.</div><div><div><pre><code class="language-julia">slice_by(inv::Bool=false) :: Pipeline</code></pre><p>This pipeline takes a pair vector of blocks and integers, and returns the first column sliced by the second column.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L769-L774">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.tuple_lift-Tuple{Any}" href="#DataKnots.tuple_lift-Tuple{Any}"><code>DataKnots.tuple_lift</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">tuple_lift(f) :: Pipeline</code></pre><p><code>f</code> is an n-ary function.</p><p>The pipeline applies <code>f</code> to each row of an n-tuple vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L135-L141">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.tuple_of-Tuple" href="#DataKnots.tuple_of-Tuple"><code>DataKnots.tuple_of</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">tuple_of(p₁::Pipeline, p₂::Pipeline … pₙ::Pipeline) :: Pipeline</code></pre><p>This pipeline produces an n-tuple vector, whose columns are generated by applying <code>p₁</code>, <code>p₂</code> … <code>pₙ</code> to the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L404-L409">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.with_column-Tuple{Union{Int64, Symbol},Any}" href="#DataKnots.with_column-Tuple{Union{Int64, Symbol},Any}"><code>DataKnots.with_column</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">with_column(lbl::Union{Int,Symbol}, p::Pipeline) :: Pipeline</code></pre><p>This pipeline transforms a tuple vector by applying <code>p</code> to the specified column.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L448-L453">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.with_elements-Tuple{Any}" href="#DataKnots.with_elements-Tuple{Any}"><code>DataKnots.with_elements</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">with_elements(p::Pipeline) :: Pipeline</code></pre><p>This pipeline transforms a block vector by applying <code>p</code> to its vector of elements.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L481-L486">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.wrap-Tuple{}" href="#DataKnots.wrap-Tuple{}"><code>DataKnots.wrap</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">wrap() :: Pipeline</code></pre><p>This pipeline produces a block vector with one-element blocks wrapping the values of the input vector.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/de7aa21146c3b908ac86a30faf2a7ff665a01502/src/pipelines.jl#L469-L474">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Lifting-1" href="#Lifting-1">Lifting</a></h3><p>The <code>lift</code> constructor makes a pipeline by vectorizing a unary function.</p><pre><code class="language-julia">p = lift(titlecase)
+#-&gt; lift(titlecase)
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; [&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;]</code></pre><p>The <code>block_lift</code> constructor makes a pipeline on block vectors by vectorizing a unary vector function.</p><pre><code class="language-julia">p = block_lift(length)
+#-&gt; block_lift(length)
+
+p(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
+#-&gt; [3, 2]</code></pre><p>Some vector functions may expect a non-empty vector as an argument.  In this case, we should provide the value to replace empty blocks.</p><pre><code class="language-julia">p = block_lift(maximum, missing)
+#-&gt; block_lift(maximum, missing)
+
+p(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])
+#-&gt; Union{Missing, Int}[260004, missing, 202728]</code></pre><p>The <code>tuple_lift</code> constructor makes a pipeline on tuple vectors by vectorizing a function of several arguments.</p><pre><code class="language-julia">p = tuple_lift(&gt;)
+#-&gt; tuple_lift(&gt;)
+
+p(@VectorTree (Int, Int) [260004 200000; 185364 200000; 170112 200000])
+#-&gt; Bool[1, 0, 0]</code></pre><h3><a class="nav-anchor" id="Fillers-1" href="#Fillers-1">Fillers</a></h3><p>The pipeline <code>filler(val)</code> ignores its input and produces a vector filled with <code>val</code>.</p><pre><code class="language-julia">p = filler(200000)
+#-&gt; filler(200000)
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; [200000, 200000, 200000]</code></pre><p>The pipeline <code>block_filler(blk, card)</code> produces a block vector filled with the given block.</p><pre><code class="language-julia">p = block_filler([&quot;POLICE&quot;, &quot;FIRE&quot;], x1toN)
+#-&gt; block_filler([&quot;POLICE&quot;, &quot;FIRE&quot;], x1toN)
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; @VectorTree (1:N) × String [[&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;POLICE&quot;, &quot;FIRE&quot;]]</code></pre><p>The pipeline <code>null_filler()</code> produces a block vector with empty blocks.</p><pre><code class="language-julia">p = null_filler()
+#-&gt; null_filler()
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; @VectorTree (0:1) × Bottom [missing, missing, missing]</code></pre><h3><a class="nav-anchor" id="Adapting-row-oriented-data-1" href="#Adapting-row-oriented-data-1">Adapting row-oriented data</a></h3><p>The pipeline <code>adapt_missing()</code> transforms a vector containing <code>missing</code> values to a block vector with <code>missing</code> replaced by an empty block and other values wrapped in 1-element block.</p><pre><code class="language-julia">p = adapt_missing()
+#-&gt; adapt_missing()
+
+p([260004, 185364, 170112, missing, 202728, 197736])
+#-&gt; @VectorTree (0:1) × Int [260004, 185364, 170112, missing, 202728, 197736]</code></pre><p>The pipeline <code>adapt_vector()</code> transforms a vector of vectors to a block vector.</p><pre><code class="language-julia">p = adapt_vector()
+#-&gt; adapt_vector()
+
+p([[260004, 185364, 170112], Int[], [202728, 197736]])
+#-&gt; @VectorTree (0:N) × Int [[260004, 185364, 170112], [], [202728, 197736]]</code></pre><p>The pipeline <code>adapt_tuple()</code> transforms a vector of tuples to a tuple vector.</p><pre><code class="language-julia">p = adapt_tuple()
+#-&gt; adapt_tuple()
+
+p([(&quot;GARRY M&quot;, 260004), (&quot;ANTHONY R&quot;, 185364), (&quot;DANA A&quot;, 170112)]) |&gt; display
+#=&gt;
+@VectorTree of 3 × (String, Int):
+ (&quot;GARRY M&quot;, 260004)
+ (&quot;ANTHONY R&quot;, 185364)
+ (&quot;DANA A&quot;, 170112)
+=#</code></pre><p>Vectors of named tuples are also supported.</p><pre><code class="language-julia">p([(name=&quot;GARRY M&quot;, salary=260004), (name=&quot;ANTHONY R&quot;, salary=185364), (name=&quot;DANA A&quot;, salary=170112)]) |&gt; display
+#=&gt;
+@VectorTree of 3 × (name = String, salary = Int):
+ (name = &quot;GARRY M&quot;, salary = 260004)
+ (name = &quot;ANTHONY R&quot;, salary = 185364)
+ (name = &quot;DANA A&quot;, salary = 170112)
+=#</code></pre><h3><a class="nav-anchor" id="Composition-1" href="#Composition-1">Composition</a></h3><p>The <code>chain_of</code> combinator composes a sequence of pipelines.</p><pre><code class="language-julia">p = chain_of(lift(split), lift(first), lift(titlecase))
+#-&gt; chain_of(lift(split), lift(first), lift(titlecase))
+
+p([&quot;JEFFERY A&quot;, &quot;JAMES A&quot;, &quot;TERRY A&quot;])
+#-&gt; [&quot;Jeffery&quot;, &quot;James&quot;, &quot;Terry&quot;]</code></pre><p>The empty chain <code>chain_of()</code> has an alias <code>pass()</code>.</p><pre><code class="language-julia">p = pass()
+#-&gt; pass()
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+#-&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><h3><a class="nav-anchor" id="Tuple-vectors-1" href="#Tuple-vectors-1">Tuple vectors</a></h3><p>The pipeline <code>tuple_of(p₁, p₂ … pₙ)</code> produces a tuple vector, whose columns are generated by applying <code>p₁</code>, <code>p₂</code> … <code>pₙ</code> to the input vector.</p><pre><code class="language-julia">p = tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
+#-&gt; tuple_of(:title =&gt; lift(titlecase), :last =&gt; lift(last))
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]) |&gt; display
+#=&gt;
+@VectorTree of 3 × (title = String, last = Char):
+ (title = &quot;Garry M&quot;, last = &#39;M&#39;)
+ (title = &quot;Anthony R&quot;, last = &#39;R&#39;)
+ (title = &quot;Dana A&quot;, last = &#39;A&#39;)
+=#</code></pre><p>The pipeline <code>column(lbl)</code> extracts the specified column from a tuple vector.  The <code>column</code> constructor accepts either the column position or the column label.</p><pre><code class="language-julia">p = column(1)
+#-&gt; column(1)
+
+p(@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112])
+#-&gt; [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]
+
+p = column(:salary)
+#-&gt; column(:salary)
+
+p(@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112])
+#-&gt; [260004, 185364, 170112]</code></pre><p>The <code>with_column</code> combinator lets us apply the given pipeline to a selected column of a tuple vector.</p><pre><code class="language-julia">p = with_column(:name, lift(titlecase))
+#-&gt; with_column(:name, lift(titlecase))
+
+p(@VectorTree (name = String, salary = Int) [&quot;GARRY M&quot; 260004; &quot;ANTHONY R&quot; 185364; &quot;DANA A&quot; 170112]) |&gt; display
+#=&gt;
+@VectorTree of 3 × (name = String, salary = Int):
+ (name = &quot;Garry M&quot;, salary = 260004)
+ (name = &quot;Anthony R&quot;, salary = 185364)
+ (name = &quot;Dana A&quot;, salary = 170112)
+=#</code></pre><h3><a class="nav-anchor" id="Block-vectors-1" href="#Block-vectors-1">Block vectors</a></h3><p>The pipeline <code>wrap()</code> wraps the elements of the input vector to one-element blocks.</p><pre><code class="language-julia">p = wrap()
+#-&gt; wrap()
+
+p([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;])
+@VectorTree (1:1) × String [&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;]</code></pre><p>The pipeline <code>flatten()</code> flattens a nested block vector.</p><pre><code class="language-julia">p = flatten()
+#-&gt; flatten()
+
+p(@VectorTree [[String]] [[[&quot;GARRY M&quot;], [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]], [missing, [&quot;JOSE S&quot;], [&quot;CHARLES S&quot;]]])
+@VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]]</code></pre><p>The <code>with_elements</code> combinator lets us apply the given pipeline to transform the elements of a block vector.</p><pre><code class="language-julia">p = with_elements(lift(titlecase))
+#-&gt; with_elements(lift(titlecase))
+
+p(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;]])
+@VectorTree (0:N) × String [[&quot;Garry M&quot;, &quot;Anthony R&quot;, &quot;Dana A&quot;], [&quot;Jose S&quot;, &quot;Charles S&quot;]]</code></pre><p>The pipeline <code>distribute(lbl)</code> transforms a tuple vector with a certain block column to a block vector of tuples by distributing the block elements over the tuple.</p><pre><code class="language-julia">p = distribute(1)
+#-&gt; distribute(1)
+
+p(@VectorTree ([Int], [Int]) [
+    [260004, 185364, 170112]    200000
+    missing                     200000
+    [202728, 197736]            [200000, 200000]]
+) |&gt; display
+#=&gt;
+@VectorTree of 3 × (0:N) × (Int, (0:N) × Int):
+ [(260004, [200000]), (185364, [200000]), (170112, [200000])]
+ []
+ [(202728, [200000, 200000]), (197736, [200000, 200000])]
+=#</code></pre><p>The pipeline <code>distribute_all()</code> takes a tuple vector with block columns and distribute all of the block columns.</p><pre><code class="language-julia">p = distribute_all()
+#-&gt; distribute_all()
+
+p(@VectorTree ([Int], [Int]) [
+    [260004, 185364, 170112]    200000
+    missing                     200000
+    [202728, 197736]            [200000, 200000]]
+) |&gt; display
+#=&gt;
+@VectorTree of 3 × (0:N) × (Int, Int):
+ [(260004, 200000), (185364, 200000), (170112, 200000)]
+ []
+ [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
+=#</code></pre><p>This pipeline is equivalent to <code>chain_of(distribute(1), with_elements(distribute(2)), flatten())</code>.</p><p>The pipeline <code>block_length()</code> calculates the lengths of blocks in a block vector.</p><pre><code class="language-julia">p = block_length()
+#-&gt; block_length()
+
+p(@VectorTree [String] [missing, &quot;GARRY M&quot;, [&quot;ANTHONY R&quot;, &quot;DANA A&quot;]])
+#-&gt; [0, 1, 2]</code></pre><p>The pipeline <code>block_any()</code> checks whether the blocks in a <code>Bool</code> block vector have any <code>true</code> values.</p><pre><code class="language-julia">p = block_any()
+#-&gt; block_any()
+
+p(@VectorTree [Bool] [missing, true, false, [true, false], [false, false], [false, true]])
+#-&gt; Bool[0, 1, 0, 1, 0, 1]</code></pre><h3><a class="nav-anchor" id="Filtering-1" href="#Filtering-1">Filtering</a></h3><p>The pipeline <code>sieve_by()</code> filters a vector of pairs by the second column.</p><pre><code class="language-julia">p = sieve_by()
+#-&gt; sieve_by()
+
+p(@VectorTree (Int, Bool) [260004 true; 185364 false; 170112 false])
+#-&gt; @VectorTree (0:1) × Int [260004, missing, missing]</code></pre><h3><a class="nav-anchor" id="Slicing-1" href="#Slicing-1">Slicing</a></h3><p>The pipeline <code>slice_by(N)</code> transforms a block vector by keeping the first <code>N</code> elements of each block.</p><pre><code class="language-julia">p = slice_by(2)
+#-&gt; slice_by(2, false)
+
+p(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
+#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], []]</code></pre><p>When <code>N</code> is negative, <code>slice_by(N)</code> drops the last <code>-N</code> elements of each block.</p><pre><code class="language-julia">p = slice_by(-1)
+
+p(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
+#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;], [&quot;JOSE S&quot;], []]</code></pre><p>The pipeline <code>slice_by(N, true)</code> drops the first <code>N</code> elements (or keeps the last <code>-N</code> elements if <code>N</code> is negative).</p><pre><code class="language-julia">p = slice_by(2, true)
+
+p(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
+#-&gt; @VectorTree (0:N) × String [[&quot;DANA A&quot;], [], []]
+
+p = slice_by(-1, true)
+
+p(@VectorTree [String] [[&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], [&quot;JOSE S&quot;, &quot;CHARLES S&quot;], missing])
+#-&gt; @VectorTree (0:N) × String [[&quot;DANA A&quot;], [&quot;CHARLES S&quot;], []]</code></pre><p>A variant of this pipeline <code>slice_by()</code> expects a tuple vector with two columns: the first column containing the blocks and the second column with the number of elements to keep.</p><pre><code class="language-julia">p = slice_by()
+#-&gt; slice_by(false)
+
+p(@VectorTree ([String], Int) [([&quot;GARRY M&quot;, &quot;ANTHONY R&quot;, &quot;DANA A&quot;], 1), ([&quot;JOSE S&quot;, &quot;CHARLES S&quot;], -1), (missing, 0)])
+#-&gt; @VectorTree (0:N) × String [[&quot;GARRY M&quot;], [&quot;JOSE S&quot;], []]</code></pre><h3><a class="nav-anchor" id="Grouping-1" href="#Grouping-1">Grouping</a></h3><p>The pipeline <code>unique_by()</code> transforms a block vector by keeping one copy of each distinct value in each block.</p><pre><code class="language-julia">p = unique_by()
+#-&gt; unique_by()
+
+p(@VectorTree [String] [[&quot;FIRE&quot;, &quot;POLICE&quot;, &quot;POLICE&quot;, &quot;FIRE&quot;], [&quot;FIRE&quot;, &quot;OEMC&quot;, &quot;OEMC&quot;], []])
+#-&gt; @VectorTree (0:N) × String [[&quot;FIRE&quot;, &quot;POLICE&quot;], [&quot;FIRE&quot;, &quot;OEMC&quot;], []]</code></pre><p>Compositve values are also supported.</p><pre><code class="language-julia">p(@VectorTree [(0:1)String] [[&quot;POLICE&quot;, &quot;FIRE&quot;, missing, &quot;OEMC&quot;, &quot;POLICE&quot;, missing]])
+#-&gt; @VectorTree (0:N) × ((0:1) × String) [[missing, &quot;FIRE&quot;, &quot;OEMC&quot;, &quot;POLICE&quot;]]</code></pre><p>The pipeline <code>group_by()</code> expects a block vector of pairs two columns values and keys.  The values are further partitioned into blocks by grouping the values with equal keys.</p><pre><code class="language-julia">p = group_by()
+#-&gt; group_by()
+
+p(@VectorTree [(String, String)] [[(&quot;DANIEL A&quot;, &quot;FIRE&quot;), (&quot;JEFFERY A&quot;, &quot;POLICE&quot;), (&quot;JAMES A&quot;, &quot;FIRE&quot;), (&quot;NANCY A&quot;, &quot;POLICE&quot;)]])
+#-&gt; @VectorTree (0:N) × ((1:N) × String, String) [[([&quot;DANIEL A&quot;, &quot;JAMES A&quot;], &quot;FIRE&quot;), ([&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], &quot;POLICE&quot;)]]</code></pre><p>The keys could be assembled from tuples and blocks.</p><pre><code class="language-julia">p(@VectorTree [(String, (0:1)((0:1)Int, (0:1)Int))] [[(&quot;JEFFERY A&quot;, (10, missing)), (&quot;NANCY A&quot;, (8, missing))], [(&quot;JAMES A&quot;, (10, missing)), (&quot;DANIEL A&quot;, (10, missing))], [(&quot;LAKENYA A&quot;, (missing, 2)), (&quot;DORIS A&quot;, (missing, 2)), (&quot;ASKEW A&quot;, (6, missing)), (&quot;MARY Z&quot;, missing)], []])
+#-&gt; @VectorTree (0:N) × ((1:N) × String, (0:1) × ((0:1) × Int, (0:1) × Int)) [[([&quot;NANCY A&quot;], (8, missing)), ([&quot;JEFFERY A&quot;], (10, missing))], [([&quot;JAMES A&quot;, &quot;DANIEL A&quot;], (10, missing))], [([&quot;MARY Z&quot;], missing), ([&quot;LAKENYA A&quot;, &quot;DORIS A&quot;], (missing, 2)), ([&quot;ASKEW A&quot;], (6, missing))], []]</code></pre><p>Plural blocks could also serve as keys.</p><pre><code class="language-julia">p(@VectorTree [(String, [String])] [[(&quot;ANTONIO&quot;, [&quot;POLICE&quot;, &quot;OEMC&quot;]), (&quot;DOLORES&quot;, [&quot;FINANCE&quot;]), (&quot;MARY&quot;, [&quot;FINANCE&quot;]), (&quot;CRYSTAL&quot;, [&quot;POLICE&quot;, &quot;OEMC&quot;]), (&quot;PIA&quot;, [&quot;POLICE&quot;]), (&quot;CALVIN&quot;, [])]])
+#-&gt; @VectorTree (0:N) × ((1:N) × String, (0:N) × String) [[([&quot;CALVIN&quot;], []), ([&quot;DOLORES&quot;, &quot;MARY&quot;], [&quot;FINANCE&quot;]), ([&quot;PIA&quot;], [&quot;POLICE&quot;]), ([&quot;ANTONIO&quot;, &quot;CRYSTAL&quot;], [&quot;POLICE&quot;, &quot;OEMC&quot;])]]</code></pre><footer><hr/><a class="previous" href="../vectors/"><span class="direction">Previous</span><span class="title">Column Store</span></a><a class="next" href="../shapes/"><span class="direction">Next</span><span class="title">Shapes and Signatures</span></a></footer></article></body></html>
