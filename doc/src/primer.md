@@ -3,7 +3,7 @@
 DataKnots is a Julia library for building database queries. In
 DataKnots, queries are assembled algebraically: they either come
 from a set of atomic *primitives* or are built from other queries
-using *combinators*. This is a conceptual guide.
+using *combinators*.
 
 To start working with DataKnots, we import the package:
 
@@ -11,7 +11,7 @@ To start working with DataKnots, we import the package:
 
 ## The Unit Knot
 
-A `DataKnot`, or just *knot*, is a container having structured,
+A `DataKnot`, or just *knot*, is a container for structured,
 vectorized data. The `unitknot` is a trivial knot used as the
 starting point for constructing other knots.
 
@@ -143,7 +143,7 @@ in creative ways.
 
 ## Lifting Functions
 
-Any function could be used to build queries. Consider the function
+Any function could be used in a query. Consider the function
 `double(x)` that, when applied to a `Number`, produces a `Number`:
 
     double(x) = 2x
@@ -168,8 +168,8 @@ and then runs each output element though the `double` function.
     3 │  6 │
     =#
 
-Broadcasting a function over a query argument also makes queries.
-For example, `double.(It)` is a query that doubles its input.
+Alternatively, instead of `Lift` we could use broadcasting. For
+example, `double.(It)` is equivalent to `Lift(double, (It,))`.
 
     unitknot[Lift(1:3) >> double.(It)]
     #=>
@@ -180,7 +180,7 @@ For example, `double.(It)` is a query that doubles its input.
     3 │  6 │
     =#
 
-Broadcast lifting applies to built-in operators.
+Broadcasting also works with operators.
 
     unitknot[Lift(1:3) >> (It .+ 1)]
     #=>
@@ -193,7 +193,7 @@ Broadcast lifting applies to built-in operators.
 
 Unary operators can be broadcast as well.
 
-    unitknot[Lift(1:3) >> (√).(It,)]
+    unitknot[Lift(1:3) >> (√).(It)]
     #=>
       │ It      │
     ──┼─────────┼
@@ -202,8 +202,9 @@ Unary operators can be broadcast as well.
     3 │ 1.73205 │
     =#
 
-When making a combinator that uses a function or an operator,
-using `Lift` is recommended since it also lifts the arguments.
+Broadcasting could only be used when at least one argument is a
+query. For this reason, when defining a combinator, it is
+recommended to use `Lift` over broadcasting.
 
     Sqrt(X) = Lift(√, (X,))
 
@@ -215,8 +216,8 @@ using `Lift` is recommended since it also lifts the arguments.
     =#
 
 Vector-valued functions give rise to plural queries. Here, the
-unit range constructor, which produces a vector output, is lifted
-to a query combinator that builds plural queries.
+unit range constructor is lifted to a query combinator that builds
+plural queries.
 
     OneTo(X) = Lift(:, (1, X))
 
@@ -229,8 +230,8 @@ to a query combinator that builds plural queries.
     3 │  3 │
     =#
 
-This semi-automated lifting lets us access rich statistical and
-data processing functions from within our queries.
+Lifting lets us use rich statistical and data processing functions
+from within our queries.
 
 ## Aggregate Queries
 
@@ -343,20 +344,8 @@ functions and lifted into the query algebra.
 
 ## Unique Elements
 
-Summary operations need not be limited to producing a single
-output value. The `Unique` combinator takes a plural query for its
-argument and produces sorted, unique elements for its output.
-
-    unitknot[Unique(["b","a","c","a","c"])]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
-    =#
-
-This combinator has an aggregate primitive form.
+The `Unique` aggregate produces a list of distinct elements from
+its input.
 
     unitknot[Lift(["b","a","c","a","c"]) >> Unique]
     #=>
@@ -367,13 +356,15 @@ This combinator has an aggregate primitive form.
     3 │ c  │
     =#
 
-Of course, it's possible to count these unique values.
+`Unique` also has a combinator form.
 
-    unitknot[Lift(["b","a","c","a","c"]) >> Unique >> Count]
+    unitknot[Unique(["b","a","c","a","c"])]
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
     =#
 
 ## Filtering
@@ -395,6 +386,7 @@ Being a combinator, `Filter` builds a query component, which could
 then be composed with any data generating query.
 
     KeepEven = Filter(iseven.(It))
+
     unitknot[OneTo(6) >> KeepEven]
     #=>
       │ It │
@@ -413,11 +405,6 @@ Filter can work in a nested context.
     1 │  3 │
     =#
 
-The `Filter` combinator is elementwise. Furthermore, the predicate
-argument is evaluated for each input element. If the predicate
-evaluation is `true` for a given element, then that element is
-reproduced, otherwise it is discarded.
-
 ## Paging Data
 
 Like `Filter`, the `Take` and `Drop` combinators can be used to
@@ -433,9 +420,7 @@ while `Take` ignores input past a particular point.
     3 │ f  │
     =#
 
-Unlike `Filter`, which processes input elementwise, `Take` and
-`Drop` are aggregate and therefore consider their input as a
-whole. This permits us to count backwards.
+Negative indexes count backwards from the end of the input.
 
     unitknot[Lift('a':'f') >> Take(-3)]
     #=>
@@ -455,9 +440,9 @@ whole. This permits us to count backwards.
     3 │ f  │
     =#
 
-Further unlike `Filter`, which evaluates its argument for each
-element, the argument to `Take` is evaluated once, in the context
-of the input's *source*.
+Unlike `Filter`, which evaluates its argument for each element,
+the argument to `Take` is evaluated once, in the context of the
+input's *source*.
 
     unitknot[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
@@ -557,17 +542,18 @@ Calculations can be performed using on records using field labels.
 
 ## Group
 
-Before we can demonstrate `Group` we need an interesting dataset.
-Let's create a flat list of numbers and two characteristics.
+Before we can demonstrate `Group`, we need an interesting dataset.
+Let's create a flat list of numbers with two characteristics.
 
-    DataRec = :data=> Record(:no => It, :even => iseven.(It),
-                             :mod3 => Char.((It .+ 2) .% 3 .+ 97))
-    DataSet = Lift(1:9) >> DataRec
+    DataRow = :data=> Record(:no => It,
+                             :even => iseven.(It),
+                             :char => Char.((It .+ 2) .% 3 .+ 97))
+    DataSet = Lift(1:9) >> DataRow
 
     unitknot[DataSet]
     #=>
       │ data            │
-      │ no  even   mod3 │
+      │ no  even   char │
     ──┼─────────────────┼
     1 │  1  false  a    │
     2 │  2   true  b    │
@@ -580,65 +566,42 @@ Let's create a flat list of numbers and two characteristics.
     9 │  9  false  c    │
     =#
 
-We could collect unique values of `mod3`. However, just looking at
-the dataset, how could we find correlated values?
+The `Group` combinator rearranges the dataset to bucket unique
+values of a particular expression together with its matching data.
 
-    unitknot[DataSet >> It.mod3 >> Unique]
+    unitknot[DataSet >> Group(It.char)]
     #=>
-      │ mod3 │
-    ──┼──────┼
-    1 │ a    │
-    2 │ b    │
-    3 │ c    │
-    =#
-
-The `Group` combinator creates a new `Record`, one that buckets our
-unique values together with correlated data.
-
-    unitknot[DataSet >> Group(It.mod3)]
-    #=>
-      │ mod3  data                                 │
+      │ char  data                                 │
     ──┼────────────────────────────────────────────┼
     1 │ a     1, false, a; 4, true, a; 7, false, a │
     2 │ b     2, true, b; 5, false, b; 8, true, b  │
     3 │ c     3, false, c; 6, true, c; 9, false, c │
     =#
 
-We could then list members of each group.
+With this rearrangement, we could summarize data with respect to
+the grouping expression.
 
     unitknot[DataSet >>
-             Group(It.mod3) >>
-             Record(It.mod3, It.data.no)]
-    #=>
-      │ mod3  no      │
-    ──┼───────────────┼
-    1 │ a     1; 4; 7 │
-    2 │ b     2; 5; 8 │
-    3 │ c     3; 6; 9 │
-    =#
-
-Or perhaps summarize them.
-
-    unitknot[DataSet >>
-             Group(It.mod3) >>
-             Record(It.mod3,
+             Group(It.char) >>
+             Record(It.char,
+                    It.data.no,
                     :count => Count(It.data),
                     :mean => mean.(It.data.no))]
     #=>
-      │ mod3  count  mean │
-    ──┼───────────────────┼
-    1 │ a         3   4.0 │
-    2 │ b         3   5.0 │
-    3 │ c         3   6.0 │
+      │ char  no       count  mean │
+    ──┼────────────────────────────┼
+    1 │ a     1; 4; 7      3   4.0 │
+    2 │ b     2; 5; 8      3   5.0 │
+    3 │ c     3; 6; 9      3   6.0 │
     =#
 
-It's possible to group by more than one parameter.
+It's possible to group by more than one expression.
 
     unitknot[DataSet >>
-             Group(It.even, It.mod3) >>
-             Record(It.even, It.mod3, It.data.no)]
+             Group(It.even, It.char) >>
+             Record(It.even, It.char, It.data.no)]
     #=>
-      │ even   mod3  no   │
+      │ even   char  no   │
     ──┼───────────────────┼
     1 │ false  a     1; 7 │
     2 │ false  b     5    │
@@ -721,63 +684,26 @@ In DataKnots, query parameters permit external data to be used
 within query expressions. Parameters that are defined with `Given`
 can be used to remember values and reuse them.
 
-## Julia Language Integration
+## Julia Integration
 
-The embedding of DataKnots queries into Julia's syntax works
-relatively well, but is imperfect.
+DataKnots is a query algebra embedded in the Julia programming
+language. We should discuss the interaction between the semantics
+of the query algebra and the semantics of Julia.
 
-### NamedTuple Display & Access
-
-Often named tuples show up in data, especially tables that are
-modeled as a vector of named tuple. Consider this trivial dataset.
-
-    knot = convert(DataKnot, (value = 7,))
-
-When our display code sees a `NamedTuple` it provides special
-display to show the column headers.
-
-    knot
-    #=>
-    │ value │
-    ┼───────┼
-    │     7 │
-    =#
-
-Access to a `NamedTuple` values could happen though `getfield`.
-
-    knot[getfield.(It, :value) .* 6]
-    #=>
-    │ It │
-    ┼────┼
-    │ 42 │
-    =#
-
-Since field access is so common, special treatment to automate
-this is provided via the identity (`It`).
-
-    knot[It.value .* 6]
-    #=>
-    │ It │
-    ┼────┼
-    │ 42 │
-    =#
-
-Both of these are there for convenience, they don't otherwise
-impact the semantics of the queries involved. In balance, these
-accommodations help the user with commonly encountered data.
-
-### Composition Operator Precedence
+### Precedence of Composition
 
 DataKnots uses Julia's bitshift operator (`>>`) for composition.
 
-This works visually, but the *precedence* of this operator is not
-what would be best for DataKnots. Operators with higher precedence
-include: syntax (`.`, `::`), exponentiation (`^`), and unary (`+`,
-`-`, `√`). Unfortunately, typical binary operators such as
-addition (`+`) have a lower precedence. This conflict of
-expectations can sometimes cause confusion.
+This works visually, but the *precedence* of this operator does
+not match user expectations. Specifically, common binary operators
+such as addition (`+`) have a lower precedence.
 
-Consider the following query.
+This expectation mismatch could lead a user to write:
+
+    unitknot[Lift(1:3) >> It .+ It]
+    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
+
+To fix this query, we add parentheses.
 
     unitknot[Lift(1:3) >> (It .+ It)]
     #=>
@@ -788,54 +714,16 @@ Consider the following query.
     3 │  6 │
     =#
 
-Suppose one forgets the parenthesis around `(It .+ It)`.
+### Composition of Queries
 
-    unitknot[Lift(1:3) >> It .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
-
-Since `>>` has higher precedence than `.+`, `Lift(1:3) >> It` is
-evaluated first, giving us, `Lift(1:3)`.
-
-    unitknot[Lift(1:3) .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
-
-The desugared version might be illustrative.
-
-    unitknot[Lift(+, (Lift(1:3), It))]
-    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
-
-During broadcast, `Lift(1:3)` is converted to `1:3` and `It` is
-converted to `nothing`. In this very specific case, there is no
-operator that matches this signature, so we get an error.
-
-### Implicit Value Lifting
-
-So that it's easier to write DataKnots queries with Julia objects,
-there are many cases where values are automatically lifted.
-
-    unitknot[1:3]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    3 │  3 │
-    =#
-
-    unitknot["Hello"]
-    #=>
-    │ It    │
-    ┼───────┼
-    │ Hello │
-    =#
-
-Since both of those work splendidly, one might expect this to also
-work, but it doesn't.
+For bitshift operator (`>>`) to work as composition, the first
+operand must be a query.
 
     unitknot[1:3 >> "Hello"]
     #-> ERROR: MethodError: no method matching >>(::Int, ::String)⋮
 
-If we make the 1st argument of `>>` a query, things work.
+To fix this query, we use `Lift` to convert the first operand to a
+query.
 
     unitknot[Lift(1:3) >> "Hello"]
     #=>
@@ -846,62 +734,59 @@ If we make the 1st argument of `>>` a query, things work.
     3 │ Hello │
     =#
 
-Broadcasting lets a function's arguments control how it is
-applied. This permits bare constants (such as `"Hello"`) to be
-used within a query expression without explicit lift, so long as
-at least one other argument is already a query.
+### Broadcasting over Queries
 
-### Forgotten Lift
+Broadcasting can be used to convert function calls into query
+expressions. For broadcasting to build a query, at least one
+argument must be a query.
 
-Sometimes forgetting a `Lift` doesn't result in an error, but
-instead results with unexpected output. This depends quite a bit
-based upon the exact function being used and the context.
+Even when the argument isn't a query, the result often works
+as expected.
 
-Imagine one would like to create a combinator `OneToRand(X)` that
-generates sequential numbers having random length. Julia has a
-function `rand` that could generate a random length for us.
+    unitknot[iseven.(2)]
+    #=>
+    │ It   │
+    ┼──────┼
+    │ true │
+    =#
+
+In this case, `iseven.(2)` is evaluated to the constant `true`,
+which is automatically lifted to a constant query.
+
+For some functions this may lead to unexpected results. Suppose
+we need to generate 3 random characters.
 
     using Random: seed!, rand
-    seed!(3)
-    rand(1:3)
-    #-> 1
+    seed!(1)
+    rand('a':'z')
+    #-> 'o'
 
-Let's lift this `rand` function to a combinator and try it.
+We could try to make the following query.
 
-    unitknot[rand.(1:3)]
-    #=>
-      │ It                            │
-    ──┼───────────────────────────────┼
-    1 │ 0.988432                      │
-    2 │ 0.807622; 0.970091            │
-    3 │ 0.140061; 0.509444; 0.0586974 │
-    =#
-
-That was unexpected. Here, `rand.(1:3)` was evaluated before it
-was turned into a query. If we `Lift` the argument, it works.
-
-    unitknot[rand.(Lift(1:3))]
-    #=>
-    │ It │
-    ┼────┼
-    │  1 │
-    =#
-
-Then, we could build our random sequence generator.
-
-    OneToRand(X) = UnitRange.(1, rand.(Lift(:, (1, X))))
-
-    unitknot[OneToRand(5)]
+    unitknot[Lift(1:3) >> rand('a':'z')]
     #=>
       │ It │
     ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    3 │  3 │
+    1 │ c  │
+    2 │ c  │
+    3 │ c  │
     =#
 
-Generally, we prefer to use broadcast notation when we know that
-at least one argument will always be a query. However, when making
-combinators, it's better to use `Lift` since it ensures all
-arguments are lifted. This permits use of bare constants.
+Unfortunately, the function `rand` evaluated once, which gives us
+the same value repeated 3 times. Let's try broadcasting.
 
+    unitknot[Lift(1:3) >> rand.('a':'z')]
+    #-> ERROR: ArgumentError: Sampler for this object is not defined⋮
+
+For broadcasting to generate a query, we need at least one
+argument to be a query. If we don't have a query argument, we
+could make one using `Lift`.
+
+    unitknot[Lift(1:3) >> rand.(Lift('a':'z'))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ h  │
+    2 │ b  │
+    3 │ v  │
+    =#

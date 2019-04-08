@@ -576,7 +576,7 @@ So far, we've navigated and summarized data by exploiting its
 hierarchical organization: the whole dataset $\to$ department
 $\to$ employee. But what if we want a query that isn't supported
 by the existing hierarchy? For example, how could we calculate the
-number of employees per each *position*?
+number of employees for each *position*?
 
 A list of distinct positions could be obtained using `Unique`.
 
@@ -602,7 +602,7 @@ records to their positions, we use `Group` combinator:
     3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
     =#
 
-The `Group(It.position)` query rearranges the dataset into a new
+The query `Group(It.position)` rearranges the dataset into a new
 hierarchy: position $\to$ employee. We can use the new arrangement
 to show employee names for each unique position.
 
@@ -618,7 +618,8 @@ to show employee names for each unique position.
     =#
 
 We could further use summary combinators, which lets us answer the
-original question: the number of employees per each position.
+original question: What is the number of employees for each
+position?
 
     chicago[
         It.department.employee >>
@@ -667,7 +668,7 @@ salary threshold.
     2 │   true  JEFFERY A; ROBERT K          │
     =#
 
-We could also group by several queries. 
+We could also group by several queries.
 
     chicago[
         It.department.employee >>
@@ -689,10 +690,9 @@ broadcasting notation.
 
     chicago[
         It.department.employee >>
-        titlecase.(It.name) >>
-        Label(:titlecase)]
+        titlecase.(It.name)]
     #=>
-      │ titlecase │
+      │ It        │
     ──┼───────────┼
     1 │ Anthony A │
     2 │ Jeffery A │
@@ -701,8 +701,8 @@ broadcasting notation.
     5 │ Robert K  │
     =#
 
-This broadcast syntax is also used with operators. For example,
-let's display and compute a 2% Cost Of Living Adjustment ("COLA").
+Broadcasting can also used with operators. For example, let's
+compute and display a 2% Cost Of Living Adjustment ("COLA").
 
     COLA = trunc.(Int, It.salary .* 0.02)
 
@@ -816,6 +816,7 @@ What if we want to return employees who have a greater than average
 salary? This average could be computed first.
 
     MeanSalary = mean.(It.department.employee.salary)
+
     mean_salary = chicago[MeanSalary]
     #=>
     │ It      │
@@ -869,8 +870,8 @@ employee with the `Given` combinator.
     2 │ ROBERT K   FIREFIGHTER-EMT  103272 │
     =#
 
-`EmployeesOver` can take another query as an argument. For
-example, let's find employees with higher than average salary.
+`EmployeesOver` can take a query as an argument. For example,
+let's find employees with higher than average salary.
 
     MeanSalary = mean.(It.department.employee.salary)
 
