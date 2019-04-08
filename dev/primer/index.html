@@ -271,10 +271,9 @@ unitknot[Lift(1:3) &gt;&gt; Stats]
 1 │  3 │
 2 │ 14 │
 3 │ 39 │
-=#</code></pre><h2><a class="nav-anchor" id="Group-1" href="#Group-1">Group</a></h2><p>Before we can demonstrate <code>Group</code> we need an interesting dataset. Let&#39;s create a flat list of numbers and two characteristics.</p><pre><code class="language-julia">Even(X) = :even =&gt; Lift(iseven, (X,))
-Mod3(X) = :mod3 =&gt; Lift(%, (X .+ 2, 3)) &gt;&gt; Char.(It .+ 97)
-DataRec = Record(:no =&gt; It, Even(It), Mod3(It))
-DataSet = :data =&gt; Lift(1:9) &gt;&gt; DataRec
+=#</code></pre><h2><a class="nav-anchor" id="Group-1" href="#Group-1">Group</a></h2><p>Before we can demonstrate <code>Group</code> we need an interesting dataset. Let&#39;s create a flat list of numbers and two characteristics.</p><pre><code class="language-julia">DataRec = :data=&gt; Record(:no =&gt; It, :even =&gt; iseven.(It),
+                         :mod3 =&gt; Char.((It .+ 2) .% 3 .+ 97))
+DataSet = Lift(1:9) &gt;&gt; DataRec
 
 unitknot[DataSet]
 #=&gt;
@@ -290,7 +289,7 @@ unitknot[DataSet]
 7 │  7  false  a    │
 8 │  8   true  b    │
 9 │  9  false  c    │
-=#</code></pre><p>We could collect unique values of <code>mod3</code>.  However, just looking at the dataset, how could we find correlated values?</p><pre><code class="language-julia">unitknot[DataSet &gt;&gt; It.mod3 &gt;&gt; Unique]
+=#</code></pre><p>We could collect unique values of <code>mod3</code>. However, just looking at the dataset, how could we find correlated values?</p><pre><code class="language-julia">unitknot[DataSet &gt;&gt; It.mod3 &gt;&gt; Unique]
 #=&gt;
   │ mod3 │
 ──┼──────┼
@@ -313,7 +312,7 @@ unitknot[DataSet]
 1 │ a     1; 4; 7 │
 2 │ b     2; 5; 8 │
 3 │ c     3; 6; 9 │
-=#</code></pre><p>Or perhaps summarise them.</p><pre><code class="language-julia">unitknot[DataSet &gt;&gt;
+=#</code></pre><p>Or perhaps summarize them.</p><pre><code class="language-julia">unitknot[DataSet &gt;&gt;
          Group(It.mod3) &gt;&gt;
          Record(It.mod3,
                 :count =&gt; Count(It.data),
@@ -336,7 +335,7 @@ unitknot[DataSet]
 4 │  true  a     4    │
 5 │  true  b     2; 8 │
 6 │  true  c     6    │
-=#</code></pre><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">unitknot[&quot;Hello &quot; .* Get(:WHO), WHO=&quot;World&quot;]
+=#</code></pre><p>The <code>Group</code> combinator lets you adapt the structure of a dataset to form a hierarchy suitable to a particular analysis.</p><h2><a class="nav-anchor" id="Query-Parameters-1" href="#Query-Parameters-1">Query Parameters</a></h2><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia">unitknot[&quot;Hello &quot; .* Get(:WHO), WHO=&quot;World&quot;]
 #=&gt;
 │ It          │
 ┼─────────────┼
@@ -386,7 +385,7 @@ unitknot[GreaterThanAverage(OneTo(6))]
 │ It │
 ┼────┼
 │ 42 │
-=#</code></pre><p>Both of these are there for convenience, they don&#39;t otherwise impact the semantics of the queries involved. In balance, these accomodiations help the user with commonly encountered data.</p><h3><a class="nav-anchor" id="Composition-Operator-Precedence-1" href="#Composition-Operator-Precedence-1">Composition Operator Precedence</a></h3><p>DataKnots uses Julia&#39;s bitshift operator (<code>&gt;&gt;</code>) for composition.</p><p>This works visually, but the <em>precedence</em> of this operator is not what would be best for DataKnots. Operators with higher precedence include: syntax (<code>.</code>, <code>::</code>), exponentiation (<code>^</code>), and unary (<code>+</code>, <code>-</code>, <code>√</code>). Unfortunately, typical binary operators such as addition (<code>+</code>) have a lower precedence. This conflict of expectations can sometimes cause confusion.</p><p>Consider the following query.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (It .+ It)]
+=#</code></pre><p>Both of these are there for convenience, they don&#39;t otherwise impact the semantics of the queries involved. In balance, these accommodations help the user with commonly encountered data.</p><h3><a class="nav-anchor" id="Composition-Operator-Precedence-1" href="#Composition-Operator-Precedence-1">Composition Operator Precedence</a></h3><p>DataKnots uses Julia&#39;s bitshift operator (<code>&gt;&gt;</code>) for composition.</p><p>This works visually, but the <em>precedence</em> of this operator is not what would be best for DataKnots. Operators with higher precedence include: syntax (<code>.</code>, <code>::</code>), exponentiation (<code>^</code>), and unary (<code>+</code>, <code>-</code>, <code>√</code>). Unfortunately, typical binary operators such as addition (<code>+</code>) have a lower precedence. This conflict of expectations can sometimes cause confusion.</p><p>Consider the following query.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (It .+ It)]
 #=&gt;
   │ It │
 ──┼────┼
