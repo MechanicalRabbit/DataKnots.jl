@@ -295,10 +295,8 @@ chicago[
 1 │ POLICE      3  72510  101442  253968 │
 2 │ FIRE        2  95484  103272  198756 │
 =#</code></pre><p>Summary combinators can be used to define domain specific measures, such as <code>PayGap</code> and <code>AvgPay</code>.</p><pre><code class="language-julia">Salary = It.employee.salary
-PayGap =
-    :paygap =&gt; Max(Salary) .- Min(Salary)
-AvgPay =
-    :avgpay =&gt; Sum(Salary) ./ Count(It.employee)
+PayGap = :paygap =&gt; Max(Salary) .- Min(Salary)
+AvgPay = :avgpay =&gt; Sum(Salary) ./ Count(It.employee)
 
 chicago[
     It.department &gt;&gt;
@@ -353,12 +351,8 @@ chicago[
 2 │ POLICE OFFICER       2 │
 3 │ SERGEANT             1 │
 =#</code></pre><p>Moreover, we could reuse the previously defined employee measures.</p><pre><code class="language-julia">Salary = It.employee.salary
-
-PayGap =
-    :paygap =&gt; Max(Salary) .- Min(Salary)
-
-AvgPay =
-    :avgpay =&gt; Sum(Salary) ./ Count(It.employee)
+PayGap = :paygap =&gt; Max(Salary) .- Min(Salary)
+AvgPay = :avgpay =&gt; Sum(Salary) ./ Count(It.employee)
 
 chicago[
     It.department.employee &gt;&gt;
@@ -370,8 +364,7 @@ chicago[
 1 │ FIREFIGHTER-EMT    7788   99378.0 │
 2 │ POLICE OFFICER     7506   76263.0 │
 3 │ SERGEANT              0  101442.0 │
-=#</code></pre><p>One could group by any query; here we group employees based upon a salary threshold.</p><pre><code class="language-julia">GT100K =
-    :gt100k =&gt; (It.salary .&gt; 100000)
+=#</code></pre><p>One could group by any query; here we group employees based upon a salary threshold.</p><pre><code class="language-julia">GT100K = :gt100k =&gt; (It.salary .&gt; 100000)
 
 chicago[
     It.department.employee &gt;&gt;
