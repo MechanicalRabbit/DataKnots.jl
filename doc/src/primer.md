@@ -560,10 +560,9 @@ Calculations can be performed using on records using field labels.
 Before we can demonstrate `Group` we need an interesting dataset.
 Let's create a flat list of numbers and two characteristics.
 
-    Even(X) = :even => Lift(iseven, (X,))
-    Mod3(X) = :mod3 => Lift(%, (X .+ 2, 3)) >> Char.(It .+ 97)
-    DataRec = Record(:no => It, Even(It), Mod3(It))
-    DataSet = :data => Lift(1:9) >> DataRec
+    DataRec = :data=> Record(:no => It, :even => iseven.(It),
+                             :mod3 => Char.((It .+ 2) .% 3 .+ 97))
+    DataSet = Lift(1:9) >> DataRec
 
     unitknot[DataSet]
     #=>
@@ -581,8 +580,8 @@ Let's create a flat list of numbers and two characteristics.
     9 │  9  false  c    │
     =#
 
-We could collect unique values of `mod3`.  However, just looking
-at the dataset, how could we find correlated values?
+We could collect unique values of `mod3`. However, just looking at
+the dataset, how could we find correlated values?
 
     unitknot[DataSet >> It.mod3 >> Unique]
     #=>
@@ -593,8 +592,8 @@ at the dataset, how could we find correlated values?
     3 │ c    │
     =#
 
-The `Group` combinator creates a new `Record`, one that buckets
-our unique values together with correlated data.
+The `Group` combinator creates a new `Record`, one that buckets our
+unique values together with correlated data.
 
     unitknot[DataSet >> Group(It.mod3)]
     #=>
@@ -618,7 +617,7 @@ We could then list members of each group.
     3 │ c     3; 6; 9 │
     =#
 
-Or perhaps summarise them.
+Or perhaps summarize them.
 
     unitknot[DataSet >>
              Group(It.mod3) >>
@@ -648,6 +647,9 @@ It's possible to group by more than one parameter.
     5 │  true  b     2; 8 │
     6 │  true  c     6    │
     =#
+
+The `Group` combinator lets you adapt the structure of a dataset
+to form a hierarchy suitable to a particular analysis.
 
 ## Query Parameters
 
@@ -762,7 +764,7 @@ this is provided via the identity (`It`).
 
 Both of these are there for convenience, they don't otherwise
 impact the semantics of the queries involved. In balance, these
-accomodiations help the user with commonly encountered data.
+accommodations help the user with commonly encountered data.
 
 ### Composition Operator Precedence
 
@@ -902,3 +904,35 @@ Generally, we prefer to use broadcast notation when we know that
 at least one argument will always be a query. However, when making
 combinators, it's better to use `Lift` since it ensures all
 arguments are lifted. This permits use of bare constants.
+
+### When Implicit Lifting Fails
+
+Implicit lifting of bare constants doesn't always work. For
+example, in Julia 1.0.3, `Char` cannot be implicitly lifted.
+
+    unitknot[Lift('a') .== 'a']
+    #=>
+    │ It    │
+    ┼───────┼
+    │ false │
+    =#
+
+This doesn't work since `Char` values are already converted to
+one-element vectors by broadcasting.
+
+    Base.Broadcast.broadcastable('a')
+    #-> ['a']
+
+Hence, to compare `Char` values, an explicit lift is needed.
+
+    unitknot[Lift('a') .== Lift('a')]
+    #=>
+    │ It   │
+    ┼──────┼
+    │ true │
+    =#
+
+Luckily, the primary datatypes, numbers and strings, seem to lift
+implicitly just fine. However, this phenomena may not be limited
+to just `Char`. So, if the result isn't expected, perhaps explicit
+lifts are required.
