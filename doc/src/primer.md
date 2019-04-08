@@ -341,12 +341,33 @@ primitives or as query combinators taking a plural query argument.
 Moreover, custom aggregates can be constructed from native Julia
 functions and lifted into the query algebra.
 
-## Filtering
+## Unique Elements
 
-There are query operations which cannot be lifted from Julia
-functions. We've met a few already, including the identity (`It`)
-and query composition (`>>`). There are many others involving
-filtering, aggregation, grouping, and paging.
+Summary operations need not be limited to producing a single
+output value. The `Unique` combinator takes a plural query for its
+argument and produces sorted, unique elements for its output.
+
+    unitknot[Unique(["b","a","c","a","c"])]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+    =#
+
+This combinator has an aggregate primitive form.
+
+    unitknot[Lift(["b","a","c","a","c"]) >> Unique]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+    =#
+
+## Filtering
 
 The `Filter` combinator has one parameter, a predicate query that,
 for each input element, decides if this element should be included
@@ -398,9 +419,9 @@ while `Take` ignores input past a particular point.
     #=>
       │ It │
     ──┼────┼
-    1 │  d │
-    2 │  e │
-    3 │  f │
+    1 │ d  │
+    2 │ e  │
+    3 │ f  │
     =#
 
 Unlike `Filter`, which processes input elementwise, `Take` and
@@ -411,18 +432,18 @@ permits us to count backwards.
     #=>
       │ It │
     ──┼────┼
-    1 │  a │
-    2 │  b │
-    3 │  c │
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
     =#
 
     unitknot[Lift('a':'f') >> Drop(-3)]
     #=>
       │ It │
     ──┼────┼
-    1 │  d │
-    2 │  e │
-    3 │  f │
+    1 │ d  │
+    2 │ e  │
+    3 │ f  │
     =#
 
 Further unlike `Filter`, which evaluates its argument for each
@@ -444,35 +465,6 @@ of the input's *source*.
 In this example, the argument of `Take` evaluates in the context
 of `OneTo(3)`. Therefore, `Take` will be performed three times,
 where `It` has the values `1`, `2`, and `3`.
-
-## Unique Elements
-
-The `Unique` combinator is another aggregate which considers its
-input as a whole. It produces a sorted output of distinct values.
-
-    unitknot[Lift(["B","A","C","A","C"]) >> Unique]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ A  │
-    2 │ B  │
-    3 │ C  │
-    =#
-
-Unlike `Take`, this aggregate has a combinator form.
-
-    unitknot[Unique(["B","A","C","A","C"])]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ A  │
-    2 │ B  │
-    3 │ C  │
-    =#
-
-While it's possible to `Lift` the native `unique` and `sort`
-functions for this particular computation, for more complex cases
-a hand-coded combinator is required.
 
 ## Records & Labels
 
