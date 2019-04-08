@@ -1,12 +1,13 @@
 #
-# DataKnot definition and operations.
+# DataKnot definition, integration, and operations.
 #
+
+using Tables
 
 import Base:
     convert,
     get,
     show
-
 
 #
 # Definition.
@@ -124,8 +125,23 @@ convert(::Type{DataKnot}, elts::AbstractVector) =
 convert(::Type{DataKnot}, ::Missing) =
     DataKnot(Any, Union{}[], x0to1)
 
-convert(::Type{DataKnot}, elt) =
+convert(::Type{DataKnot}, elt::Union{Tuple, NamedTuple}) =
     DataKnot(Any, [elt])
+
+convert(::Type{DataKnot}, elt) =
+    if Tables.schema(elt) !== nothing
+        fromtable(elt)
+    else
+        DataKnot(Any, [elt]);
+    end
+
+function DataKnot(ps::Pair{Symbol}...)
+    lbls = collect(first.(ps))
+    cols = collect(convert.(DataKnot, last.(ps)))
+    vals = collect(AbstractVector, cell.(cols))
+    shp = TupleOf(lbls, shape.(cols))
+    DataKnot(shp, TupleVector(lbls, 1, vals))
+end
 
 const unitknot = convert(DataKnot, nothing)
 
@@ -138,6 +154,41 @@ shape(db::DataKnot) = db.shp
 quoteof(db::DataKnot) =
     Symbol("DataKnot( … )")
 
+#
+# Interfaces.
+#
+
+Tables.istable(::Type{<:DataKnot}) = true
+Tables.columnaccess(::Type{<:DataKnot}) = true
+
+Tables.schema(knot::DataKnot) =
+    let data = Tables.columns(knot)
+        Tables.Schema(propertynames(data),
+                      eltype.(values(data)))
+    end
+
+Tables.columns(knot::DataKnot) =
+    let td = table_data(knot),
+        names = tuple([Symbol(x) for (x,y) in 
+                       td.head[size(td.head)[1],:]]...)
+        NamedTuple{names}(columns(td.body))
+    end
+
+function fromtable(table::Any,
+                   card::Union{Cardinality, Symbol} = x0toN)
+    card = convert(Cardinality, card)
+    cols = Tables.columns(table)
+    head = Symbol[]
+    vals = AbstractVector[]
+    for n in propertynames(cols)
+        push!(head, n)
+        c = getproperty(cols, n)
+        push!(vals, c)
+    end
+    tv = TupleVector(head, length(vals[1]), vals)
+    bv = BlockVector([1, length(tv)+1], tv, card)
+    return DataKnot(shapeof(bv), bv)
+end
 
 #
 # Rendering.
@@ -152,7 +203,7 @@ function show(io::IO, db::DataKnot)
 end
 
 function render_dataknot(maxx::Int, maxy::Int, db::DataKnot)
-    d = table_data(db, maxy)
+    d = tear_data(table_data(db), maxy)
     l = table_layout(d, maxx)
     c = table_draw(l, maxx)
     return lines!(c)
@@ -178,7 +229,7 @@ TableData(d::TableData; head=nothing, body=nothing, shp=nothing, idxs=nothing, t
               idxs !== nothing ? idxs : d.idxs,
               tear !== nothing ? tear : d.tear)
 
-function table_data(db::DataKnot, maxy::Int)
+function table_data(db::DataKnot)
     shp = shape(db)
     title = String(getlabel(shp, ""))
     shp = relabel(shp, nothing)
@@ -186,7 +237,7 @@ function table_data(db::DataKnot, maxy::Int)
     body = TupleVector(1, AbstractVector[cell(db)])
     shp = TupleOf(shp)
     d = TableData(head, body, shp)
-    return tear_data(default_data_header(focus_data(d, 1)), maxy)
+    return default_data_header(focus_data(d, 1))
 end
 
 focus_data(d::TableData, pos) =

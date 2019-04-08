@@ -9,8 +9,15 @@ column-oriented form.
         It,
         ValueOf,
         cell,
+        fromtable,
         shape,
         unitknot
+
+To integrate with other tabular systems, we need the following:
+
+    using Tables
+    using CSV
+    using DataFrames
 
 ## Overview
 
@@ -49,13 +56,73 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
+## Reading CSV Files
+
+Consider a Comma Separated Variable ("CSV") file of employee data
+from the city of Chicago.
+
+    data = IOBuffer("""
+    name,department,position,salary,rate
+    "JEFFERY A", "POLICE", "SERGEANT", 101442,
+    "NANCY A", "POLICE", "POLICE OFFICER", 80016,
+    "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
+    "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
+    "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
+    "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
+    """)
+
+This could be parsed using the `CSV` library, which does a lovely
+job guessing each columns' datatype.
+
+    file = CSV.File(data, allowmissing=:auto)
+    #=>
+    CSV.File("<Base.GenericIOBuffer{Array{UInt8,1}}>", rows=6):
+    Tables.Schema:
+     :name        String
+     :department  String
+     :position    String
+     :salary      Union{Missing, Int}
+     :rate        Union{Missing, Float64}
+    =#
+
+This data could be converted to a DataKnot.
+
+    knot = DataKnot(:table => file)
+    knot[It.table]
+    #=>
+      │ table                                                   │
+      │ name       department  position           salary  rate  │
+    ──┼─────────────────────────────────────────────────────────┼
+    1 │ JEFFERY A  POLICE      SERGEANT           101442        │
+    2 │ NANCY A    POLICE      POLICE OFFICER      80016        │
+    3 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350        │
+    4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484        │
+    5 │ LAKENYA A  OEMC        CROSSING GUARD             17.68 │
+    6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
+    =#
+
+If the `CSV` file has exactly one row, cardinality
+could be provided to indicate this.
+
+    data = IOBuffer("""
+    name,department,position,salary
+    "JEFFERY A", "POLICE", "SERGEANT", 101442
+    """)
+    file = CSV.File(data)
+    knot = fromtable(file, :x1to1)
+    knot[It.salary]
+    #=>
+    │ salary │
+    ┼────────┼
+    │ 101442 │
+    =#
+
 ## API Reference
 ```@autodocs
 Modules = [DataKnots]
 Pages = ["knots.jl"]
 Public = false
 ```
-
 
 ## Test Suite
 
@@ -181,6 +248,82 @@ A `Ref` object is converted into the referenced value.
     shape(int_ty)
     #-> ValueOf(Type{Int})
 
+### Exporting to Tables
+
+Exporting to `DataFrame` and other kinds of tabular entities can
+be done via the `Tables.jl` interface.
+
+    using Tables: schema, columns
+
+    schema(unitknot["Hello"])
+    #=>
+    Tables.Schema:
+     :It  String
+    =#
+
+    schema(unitknot[:label => 42])
+    #=>
+    Tables.Schema:
+     :label  Int
+    =#
+
+    schema(unitknot[[1,2]])
+    #=>
+    Tables.Schema:
+     :It  Int
+    =#
+
+    schema(unitknot[:label => [1,2]])
+    #=>
+    Tables.Schema:
+     :label  Int
+    =#
+
+    schema(unitknot[(a=42.0,b="Hi")])
+    #=>
+    Tables.Schema:
+     :a  Float64
+     :b  String
+    =#
+
+    schema(unitknot[(42.0,"Hi")])
+    #=>
+    Tables.Schema:
+     Symbol("#A")  Float64
+     Symbol("#B")  String
+    =#
+
+    schema(unitknot[(["A","B"],[1,2])])
+    #=>
+    Tables.Schema:
+     Symbol("#A")  Array{String,1}
+     Symbol("#B")  Array{Int,1}
+    =#
+
+These functions also work with combinator structures.
+
+    using DataKnots: Record, Lift
+
+    schema(unitknot[Record(:a=>42.0, :b=>"Hello")])
+    #=>
+    Tables.Schema:
+     :a  Float64
+     :b  String
+    =#
+
+    schema(unitknot[Record(42.0, "Hello")])
+    #=>
+    Tables.Schema:
+     Symbol("#A")  Float64
+     Symbol("#B")  String
+    =#
+
+    schema(unitknot[Lift(1:3) >> Record(:val => It, It .*2)])
+    #=>
+    Tables.Schema:
+     :val          Int
+     Symbol("#B")  Int
+    =#
 
 ### Rendering
 
@@ -290,4 +433,6 @@ decimal point.
     1 │ 35.6  │
     2 │  2.65 │
     =#
+
+
 
