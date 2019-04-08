@@ -316,7 +316,7 @@ chicago[
 ──┼──────────────────────────────────┼
 1 │ POLICE  POLICE OFFICER; SERGEANT │
 2 │ FIRE    FIREFIGHTER-EMT          │
-=#</code></pre><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve navigated and summarized data by exploiting its hierarchical organization: the whole dataset <span>$\to$</span> department <span>$\to$</span> employee. But what if we want a query that isn&#39;t supported by the existing hierarchy? For example, how could we calculate the number of employees per each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>Unique</code>.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
+=#</code></pre><h2><a class="nav-anchor" id="Grouping-Data-1" href="#Grouping-Data-1">Grouping Data</a></h2><p>So far, we&#39;ve navigated and summarized data by exploiting its hierarchical organization: the whole dataset <span>$\to$</span> department <span>$\to$</span> employee. But what if we want a query that isn&#39;t supported by the existing hierarchy? For example, how could we calculate the number of employees for each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>Unique</code>.</p><pre><code class="language-julia">chicago[It.department.employee.position &gt;&gt; Unique]
 #=&gt;
   │ position        │
 ──┼─────────────────┼
@@ -330,7 +330,7 @@ chicago[
 1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT…
 2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
 3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
-=#</code></pre><p>The <code>Group(It.position)</code> query rearranges the dataset into a new hierarchy: position <span>$\to$</span> employee. We can use the new arrangement to show employee names for each unique position.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
+=#</code></pre><p>The query <code>Group(It.position)</code> rearranges the dataset into a new hierarchy: position <span>$\to$</span> employee. We can use the new arrangement to show employee names for each unique position.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
         Group(It.position) &gt;&gt;
         Record(It.position, It.employee.name)]
 #=&gt;
@@ -339,7 +339,7 @@ chicago[
 1 │ FIREFIGHTER-EMT  DANIEL A; ROBERT K │
 2 │ POLICE OFFICER   ANTHONY A; NANCY A │
 3 │ SERGEANT         JEFFERY A          │
-=#</code></pre><p>We could further use summary combinators, which lets us answer the original question: the number of employees per each position.</p><pre><code class="language-julia">chicago[
+=#</code></pre><p>We could further use summary combinators, which lets us answer the original question: What is the number of employees for each position?</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     Group(It.position) &gt;&gt;
     Record(It.position,
@@ -375,7 +375,7 @@ chicago[
 ──┼──────────────────────────────────────┼
 1 │  false  ANTHONY A; NANCY A; DANIEL A │
 2 │   true  JEFFERY A; ROBERT K          │
-=#</code></pre><p>We could also group by several queries. </p><pre><code class="language-julia">chicago[
+=#</code></pre><p>We could also group by several queries.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
     Group(It.position, GT100K) &gt;&gt;
     Record(It.position, It.gt100k, It.employee.name)]
@@ -388,17 +388,16 @@ chicago[
 4 │ SERGEANT           true  JEFFERY A          │
 =#</code></pre><h2><a class="nav-anchor" id="Broadcasting-over-Queries-1" href="#Broadcasting-over-Queries-1">Broadcasting over Queries</a></h2><p>Any function could be applied to query arguments using Julia&#39;s broadcasting notation.</p><pre><code class="language-julia">chicago[
     It.department.employee &gt;&gt;
-    titlecase.(It.name) &gt;&gt;
-    Label(:titlecase)]
+    titlecase.(It.name)]
 #=&gt;
-  │ titlecase │
+  │ It        │
 ──┼───────────┼
 1 │ Anthony A │
 2 │ Jeffery A │
 3 │ Nancy A   │
 4 │ Daniel A  │
 5 │ Robert K  │
-=#</code></pre><p>This broadcast syntax is also used with operators. For example, let&#39;s display and compute a 2% Cost Of Living Adjustment (&quot;COLA&quot;).</p><pre><code class="language-julia">COLA = trunc.(Int, It.salary .* 0.02)
+=#</code></pre><p>Broadcasting can also used with operators. For example, let&#39;s compute and display a 2% Cost Of Living Adjustment (&quot;COLA&quot;).</p><pre><code class="language-julia">COLA = trunc.(Int, It.salary .* 0.02)
 
 chicago[
     It.department.employee &gt;&gt;
@@ -468,6 +467,7 @@ chicago[
 1 │ JEFFERY A │
 2 │ ROBERT K  │
 =#</code></pre><p>What if we want to return employees who have a greater than average salary? This average could be computed first.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
+
 mean_salary = chicago[MeanSalary]
 #=&gt;
 │ It      │
@@ -500,7 +500,7 @@ chicago[EmployeesOver(100000)]
 ──┼────────────────────────────────────┼
 1 │ JEFFERY A  SERGEANT         101442 │
 2 │ ROBERT K   FIREFIGHTER-EMT  103272 │
-=#</code></pre><p><code>EmployeesOver</code> can take another query as an argument. For example, let&#39;s find employees with higher than average salary.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
+=#</code></pre><p><code>EmployeesOver</code> can take a query as an argument. For example, let&#39;s find employees with higher than average salary.</p><pre><code class="language-julia">MeanSalary = mean.(It.department.employee.salary)
 
 chicago[EmployeesOver(MeanSalary)]
 #=&gt;
