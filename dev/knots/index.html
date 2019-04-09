@@ -37,8 +37,8 @@ Tables.Schema:
  :name        String
  :department  String
  :position    String
- :salary      Union{Missing, Int}
- :rate        Union{Missing, Float64}
+ :salary      Union{Missing, Int…
+ :rate        Union{Missing, Float…
 =#</code></pre><p>This data could be converted to a DataKnot.</p><pre><code class="language-julia">knot = DataKnot(:table =&gt; file)
 knot[It.table]
 #=&gt;
