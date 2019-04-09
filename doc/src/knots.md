@@ -71,22 +71,10 @@ from the city of Chicago.
     "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
     """)
 
-This could be parsed using the `CSV` library, which does a lovely
-job guessing each columns' datatype.
+This could be parsed using the `CSV` library and then converted
+into a DataKnot.
 
     file = CSV.File(data, allowmissing=:auto)
-    #=>
-    CSV.File("<Base.GenericIOBuffer{Array{UInt8,1}}>", rows=6):
-    Tables.Schema:
-     :name        String
-     :department  String
-     :position    String
-     :salary      Union{Missing, Int…
-     :rate        Union{Missing, Float…
-    =#
-
-This data could be converted to a DataKnot.
-
     knot = DataKnot(:table => file)
     knot[It.table]
     #=>
