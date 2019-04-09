@@ -81,8 +81,8 @@ job guessing each columns' datatype.
      :name        String
      :department  String
      :position    String
-     :salary      Union{Missing, Int}
-     :rate        Union{Missing, Float64}
+     :salary      Union{Missing, Int…
+     :rate        Union{Missing, Float…
     =#
 
 This data could be converted to a DataKnot.
