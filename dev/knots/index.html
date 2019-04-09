@@ -30,16 +30,8 @@ name,department,position,salary,rate
 &quot;DANIEL A&quot;, &quot;FIRE&quot;, &quot;FIRE FIGHTER-EMT&quot;, 95484,
 &quot;LAKENYA A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 17.68
 &quot;DORIS A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 19.38
-&quot;&quot;&quot;)</code></pre><p>This could be parsed using the <code>CSV</code> library, which does a lovely job guessing each columns&#39; datatype.</p><pre><code class="language-julia">file = CSV.File(data, allowmissing=:auto)
-#=&gt;
-CSV.File(&quot;&lt;Base.GenericIOBuffer{Array{UInt8,1}}&gt;&quot;, rows=6):
-Tables.Schema:
- :name        String
- :department  String
- :position    String
- :salary      Union{Missing, Int…
- :rate        Union{Missing, Float…
-=#</code></pre><p>This data could be converted to a DataKnot.</p><pre><code class="language-julia">knot = DataKnot(:table =&gt; file)
+&quot;&quot;&quot;)</code></pre><p>This could be parsed using the <code>CSV</code> library and then converted into a DataKnot.</p><pre><code class="language-julia">file = CSV.File(data, allowmissing=:auto)
+knot = DataKnot(:table =&gt; file)
 knot[It.table]
 #=&gt;
   │ table                                                   │
