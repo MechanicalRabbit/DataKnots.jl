@@ -6,7 +6,9 @@ column-oriented form.
     using DataKnots:
         @VectorTree,
         DataKnot,
+        Lift,
         It,
+        Record,
         ValueOf,
         cell,
         fromtable,
@@ -236,83 +238,6 @@ A `Ref` object is converted into the referenced value.
     shape(int_ty)
     #-> ValueOf(Type{Int})
 
-### Exporting to Tables
-
-Exporting to `DataFrame` and other kinds of tabular entities can
-be done via the `Tables.jl` interface.
-
-    using Tables: schema, columns
-
-    schema(unitknot["Hello"])
-    #=>
-    Tables.Schema:
-     :It  String
-    =#
-
-    schema(unitknot[:label => 42])
-    #=>
-    Tables.Schema:
-     :label  Int
-    =#
-
-    schema(unitknot[[1,2]])
-    #=>
-    Tables.Schema:
-     :It  Int
-    =#
-
-    schema(unitknot[:label => [1,2]])
-    #=>
-    Tables.Schema:
-     :label  Int
-    =#
-
-    schema(unitknot[(a=42.0,b="Hi")])
-    #=>
-    Tables.Schema:
-     :a  Float64
-     :b  String
-    =#
-
-    schema(unitknot[(42.0,"Hi")])
-    #=>
-    Tables.Schema:
-     Symbol("#A")  Float64
-     Symbol("#B")  String
-    =#
-
-    schema(unitknot[(["A","B"],[1,2])])
-    #=>
-    Tables.Schema:
-     Symbol("#A")  Array{String,1}
-     Symbol("#B")  Array{Int,1}
-    =#
-
-These functions also work with combinator structures.
-
-    using DataKnots: Record, Lift
-
-    schema(unitknot[Record(:a=>42.0, :b=>"Hello")])
-    #=>
-    Tables.Schema:
-     :a  Float64
-     :b  String
-    =#
-
-    schema(unitknot[Record(42.0, "Hello")])
-    #=>
-    Tables.Schema:
-     Symbol("#A")  Float64
-     Symbol("#B")  String
-    =#
-
-    schema(unitknot[Lift(1:3) >> Record(:val => It, It .*2)])
-    #=>
-    Tables.Schema:
-     :val          Int
-     Symbol("#B")  Int
-    =#
-
 ### Rendering
 
 On output, a `DataKnot` object is rendered as a table.
@@ -422,5 +347,97 @@ decimal point.
     2 │  2.65 │
     =#
 
+### Exporting DataKnots via Tables
 
+The export logic of DataKnots depends upon the kind of the top-level
+entity. If the data is an array of tuples, then DataKnots delegates to
+`Tables.RowTable` for conversion.
 
+    table = convert(DataKnot, [(x="A", y=1.0), (x="B", y=2.0)])
+
+    Tables.schema(table)
+    #=>
+    Tables.Schema:
+     :x  String
+     :y  Float64
+    =#
+
+    Tables.columns(table)
+    #-> (x = ["A", "B"], y = [1.0, 2.0])
+
+This case also handles when the data is a lone NamedTuple.
+
+    Tables.schema(unitknot[(hello="World",)])
+    #=>
+    Tables.Schema:
+     :hello  String
+    =#
+
+    Tables.columns(unitknot[(hello="World",)])
+    #-> (hello = ["World"],)
+
+In many other cases, internal data conversion converts our TupleVector
+into what's needed by the `Tables.jl` interface.
+
+    Tables.schema(unitknot[Record(:hello=>"World")])
+    #=>
+    Tables.Schema:
+     :hello  String
+    =#
+
+    Tables.columns(unitknot[Record(:hello=>"World")])
+    #-> (hello = @VectorTree (1:1) × String ["World"],)
+
+    Tables.columns(unitknot[Lift(1:3)])
+    #-> (it = 1:3,)
+
+    table = unitknot[Lift(1:3) >>
+                     Record(:idx => string.(It),
+                            :val => It./2)]
+
+    Tables.schema(table)
+    #=>
+    Tables.Schema:
+     :idx  String
+     :val  Float64
+    =#
+
+    Tables.columns(table)[:idx]
+    #-> @VectorTree (1:1) × String ["1", "2", "3"]
+
+    Tables.columns(table)[:val]
+    #-> @VectorTree (1:1) × Float64 [0.5, 1.0, 1.5]
+
+Otherwise, the wrapped data is converted into a table with a single
+column, `it`.
+
+    Tables.schema(unitknot)
+    #=>
+    Tables.Schema:
+     :it  Nothing
+    =#
+
+    Tables.columns(unitknot)
+    #-> (it = Nothing[nothing],)
+
+An array of values is handled quite nicely by this method.
+
+    Tables.schema(unitknot[["A", "B"]])
+    #=>
+    Tables.Schema:
+     :it  String
+    =#
+
+    Tables.columns(unitknot[["A", "B"]])
+    #-> (it = ["A", "B"],)
+
+Tuple values, work, but not as separate columns.
+
+    Tables.schema(unitknot[("A", "B")])
+    #=>
+    Tables.Schema:
+     :it  Tuple{String,String}
+    =#
+
+    Tables.columns(unitknot[("A", "B")])
+    #-> (it = Tuple{String,String}[("A", "B")],)

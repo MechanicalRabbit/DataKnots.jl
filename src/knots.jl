@@ -160,19 +160,23 @@ quoteof(db::DataKnot) =
 
 Tables.istable(::Type{<:DataKnot}) = true
 Tables.columnaccess(::Type{<:DataKnot}) = true
-
-Tables.schema(knot::DataKnot) =
-    let data = Tables.columns(knot)
-        Tables.Schema(propertynames(data),
-                      eltype.(values(data)))
-    end
-
-Tables.columns(knot::DataKnot) =
-    let td = table_data(knot),
-        names = tuple([Symbol(x) for (x,y) in 
-                       td.head[size(td.head)[1],:]]...)
-        NamedTuple{names}(columns(td.body))
-    end
+Tables.schema(knot::DataKnot) = cell_schema(knot.cell)
+Tables.columns(knot::DataKnot) = cell_columns(knot.cell)
+cell_schema(cell::TupleVector) = etls_schema(cell)
+cell_columns(cell::TupleVector) = etls_columns(cell)
+cell_schema(cell::AbstractVector) = etls_schema(cell)
+cell_columns(cell::AbstractVector) = etls_columns(cell)
+cell_schema(cell::BlockVector) = etls_schema(elements(cell))
+cell_columns(cell::BlockVector) = etls_columns(elements(cell))
+etls_schema(etls::Tables.RowTable) = Tables.schema(etls)
+etls_columns(etls::Tables.RowTable) = Tables.columns(etls)
+etls_schema(etls::AbstractVector) =
+    Tables.Schema((:it,), (typeof(etls[1]),))
+etls_columns(etls::AbstractVector) = (it=etls,)
+etls_schema(etls::TupleVector) =
+    Tables.Schema(labels(etls), eltype.([x for x in columns(etls)]))
+etls_columns(etls::TupleVector) =
+    NamedTuple{Tuple(labels(etls))}(columns(etls))
 
 function fromtable(table::Any,
                    card::Union{Cardinality, Symbol} = x0toN)
