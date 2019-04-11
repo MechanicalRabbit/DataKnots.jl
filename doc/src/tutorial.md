@@ -998,4 +998,72 @@ is an `AbstractVector` specialized for column-oriented storage.
      (name = "FIRE", employee_count = 2)
     =#
 
+## Working with Tabular Data
 
+We can import data directly from systems that support the `Tables.jl`
+interface. Here we load a variant of the same dataset.
+
+    using CSV
+
+    dataset = """
+        name,department,position,salary,rate
+        "JEFFERY A", "POLICE", "SERGEANT", 101442,
+        "NANCY A", "POLICE", "POLICE OFFICER", 80016,
+        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
+        "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
+        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
+        "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
+        "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
+        """
+    datafile = CSV.File(IOBuffer(dataset), allowmissing=:auto)
+    dataknot = DataKnot(:employee => datafile)
+    dataknot[It.employee]
+    #=>
+      │ employee                                                   │
+      │ name       department  position              salary  rate  │
+    ──┼────────────────────────────────────────────────────────────┼
+    1 │ JEFFERY A  POLICE      SERGEANT              101442        │
+    2 │ NANCY A    POLICE      POLICE OFFICER         80016        │
+    3 │ JAMES A    FIRE        FIRE ENGINEER-EMT     103350        │
+    4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT       95484        │
+    5 │ BRENDA B   OEMC        TRAFFIC CONTROL AIDE   64392        │
+    6 │ LAKENYA A  OEMC        CROSSING GUARD                17.68 │
+    7 │ DORIS A    OEMC        CROSSING GUARD                19.38 │
+    =#
+
+This flat data set could be grouped and summarized. Let us return
+employees that are highly-compensated.
+
+    using Statistics: mean
+
+    result = dataknot[It.employee >>
+                      Group(It.department) >>
+                      Keep(:avg_salary => mean.(It.employee.salary)) >>
+                      It.employee >>
+                      Filter(It.salary .> It.avg_salary) >>
+                      Record(It.department, It.name, It.salary)]
+    #=>
+      │ employee                      │
+      │ department  name       salary │
+    ──┼───────────────────────────────┼
+    1 │ FIRE        JAMES A    103350 │
+    2 │ POLICE      JEFFERY A  101442 │
+    =#
+
+This query result could be converted to other tabular utilities, such
+as a `DataFrame`.
+
+    using DataFrames
+
+    result |> DataFrame
+    #=>
+    2×3 DataFrames.DataFrame
+    │ Row │ department │ name      │ salary │
+    │     │ String     │ String    │ Int⍰   │
+    ├─────┼────────────┼───────────┼────────┤
+    │ 1   │ FIRE       │ JAMES A   │ 103350 │
+    │ 2   │ POLICE     │ JEFFERY A │ 101442 │
+    =#
+
+Observe that in this example CSV library inspected the datatypes for
+each column, including potentially `missing` values.

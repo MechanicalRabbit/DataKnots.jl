@@ -8,6 +8,8 @@ using NarrativeTest
 
 # Make `print(Int)` produce identical output on 32-bit and 64-bit platforms.
 Base.show_datatype(io::IO, ::Type{Int}) = print(io, "Int")
+Base.show_datatype(io::IO, ::Type{Int32}) = print(io, "Int")
+Base.show_datatype(io::IO, ::Type{Int64}) = print(io, "Int")
 Base.show_datatype(io::IO, ::Type{UInt}) = print(io, "UInt")
 
 # Normalize printing of `Vector{Bool}`.
