@@ -58,12 +58,12 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
-## Reading CSV Files
+## Importing & Exporting via Tables.jl
 
-Consider a Comma Separated Variable ("CSV") file of employee data
-from the city of Chicago.
+We support the conversion to/from objects supporting the `Tables`
+interface. For example, this would permit the import of CSV data.
 
-    data = IOBuffer("""
+    csv_data = IOBuffer("""
     name,department,position,salary,rate
     "JEFFERY A", "POLICE", "SERGEANT", 101442,
     "NANCY A", "POLICE", "POLICE OFFICER", 80016,
@@ -76,9 +76,9 @@ from the city of Chicago.
 This could be parsed using the `CSV` library and then converted
 into a DataKnot.
 
-    file = CSV.File(data, allowmissing=:auto)
-    knot = DataKnot(:table => file)
-    knot[It.table]
+    datafile = CSV.File(csv_data, allowmissing=:auto)
+    dataknot = DataKnot(:table => datafile)
+    dataknot[It.table]
     #=>
       │ table                                                   │
       │ name       department  position           salary  rate  │
@@ -91,20 +91,22 @@ into a DataKnot.
     6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
     =#
 
-If the `CSV` file has exactly one row, cardinality
-could be provided to indicate this.
+This knot could then be exported to a `DataFrame`.
 
-    data = IOBuffer("""
-    name,department,position,salary
-    "JEFFERY A", "POLICE", "SERGEANT", 101442
-    """)
-    file = CSV.File(data)
-    knot = fromtable(file, :x1to1)
-    knot[It.salary]
+    dataknot[It.table >>
+             Record(It.name, It.department, It.salary)
+            ] |> DataFrame
     #=>
-    │ salary │
-    ┼────────┼
-    │ 101442 │
+    6×3 DataFrames.DataFrame
+    │ Row │ name      │ department │ salary  │
+    │     │ String    │ String     │ Int⍰    │
+    ├─────┼───────────┼────────────┼─────────┤
+    │ 1   │ JEFFERY A │ POLICE     │ 101442  │
+    │ 2   │ NANCY A   │ POLICE     │ 80016   │
+    │ 3   │ JAMES A   │ FIRE       │ 103350  │
+    │ 4   │ DANIEL A  │ FIRE       │ 95484   │
+    │ 5   │ LAKENYA A │ OEMC       │ missing │
+    │ 6   │ DORIS A   │ OEMC       │ missing │
     =#
 
 ## API Reference
@@ -347,7 +349,7 @@ decimal point.
     2 │  2.65 │
     =#
 
-### Exporting DataKnots via Tables
+### Exporting via Table.jl Interface
 
 The export logic of DataKnots depends upon the kind of the top-level
 entity. If the data is an array of tuples, then DataKnots delegates to
