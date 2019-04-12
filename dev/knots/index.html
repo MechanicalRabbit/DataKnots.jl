@@ -24,6 +24,18 @@ using DataFrames</code></pre><h2><a class="nav-anchor" id="Overview-1" href="#Ov
 │ It │
 ┼────┼
 │ 12 │
+=#</code></pre><p>Since it&#39;s often handy to create a top-level record, there is a special DataKnot constructor that takes <code>Pair</code> arguments.</p><pre><code class="language-julia">knot = DataKnot(:main=&gt;&#39;a&#39;:&#39;c&#39;, :more=&gt;&quot;data&quot;)
+#=&gt;
+│ main     more │
+┼───────────────┼
+│ a; b; c  data │
+=#</code></pre><p>A dataset could be focused by navigating.</p><pre><code class="language-julia">knot[It.main]
+#=&gt;
+  │ main │
+──┼──────┼
+1 │ a    │
+2 │ b    │
+3 │ c    │
 =#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-1" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></h2><p>We support the conversion to/from objects with the <code>Tables.jl</code> interface. For example, this would permit the import of CSV data.</p><pre><code class="language-julia">csv_data = IOBuffer(&quot;&quot;&quot;
 name,department,position,salary,rate
 &quot;JEFFERY A&quot;, &quot;POLICE&quot;, &quot;SERGEANT&quot;, 101442,
