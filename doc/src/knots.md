@@ -58,9 +58,9 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
-## Importing & Exporting via Tables.jl
+## Importing & Exporting
 
-We support the conversion to/from objects supporting the `Tables`
+We support the conversion to/from objects with the `Tables.jl`
 interface. For example, this would permit the import of CSV data.
 
     csv_data = IOBuffer("""
