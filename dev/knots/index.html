@@ -211,7 +211,7 @@ convert(DataKnot, [35.6, 2.65])
 ──┼───────┼
 1 │ 35.6  │
 2 │  2.65 │
-=#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>The export logic of DataKnots depends upon the kind of the top-level entity. If the data is an array of tuples, then DataKnots delegates to <code>Tables.RowTable</code> for conversion.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
+=#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>Exporting a knot via <code>Tables.jl</code> interface will work if the top level object is a table. Unfortunately, there is no way know in advance since <code>Tables.istable</code> returns <code>true</code> for almost everything.</p><p>An array of named tuples will be treated as a table.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
 
 Tables.schema(table)
 #=&gt;
@@ -221,59 +221,48 @@ Tables.Schema:
 =#
 
 Tables.columns(table)
-#-&gt; (x = [&quot;A&quot;, &quot;B&quot;], y = [1.0, 2.0])</code></pre><p>This case also handles when the data is a lone NamedTuple.</p><pre><code class="language-julia">Tables.schema(unitknot[(hello=&quot;World&quot;,)])
-#=&gt;
-Tables.Schema:
- :hello  String
-=#
+#-&gt; (x = [&quot;A&quot;, &quot;B&quot;], y = [1.0, 2.0])
 
-Tables.columns(unitknot[(hello=&quot;World&quot;,)])
-#-&gt; (hello = [&quot;World&quot;],)</code></pre><p>In many other cases, internal data conversion converts our TupleVector into what&#39;s needed by the <code>Tables.jl</code> interface.</p><pre><code class="language-julia">Tables.schema(unitknot[Record(:hello=&gt;&quot;World&quot;)])
-#=&gt;
-Tables.Schema:
- :hello  String
-=#
+Tables.istable(table)
+#-&gt; true
 
-Tables.columns(unitknot[Record(:hello=&gt;&quot;World&quot;)])
-#-&gt; (hello = @VectorTree (1:1) × String [&quot;World&quot;],)
-
-Tables.columns(unitknot[Lift(1:3)])
-#-&gt; (it = 1:3,)
-
-table = unitknot[Lift(1:3) &gt;&gt;
-                 Record(:idx =&gt; string.(It),
-                        :val =&gt; It./2)]
+Tables.columnaccess(table)
+#-&gt; true</code></pre><p>A plural set of records will be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
 
 Tables.schema(table)
 #=&gt;
 Tables.Schema:
- :idx  String
- :val  Float64
+ :idx  Int
+ :val  String
 =#
 
 Tables.columns(table)[:idx]
-#-&gt; @VectorTree (1:1) × String [&quot;1&quot;, &quot;2&quot;, &quot;3&quot;]
+#-&gt; @VectorTree (1:1) × Int [1, 2, 3]
 
 Tables.columns(table)[:val]
-#-&gt; @VectorTree (1:1) × Float64 [0.5, 1.0, 1.5]</code></pre><p>Otherwise, the wrapped data is converted into a table with a single column, <code>it</code>.</p><pre><code class="language-julia">Tables.schema(unitknot)
+#-&gt; @VectorTree (1:1) × String [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;]
+
+Tables.istable(table)
+#-&gt; true
+
+Tables.columnaccess(table)
+#-&gt; true</code></pre><p>Unnamed records are labeled with a pound sign and a letter.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(string.(It), It./2)]
+
+Tables.schema(table)
 #=&gt;
 Tables.Schema:
- :it  Nothing
+ Symbol(&quot;#A&quot;)  String
+ Symbol(&quot;#B&quot;)  Float64
 =#
 
-Tables.columns(unitknot)
-#-&gt; (it = Nothing[nothing],)</code></pre><p>An array of values is handled quite nicely by this method.</p><pre><code class="language-julia">Tables.schema(unitknot[[&quot;A&quot;, &quot;B&quot;]])
-#=&gt;
-Tables.Schema:
- :it  String
-=#
+Tables.columns(table)[Symbol(&quot;#A&quot;)]
+#-&gt; @VectorTree (1:1) × String [&quot;1&quot;, &quot;2&quot;, &quot;3&quot;]
 
-Tables.columns(unitknot[[&quot;A&quot;, &quot;B&quot;]])
-#-&gt; (it = [&quot;A&quot;, &quot;B&quot;],)</code></pre><p>Tuple values, work, but not as separate columns.</p><pre><code class="language-julia">Tables.schema(unitknot[(&quot;A&quot;, &quot;B&quot;)])
-#=&gt;
-Tables.Schema:
- :it  Tuple{String,String}
-=#
+Tables.columns(table)[Symbol(&quot;#B&quot;)]
+#-&gt; @VectorTree (1:1) × Float64 [0.5, 1.0, 1.5]
 
-Tables.columns(unitknot[(&quot;A&quot;, &quot;B&quot;)])
-#-&gt; (it = Tuple{String,String}[(&quot;A&quot;, &quot;B&quot;)],)</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>
+Tables.istable(table)
+#-&gt; true
+
+Tables.columnaccess(table)
+#-&gt; true</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>
