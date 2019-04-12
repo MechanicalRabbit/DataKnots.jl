@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Data Knots · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li class="current"><a class="toctext" href>Data Knots</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#Reading-CSV-Files-1">Reading CSV Files</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Data Knots</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/knots.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Data Knots</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Data-Knots-1" href="#Data-Knots-1">Data Knots</a></h1><p>A <code>DataKnot</code> object contains a single data value serialized in a column-oriented form.</p><pre><code class="language-julia">using DataKnots:
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Data Knots · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li class="current"><a class="toctext" href>Data Knots</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#Importing-and-Exporting-via-Tables.jl-1">Importing &amp; Exporting via Tables.jl</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Data Knots</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/knots.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Data Knots</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Data-Knots-1" href="#Data-Knots-1">Data Knots</a></h1><p>A <code>DataKnot</code> object contains a single data value serialized in a column-oriented form.</p><pre><code class="language-julia">using DataKnots:
     @VectorTree,
     DataKnot,
     Lift,
@@ -24,7 +24,7 @@ using DataFrames</code></pre><h2><a class="nav-anchor" id="Overview-1" href="#Ov
 │ It │
 ┼────┼
 │ 12 │
-=#</code></pre><h2><a class="nav-anchor" id="Reading-CSV-Files-1" href="#Reading-CSV-Files-1">Reading CSV Files</a></h2><p>Consider a Comma Separated Variable (&quot;CSV&quot;) file of employee data from the city of Chicago.</p><pre><code class="language-julia">data = IOBuffer(&quot;&quot;&quot;
+=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-via-Tables.jl-1" href="#Importing-and-Exporting-via-Tables.jl-1">Importing &amp; Exporting via Tables.jl</a></h2><p>We support the conversion to/from objects supporting the <code>Tables</code> interface. For example, this would permit the import of CSV data.</p><pre><code class="language-julia">csv_data = IOBuffer(&quot;&quot;&quot;
 name,department,position,salary,rate
 &quot;JEFFERY A&quot;, &quot;POLICE&quot;, &quot;SERGEANT&quot;, 101442,
 &quot;NANCY A&quot;, &quot;POLICE&quot;, &quot;POLICE OFFICER&quot;, 80016,
@@ -32,9 +32,9 @@ name,department,position,salary,rate
 &quot;DANIEL A&quot;, &quot;FIRE&quot;, &quot;FIRE FIGHTER-EMT&quot;, 95484,
 &quot;LAKENYA A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 17.68
 &quot;DORIS A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 19.38
-&quot;&quot;&quot;)</code></pre><p>This could be parsed using the <code>CSV</code> library and then converted into a DataKnot.</p><pre><code class="language-julia">file = CSV.File(data, allowmissing=:auto)
-knot = DataKnot(:table =&gt; file)
-knot[It.table]
+&quot;&quot;&quot;)</code></pre><p>This could be parsed using the <code>CSV</code> library and then converted into a DataKnot.</p><pre><code class="language-julia">datafile = CSV.File(csv_data, allowmissing=:auto)
+dataknot = DataKnot(:table =&gt; datafile)
+dataknot[It.table]
 #=&gt;
   │ table                                                   │
   │ name       department  position           salary  rate  │
@@ -45,17 +45,20 @@ knot[It.table]
 4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484        │
 5 │ LAKENYA A  OEMC        CROSSING GUARD             17.68 │
 6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
-=#</code></pre><p>If the <code>CSV</code> file has exactly one row, cardinality could be provided to indicate this.</p><pre><code class="language-julia">data = IOBuffer(&quot;&quot;&quot;
-name,department,position,salary
-&quot;JEFFERY A&quot;, &quot;POLICE&quot;, &quot;SERGEANT&quot;, 101442
-&quot;&quot;&quot;)
-file = CSV.File(data)
-knot = fromtable(file, :x1to1)
-knot[It.salary]
+=#</code></pre><p>This knot could then be exported to a <code>DataFrame</code>.</p><pre><code class="language-julia">dataknot[It.table &gt;&gt;
+         Record(It.name, It.department, It.salary)
+        ] |&gt; DataFrame
 #=&gt;
-│ salary │
-┼────────┼
-│ 101442 │
+6×3 DataFrames.DataFrame
+│ Row │ name      │ department │ salary  │
+│     │ String    │ String     │ Int⍰    │
+├─────┼───────────┼────────────┼─────────┤
+│ 1   │ JEFFERY A │ POLICE     │ 101442  │
+│ 2   │ NANCY A   │ POLICE     │ 80016   │
+│ 3   │ JAMES A   │ FIRE       │ 103350  │
+│ 4   │ DANIEL A  │ FIRE       │ 95484   │
+│ 5   │ LAKENYA A │ OEMC       │ missing │
+│ 6   │ DORIS A   │ OEMC       │ missing │
 =#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
 #=&gt;
 │ It          │
@@ -208,7 +211,7 @@ convert(DataKnot, [35.6, 2.65])
 ──┼───────┼
 1 │ 35.6  │
 2 │  2.65 │
-=#</code></pre><h3><a class="nav-anchor" id="Exporting-DataKnots-via-Tables-1" href="#Exporting-DataKnots-via-Tables-1">Exporting DataKnots via Tables</a></h3><p>The export logic of DataKnots depends upon the kind of the top-level entity. If the data is an array of tuples, then DataKnots delegates to <code>Tables.RowTable</code> for conversion.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
+=#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>The export logic of DataKnots depends upon the kind of the top-level entity. If the data is an array of tuples, then DataKnots delegates to <code>Tables.RowTable</code> for conversion.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
 
 Tables.schema(table)
 #=&gt;
