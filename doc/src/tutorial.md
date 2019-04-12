@@ -1055,9 +1055,9 @@ that support the `Tables.jl` interface.
 
     result |> DataFrame
     #=>
-    3×4 DataFrame
+    3×4 DataFrames.DataFrame
     │ Row │ name      │ department │ salary │ rate     │
-    │     │ String    │ String     │ Int64⍰ │ Float64⍰ │
+    │     │ String    │ String     │ Int⍰   │ Float64⍰ │
     ├─────┼───────────┼────────────┼────────┼──────────┤
     │ 1   │ JEFFERY A │ POLICE     │ 101442 │ missing  │
     │ 2   │ JAMES A   │ FIRE       │ 103350 │ missing  │

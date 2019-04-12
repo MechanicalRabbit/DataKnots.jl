@@ -58,6 +58,27 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
+Since it's often handy to create a top-level record, there
+is a special DataKnot constructor that takes `Pair` arguments.
+
+    knot = DataKnot(:main=>'a':'c', :more=>"data")
+    #=>
+    │ main     more │
+    ┼───────────────┼
+    │ a; b; c  data │
+    =#
+
+A dataset could be focused by navigating.
+
+    knot[It.main]
+    #=>
+      │ main │
+    ──┼──────┼
+    1 │ a    │
+    2 │ b    │
+    3 │ c    │
+    =#
+
 ## Importing & Exporting
 
 We support the conversion to/from objects with the `Tables.jl`

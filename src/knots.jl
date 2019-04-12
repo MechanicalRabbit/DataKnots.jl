@@ -14,19 +14,34 @@ import Base:
 #
 
 """
+    DataKnot(Pair{Symbol}...)
+
+This constructor binds names to datasets, so that they
+could be used to start a query. The knot created has a
+single top-level record, each with its own value.
+
+```jldoctest
+julia> DataKnot(:dataset=>'a':'c')
+│ dataset │
+┼─────────┼
+│ a; b; c │
+
+julia> knot[It.dataset]
+  │ dataset │
+──┼─────────┼
+1 │ a       │
+2 │ b       │
+3 │ c       │
+```
+
+Arguments to this constructor are run though `convert`.
+
+---
+
     convert(DataKnot, val)
 
 This converter wraps a given value so that it could be used to
 start a query.
-
-The unit knot holds the value `nothing`.
-
-```jldoctest
-julia> convert(DataKnot, nothing)
-│ It │
-┼────┼
-│    │
-```
 
 An empty knot can be constructed with `missing`.
 
@@ -47,13 +62,18 @@ julia> convert(DataKnot, 'a':'c')
 3 │ c  │
 ```
 
-It's often useful to wrap a dataset in a one-field tuple.
+An object that complies with the `Table` interface, such as
+a `CSV` file, can be converted to a DataKnot.
 
 ```jldoctest
-julia> convert(DataKnot, (dataset='a':'c',))
-│ dataset │
-┼─────────┼
-│ a; b; c │
+julia> using CSV
+julia> data = "k,v\na,1\nb"
+julia> file = CSV.File(IOBuffer(data), allowmissing=:auto)
+julia> knot = convert(DataKnot, file)
+  │ k  v │
+──┼──────┼
+1 │ a  1 │
+2 │ b    │
 ```
 
 ---
@@ -143,6 +163,28 @@ function DataKnot(ps::Pair{Symbol}...)
     DataKnot(shp, TupleVector(lbls, 1, vals))
 end
 
+"""
+    unitknot
+
+The unit knot holds the value `nothing`.
+
+```jldoctest
+julia> unitknot
+│ It │
+┼────┼
+│    │
+```
+
+The `unitknot` is useful for constructing queries that
+do not originate from another datasource.
+
+```jldoctest
+julia> unitknot["Hello"]
+│ It    │
+┼───────┼
+│ Hello │
+```
+"""
 const unitknot = convert(DataKnot, nothing)
 
 get(db::DataKnot) = db.cell[1]
