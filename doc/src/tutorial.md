@@ -1001,38 +1001,38 @@ is an `AbstractVector` specialized for column-oriented storage.
 ## Importing & Exporting Data
 
 We can import data directly from systems that support the `Tables.jl`
-interface. Here we load a variant of the same dataset.
+interface. Here is a tabular variant of the chicago dataset.
 
     using CSV
 
     dataset = """
-        name,department,position,salary
-        "JEFFERY A", "POLICE", "SERGEANT", 101442
-        "NANCY A", "POLICE", "POLICE OFFICER", 80016
-        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350
-        "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484
-        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392
-        "LAKENYA A", "OEMC", "CROSSING GUARD",
-        "DORIS A", "OEMC", "CROSSING GUARD",
+        name,department,salary,rate
+        "JEFFERY A", "POLICE", 101442,
+        "NANCY A", "POLICE", 80016,
+        "JAMES A", "FIRE", 103350,
+        "DANIEL A", "FIRE", 95484,
+        "BRENDA B", "OEMC", 64392,
+        "LAKENYA A", "OEMC", , 17.68
+        "DORIS A", "OEMC", , 19.38
         """
     datafile = CSV.File(IOBuffer(dataset), allowmissing=:auto)
     dataknot = DataKnot(:employee => datafile)
     dataknot[It.employee]
     #=>
-      │ employee                                            │
-      │ name       department  position              salary │
-    ──┼─────────────────────────────────────────────────────┼
-    1 │ JEFFERY A  POLICE      SERGEANT              101442 │
-    2 │ NANCY A    POLICE      POLICE OFFICER         80016 │
-    3 │ JAMES A    FIRE        FIRE ENGINEER-EMT     103350 │
-    4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT       95484 │
-    5 │ BRENDA B   OEMC        TRAFFIC CONTROL AIDE   64392 │
-    6 │ LAKENYA A  OEMC        CROSSING GUARD               │
-    7 │ DORIS A    OEMC        CROSSING GUARD               │
+      │ employee                             │
+      │ name       department  salary  rate  │
+    ──┼──────────────────────────────────────┼
+    1 │ JEFFERY A  POLICE      101442        │
+    2 │ NANCY A    POLICE       80016        │
+    3 │ JAMES A    FIRE        103350        │
+    4 │ DANIEL A   FIRE         95484        │
+    5 │ BRENDA B   OEMC         64392        │
+    6 │ LAKENYA A  OEMC                17.68 │
+    7 │ DORIS A    OEMC                19.38 │
     =#
 
-This flat data set could be grouped and summarized. Let us return
-employees that are highly-compensated.
+This tabular data could be filtered to show employees that are paid
+more than average.
 
     using Statistics: mean
 
@@ -1040,26 +1040,26 @@ employees that are highly-compensated.
                       It.employee >>
                       Filter(It.salary .> It.avg_salary)]
     #=>
-      │ employee                                         │
-      │ name       department  position           salary │
-    ──┼──────────────────────────────────────────────────┼
-    1 │ JEFFERY A  POLICE      SERGEANT           101442 │
-    2 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
-    3 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484 │
+      │ employee                            │
+      │ name       department  salary  rate │
+    ──┼─────────────────────────────────────┼
+    1 │ JEFFERY A  POLICE      101442       │
+    2 │ JAMES A    FIRE        103350       │
+    3 │ DANIEL A   FIRE         95484       │
     =#
 
-This query result could be converted to other tabular utilities, such
-as a `DataFrame`.
+We can then export this data to other utilities, such as `DataFrames`
+that support the `Tables.jl` interface.
 
     using DataFrames
 
     result |> DataFrame
     #=>
-    3×4 DataFrames.DataFrame
-    │ Row │ name      │ department │ position          │ salary │
-    │     │ String    │ String     │ String            │ Int⍰   │
-    ├─────┼───────────┼────────────┼───────────────────┼────────┤
-    │ 1   │ JEFFERY A │ POLICE     │ SERGEANT          │ 101442 │
-    │ 2   │ JAMES A   │ FIRE       │ FIRE ENGINEER-EMT │ 103350 │
-    │ 3   │ DANIEL A  │ FIRE       │ FIRE FIGHTER-EMT  │ 95484  │
+    3×4 DataFrame
+    │ Row │ name      │ department │ salary │ rate     │
+    │     │ String    │ String     │ Int64⍰ │ Float64⍰ │
+    ├─────┼───────────┼────────────┼────────┼──────────┤
+    │ 1   │ JEFFERY A │ POLICE     │ 101442 │ missing  │
+    │ 2   │ JAMES A   │ FIRE       │ 103350 │ missing  │
+    │ 3   │ DANIEL A  │ FIRE       │ 95484  │ missing  │
     =#
