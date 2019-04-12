@@ -1,6 +1,11 @@
 # Release Notes
 
 
+## v0.3.0
+
+- Import/export using Tables.jl interface.
+
+
 ## v0.2.0
 
 - Added `Unique` and `Group` combinators.
