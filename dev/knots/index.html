@@ -63,7 +63,7 @@ dataknot[It.table]
 #=&gt;
 6×3 DataFrames.DataFrame
 │ Row │ name      │ department │ salary  │
-│     │ String    │ String     │ Int⍰    │
+│     │ String    │ String     │ Int64⍰  │
 ├─────┼───────────┼────────────┼─────────┤
 │ 1   │ JEFFERY A │ POLICE     │ 101442  │
 │ 2   │ NANCY A   │ POLICE     │ 80016   │
@@ -133,13 +133,13 @@ shape(unitknot)
 shape(vecknot)
 #-&gt; BlockOf(Char)</code></pre><p>A <code>Ref</code> object is converted into the referenced value.</p><pre><code class="language-julia">int_ty = convert(DataKnot, Base.broadcastable(Int))
 #=&gt;
-│ It  │
-┼─────┼
-│ Int │
+│ It    │
+┼───────┼
+│ Int64 │
 =#
 
 shape(int_ty)
-#-&gt; ValueOf(Type{Int})</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = convert(DataKnot,
+#-&gt; ValueOf(Type{Int64})</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = convert(DataKnot,
               [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
                (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016),
                (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350),
@@ -244,12 +244,12 @@ Tables.columnaccess(table)
 Tables.schema(table)
 #=&gt;
 Tables.Schema:
- :idx  Int
+ :idx  Int64
  :val  String
 =#
 
 Tables.columns(table)[:idx]
-#-&gt; @VectorTree (1:1) × Int [1, 2, 3]
+#-&gt; @VectorTree (1:1) × Int64 [1, 2, 3]
 
 Tables.columns(table)[:val]
 #-&gt; @VectorTree (1:1) × String [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;]

@@ -353,7 +353,7 @@ unitknot[GreaterThanAverage(OneTo(6))]
 2 │  5 │
 3 │  6 │
 =#</code></pre><p>In DataKnots, query parameters permit external data to be used within query expressions. Parameters that are defined with <code>Given</code> can be used to remember values and reuse them.</p><h2><a class="nav-anchor" id="Julia-Integration-1" href="#Julia-Integration-1">Julia Integration</a></h2><p>DataKnots is a query algebra embedded in the Julia programming language. We should discuss the interaction between the semantics of the query algebra and the semantics of Julia.</p><h3><a class="nav-anchor" id="Precedence-of-Composition-1" href="#Precedence-of-Composition-1">Precedence of Composition</a></h3><p>DataKnots uses Julia&#39;s bitshift operator (<code>&gt;&gt;</code>) for composition.</p><p>This works visually, but the <em>precedence</em> of this operator does not match user expectations. Specifically, common binary operators such as addition (<code>+</code>) have a lower precedence.</p><p>This expectation mismatch could lead a user to write:</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; It .+ It]
-#-&gt; ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮</code></pre><p>To fix this query, we add parentheses.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (It .+ It)]
+#-&gt; ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮</code></pre><p>To fix this query, we add parentheses.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; (It .+ It)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -361,7 +361,7 @@ unitknot[GreaterThanAverage(OneTo(6))]
 2 │  4 │
 3 │  6 │
 =#</code></pre><h3><a class="nav-anchor" id="Composition-of-Queries-1" href="#Composition-of-Queries-1">Composition of Queries</a></h3><p>For bitshift operator (<code>&gt;&gt;</code>) to work as composition, the first operand must be a query.</p><pre><code class="language-julia">unitknot[1:3 &gt;&gt; &quot;Hello&quot;]
-#-&gt; ERROR: MethodError: no method matching &gt;&gt;(::Int, ::String)⋮</code></pre><p>To fix this query, we use <code>Lift</code> to convert the first operand to a query.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; &quot;Hello&quot;]
+#-&gt; ERROR: MethodError: no method matching &gt;&gt;(::Int64, ::String)⋮</code></pre><p>To fix this query, we use <code>Lift</code> to convert the first operand to a query.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; &quot;Hello&quot;]
 #=&gt;
   │ It    │
 ──┼───────┼

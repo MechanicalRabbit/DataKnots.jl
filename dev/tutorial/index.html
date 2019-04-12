@@ -158,7 +158,7 @@ chicago[
     Record(It.name, EmployeeCount) &gt;&gt;
     Filter(It.employee_count &gt; 2)]
 #=&gt;
-ERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)
+ERROR: MethodError: no method matching isless(::Int64, ::DataKnots.Navigation)
 ⋮
 =#</code></pre><h2><a class="nav-anchor" id="Incremental-Composition-1" href="#Incremental-Composition-1">Incremental Composition</a></h2><p>Combinators let us construct queries incrementally. Let&#39;s explore our Chicago data starting with a list of employees.</p><pre><code class="language-julia">Q = It.department.employee
 
@@ -567,7 +567,7 @@ chicago[Employee]
 vt = get(chicago[query])
 display(vt)
 #=&gt;
-@VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
+@VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int64):
  (name = &quot;POLICE&quot;, employee_count = 3)
  (name = &quot;FIRE&quot;, employee_count = 2)
 =#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-Data-1" href="#Importing-and-Exporting-Data-1">Importing &amp; Exporting Data</a></h2><p>We can import data directly from systems that support the <code>Tables.jl</code> interface. Here is a tabular variant of the chicago dataset.</p><pre><code class="language-julia">using CSV
@@ -614,7 +614,7 @@ result |&gt; DataFrame
 #=&gt;
 3×4 DataFrames.DataFrame
 │ Row │ name      │ department │ salary │ rate     │
-│     │ String    │ String     │ Int⍰   │ Float64⍰ │
+│     │ String    │ String     │ Int64⍰ │ Float64⍰ │
 ├─────┼───────────┼────────────┼────────┼──────────┤
 │ 1   │ JEFFERY A │ POLICE     │ 101442 │ missing  │
 │ 2   │ JAMES A   │ FIRE       │ 103350 │ missing  │
