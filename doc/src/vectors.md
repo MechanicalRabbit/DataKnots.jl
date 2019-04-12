@@ -294,11 +294,11 @@ Public = false
 
     tv = TupleVector(:name => ["GARRY M", "ANTHONY R", "DANA A"],
                      :salary => [260004, 185364, 170112])
-    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int64) [(name = "GARRY M", salary = 260004) … ]
 
     display(tv)
     #=>
-    @VectorTree of 3 × (name = String, salary = Int):
+    @VectorTree of 3 × (name = String, salary = Int64):
      (name = "GARRY M", salary = 260004)
      (name = "ANTHONY R", salary = 185364)
      (name = "DANA A", salary = 170112)
@@ -307,12 +307,12 @@ Public = false
 Labels could be specified by strings.
 
     TupleVector(:salary => [260004, 185364, 170112], "#B" => [true, false, false])
-    #-> @VectorTree (salary = Int, "#B" = Bool) [(salary = 260004, #B = 1) … ]
+    #-> @VectorTree (salary = Int64, "#B" = Bool) [(salary = 260004, #B = 1) … ]
 
 It is also possible to construct a `TupleVector` without labels.
 
     TupleVector(length(tv), columns(tv))
-    #-> @VectorTree (String, Int) [("GARRY M", 260004) … ]
+    #-> @VectorTree (String, Int64) [("GARRY M", 260004) … ]
 
 An error is reported in case of duplicate labels or columns of different height.
 
@@ -346,7 +346,7 @@ When indexed by another vector, we get a new instance of `TupleVector`.
     tv′ = tv[[3,1]]
     display(tv′)
     #=>
-    @VectorTree of 2 × (name = String, salary = Int):
+    @VectorTree of 2 × (name = String, salary = Int64):
      (name = "DANA A", salary = 170112)
      (name = "GARRY M", salary = 260004)
     =#
@@ -506,26 +506,26 @@ assembled with `TupleVector` and `BlockVector` objects.
         "ANTHONY R" 185364
         "DANA A"    170112
     ]
-    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int64) [(name = "GARRY M", salary = 260004) … ]
 
     @VectorTree (name = String, salary = Int) [
         ("GARRY M", 260004),
         ("ANTHONY R", 185364),
         ("DANA A", 170112),
     ]
-    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int64) [(name = "GARRY M", salary = 260004) … ]
 
     @VectorTree (name = String, salary = Int) [
         (name = "GARRY M", salary = 260004),
         (name = "ANTHONY R", salary = 185364),
         (name = "DANA A", salary = 170112),
     ]
-    #-> @VectorTree (name = String, salary = Int) [(name = "GARRY M", salary = 260004) … ]
+    #-> @VectorTree (name = String, salary = Int64) [(name = "GARRY M", salary = 260004) … ]
 
 Column labels are optional.
 
     @VectorTree (String, Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]
-    #-> @VectorTree (String, Int) [("GARRY M", 260004) … ]
+    #-> @VectorTree (String, Int64) [("GARRY M", 260004) … ]
 
 `BlockVector` is constructed from a vector of vector literals.  A one-element
 block could be represented by the element itself; an empty block by `missing`.
@@ -585,7 +585,7 @@ Using `@VectorTree`, we can easily construct hierarchical data.
     #=>
     @VectorTree of 2 × (name = (1:1) × String,
                         employee = (0:N) × (name = (1:1) × String,
-                                            salary = (0:1) × Int)):
+                                            salary = (0:1) × Int64)):
      (name = "POLICE", employee = [(name = "GARRY M", salary = 260004) … ])
      (name = "FIRE", employee = [(name = "JOSE S", salary = 202728) … ])
     =#

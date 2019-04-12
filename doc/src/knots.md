@@ -120,7 +120,7 @@ This knot could then be exported to a `DataFrame`.
     #=>
     6×3 DataFrames.DataFrame
     │ Row │ name      │ department │ salary  │
-    │     │ String    │ String     │ Int⍰    │
+    │     │ String    │ String     │ Int64⍰  │
     ├─────┼───────────┼────────────┼─────────┤
     │ 1   │ JEFFERY A │ POLICE     │ 101442  │
     │ 2   │ NANCY A   │ POLICE     │ 80016   │
@@ -253,13 +253,13 @@ A `Ref` object is converted into the referenced value.
 
     int_ty = convert(DataKnot, Base.broadcastable(Int))
     #=>
-    │ It  │
-    ┼─────┼
-    │ Int │
+    │ It    │
+    ┼───────┼
+    │ Int64 │
     =#
 
     shape(int_ty)
-    #-> ValueOf(Type{Int})
+    #-> ValueOf(Type{Int64})
 
 ### Rendering
 
@@ -403,12 +403,12 @@ A plural set of records will be treated as a table.
     Tables.schema(table)
     #=>
     Tables.Schema:
-     :idx  Int
+     :idx  Int64
      :val  String
     =#
 
     Tables.columns(table)[:idx]
-    #-> @VectorTree (1:1) × Int [1, 2, 3]
+    #-> @VectorTree (1:1) × Int64 [1, 2, 3]
 
     Tables.columns(table)[:val]
     #-> @VectorTree (1:1) × String ["Test", "Test", "Test"]

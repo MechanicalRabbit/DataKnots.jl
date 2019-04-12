@@ -6,11 +6,8 @@ haskey(Pkg.installed(), "NarrativeTest") || Pkg.clone("https://github.com/rbt-la
 using DataKnots
 using NarrativeTest
 
-# Make `print(Int)` produce identical output on 32-bit and 64-bit platforms.
-Base.show_datatype(io::IO, ::Type{Int}) = print(io, "Int")
-Base.show_datatype(io::IO, ::Type{Int32}) = print(io, "Int")
-Base.show_datatype(io::IO, ::Type{Int64}) = print(io, "Int")
-Base.show_datatype(io::IO, ::Type{UInt}) = print(io, "UInt")
+# Ignore the difference in the output of `print(Int)` between 32-bit and 64-bit platforms.
+push!(NarrativeTest.EXPECTMAP, r"Int64" => s"Int(32|64)")
 
 # Normalize printing of `Vector{Bool}`.
 Base.show(io::IO, b::Bool) = print(io, get(io, :typeinfo, Any) === Bool ? (b ? "1" : "0") : (b ? "true" : "false"))

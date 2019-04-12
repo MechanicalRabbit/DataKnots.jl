@@ -272,7 +272,7 @@ case, we should provide the value to replace empty blocks.
     #-> block_lift(maximum, missing)
 
     p(@VectorTree [Int] [[260004, 185364, 170112], [], [202728, 197736]])
-    #-> Union{Missing, Int}[260004, missing, 202728]
+    #-> Union{Missing, Int64}[260004, missing, 202728]
 
 The `tuple_lift` constructor makes a pipeline on tuple vectors by vectorizing a
 function of several arguments.
@@ -323,7 +323,7 @@ wrapped in 1-element block.
     #-> adapt_missing()
 
     p([260004, 185364, 170112, missing, 202728, 197736])
-    #-> @VectorTree (0:1) × Int [260004, 185364, 170112, missing, 202728, 197736]
+    #-> @VectorTree (0:1) × Int64 [260004, 185364, 170112, missing, 202728, 197736]
 
 The pipeline `adapt_vector()` transforms a vector of vectors to a block vector.
 
@@ -331,7 +331,7 @@ The pipeline `adapt_vector()` transforms a vector of vectors to a block vector.
     #-> adapt_vector()
 
     p([[260004, 185364, 170112], Int[], [202728, 197736]])
-    #-> @VectorTree (0:N) × Int [[260004, 185364, 170112], [], [202728, 197736]]
+    #-> @VectorTree (0:N) × Int64 [[260004, 185364, 170112], [], [202728, 197736]]
 
 The pipeline `adapt_tuple()` transforms a vector of tuples to a tuple vector.
 
@@ -340,7 +340,7 @@ The pipeline `adapt_tuple()` transforms a vector of tuples to a tuple vector.
 
     p([("GARRY M", 260004), ("ANTHONY R", 185364), ("DANA A", 170112)]) |> display
     #=>
-    @VectorTree of 3 × (String, Int):
+    @VectorTree of 3 × (String, Int64):
      ("GARRY M", 260004)
      ("ANTHONY R", 185364)
      ("DANA A", 170112)
@@ -350,7 +350,7 @@ Vectors of named tuples are also supported.
 
     p([(name="GARRY M", salary=260004), (name="ANTHONY R", salary=185364), (name="DANA A", salary=170112)]) |> display
     #=>
-    @VectorTree of 3 × (name = String, salary = Int):
+    @VectorTree of 3 × (name = String, salary = Int64):
      (name = "GARRY M", salary = 260004)
      (name = "ANTHONY R", salary = 185364)
      (name = "DANA A", salary = 170112)
@@ -415,7 +415,7 @@ column of a tuple vector.
 
     p(@VectorTree (name = String, salary = Int) ["GARRY M" 260004; "ANTHONY R" 185364; "DANA A" 170112]) |> display
     #=>
-    @VectorTree of 3 × (name = String, salary = Int):
+    @VectorTree of 3 × (name = String, salary = Int64):
      (name = "Garry M", salary = 260004)
      (name = "Anthony R", salary = 185364)
      (name = "Dana A", salary = 170112)
@@ -463,7 +463,7 @@ tuple.
         [202728, 197736]            [200000, 200000]]
     ) |> display
     #=>
-    @VectorTree of 3 × (0:N) × (Int, (0:N) × Int):
+    @VectorTree of 3 × (0:N) × (Int64, (0:N) × Int64):
      [(260004, [200000]), (185364, [200000]), (170112, [200000])]
      []
      [(202728, [200000, 200000]), (197736, [200000, 200000])]
@@ -481,7 +481,7 @@ distribute all of the block columns.
         [202728, 197736]            [200000, 200000]]
     ) |> display
     #=>
-    @VectorTree of 3 × (0:N) × (Int, Int):
+    @VectorTree of 3 × (0:N) × (Int64, Int64):
      [(260004, 200000), (185364, 200000), (170112, 200000)]
      []
      [(202728, 200000), (202728, 200000), (197736, 200000), (197736, 200000)]
@@ -516,7 +516,7 @@ The pipeline `sieve_by()` filters a vector of pairs by the second column.
     #-> sieve_by()
 
     p(@VectorTree (Int, Bool) [260004 true; 185364 false; 170112 false])
-    #-> @VectorTree (0:1) × Int [260004, missing, missing]
+    #-> @VectorTree (0:1) × Int64 [260004, missing, missing]
 
 
 ### Slicing
@@ -590,7 +590,7 @@ values with equal keys.
 The keys could be assembled from tuples and blocks.
 
     p(@VectorTree [(String, (0:1)((0:1)Int, (0:1)Int))] [[("JEFFERY A", (10, missing)), ("NANCY A", (8, missing))], [("JAMES A", (10, missing)), ("DANIEL A", (10, missing))], [("LAKENYA A", (missing, 2)), ("DORIS A", (missing, 2)), ("ASKEW A", (6, missing)), ("MARY Z", missing)], []])
-    #-> @VectorTree (0:N) × ((1:N) × String, (0:1) × ((0:1) × Int, (0:1) × Int)) [[(["NANCY A"], (8, missing)), (["JEFFERY A"], (10, missing))], [(["JAMES A", "DANIEL A"], (10, missing))], [(["MARY Z"], missing), (["LAKENYA A", "DORIS A"], (missing, 2)), (["ASKEW A"], (6, missing))], []]
+    #-> @VectorTree (0:N) × ((1:N) × String, (0:1) × ((0:1) × Int64, (0:1) × Int64)) [[(["NANCY A"], (8, missing)), (["JEFFERY A"], (10, missing))], [(["JAMES A", "DANIEL A"], (10, missing))], [(["MARY Z"], missing), (["LAKENYA A", "DORIS A"], (missing, 2)), (["ASKEW A"], (6, missing))], []]
 
 Plural blocks could also serve as keys.
 

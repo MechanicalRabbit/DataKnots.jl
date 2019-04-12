@@ -862,7 +862,7 @@ If there is no attribute with the given name, an error is reported.
     chicago[Q]
     #=>
     ERROR: cannot find "ssn" at
-    (0:N) × (name = (1:1) × String, position = (1:1) × String, salary = (0:1) × Int, rate = (0:1) × Float64)
+    (0:N) × (name = (1:1) × String, position = (1:1) × String, salary = (0:1) × Int64, rate = (0:1) × Float64)
     =#
 
 Regular and named tuples also support attribute lookup.
@@ -883,7 +883,7 @@ Regular and named tuples also support attribute lookup.
     chicago[Q]
     #=>
     ERROR: cannot find "ssn" at
-    (1:1) × NamedTuple{(:name, :position, :salary),Tuple{String,String,Int}}
+    (1:1) × NamedTuple{(:name, :position, :salary),Tuple{String,String,Int64}}
     =#
 
     Q = Lift(("JEFFERY A", "SERGEANT", 101442)) >>
@@ -902,7 +902,7 @@ Regular and named tuples also support attribute lookup.
     chicago[Q]
     #=>
     ERROR: cannot find "Z" at
-    (1:1) × Tuple{String,String,Int}
+    (1:1) × Tuple{String,String,Int64}
     =#
 
 

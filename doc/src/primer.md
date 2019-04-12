@@ -701,7 +701,7 @@ such as addition (`+`) have a lower precedence.
 This expectation mismatch could lead a user to write:
 
     unitknot[Lift(1:3) >> It .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int,1},Nothing}⋮
+    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
 
 To fix this query, we add parentheses.
 
@@ -720,7 +720,7 @@ For bitshift operator (`>>`) to work as composition, the first
 operand must be a query.
 
     unitknot[1:3 >> "Hello"]
-    #-> ERROR: MethodError: no method matching >>(::Int, ::String)⋮
+    #-> ERROR: MethodError: no method matching >>(::Int64, ::String)⋮
 
 To fix this query, we use `Lift` to convert the first operand to a
 query.

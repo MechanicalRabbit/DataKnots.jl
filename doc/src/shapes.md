@@ -54,7 +54,7 @@ For example, consider a collection of departments with associated employees.
         @VectorTree (name = (1:1)String,
                      employee = (1:N)(name = (1:1)String,
                                       position = (1:1)String,
-                                      salary = (0:1)Int,
+                                      salary = (0:1)Int64,
                                       rate = (0:1)Float64)) [
             (name = "POLICE",
              employee = [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing),
@@ -107,7 +107,7 @@ collection.
     TupleOf(:name => BlockOf(String, x1to1),
             :employee => BlockOf(TupleOf(:name => BlockOf(String, x1to1),
                                          :position => BlockOf(String, x1to1),
-                                         :salary => BlockOf(Int, x0to1),
+                                         :salary => BlockOf(Int64, x0to1),
                                          :rate => BlockOf(Float64, x0to1)),
                                  x1toN))
     =#
@@ -124,7 +124,7 @@ a collection of departments to associated employees.
     #=>
     @VectorTree of 3 × (1:N) × (name = (1:1) × String,
                                 position = (1:1) × String,
-                                salary = (0:1) × Int,
+                                salary = (0:1) × Int64,
                                 rate = (0:1) × Float64):
      [(name = "JEFFERY A", position = "SERGEANT", salary = 101442, rate = missing), (name = "NANCY A", position = "POLICE OFFICER", salary = 80016, rate = missing)]
      [(name = "JAMES A", position = "FIRE ENGINEER-EMT", salary = 103350, rate = missing), (name = "DANIEL A", position = "FIRE FIGHTER-EMT", salary = 95484, rate = missing)]
@@ -150,7 +150,7 @@ Two adjacent field pipelines may form a *path*.  For example, consider the
     #=>
     Signature(TupleOf(:name => BlockOf(String, x1to1),
                       :position => BlockOf(String, x1to1),
-                      :salary => BlockOf(Int, x0to1),
+                      :salary => BlockOf(Int64, x0to1),
                       :rate => BlockOf(Float64, x0to1)),
               BlockOf(Float64, x0to1) |> IsFlow)
     =#
@@ -177,7 +177,7 @@ composition* combinator.
                       :employee =>
                           BlockOf(TupleOf(:name => BlockOf(String, x1to1),
                                           :position => BlockOf(String, x1to1),
-                                          :salary => BlockOf(Int, x0to1),
+                                          :salary => BlockOf(Int64, x0to1),
                                           :rate => BlockOf(Float64, x0to1)),
                                   x1toN)),
               BlockOf(Float64) |> IsFlow)
@@ -253,7 +253,7 @@ composition should contain the department data together with a parameter `P`.
                                   BlockOf(TupleOf(
                                               :name => BlockOf(String, x1to1),
                                               :position => BlockOf(String, x1to1),
-                                              :salary => BlockOf(Int, x0to1),
+                                              :salary => BlockOf(Int64, x0to1),
                                               :rate => BlockOf(Float64, x0to1)),
                                           x1toN)),
                       TupleOf(:P => Float64)) |>
@@ -327,7 +327,7 @@ For a `TupleVector`, the column shapes and their labels are described with
     #=>
     TupleOf(:name => BlockOf(String, x1to1),
             :position => BlockOf(String, x1to1),
-            :salary => BlockOf(Int, x0to1),
+            :salary => BlockOf(Int64, x0to1),
             :rate => BlockOf(Float64, x0to1))
     =#
 
@@ -338,7 +338,7 @@ For a `TupleVector`, the column shapes and their labels are described with
     #-> :rate
 
     columns(emp_shp)
-    #-> DataKnots.AbstractShape[BlockOf(String, x1to1), BlockOf(String, x1to1), BlockOf(Int, x0to1), BlockOf(Float64, x0to1)]
+    #-> DataKnots.AbstractShape[BlockOf(String, x1to1), BlockOf(String, x1to1), BlockOf(Int64, x0to1), BlockOf(Float64, x0to1)]
 
     column(emp_shp, :rate)
     #-> BlockOf(Float64, x0to1)
@@ -349,7 +349,7 @@ For a `TupleVector`, the column shapes and their labels are described with
 It is possible to specify the shape of a `TupleVector` without labels.
 
     cmp_shp = TupleOf(BlockOf(Int, x0to1), BlockOf(Int, x1to1))
-    #-> TupleOf(BlockOf(Int, x0to1), BlockOf(Int, x1to1))
+    #-> TupleOf(BlockOf(Int64, x0to1), BlockOf(Int64, x1to1))
 
 In this case, the columns will be assigned *ordinal* labels.
 
@@ -383,7 +383,7 @@ The shape of the flow elements could be easily accessed or replaced.
     #-> ValueOf(String)
 
     replace_elements(flw_shp, ValueOf(Int))
-    #-> BlockOf(Int, x1to1) |> IsFlow
+    #-> BlockOf(Int64, x1to1) |> IsFlow
 
 A `TupleOf` shape is annotated with `IsScope` to indicate that the container
 holds the scoping context of a pipeline.
@@ -391,18 +391,18 @@ holds the scoping context of a pipeline.
     scp_shp = TupleOf(Float64, TupleOf(:P => Int)) |> IsScope
 
     subject(scp_shp)
-    #-> TupleOf(Float64, TupleOf(:P => Int))
+    #-> TupleOf(Float64, TupleOf(:P => Int64))
 
 We can get the shapes of the input data and the context parameters.
 
     context(scp_shp)
-    #-> TupleOf(:P => Int)
+    #-> TupleOf(:P => Int64)
 
     column(scp_shp)
     #-> ValueOf(Float64)
 
     replace_column(scp_shp, ValueOf(Int))
-    #-> TupleOf(Int, TupleOf(:P => Int)) |> IsScope
+    #-> TupleOf(Int64, TupleOf(:P => Int64)) |> IsScope
 
 
 ### Shape ordering
@@ -496,7 +496,7 @@ Function `shapeof()` determines the shape of a given vector.
     #-> ValueOf(String)
 
     shapeof(@VectorTree ((1:1)String, (0:1)Int) [])
-    #-> TupleOf(BlockOf(String, x1to1), BlockOf(Int, x0to1))
+    #-> TupleOf(BlockOf(String, x1to1), BlockOf(Int64, x0to1))
 
     shapeof(@VectorTree (name = String, employee = [String]) [])
     #-> TupleOf(:name => String, :employee => BlockOf(String))
@@ -510,9 +510,9 @@ A `Signature` object describes the shapes of a pipeline's input and output.
                     BlockOf(TupleOf(:name => BlockOf(String, x1to1),
                                     :employee => BlockOf(UInt, x0toN))) |> IsFlow)
     #=>
-    Signature(ValueOf(UInt),
+    Signature(ValueOf(UInt64),
               BlockOf(TupleOf(:name => BlockOf(String, x1to1),
-                              :employee => BlockOf(UInt))) |>
+                              :employee => BlockOf(UInt64))) |>
               IsFlow)
     =#
 
@@ -521,10 +521,10 @@ Components of the signature can be easily extracted.
     target(sig)
     #=>
     BlockOf(TupleOf(:name => BlockOf(String, x1to1),
-                    :employee => BlockOf(UInt))) |>
+                    :employee => BlockOf(UInt64))) |>
     IsFlow
     =#
 
     source(sig)
-    #-> ValueOf(UInt)
+    #-> ValueOf(UInt64)
 

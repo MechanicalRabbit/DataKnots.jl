@@ -311,7 +311,7 @@ the period is an easy mistake to make.
         Record(It.name, EmployeeCount) >>
         Filter(It.employee_count > 2)]
     #=>
-    ERROR: MethodError: no method matching isless(::Int, ::DataKnots.Navigation)
+    ERROR: MethodError: no method matching isless(::Int64, ::DataKnots.Navigation)
     ⋮
     =#
 
@@ -993,7 +993,7 @@ is an `AbstractVector` specialized for column-oriented storage.
     vt = get(chicago[query])
     display(vt)
     #=>
-    @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int):
+    @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int64):
      (name = "POLICE", employee_count = 3)
      (name = "FIRE", employee_count = 2)
     =#
@@ -1057,7 +1057,7 @@ that support the `Tables.jl` interface.
     #=>
     3×4 DataFrames.DataFrame
     │ Row │ name      │ department │ salary │ rate     │
-    │     │ String    │ String     │ Int⍰   │ Float64⍰ │
+    │     │ String    │ String     │ Int64⍰ │ Float64⍰ │
     ├─────┼───────────┼────────────┼────────┼──────────┤
     │ 1   │ JEFFERY A │ POLICE     │ 101442 │ missing  │
     │ 2   │ JAMES A   │ FIRE       │ 103350 │ missing  │
