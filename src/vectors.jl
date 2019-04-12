@@ -2,6 +2,8 @@
 # Custom vector types for representing data in columnar form.
 #
 
+using Tables
+
 import Base:
     IndexStyle,
     OneTo,
@@ -168,6 +170,18 @@ eltype(tv::TupleVector) =
         t
     end
 end
+
+# Tables.jl export interface.
+
+Tables.istable(tv::TupleVector) = !isempty(tv.lbls)
+
+Tables.columnaccess(::TupleVector) = true
+
+Tables.schema(tv::TupleVector) =
+    Tables.Schema(labels(tv), eltype.(columns(tv)))
+
+Tables.columns(tv::TupleVector) =
+    NamedTuple{(labels(tv)...,)}(columns(tv))
 
 """
     (::TupleVector)[ks::AbstractVector{Int}] :: TupleVector

@@ -127,12 +127,23 @@ DataKnot(T::Type, cell::AbstractVector) =
 DataKnot(::Type{Any}, cell::AbstractVector) =
     DataKnot(shapeof(cell), cell)
 
-DataKnot(::Type{Any}, elts::AbstractVector, card::Union{Cardinality,Symbol}) =
-    let card = convert(Cardinality, card),
-        shp = BlockOf(shapeof(elts), card),
-        cell = BlockVector{card}([1, length(elts)+1], elts)
-        DataKnot(shp, cell)
-    end
+function DataKnot(::Type{Any}, elts::AbstractVector, card::Union{Cardinality,Symbol})
+    card = convert(Cardinality, card)
+    shp = BlockOf(shapeof(elts), card)
+    cell = BlockVector{card}([1, length(elts)+1], elts)
+    return DataKnot(shp, cell)
+end
+
+DataKnot() =
+    DataKnot(Any, [nothing])
+
+function DataKnot(ps::Pair{Symbol}...)
+    lbls = collect(first.(ps))
+    cols = collect(convert.(DataKnot, last.(ps)))
+    vals = collect(AbstractVector, cell.(cols))
+    shp = TupleOf(lbls, shape.(cols))
+    return DataKnot(shp, TupleVector(lbls, 1, vals))
+end
 
 convert(::Type{DataKnot}, db::DataKnot) = db
 
@@ -152,16 +163,8 @@ convert(::Type{DataKnot}, elt) =
     if Tables.schema(elt) !== nothing
         fromtable(elt)
     else
-        DataKnot(Any, [elt]);
+        DataKnot(Any, [elt])
     end
-
-function DataKnot(ps::Pair{Symbol}...)
-    lbls = collect(first.(ps))
-    cols = collect(convert.(DataKnot, last.(ps)))
-    vals = collect(AbstractVector, cell.(cols))
-    shp = TupleOf(lbls, shape.(cols))
-    DataKnot(shp, TupleVector(lbls, 1, vals))
-end
 
 """
     unitknot
@@ -185,7 +188,7 @@ julia> unitknot["Hello"]
 │ Hello │
 ```
 """
-const unitknot = convert(DataKnot, nothing)
+const unitknot = DataKnot()
 
 get(db::DataKnot) = db.cell[1]
 
@@ -197,19 +200,14 @@ quoteof(db::DataKnot) =
     Symbol("DataKnot( … )")
 
 #
-# Interfaces.
+# Tables.jl interface.
 #
 
 Tables.istable(knot::DataKnot) = Tables.istable(eltype(knot.cell))
-Tables.istable(tv::TupleVector) = !isempty(tv.lbls)
 Tables.columnaccess(knot::DataKnot) = Tables.istable(knot)
 
 Tables.schema(knot::DataKnot) = cell_schema(knot.cell)
 Tables.columns(knot::DataKnot) = cell_columns(knot.cell)
-Tables.schema(tv::TupleVector) =
-    Tables.Schema(labels(tv), eltype.(columns(tv)))
-Tables.columns(tv::TupleVector) =
-    NamedTuple{Tuple(labels(tv))}(columns(tv))
 
 cell_schema(cell::AbstractVector) = Tables.schema(cell[1])
 cell_columns(cell::AbstractVector) = Tables.columns(cell[1])
@@ -218,20 +216,16 @@ cell_schema(cell::Union{BlockVector{x0toN},BlockVector{x1toN}}) =
 cell_columns(cell::Union{BlockVector{x0toN},BlockVector{x1toN}}) =
     Tables.columns(elements(cell))
 
-function fromtable(table::Any,
-                   card::Union{Cardinality, Symbol} = x0toN)
+function fromtable(table, card::Union{Cardinality, Symbol}=x0toN)
     card = convert(Cardinality, card)
     cols = Tables.columns(table)
-    head = Symbol[]
-    vals = AbstractVector[]
-    for n in propertynames(cols)
-        push!(head, n)
-        c = getproperty(cols, n)
-        push!(vals, c)
+    flds = Pair{Symbol,AbstractVector}[]
+    for lbl in propertynames(cols)
+        col = getproperty(cols, lbl)
+        push!(flds, lbl => col)
     end
-    tv = TupleVector(head, length(vals[1]), vals)
-    bv = BlockVector([1, length(tv)+1], tv, card)
-    return DataKnot(shapeof(bv), bv)
+    tv = TupleVector(flds...)
+    return DataKnot(Any, tv, card)
 end
 
 #

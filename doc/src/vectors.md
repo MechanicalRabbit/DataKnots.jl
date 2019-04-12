@@ -357,6 +357,22 @@ Updated column vectors are generated on demand.
     column(tv′, 2)
     #-> [170112, 260004]
 
+A labeled `TupleVector` supports a Tables.jl export interface.  For example,
+we can convert a `TupleVector` instance to a `DataFrame`.
+
+    using DataFrames
+
+    tv |> DataFrame |> display
+    #=>
+    3×2 DataFrames.DataFrame
+    │ Row │ name      │ salary │
+    │     │ String    │ Int64  │
+    ├─────┼───────────┼────────┤
+    │ 1   │ GARRY M   │ 260004 │
+    │ 2   │ ANTHONY R │ 185364 │
+    │ 3   │ DANA A    │ 170112 │
+    =#
+
 
 ### `Cardinality`
 
