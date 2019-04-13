@@ -5,6 +5,7 @@
 module DataKnots
 
 export
+    Collect,
     Count,
     DataKnot,
     Drop,

@@ -513,6 +513,58 @@ function Record(env::Environment, p::Pipeline, Xs...)
     assemble_record(p, xs)
 end
 
+#
+# Collect combinator.
+#
+
+as_record(p::Pipeline) = p
+
+function assemble_collect(p, x)
+    p = as_record(p)
+    src = elements(target(p))
+    dom = domain(src)::TupleOf
+    x = uncover(x)
+    x_lbl = getlabel(x, nothing)
+    x = relabel(x, nothing)
+    cols = Pipeline[]
+    lbls = Symbol[]
+    for (i, lbl) in enumerate(labels(dom))
+        lbl != x_lbl || continue
+        col = lookup(src, i)
+        push!(cols, col)
+        if lbl == ordinal_label(i)
+            lbl = ordinal_label(length(cols))
+        end
+        push!(lbls, lbl)
+    end
+    if !fits(target(x), BlockOf(Nothing, x1to1))
+        push!(cols, x)
+        push!(lbls, x_lbl !== nothing ? x_lbl : ordinal_label(length(cols)))
+    end
+    tgt = TupleOf(lbls, target.(cols))
+    lbl = getlabel(p, nothing)
+    if lbl !== nothing
+        tgt = relabel(tgt, lbl)
+    end
+    q = tuple_of(lbls, cols) |> designate(src, tgt)
+    q = cover(q)
+    compose(p, q)
+end
+
+Collect(X, Ys...) =
+    Query(Collect, X, Ys...)
+
+Lift(::typeof(Collect)) =
+    Then(Collect)
+
+Collect(env::Environment, p::Pipeline, X, Ys...) =
+    Collect(env, Collect(env, p, X), Ys...)
+
+function Collect(env::Environment, p::Pipeline, X)
+    x = assemble(X, env, target_pipe(p))
+    assemble_collect(p, x)
+end
+
 
 #
 # Lifting Julia values and functions.
@@ -881,6 +933,13 @@ lookup(src::IsFlow, name::Any) =
     lookup(elements(src), name)
 
 function lookup(src::IsScope, name::Any)
+    q = lookup(column(src), name)
+    q !== nothing ?
+        chain_of(column(1), q) |> designate(src, target(q)) :
+        nothing
+end
+
+function lookup(src::IsScope, name::Symbol)
     q = lookup(context(src), name)
     q === nothing || return chain_of(column(2), q) |> designate(src, target(q))
     q = lookup(column(src), name)
@@ -895,6 +954,9 @@ function lookup(lbls::Vector{Symbol}, name::Symbol)
     end
     j
 end
+
+lookup(src::TupleOf, j::Int) =
+    column(j) |> designate(src, column(src, j))
 
 function lookup(src::TupleOf, name::Symbol)
     lbls = labels(src)
