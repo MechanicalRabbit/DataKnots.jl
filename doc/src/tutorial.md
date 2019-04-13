@@ -8,28 +8,27 @@ performed upon a simplified in-memory dataset.
 ## Getting Started
 
 Consider a tiny cross-section of public data from Chicago,
-represented as nested `NamedTuple` and `Vector` objects.
+represented as nested `Vector` and `NamedTuple` objects.
 
-    chicago_data =
-      (department = [
-        (name = "POLICE",
-         employee = [
-          (name = "ANTHONY A", position = "POLICE OFFICER", salary = 72510),
-          (name = "JEFFERY A", position = "SERGEANT", salary = 101442),
-          (name = "NANCY A", position = "POLICE OFFICER", salary = 80016)]),
-        (name = "FIRE",
-         employee = [
-          (name = "DANIEL A", position = "FIREFIGHTER-EMT", salary = 95484),
-          (name = "ROBERT K", position = "FIREFIGHTER-EMT", salary = 103272)])],)
+    department_data = [
+      (name = "POLICE",
+       employee = [
+        (name = "ANTHONY A", position = "POLICE OFFICER", salary = 72510),
+        (name = "JEFFERY A", position = "SERGEANT", salary = 101442),
+        (name = "NANCY A", position = "POLICE OFFICER", salary = 80016)]),
+      (name = "FIRE",
+       employee = [
+        (name = "DANIEL A", position = "FIREFIGHTER-EMT", salary = 95484),
+        (name = "ROBERT K", position = "FIREFIGHTER-EMT", salary = 103272)])]
 
-In this hierarchical Chicago dataset, the root is a `NamedTuple`
-with a field `department`, which is a `Vector` of department
-records, and so on.
+This hierarchical dataset contains a list of departments, with
+each department containing associated employees.
 
 To query this dataset, we convert it into a `DataKnot`, or *knot*.
 
     using DataKnots
-    chicago = convert(DataKnot, chicago_data)
+
+    chicago = DataKnot(:department => department_data)
 
 ## Our First Query
 
