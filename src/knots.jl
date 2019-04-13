@@ -21,12 +21,12 @@ could be used to start a query. The knot created has a
 single top-level record, each with its own value.
 
 ```jldoctest
-julia> DataKnot(:dataset=>'a':'c')
+julia> test_knot = DataKnot(:dataset=>'a':'c')
 │ dataset │
 ┼─────────┼
 │ a; b; c │
 
-julia> knot[It.dataset]
+julia> test_knot[It.dataset]
   │ dataset │
 ──┼─────────┼
 1 │ a       │
@@ -66,10 +66,10 @@ An object that complies with the `Table` interface, such as
 a `CSV` file, can be converted to a DataKnot.
 
 ```jldoctest
-julia> using CSV
-julia> data = "k,v\na,1\nb"
-julia> file = CSV.File(IOBuffer(data), allowmissing=:auto)
-julia> knot = convert(DataKnot, file)
+julia> using CSV;
+       data_source = "k,v\\na,1\\nb" |> IOBuffer;
+       data_file = CSV.File(data_source, allowmissing=:auto);
+       convert(DataKnot, data_file)
   │ k  v │
 ──┼──────┼
 1 │ a  1 │
