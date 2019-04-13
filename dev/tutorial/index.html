@@ -572,7 +572,7 @@ display(vt)
  (name = &quot;FIRE&quot;, employee_count = 2)
 =#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-Data-1" href="#Importing-and-Exporting-Data-1">Importing &amp; Exporting Data</a></h2><p>We can import data directly from systems that support the <code>Tables.jl</code> interface. Here is a tabular variant of the chicago dataset.</p><pre><code class="language-julia">using CSV
 
-dataset = &quot;&quot;&quot;
+employee_csv = &quot;&quot;&quot;
     name,department,salary,rate
     &quot;JEFFERY A&quot;, &quot;POLICE&quot;, 101442,
     &quot;NANCY A&quot;, &quot;POLICE&quot;, 80016,
@@ -581,10 +581,13 @@ dataset = &quot;&quot;&quot;
     &quot;BRENDA B&quot;, &quot;OEMC&quot;, 64392,
     &quot;LAKENYA A&quot;, &quot;OEMC&quot;, , 17.68
     &quot;DORIS A&quot;, &quot;OEMC&quot;, , 19.38
-    &quot;&quot;&quot;
-datafile = CSV.File(IOBuffer(dataset), allowmissing=:auto)
-dataknot = DataKnot(:employee =&gt; datafile)
-dataknot[It.employee]
+    &quot;&quot;&quot; |&gt; IOBuffer
+
+employee_data = CSV.File(employee_csv, allowmissing=:auto)
+
+chicago = DataKnot(:employee =&gt; employee_data)
+
+chicago[It.employee]
 #=&gt;
   │ employee                             │
   │ name       department  salary  rate  │
@@ -598,9 +601,10 @@ dataknot[It.employee]
 7 │ DORIS A    OEMC                19.38 │
 =#</code></pre><p>This tabular data could be filtered to show employees that are paid more than average.</p><pre><code class="language-julia">using Statistics: mean
 
-result = dataknot[Keep(:avg_salary =&gt; mean.(It.employee.salary)) &gt;&gt;
-                  It.employee &gt;&gt;
-                  Filter(It.salary .&gt; It.avg_salary)]
+highly_compensated = 
+     chicago[Keep(:avg_salary =&gt; mean.(It.employee.salary)) &gt;&gt;
+             It.employee &gt;&gt;
+             Filter(It.salary .&gt; It.avg_salary)]
 #=&gt;
   │ employee                            │
   │ name       department  salary  rate │
@@ -608,9 +612,9 @@ result = dataknot[Keep(:avg_salary =&gt; mean.(It.employee.salary)) &gt;&gt;
 1 │ JEFFERY A  POLICE      101442       │
 2 │ JAMES A    FIRE        103350       │
 3 │ DANIEL A   FIRE         95484       │
-=#</code></pre><p>We can then export this data to other utilities, such as <code>DataFrames</code> that support the <code>Tables.jl</code> interface.</p><pre><code class="language-julia">using DataFrames
+=#</code></pre><p>We can then export this data.</p><pre><code class="language-julia">using DataFrames
 
-result |&gt; DataFrame
+highly_compensated |&gt; DataFrame
 #=&gt;
 3×4 DataFrames.DataFrame
 │ Row │ name      │ department │ salary │ rate     │

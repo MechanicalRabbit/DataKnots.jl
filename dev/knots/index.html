@@ -24,19 +24,19 @@ using DataFrames</code></pre><h2><a class="nav-anchor" id="Overview-1" href="#Ov
 │ It │
 ┼────┼
 │ 12 │
-=#</code></pre><p>Since it&#39;s often handy to create a top-level record, there is a special DataKnot constructor that takes <code>Pair</code> arguments.</p><pre><code class="language-julia">knot = DataKnot(:main=&gt;&#39;a&#39;:&#39;c&#39;, :more=&gt;&quot;data&quot;)
+=#</code></pre><p>To place several datasets into a single <code>DataKnot</code> we use a special constructor that takes datasets with their names.</p><pre><code class="language-julia">sets = DataKnot(:main=&gt;&#39;a&#39;:&#39;c&#39;, :more=&gt;&quot;data&quot;)
 #=&gt;
 │ main     more │
 ┼───────────────┼
 │ a; b; c  data │
-=#</code></pre><p>A dataset could be focused by navigating.</p><pre><code class="language-julia">knot[It.main]
+=#</code></pre><p>A specific dataset could be focused by navigating.</p><pre><code class="language-julia">sets[It.main]
 #=&gt;
   │ main │
 ──┼──────┼
 1 │ a    │
 2 │ b    │
 3 │ c    │
-=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-1" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></h2><p>We support the conversion to/from objects with the <code>Tables.jl</code> interface. For example, this would permit the import of CSV data.</p><pre><code class="language-julia">csv_data = IOBuffer(&quot;&quot;&quot;
+=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-1" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></h2><p>We support the conversion to/from objects with the <code>Tables.jl</code> interface. For example, we could import CSV data.</p><pre><code class="language-julia">chicago_data = IOBuffer(&quot;&quot;&quot;
 name,department,position,salary,rate
 &quot;JEFFERY A&quot;, &quot;POLICE&quot;, &quot;SERGEANT&quot;, 101442,
 &quot;NANCY A&quot;, &quot;POLICE&quot;, &quot;POLICE OFFICER&quot;, 80016,
@@ -44,11 +44,15 @@ name,department,position,salary,rate
 &quot;DANIEL A&quot;, &quot;FIRE&quot;, &quot;FIRE FIGHTER-EMT&quot;, 95484,
 &quot;LAKENYA A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 17.68
 &quot;DORIS A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 19.38
-&quot;&quot;&quot;)</code></pre><p>This could be parsed using the <code>CSV</code> library and then converted into a DataKnot.</p><pre><code class="language-julia">datafile = CSV.File(csv_data, allowmissing=:auto)
-dataknot = DataKnot(:table =&gt; datafile)
-dataknot[It.table]
+&quot;&quot;&quot;)
+
+chicago_file = CSV.File(chicago_data, allowmissing=:auto)
+
+chicago = DataKnot(:employee =&gt; chicago_file)
+
+chicago[It.employee]
 #=&gt;
-  │ table                                                   │
+  │ employee                                                │
   │ name       department  position           salary  rate  │
 ──┼─────────────────────────────────────────────────────────┼
 1 │ JEFFERY A  POLICE      SERGEANT           101442        │
@@ -57,9 +61,9 @@ dataknot[It.table]
 4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484        │
 5 │ LAKENYA A  OEMC        CROSSING GUARD             17.68 │
 6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
-=#</code></pre><p>This knot could then be exported to a <code>DataFrame</code>.</p><pre><code class="language-julia">dataknot[It.table &gt;&gt;
-         Record(It.name, It.department, It.salary)
-        ] |&gt; DataFrame
+=#</code></pre><p>This knot could then be queried and exported to a <code>DataFrame</code>.</p><pre><code class="language-julia">chicago[It.employee &gt;&gt;
+        Record(It.name, It.department, It.salary)
+       ] |&gt; DataFrame
 #=&gt;
 6×3 DataFrames.DataFrame
 │ Row │ name      │ department │ salary  │
@@ -223,7 +227,7 @@ convert(DataKnot, [35.6, 2.65])
 ──┼───────┼
 1 │ 35.6  │
 2 │  2.65 │
-=#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>Exporting a knot via <code>Tables.jl</code> interface will work if the top level object is a table. Unfortunately, there is no way know in advance since <code>Tables.istable</code> returns <code>true</code> for almost everything.</p><p>An array of named tuples will be treated as a table.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
+=#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>When a knot has a tabular form, it can be exported via <code>Tables.jl</code>.</p><p>This is the case when a <code>DataKnot</code> wraps a vector of named tuples.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
 
 Tables.schema(table)
 #=&gt;
@@ -239,7 +243,7 @@ Tables.istable(table)
 #-&gt; true
 
 Tables.columnaccess(table)
-#-&gt; true</code></pre><p>A plural set of records will be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
+#-&gt; true</code></pre><p>A plural set of records will also be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
 
 Tables.schema(table)
 #=&gt;
@@ -253,25 +257,6 @@ Tables.columns(table)[:idx]
 
 Tables.columns(table)[:val]
 #-&gt; @VectorTree (1:1) × String [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;]
-
-Tables.istable(table)
-#-&gt; true
-
-Tables.columnaccess(table)
-#-&gt; true</code></pre><p>Unnamed records are labeled with a pound sign and a letter.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(string.(It), It./2)]
-
-Tables.schema(table)
-#=&gt;
-Tables.Schema:
- Symbol(&quot;#A&quot;)  String
- Symbol(&quot;#B&quot;)  Float64
-=#
-
-Tables.columns(table)[Symbol(&quot;#A&quot;)]
-#-&gt; @VectorTree (1:1) × String [&quot;1&quot;, &quot;2&quot;, &quot;3&quot;]
-
-Tables.columns(table)[Symbol(&quot;#B&quot;)]
-#-&gt; @VectorTree (1:1) × Float64 [0.5, 1.0, 1.5]
 
 Tables.istable(table)
 #-&gt; true
