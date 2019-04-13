@@ -492,7 +492,7 @@ summary_layout(v::AbstractVector) =
                 sep=" of ")
 
 Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
-    if !get(io, :compact, false)::Bool
+    if get(io, :typeinfo, nothing) === nothing
         "@VectorTree $(syntaxof(shapeof(cv))) "
     else
         ""
