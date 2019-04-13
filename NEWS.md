@@ -4,6 +4,7 @@
 ## v0.3.0
 
 - Import/export using Tables.jl interface.
+- Added `DataKnot(::Pair...)` constructor.
 
 
 ## v0.2.0

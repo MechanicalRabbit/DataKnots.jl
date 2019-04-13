@@ -58,19 +58,19 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
-Since it's often handy to create a top-level record, there
-is a special DataKnot constructor that takes `Pair` arguments.
+To place several datasets into a single `DataKnot` we use a
+special constructor that takes datasets with their names.
 
-    knot = DataKnot(:main=>'a':'c', :more=>"data")
+    sets = DataKnot(:main=>'a':'c', :more=>"data")
     #=>
     │ main     more │
     ┼───────────────┼
     │ a; b; c  data │
     =#
 
-A dataset could be focused by navigating.
+A specific dataset could be focused by navigating.
 
-    knot[It.main]
+    sets[It.main]
     #=>
       │ main │
     ──┼──────┼
@@ -82,9 +82,9 @@ A dataset could be focused by navigating.
 ## Importing & Exporting
 
 We support the conversion to/from objects with the `Tables.jl`
-interface. For example, this would permit the import of CSV data.
+interface. For example, we could import CSV data.
 
-    csv_data = IOBuffer("""
+    chicago_data = IOBuffer("""
     name,department,position,salary,rate
     "JEFFERY A", "POLICE", "SERGEANT", 101442,
     "NANCY A", "POLICE", "POLICE OFFICER", 80016,
@@ -94,14 +94,13 @@ interface. For example, this would permit the import of CSV data.
     "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
     """)
 
-This could be parsed using the `CSV` library and then converted
-into a DataKnot.
+    chicago_file = CSV.File(chicago_data, allowmissing=:auto)
 
-    datafile = CSV.File(csv_data, allowmissing=:auto)
-    dataknot = DataKnot(:table => datafile)
-    dataknot[It.table]
+    chicago = DataKnot(:employee => chicago_file)
+
+    chicago[It.employee]
     #=>
-      │ table                                                   │
+      │ employee                                                │
       │ name       department  position           salary  rate  │
     ──┼─────────────────────────────────────────────────────────┼
     1 │ JEFFERY A  POLICE      SERGEANT           101442        │
@@ -112,11 +111,11 @@ into a DataKnot.
     6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
     =#
 
-This knot could then be exported to a `DataFrame`.
+This knot could then be queried and exported to a `DataFrame`.
 
-    dataknot[It.table >>
-             Record(It.name, It.department, It.salary)
-            ] |> DataFrame
+    chicago[It.employee >>
+            Record(It.name, It.department, It.salary)
+           ] |> DataFrame
     #=>
     6×3 DataFrames.DataFrame
     │ Row │ name      │ department │ salary  │
@@ -372,11 +371,9 @@ decimal point.
 
 ### Exporting via Table.jl Interface
 
-Exporting a knot via `Tables.jl` interface will work if the top level
-object is a table. Unfortunately, there is no way know in advance since
-`Tables.istable` returns `true` for almost everything.
+When a knot has a tabular form, it can be exported via `Tables.jl`.
 
-An array of named tuples will be treated as a table.
+This is the case when a `DataKnot` wraps a vector of named tuples.
 
     table = convert(DataKnot, [(x="A", y=1.0), (x="B", y=2.0)])
 
@@ -396,7 +393,7 @@ An array of named tuples will be treated as a table.
     Tables.columnaccess(table)
     #-> true
 
-A plural set of records will be treated as a table.
+A plural set of records will also be treated as a table.
 
     table = unitknot[Lift(1:3) >> Record(:idx => It, :val => "Test")]
 
@@ -419,25 +416,3 @@ A plural set of records will be treated as a table.
     Tables.columnaccess(table)
     #-> true
 
-Unnamed records are labeled with a pound sign and a letter.
-
-    table = unitknot[Lift(1:3) >> Record(string.(It), It./2)]
-
-    Tables.schema(table)
-    #=>
-    Tables.Schema:
-     Symbol("#A")  String
-     Symbol("#B")  Float64
-    =#
-
-    Tables.columns(table)[Symbol("#A")]
-    #-> @VectorTree (1:1) × String ["1", "2", "3"]
-
-    Tables.columns(table)[Symbol("#B")]
-    #-> @VectorTree (1:1) × Float64 [0.5, 1.0, 1.5]
-
-    Tables.istable(table)
-    #-> true
-
-    Tables.columnaccess(table)
-    #-> true

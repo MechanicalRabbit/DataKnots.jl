@@ -27,5 +27,6 @@ if VERSION < v"1.2.0-DEV"
         print(io, Symbol(c))
 end
 
-args = !isempty(ARGS) ? ARGS : [relpath(joinpath(dirname(abspath(PROGRAM_FILE)), "../doc/src"))]
+package_path(x) = relpath(joinpath(dirname(abspath(PROGRAM_FILE)), "..", x))
+args = !isempty(ARGS) ? ARGS : package_path.(["doc/src", "README.md"])
 exit(!runtests(args))

@@ -66,7 +66,7 @@ Let's take some Chicago public data and convert it into a *knot*.
 
     using DataKnots, CSV
 
-    chicago_data = """
+    employee_csv_file = """
         name,department,position,salary,rate
         "JEFFERY A", "POLICE", "SERGEANT", 101442,
         "NANCY A", "POLICE", "POLICE OFFICER", 80016,
@@ -75,20 +75,20 @@ Let's take some Chicago public data and convert it into a *knot*.
         "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
         "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
         "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
-        """
-    file = CSV.File(IOBuffer(chicago_data), allowmissing=:auto)
-    knot = DataKnot(:employee => file)
+        """ |> IOBuffer |> CSV.File
+
+    chicago = DataKnot(:employee => employee_csv_file)
 
 We could then query this data to return employees with salaries
 greater than their department's average.
 
     using Statistics: mean
 
-    knot[It.employee >>
-         Group(It.department) >>
-         Keep(:avg_salary => mean.(It.employee.salary)) >>
-         It.employee >>
-         Filter(It.salary .> It.avg_salary)]
+    chicago[It.employee >>
+            Group(It.department) >>
+            Keep(:avg_salary => mean.(It.employee.salary)) >>
+            It.employee >>
+            Filter(It.salary .> It.avg_salary)]
      #=>
        │ employee                                               │
        │ name       department  position           salary  rate │
@@ -96,9 +96,6 @@ greater than their department's average.
      1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
      2 │ JEFFERY A  POLICE      SERGEANT           101442       │
      =#
-
-Note: this showcase only works in development branch; use
-`Tables.jl` interface will be in v0.3.
 
 ## Support
 

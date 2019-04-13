@@ -1005,7 +1005,7 @@ interface. Here is a tabular variant of the chicago dataset.
 
     using CSV
 
-    dataset = """
+    employee_csv = """
         name,department,salary,rate
         "JEFFERY A", "POLICE", 101442,
         "NANCY A", "POLICE", 80016,
@@ -1014,10 +1014,13 @@ interface. Here is a tabular variant of the chicago dataset.
         "BRENDA B", "OEMC", 64392,
         "LAKENYA A", "OEMC", , 17.68
         "DORIS A", "OEMC", , 19.38
-        """
-    datafile = CSV.File(IOBuffer(dataset), allowmissing=:auto)
-    dataknot = DataKnot(:employee => datafile)
-    dataknot[It.employee]
+        """ |> IOBuffer
+
+    employee_data = CSV.File(employee_csv, allowmissing=:auto)
+
+    chicago = DataKnot(:employee => employee_data)
+
+    chicago[It.employee]
     #=>
       │ employee                             │
       │ name       department  salary  rate  │
@@ -1036,9 +1039,10 @@ more than average.
 
     using Statistics: mean
 
-    result = dataknot[Keep(:avg_salary => mean.(It.employee.salary)) >>
-                      It.employee >>
-                      Filter(It.salary .> It.avg_salary)]
+    highly_compensated = 
+         chicago[Keep(:avg_salary => mean.(It.employee.salary)) >>
+                 It.employee >>
+                 Filter(It.salary .> It.avg_salary)]
     #=>
       │ employee                            │
       │ name       department  salary  rate │
@@ -1048,12 +1052,11 @@ more than average.
     3 │ DANIEL A   FIRE         95484       │
     =#
 
-We can then export this data to other utilities, such as `DataFrames`
-that support the `Tables.jl` interface.
+We can then export this data.
 
     using DataFrames
 
-    result |> DataFrame
+    highly_compensated |> DataFrame
     #=>
     3×4 DataFrames.DataFrame
     │ Row │ name      │ department │ salary │ rate     │
@@ -1063,3 +1066,4 @@ that support the `Tables.jl` interface.
     │ 2   │ JAMES A   │ FIRE       │ 103350 │ missing  │
     │ 3   │ DANIEL A  │ FIRE       │ 95484  │ missing  │
     =#
+
