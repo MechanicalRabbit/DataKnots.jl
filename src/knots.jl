@@ -67,9 +67,12 @@ a `CSV` file, can be converted to a DataKnot.
 
 ```jldoctest
 julia> using CSV;
-       data_source = "k,v\\na,1\\nb" |> IOBuffer;
-       data_file = CSV.File(data_source, allowmissing=:auto);
-       convert(DataKnot, data_file)
+
+julia> data_source = "k,v\\na,1\\nb" |> IOBuffer;
+
+julia> data_file = CSV.File(data_source, allowmissing=:auto);
+
+julia> convert(DataKnot, data_file)
   │ k  v │
 ──┼──────┼
 1 │ a  1 │
