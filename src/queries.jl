@@ -513,22 +513,71 @@ function Record(env::Environment, p::Pipeline, Xs...)
     assemble_record(p, xs)
 end
 
+
 #
 # Collect combinator.
 #
 
-as_record(p::Pipeline) = p
+function as_record(p::Pipeline)
+    q = as_record(elements(target(p)))
+    q !== nothing ?
+        compose(p, cover(q)) :
+        p
+end
+
+as_record(src::AbstractShape) = nothing
+
+as_record(::TupleOf) = nothing
+
+function as_record(src::IsLabeled)
+    p = as_record(subject(src))
+    p !== nothing ?
+        p |> designate(src, target(p) |> IsLabeled(label(src))) :
+        nothing
+end
+
+as_record(src::IsFlow) =
+    as_record(elements(src))
+
+function as_record(src::IsScope)
+    p = as_record(column(src))
+    p !== nothing ?
+        chain_of(column(1), p) |> designate(src, target(p)) :
+        nothing
+end
+
+as_record(src::ValueOf) =
+    as_record(src.ty)
+
+as_record(::Type) =
+    nothing
+
+function as_record(ity::Type{<:NamedTuple})
+    lbls = collect(Symbol, ity.parameters[1])
+    cols = collect(AbstractShape, ity.parameters[2].parameters)
+    adapt_tuple() |> designate(ity, TupleOf(lbls, cols))
+end
+
+function as_record(ity::Type{<:Tuple})
+    cols = collect(AbstractShape, ity.parameters)
+    adapt_tuple() |> designate(ity, TupleOf(cols))
+end
+
+as_record(ity::Type{Nothing}) =
+    tuple_of() |> designate(ity, TupleOf())
 
 function assemble_collect(p, x)
     p = as_record(p)
     src = elements(target(p))
-    dom = domain(src)::TupleOf
+    dom = domain(src)
+    dom isa TupleOf || error("expected a record; got\n$(syntaxof(dom))")
     x = uncover(x)
     x_lbl = getlabel(x, nothing)
     x = relabel(x, nothing)
     cols = Pipeline[]
     lbls = Symbol[]
-    for (i, lbl) in enumerate(labels(dom))
+    for i in 1:width(dom)
+        lbl = label(dom, i)
         lbl != x_lbl || continue
         col = lookup(src, i)
         push!(cols, col)
