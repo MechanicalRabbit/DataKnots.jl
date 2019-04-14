@@ -2,6 +2,7 @@
 
 using Pkg
 haskey(Pkg.installed(), "Documenter") || Pkg.add("Documenter")
+haskey(Pkg.installed(), "CSV") || Pkg.add("CSV") # used in jldoctest
 
 using Documenter
 using DataKnots
