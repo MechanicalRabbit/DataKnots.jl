@@ -428,21 +428,18 @@ function table_layout(d::TableData, maxx::Int)
     l = TableLayout(w, h, idxs_cols, head_rows, tear_row)
     populate_body!(d, l, maxx)
     populate_head!(d, l)
+    squeeze!(l, maxx)
     l
 end
 
 function populate_body!(d::TableData, l::TableLayout, maxx::Int)
     col = 1
-    avail = maxx
     if !isempty(d.idxs)
-        avail = populate_column!(l, col, ValueOf(Int), d.idxs, avail)
+        populate_column!(l, col, ValueOf(Int), d.idxs, maxx)
         col += 1
     end
     for (shp, vals) in zip(columns(d.shp), columns(d.body))
-        if avail < 0
-            break
-        end
-        avail = populate_column!(l, col, shp, vals, avail)
+        populate_column!(l, col, shp, vals, maxx)
         col += 1
     end
 end
@@ -478,7 +475,7 @@ function populate_head!(d::TableData, l::TableLayout)
             end
             col += l.idxs_cols
             text = escape_string(text)
-            l.cells[row,col] = TableCell(text)
+            l.cells[row,col+span-1] = TableCell(text, 1-span)
             tw = textwidth(text)
             avail = sum(l.sizes[k][1] + 2 for k = col:col+span-1) - 2
             if avail < tw
@@ -491,6 +488,47 @@ function populate_head!(d::TableData, l::TableLayout)
                 end
             end
         end
+    end
+end
+
+function squeeze!(l::TableLayout, avail::Int)
+    total = 3
+    for col = 1:size(l.cells, 2)
+        sz, rsz = l.sizes[col]
+        if col == 1 && l.idxs_cols > 0
+            sz -= 1
+        end
+        total += sz + 2
+    end
+    total > avail || return
+    cols = collect(1+l.idxs_cols:size(l.cells, 2))
+    !isempty(cols) || return
+    sort!(cols, by=(col -> -l.sizes[col][1]))
+    maxsz = l.sizes[cols[1]][1]
+    rem = 0
+    for k = 1:length(cols)
+        total > avail && maxsz > 8 || break
+        sz = k < length(cols) ? max(l.sizes[cols[k+1]][1], 8) : 8
+        extra = (maxsz - sz) * k
+        if total - avail < extra
+            d = 1 + (total - avail - 1) ÷ k
+            maxsz -= d
+            rem = d * k - total + avail
+            total = avail
+        else
+            total -= extra
+            maxsz = sz
+        end
+    end
+    for col in cols
+        sz, rsz = l.sizes[col]
+        d = sz - maxsz
+        if rem > 0
+            d -= 1
+            rem -= 1
+        end
+        d >= 0 || break
+        l.sizes[col] = (sz-d, rsz-d)
     end
 end
 
@@ -602,7 +640,8 @@ struct TableCanvas
         new(maxx, maxy, [IOBuffer() for k = 1:maxy], fill(0, maxy))
 end
 
-function write!(c::TableCanvas, x::Int, y::Int, text::String)
+function write!(c::TableCanvas, x::Int, y::Int, text::String, cut::Int=0)
+    cut = cut > 0 ? min(cut, c.maxx) : c.maxx
     tw = textwidth(text)
     xend = x + tw - 1
     if isempty(text)
@@ -610,20 +649,20 @@ function write!(c::TableCanvas, x::Int, y::Int, text::String)
     end
     @assert 1 <= y <= c.maxy "1 <= $y <= $(c.maxy)"
     @assert c.tws[y] < x "$(c.tws[y]) < $x"
-    if x >= c.maxx && c.tws[y] + 1 < c.maxx
-        x = c.maxx - 1
-        xend = c.maxx
+    if x >= cut && c.tws[y] + 1 < cut
+        x = cut - 1
+        xend = cut
         text = " "
         tw = 1
     end
-    if x < c.maxx
-        if xend >= c.maxx
+    if x < cut
+        if xend >= cut
             tw = 0
             i = 0
             for i′ in eachindex(text)
                 ch = text[i′]
                 ctw = textwidth(ch)
-                if x + tw + ctw - 1 < c.maxx
+                if x + tw + ctw - 1 < cut
                     tw += ctw
                 else
                     text = text[1:i]
@@ -647,27 +686,21 @@ end
 lines!(c::TableCanvas) =
     String.(take!.(c.bufs))
 
-overflow(c::TableCanvas, x::Int) =
-    x >= c.maxx
-
 function table_draw(l::TableLayout, maxx::Int)
     maxy = size(l.cells, 1) + (l.tear_row > 0) + 1
     c = TableCanvas(maxx, maxy)
     extent = 0
     for col = 1:size(l.cells, 2)
         if col == l.idxs_cols + 1
-            extent = draw_bar!(c, extent, l, l.idxs_cols == 0 ? -1 : 0)
+            extent = draw_bar!(c, extent, l)
         end
         extent = draw_column!(c, extent, l, col)
-        if overflow(c, extent)
-            break
-        end
     end
-    draw_bar!(c, extent, l, 1)
+    draw_bar!(c, extent, l)
     c
 end
 
-function draw_bar!(c::TableCanvas, extent::Int, l::TableLayout, pos::Int)
+function draw_bar!(c::TableCanvas, extent::Int, l::TableLayout)
     x = extent + 1
     y = 1
     for row = 1:size(l.cells, 1)
@@ -686,6 +719,7 @@ end
 
 function draw_column!(c::TableCanvas, extent::Int, l::TableLayout, col::Int)
     sz, rsz = l.sizes[col]
+    cut = extent + sz + 2
     if col == 1 && l.idxs_cols > 0
         sz -= 1
     end
@@ -696,8 +730,12 @@ function draw_column!(c::TableCanvas, extent::Int, l::TableLayout, col::Int)
         if !isempty(cell.text)
             if cell.align > 0
                 x = extent + sz - rsz - textwidth(cell.text) + cell.align + 1
+            elseif cell.align < 0
+                for k = cell.align:-1
+                    x -= l.sizes[col+k][1] + 2
+                end
             end
-            write!(c, x, y, cell.text)
+            write!(c, x, y, cell.text, cut)
         end
         y += 1
         x = extent + 2

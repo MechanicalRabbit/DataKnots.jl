@@ -278,17 +278,32 @@ On output, a `DataKnot` object is rendered as a table.
     4 │ DANIEL A   FIRE FIGHTER-EMT    95484 │
     =#
 
-The table is truncated if it does not fit the output screen.
+If the table columns do not fit the output screen, some table cells could be
+truncated.
 
-    small = IOContext(stdout, :displaysize => (6, 20))
+    small = IOContext(stdout, :displaysize => (24, 35))
 
     show(small, emp)
     #=>
-      │ name       posi…
+      │ name       position   salary │
+    ──┼──────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT   101442 │
+    2 │ NANCY A    POLICE OF…  80016 │
+    3 │ JAMES A    FIRE ENGI… 103350 │
+    4 │ DANIEL A   FIRE FIGH…  95484 │
+    =#
+
+If the screen is too small, the whole table needs to be truncated.
+
+    tiny = IOContext(stdout, :displaysize => (6, 20))
+
+    show(tiny, emp)
+    #=>
+      │ name      posit…
     ──┼────────────────…
-    1 │ JEFFERY A  SERG…
+    1 │ JEFFERY … SERGE…
     ⋮
-    4 │ DANIEL A   FIRE…
+    4 │ DANIEL A  FIRE …
     =#
 
 Top-level tuples are serialized as table columns while nested tuples are
