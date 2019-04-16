@@ -188,10 +188,7 @@ end
 domain(shp::AbstractShape) =
     shp
 
-domain(shp::Union{IsLabeled,IsShadowed}) =
-    domain(subject(shp))
-
-domain(shp::IsShadowed) =
+domain(shp::IsLabeled) =
     domain(subject(shp))
 
 domain(shp::IsFlow) =
@@ -203,7 +200,7 @@ domain(shp::IsScope) =
 replace_domain(shp::AbstractShape, f) =
     f isa AbstractShape ? f : f(shp)
 
-replace_domain(shp::Union{IsLabeled,IsShadowed}, f) =
+replace_domain(shp::IsLabeled, f) =
     replace_subject(shp, sub -> replace_domain(sub, f))
 
 replace_domain(shp::IsFlow, f) =
@@ -222,9 +219,6 @@ getlabel(shp::AbstractShape, default) =
 
 getlabel(shp::IsLabeled, default) =
     label(shp)
-
-getlabel(shp::IsShadowed, default) =
-    getlabel(subject(shp), default)
 
 getlabel(shp::IsFlow, default) =
     getlabel(elements(shp), default)
@@ -248,12 +242,6 @@ relabel(shp::IsLabeled, ::Nothing) =
 
 relabel(shp::IsLabeled, lbl::Symbol) =
     subject(shp) |> IsLabeled(lbl)
-
-relabel(shp::IsShadowed, lbl::Symbol) =
-    replace_subject(shp, sub -> relabel(sub, lbl))
-
-relabel(shp::IsShadowed, ::Nothing) =
-    replace_subject(shp, sub -> relabel(sub, nothing))
 
 relabel(shp::IsFlow, lbl::Symbol) =
     replace_elements(shp, elts -> relabel(elts, lbl))
@@ -338,12 +326,6 @@ end
 function cover(src::IsLabeled)
     p = cover(subject(src))
     tgt = replace_elements(target(p), IsLabeled(label(src)))
-    p |> designate(src, tgt)
-end
-
-function cover(src::IsShadowed)
-    p = cover(subject(src))
-    tgt = replace_elements(target(p), IsShadowed)
     p |> designate(src, tgt)
 end
 
@@ -537,61 +519,51 @@ end
 #
 
 function as_record(p::Pipeline)
-    q = as_record(elements(target(p)), nothing)
+    q = as_record(elements(target(p)))
     q !== nothing ?
         compose(p, cover(q)) :
         p
 end
 
-function as_record(src::AbstractShape, lbl::Union{Symbol,Nothing})
-    lbls = lbl !== nothing ? Symbol[lbl] : Symbol[]
-    tuple_of(lbls, Pipeline[pass()]) |> designate(src, TupleOf(lbls, AbstractShape[src |> IsShadowed]))
-end
+as_record(src::AbstractShape) = nothing
 
-as_record(::TupleOf, ::Union{Symbol,Nothing}) = nothing
+as_record(::TupleOf) = nothing
 
-function as_record(src::IsLabeled, ::Union{Symbol,Nothing})
-    p = as_record(subject(src), label(src))
+function as_record(src::IsLabeled)
+    p = as_record(subject(src))
     p !== nothing ?
         p |> designate(src, target(p) |> IsLabeled(label(src))) :
         nothing
 end
 
-function as_record(src::IsShadowed, lbl::Union{Symbol,Nothing})
-    lbls = lbl !== nothing ? Symbol[lbl] : Symbol[]
-    tuple_of(lbls, Pipeline[pass()]) |> designate(src, TupleOf(lbls, AbstractShape[src]))
-end
+as_record(src::IsFlow) =
+    as_record(elements(src))
 
-as_record(src::IsFlow, lbl::Union{Symbol,Nothing}) =
-    as_record(elements(src), lbl)
-
-function as_record(src::IsScope, lbl::Union{Symbol,Nothing})
-    p = as_record(column(src), lbl)
+function as_record(src::IsScope)
+    p = as_record(column(src))
     p !== nothing ?
         chain_of(column(1), p) |> designate(src, target(p)) :
         nothing
 end
 
-as_record(src::ValueOf, lbl::Union{Symbol,Nothing}) =
-    as_record(src.ty, lbl)
+as_record(src::ValueOf) =
+    as_record(src.ty)
 
-function as_record(ty::Type, lbl::Union{Symbol,Nothing})
-    lbls = lbl !== nothing ? Symbol[lbl] : Symbol[]
-    tuple_of(lbls, Pipeline[pass()]) |> designate(ty, TupleOf(lbls, AbstractShape[ty |> IsShadowed]))
-end
+as_record(::Type) =
+    nothing
 
-function as_record(ity::Type{<:NamedTuple}, ::Union{Symbol,Nothing})
+function as_record(ity::Type{<:NamedTuple})
     lbls = collect(Symbol, ity.parameters[1])
     cols = collect(AbstractShape, ity.parameters[2].parameters)
     adapt_tuple() |> designate(ity, TupleOf(lbls, cols))
 end
 
-function as_record(ity::Type{<:Tuple}, ::Union{Symbol,Nothing})
+function as_record(ity::Type{<:Tuple})
     cols = collect(AbstractShape, ity.parameters)
     adapt_tuple() |> designate(ity, TupleOf(cols))
 end
 
-as_record(ity::Type{Nothing}, ::Union{Symbol,Nothing}) =
+as_record(ity::Type{Nothing}) =
     tuple_of() |> designate(ity, TupleOf())
 
 function assemble_collect(p, x)
@@ -1012,9 +984,6 @@ lookup(::AbstractShape, ::Any) = nothing
 lookup(src::IsLabeled, name::Any) =
     lookup(subject(src), name)
 
-lookup(src::IsShadowed, name::Any) =
-    lookup(subject(src), name)
-
 lookup(src::IsFlow, name::Any) =
     lookup(elements(src), name)
 
@@ -1045,32 +1014,15 @@ lookup(src::TupleOf, j::Int) =
     column(j) |> designate(src, column(src, j))
 
 function lookup(src::TupleOf, name::Symbol)
-    for j = width(src):-1:1
-        col = column(src, j)
-        !(col isa IsShadowed) || continue
-        if name == label(src, j)
-            tgt = relabel(col, name)
-            return column(name) |> designate(src, tgt)
-        end
+    lbls = labels(src)
+    if isempty(lbls)
+        lbls = Symbol[ordinal_label(i) for i = 1:width(src)]
     end
-    xname = Symbol("#$name")
-    for j = width(src):-1:1
-        col = column(src, j)
-        !(col isa IsShadowed) || continue
-        if xname == label(src, j)
-            tgt = relabel(col, nothing)
-            return column(j) |> designate(src, tgt)
-        end
-    end
-    for j = width(src):-1:1
-        col = column(src, j)
-        (col isa IsShadowed) || continue
-        q = lookup(subject(col), name)
-        if q !== nothing
-            return chain_of(column(j), q) |> designate(src, target(q))
-        end
-    end
-    nothing
+    j = lookup(lbls, name)
+    j !== nothing || return nothing
+
+    tgt = relabel(column(src, j), name == lbls[j] ? name : nothing)
+    column(lbls[j]) |> designate(src, tgt)
 end
 
 lookup(src::ValueOf, name) =

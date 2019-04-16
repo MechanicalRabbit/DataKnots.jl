@@ -281,27 +281,11 @@ label(shp::IsLabeled) =
     shp.lbl
 
 """
-    sub |> IsShadowed
-
-The annotated object is wrapped in a record that holds extra object fields.
-"""
-struct IsShadowed <: Annotation
-    sub::AbstractShape
-end
-
-quoteof(shp::IsShadowed) =
-    Expr(:call, nameof(|>), quoteof_inner(shp.sub), nameof(IsShadowed))
-
-subject(shp::IsShadowed) = shp.sub
-
-replace_subject(shp::IsShadowed, f) =
-    IsShadowed(f isa AbstractShape ? f : f(shp.sub))
-
-"""
     sub |> IsFlow
 
 The annotated `BlockVector` holds the output flow.
 """
+
 struct IsFlow <: Annotation
     sub::BlockOf
 end
@@ -328,6 +312,7 @@ cardinality(shp::IsFlow) =
 
 The annotated `TupleVector` holds the scoping context.
 """
+
 struct IsScope <: Annotation
     sub::TupleOf
 end
@@ -388,12 +373,6 @@ fits(shp1::IsLabeled, shp2::IsLabeled) =
     fits(shp1.sub, shp2.sub) && shp1.lbl == shp2.lbl
 
 fits(shp1::IsLabeled, shp2::AbstractShape) =
-    fits(shp1.sub, shp2)
-
-fits(shp1::IsShadowed, shp2::IsShadowed) =
-    fits(shp1.sub, shp2.sub)
-
-fits(shp1::IsShadowed, shp2::AbstractShape) =
     fits(shp1.sub, shp2)
 
 fits(shp1::IsFlow, shp2::IsFlow) =
