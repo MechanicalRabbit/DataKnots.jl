@@ -385,9 +385,9 @@ in the output.
 Being a combinator, `Filter` builds a query component, which could
 then be composed with any data generating query.
 
-    KeepEven = Filter(iseven.(It))
+    OnlyEven = Filter(iseven.(It))
 
-    unitknot[OneTo(6) >> KeepEven]
+    unitknot[OneTo(6) >> OnlyEven]
     #=>
       │ It │
     ──┼────┼
@@ -462,8 +462,8 @@ where `It` has the values `1`, `2`, and `3`.
 
 ## Records & Labels
 
-Data objects can be created using the `Record` combinator. Values
-can be labeled using Julia's `Pair` syntax.
+Hierarchical structure can be created using the `Record`
+combinator. Values can be labeled using Julia's `Pair` syntax.
 
     GM = Record(:name => "GARRY M", :salary => 260004)
 
@@ -538,6 +538,35 @@ Calculations can be performed using on records using field labels.
     1 │  3 │
     2 │ 14 │
     3 │ 39 │
+    =#
+
+The `Collect` combinator can be used to add columns to an existing
+record. For example, the record construction above could have been
+done as follows.
+
+    Stats = Record(:n¹=>It) >>
+            Collect(:n²=> It.n¹ .* It.n¹,
+                    :n³=> It.n² .* It.n¹)
+
+    unitknot[Lift(1:3) >> Stats]
+    #=>
+      │ n¹  n²  n³ │
+    ──┼────────────┼
+    1 │  1   1   1 │
+    2 │  2   4   8 │
+    3 │  3   9  27 │
+    =#
+
+A field could be removed using `Collect` by assigning the field
+label to `nothing`.
+
+    unitknot[Lift(1:3) >> Stats >> Collect(:n¹ => nothing)]
+    #=>
+      │ n²  n³ │
+    ──┼────────┼
+    1 │  1   1 │
+    2 │  4   8 │
+    3 │  9  27 │
     =#
 
 ## Group
@@ -680,9 +709,132 @@ than once.
     3 │  6 │
     =#
 
+With `Given` the parameter provided, `AVG` does not leak into
+the surrounding context.
+
+    unitknot[GreaterThanAverage(OneTo(6)) >> It.AVG]
+    #-> ERROR: cannot find "AVG" at ⋮
+
 In DataKnots, query parameters permit external data to be used
 within query expressions. Parameters that are defined with `Given`
 can be used to remember values and reuse them.
+
+## Keeping Values
+
+The `Keep` combinator is similar to `Given` only that it does not
+increase the scope.
+
+    GT3 = Keep(:DATA => OneTo(6)) >>
+          Keep(:AVG => Mean(It.DATA)) >>
+          It.DATA >> Filter(It .> It.AVG)
+
+    unitknot[GT3]
+    #=>
+      │ DATA │
+    ──┼──────┼
+    1 │    4 │
+    2 │    5 │
+    3 │    6 │
+    =#
+
+However, unlike `Given` it does leak its parameters.
+
+    unitknot[GT3 >> Record(It, It.AVG)]
+    #=>
+      │ DATA      │
+      │ DATA  AVG │
+    ──┼───────────┼
+    1 │    4  3.5 │
+    2 │    5  3.5 │
+    3 │    6  3.5 │
+    =#
+
+## Collecting Input
+
+So far, we've shown how queries can be composed. Sometimes it is
+useful to save the output of a query as a knot, and then query
+that derivative knot at another time.
+
+    E13 = unitknot[Lift(1:3)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  2 │
+    3 │  3 │
+    =#
+
+When a query is applied to an existing knot, it is applied
+*elementwise* to the knots values, as if the query were wrapped
+with `Each`. Sometimes this works out fine.
+
+    E13[It >> "Hello"]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │ Hello │
+    2 │ Hello │
+    3 │ Hello │
+    =#
+
+However, if used with an aggregate, the results can be surprising.
+
+    E13[It >> Count]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  1 │
+    3 │  1 │
+    =#
+
+This can be addressed by collecting the inputs into a single
+record using the aggregate query `Collect`.
+
+    A13 = unitknot[Lift(1:3) >> Collect]
+    #=>
+    │ #A      │
+    ┼─────────┼
+    │ 1; 2; 3 │
+    =#
+
+To show the values of this cell, you could query it.
+
+    A13[It.A]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  2 │
+    3 │  3 │
+    =#
+
+Further, aggregation then works as expected.
+
+    A13[It.A >> Count]
+    #=>
+    │ It │
+    ┼────┼
+    │  3 │
+    =#
+
+Generally, in DataKnots it is helpful to keep the top-level
+structure to be a single record. It's for this reason that the
+primary constructor makes a top level record.
+
+    A13 = DataKnot(:list => 1:3)
+    #=>
+    │ list    │
+    ┼─────────┼
+    │ 1; 2; 3 │
+    =#
+
+    A13[Count(It.list)]
+    #=>
+    │ It │
+    ┼────┼
+    │  3 │
+    =#
 
 ## Julia Integration
 
