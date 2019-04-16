@@ -281,16 +281,16 @@ separate vector elements.
 
 ## Reusable Queries
 
-Queries can be reused. Let's define `EmployeeCount` to be a query
+Queries can be reused. Let's define `DeptSize` to be a query
 that computes the number of employees in a department.
 
-    EmployeeCount =
-        :employee_count =>
+    DeptSize =
+        :size =>
             Count(It.employee)
 
 This query can be used in different ways.
 
-    chicago[Max(It.department >> EmployeeCount)]
+    chicago[Max(It.department >> DeptSize)]
     #=>
     │ It │
     ┼────┼
@@ -299,14 +299,13 @@ This query can be used in different ways.
 
     chicago[
         It.department >>
-        Record(It.name,
-               EmployeeCount)]
+        Record(It.name, DeptSize)]
     #=>
-      │ department             │
-      │ name    employee_count │
-    ──┼────────────────────────┼
-    1 │ POLICE               3 │
-    2 │ FIRE                 2 │
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ POLICE     3 │
+    2 │ FIRE       2 │
     =#
 
 ## Filtering Data
@@ -316,13 +315,13 @@ than one employee. This can be done using the `Filter` combinator.
 
     chicago[
         It.department >>
-        Record(It.name, EmployeeCount) >>
-        Filter(It.employee_count .> 2)]
+        Record(It.name, DeptSize) >>
+        Filter(It.size .> 2)]
     #=>
-      │ department             │
-      │ name    employee_count │
-    ──┼────────────────────────┼
-    1 │ POLICE               3 │
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ POLICE     3 │
     =#
 
 To use regular operators in query expressions, we need to use
@@ -331,8 +330,8 @@ the period is an easy mistake to make.
 
     chicago[
         It.department >>
-        Record(It.name, EmployeeCount) >>
-        Filter(It.employee_count > 2)]
+        Record(It.name, DeptSize) >>
+        Filter(It.size > 2)]
     #=>
     ERROR: MethodError: no method matching isless(::Int64, ::DataKnots.Navigation)
     ⋮
@@ -1008,13 +1007,13 @@ is an `AbstractVector` specialized for column-oriented storage.
 
     query = It.department >>
             Record(It.name,
-                   :employee_count => Count(It.employee))
+                   :size => Count(It.employee))
     vt = get(chicago[query])
     display(vt)
     #=>
-    @VectorTree of 2 × (name = (1:1) × String, employee_count = (1:1) × Int64):
-     (name = "POLICE", employee_count = 3)
-     (name = "FIRE", employee_count = 2)
+    @VectorTree of 2 × (name = (1:1) × String, size = (1:1) × Int64):
+     (name = "POLICE", size = 3)
+     (name = "FIRE", size = 2)
     =#
 
 ## Importing & Exporting Data
