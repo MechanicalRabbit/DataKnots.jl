@@ -563,9 +563,6 @@ function as_record(ity::Type{<:Tuple})
     adapt_tuple() |> designate(ity, TupleOf(cols))
 end
 
-as_record(ity::Type{Nothing}) =
-    tuple_of() |> designate(ity, TupleOf())
-
 function assemble_collect(p, x)
     p = as_record(p)
     src = elements(target(p))

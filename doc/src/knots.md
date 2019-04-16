@@ -58,8 +58,8 @@ query is also a `DataKnot` object.
     │ 12 │
     =#
 
-To place several datasets into a single `DataKnot` we use a
-special constructor that takes datasets with their names.
+To place several datasets into a single `DataKnot` we use a special constructor
+that takes datasets with their names.
 
     sets = DataKnot(:main=>'a':'c', :more=>"data")
     #=>
@@ -195,6 +195,32 @@ its cardinality.
     shape(abc)
     #-> BlockOf(Char, x1toN)
 
+The default constructor creates the unit `DataKnot`, which holds an empty
+tuple.  This knot is exported under the name `unitknot`.
+
+    unitknot
+    #=>
+    │ It │
+    ┼────┼
+    │    │
+    =#
+
+    cell(unitknot)
+    #-> @VectorTree () [()]
+
+We can also construct a `DataKnot` containing a single top-level named tuple
+with the given fields.
+
+    recknot = DataKnot(:hello => "Hello World!", :main => 'a':'c')
+    #=>
+    │ hello         main    │
+    ┼───────────────────────┼
+    │ Hello World!  a; b; c │
+    =#
+
+    cell(recknot)
+    #-> @VectorTree (hello = String, main = (0:N) × Char) [(hello = "Hello World!", main = 'a':'\x01':'c')]
+
 Any Julia value can be converted to a `DataKnot` object using the `convert()`
 function.
 
@@ -221,19 +247,6 @@ The value `missing` is converted to an empty `DataKnot`.
     shape(nullknot)
     #-> BlockOf(NoShape(), x0to1)
 
-The value `nothing` is converted to the unit `DataKnot`.  The unit `DataKnot`
-is exported under the name `unitknot`.
-
-    unitknot
-    #=>
-    │ It │
-    ┼────┼
-    │    │
-    =#
-
-    shape(unitknot)
-    #-> ValueOf(Nothing)
-
 A vector value is converted to a block.
 
     vecknot = convert(DataKnot, 'a':'c')
@@ -259,6 +272,19 @@ A `Ref` object is converted into the referenced value.
 
     shape(int_ty)
     #-> ValueOf(Type{Int64})
+
+`Tables.jl` interface is used for conversion when it is supported by the given
+value.
+
+    convert(DataKnot, DataFrame(:name => ["JEFFERY A", "NANCY A"],
+                                :position => ["SERGEANT", "POLICE OFFICER"],
+                                :salary => [101442, 80016]))
+    #=>
+      │ name       position        salary │
+    ──┼───────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT        101442 │
+    2 │ NANCY A    POLICE OFFICER   80016 │
+    =#
 
 ### Rendering
 

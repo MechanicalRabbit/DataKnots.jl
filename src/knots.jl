@@ -135,7 +135,7 @@ function DataKnot(::Type{Any}, elts::AbstractVector, card::Union{Cardinality,Sym
 end
 
 DataKnot() =
-    DataKnot(Any, [nothing])
+    DataKnot(Any, TupleVector(1))
 
 function DataKnot(ps::Pair{Symbol}...)
     lbls = collect(first.(ps))
@@ -169,7 +169,7 @@ convert(::Type{DataKnot}, elt) =
 """
     unitknot
 
-The unit knot holds the value `nothing`.
+The unit knot holds an empty tuple.
 
 ```jldoctest
 julia> unitknot

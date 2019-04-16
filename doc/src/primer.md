@@ -22,11 +22,11 @@ starting point for constructing other knots.
     │    │
     =#
 
-The unit knot has a single value, `nothing`. You could get the
-value of any knot using Julia's `get` function.
+The unit knot has a single value, an empty tuple. You could get
+the value of any knot using Julia's `get` function.
 
-    show(get(unitknot))
-    #-> nothing
+    get(unitknot)
+    #-> ()
 
 ## Constant Queries
 
@@ -701,7 +701,7 @@ such as addition (`+`) have a lower precedence.
 This expectation mismatch could lead a user to write:
 
     unitknot[Lift(1:3) >> It .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Nothing}⋮
+    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Tuple{}}⋮
 
 To fix this query, we add parentheses.
 
