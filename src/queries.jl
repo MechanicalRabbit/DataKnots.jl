@@ -505,27 +505,13 @@ julia> unitknot[Lift(1:3) >> Record(:x => It,
 3 │ 3   9 │
 ```
 
----
-
-    Each(X >> Record) :: Query
-
-In the query form, `Record` constructs a record from its input.
-
-```jldoctest
-julia> X = Lift('a':'c');
-
-julia> unitknot[X >> Record]
-│ #A      │
-┼─────────┼
-│ a; b; c │
-```
+We don't have a query form of `Record` since it wouldn't work
+with the macro syntax and a similar result can be obtained by
+`Collect`.
 
 """
 Record(Xs...) =
     Query(Record, Xs...)
-
-Lift(::typeof(Record)) =
-    Then(Record)
 
 function Record(env::Environment, p::Pipeline, Xs...)
     xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))

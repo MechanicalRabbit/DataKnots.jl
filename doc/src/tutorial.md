@@ -990,91 +990,6 @@ use `Take` with an argument that computes how many to take.
     2 │ JEFFERY A  SERGEANT        101442 │
     =#
 
-## Collecting Query Output
-
-We've seen that knots can be hierarchical. In fact, the `DataKnot`
-constructor makes a top-level node, with a subtree for each label.
-
-    chicago = DataKnot(:department => department_data)
-    #=>
-    │ department                                                                  │
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ POLICE, [ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 101442; NAN…│
-    =#
-
-Here we see the root of the knot, with a single cell,
-`department`. The value of this cell could be queried.
-
-    chicago[It.department]
-    #=>
-      │ department                                                                │
-      │ name    employee                                                          │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 101442; NA…│
-    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT, 1032…│
-    =#
-
-Let's remember our query to return highly compensated employees.
-
-    HighlyCompensated =
-        :highly_compensated =>
-            It.department.employee >>
-            Filter(It.salary .> 100000)
-
-    chicago[HighlyCompensated]
-    #=>
-      │ highly_compensated                 │
-      │ name       position         salary │
-    ──┼────────────────────────────────────┼
-    1 │ JEFFERY A  SERGEANT         101442 │
-    2 │ ROBERT K   FIREFIGHTER-EMT  103272 │
-    =#
-
-To create a new knot containing this output, we would create a
-top-level node using the `Record` query.
-
-    chicago′ = chicago[HighlyCompensated >> Record]
-    #=>
-    │ highly_compensated                                             │
-    ┼────────────────────────────────────────────────────────────────┼
-    │ JEFFERY A, SERGEANT, 101442; ROBERT K, FIREFIGHTER-EMT, 103272 │
-    =#
-
-This enables us to run queries directly upon the query results
-that were previously saved.
-
-    chicago′[It.highly_compensated >>
-             Record(It.name, It.salary)]
-    #=>
-      │ highly_compensated │
-      │ name        salary │
-    ──┼────────────────────┼
-    1 │ JEFFERY A   101442 │
-    2 │ ROBERT K    103272 │
-    =#
-
-Alternatively, by using `Collect` we could extend our top-level
-node to add this new subtree, keeping the `department` subtree.
-
-    chicago′ = chicago[HighlyCompensated >> Collect]
-    #=>
-    │ department                             highly_compensated                   │
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ POLICE, [ANTHONY A, POLICE OFFICER, 7… JEFFERY A, SERGEANT, 101442; ROBERT …│
-    =#
-
-We could then count both highly-compensated staff and all
-employees across all departments.
-
-    chicago′[Record(
-               :no_employees => Count(It.department.employee),
-               :highly_comp  => Count(It.highly_compensated))]
-    #=>
-    │ no_employees  highly_comp │
-    ┼───────────────────────────┼
-    │            5            2 │
-    =#
-
 ## Extracting Data
 
 Given any `DataKnot`, its content can be extracted using `get`.
@@ -1110,50 +1025,58 @@ interface. Here is a tabular variant of the chicago dataset.
     using CSV
 
     employee_csv = """
-        name,department,salary,rate
-        "JEFFERY A", "POLICE", 101442,
-        "NANCY A", "POLICE", 80016,
-        "JAMES A", "FIRE", 103350,
-        "DANIEL A", "FIRE", 95484,
-        "BRENDA B", "OEMC", 64392,
-        "LAKENYA A", "OEMC", , 17.68
-        "DORIS A", "OEMC", , 19.38
+        name,department,position,salary,rate
+        "JEFFERY A", "POLICE", "SERGEANT", 101442,
+        "NANCY A", "POLICE", "POLICE OFFICER", 80016,
+        "ANTHONY A", "POLICE", "POLICE OFFICER", 72510,
+        "ALBA M", "POLICE", "POLICE CADET",, 9.46
+        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
+        "DANIEL A", "FIRE", "FIREFIGHTER-EMT", 95484,
+        "ROBERT K", "FIRE", "FIREFIGHTER-EMT", 103272,
+        "LAKENYA A", "OEMC", "CROSSING GUARD",, 17.68
+        "DORIS A", "OEMC", "CROSSING GUARD",, 19.38
+        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
         """ |> IOBuffer
 
     employee_data = CSV.File(employee_csv, allowmissing=:auto)
 
-    chicago = DataKnot(:employee => employee_data)
+    chicago′ = DataKnot(:employee => employee_data)
 
-    chicago[It.employee]
+    chicago′[It.employee]
     #=>
-      │ employee                             │
-      │ name       department  salary  rate  │
-    ──┼──────────────────────────────────────┼
-    1 │ JEFFERY A  POLICE      101442        │
-    2 │ NANCY A    POLICE       80016        │
-    3 │ JAMES A    FIRE        103350        │
-    4 │ DANIEL A   FIRE         95484        │
-    5 │ BRENDA B   OEMC         64392        │
-    6 │ LAKENYA A  OEMC                17.68 │
-    7 │ DORIS A    OEMC                19.38 │
+       │ employee                                                   │
+       │ name       department  position              salary  rate  │
+    ───┼────────────────────────────────────────────────────────────┼
+     1 │ JEFFERY A  POLICE      SERGEANT              101442        │
+     2 │ NANCY A    POLICE      POLICE OFFICER         80016        │
+     3 │ ANTHONY A  POLICE      POLICE OFFICER         72510        │
+     4 │ ALBA M     POLICE      POLICE CADET                   9.46 │
+     5 │ JAMES A    FIRE        FIRE ENGINEER-EMT     103350        │
+     6 │ DANIEL A   FIRE        FIREFIGHTER-EMT        95484        │
+     7 │ ROBERT K   FIRE        FIREFIGHTER-EMT       103272        │
+     8 │ LAKENYA A  OEMC        CROSSING GUARD                17.68 │
+     9 │ DORIS A    OEMC        CROSSING GUARD                19.38 │
+    10 │ BRENDA B   OEMC        TRAFFIC CONTROL AIDE   64392        │
     =#
 
 This tabular data could be filtered to show employees that are paid
-more than average.
+more than average. Let's also prune the `rate` column.
 
     using Statistics: mean
 
     highly_compensated =
-         chicago[Keep(:avg_salary => mean.(It.employee.salary)) >>
+        chicago′[Keep(:avg_salary => mean.(It.employee.salary)) >>
                  It.employee >>
-                 Filter(It.salary .> It.avg_salary)]
+                 Filter(It.salary .> It.avg_salary) >>
+                 Collect(:rate => nothing)]
     #=>
-      │ employee                            │
-      │ name       department  salary  rate │
-    ──┼─────────────────────────────────────┼
-    1 │ JEFFERY A  POLICE      101442       │
-    2 │ JAMES A    FIRE        103350       │
-    3 │ DANIEL A   FIRE         95484       │
+      │ employee                                         │
+      │ name       department  position           salary │
+    ──┼──────────────────────────────────────────────────┼
+    1 │ JEFFERY A  POLICE      SERGEANT           101442 │
+    2 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
+    3 │ DANIEL A   FIRE        FIREFIGHTER-EMT     95484 │
+    4 │ ROBERT K   FIRE        FIREFIGHTER-EMT    103272 │
     =#
 
 We can then export this data.
@@ -1162,12 +1085,80 @@ We can then export this data.
 
     highly_compensated |> DataFrame
     #=>
-    3×4 DataFrames.DataFrame
-    │ Row │ name      │ department │ salary │ rate     │
-    │     │ String    │ String     │ Int64⍰ │ Float64⍰ │
-    ├─────┼───────────┼────────────┼────────┼──────────┤
-    │ 1   │ JEFFERY A │ POLICE     │ 101442 │ missing  │
-    │ 2   │ JAMES A   │ FIRE       │ 103350 │ missing  │
-    │ 3   │ DANIEL A  │ FIRE       │ 95484  │ missing  │
+    4×4 DataFrames.DataFrame
+    │ Row │ name      │ department │ position          │ salary │
+    │     │ String    │ String     │ String            │ Int64⍰ │
+    ├─────┼───────────┼────────────┼───────────────────┼────────┤
+    │ 1   │ JEFFERY A │ POLICE     │ SERGEANT          │ 101442 │
+    │ 2   │ JAMES A   │ FIRE       │ FIRE ENGINEER-EMT │ 103350 │
+    │ 3   │ DANIEL A  │ FIRE       │ FIREFIGHTER-EMT   │ 95484  │
+    │ 4   │ ROBERT K  │ FIRE       │ FIREFIGHTER-EMT   │ 103272 │
+    =#
+
+## Restructuring Imported Data
+
+After importing tabular data, it is sometimes helpful to restructure
+hierarchically to make queries more convenient. We've seen earlier how
+this could be done with `Group` combinator.
+
+    chicago′[It.employee >> Group(It.department)]
+    #=>
+      │ department  employee                                                      │                                                               
+    ──┼───────────────────────────────────────────────────────────────────────────┼                                                               
+    1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│                                                               
+    2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│                                                               
+    3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A, POLICE…│                                                               
+    =#
+
+With a little bit of labeling, this hierarchy could be tranformed so
+that its structure is compatible with our inital `chicago` dataset.
+
+    Restructure = 
+        It.employee >> 
+        Group(It.department) >>
+        Record(
+           :name => It.department,
+           :employee => 
+               It.employee >>
+               Collect(:department => nothing))
+
+    chicago′[Restructure >> Label(:department)]
+    #=>
+      │ department                                                                │
+      │ name    employee                                                          │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFIGHTE…│
+    2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING GUAR…│
+    3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
+    =#
+
+Using `Collect` we could save this restructure in the `department`
+field of the top-level record.
+
+    chicago″ = chicago′[Restructure >> Label(:department) >> Collect]
+    #=>
+    │ employee                              department                            │
+    ┼─────────────────────────────────────────────────────────────────────────────┼
+    │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
+    =#
+
+Then, queries that originally work with our `chicago` dataset would now
+work with `chicago″` data, as imported from a CSV file. For example, we
+could once again compute the average employee salary by department.
+
+    using Statistics: mean
+
+    chicago″[
+        It.department >>
+        Record(
+            It.name,
+            :mean_salary => mean.(It.employee.salary))]
+    #=>
+      │ department          │
+      │ name    mean_salary │
+    ──┼─────────────────────┼
+    1 │ FIRE       100702.0 │
+    2 │ OEMC        64392.0 │
+    3 │ POLICE      84656.0 │
     =#
 
