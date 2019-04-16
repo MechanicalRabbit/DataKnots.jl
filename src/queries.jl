@@ -628,6 +628,12 @@ function assemble_collect(p, x)
     compose(p, q)
 end
 
+
+"""
+    Collect(X₁, X₂ … Xₙ) :: Query
+
+`Collect(X₁, X₂ … Xₙ)` adds fields `X₁`, `X₂` … `Xₙ` to the input record.
+"""
 Collect(X, Ys...) =
     Query(Collect, X, Ys...)
 

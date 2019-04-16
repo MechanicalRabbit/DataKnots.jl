@@ -5,6 +5,7 @@ We will need the following definitions.
 
     using DataKnots:
         @VectorTree,
+        Collect,
         Count,
         DataKnot,
         Drop,
@@ -454,6 +455,95 @@ Similarly, when there are duplicate labels, only the last one survives.
     1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
     2 │ FIRE    JAMES A; DANIEL A; ROBERT K           │
     3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
+    =#
+
+
+### `Collect`
+
+The query `Collect(X)` adds a new field to the input record.
+
+    Q = It.department >> Collect(:size => Count(It.employee))
+    #-> It.department >> Collect(:size => Count(It.employee))
+
+    chicago[Q]
+    #=>
+      │ department                                                                │
+      │ name    employee                                                     size │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFIC…    4 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIRE…    3 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSIN…    3 │
+    =#
+
+More than one field could be added at the same time.
+
+    Q = It.department >>
+        Collect(:size => Count(It.employee),
+                :avg_salary => Sum(It.employee.salary) ./ It.size)
+
+    chicago[Q]
+    #=>
+      │ department                                                                │
+      │ name    employee                                         size  avg_salary │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, …    4     63492.0 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DA…    3    100702.0 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORI…    3     21464.0 │
+    =#
+
+If the new field has no label, an ordinal label will be assigned to it.
+
+    Q = It.department >> Collect(Count(It.employee))
+
+    chicago[Q]
+    #=>
+      │ department                                                                │
+      │ name    employee                                                       #C │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  4 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING …  3 │
+    =#
+
+If the record already has a field with the same name, that field is removed and
+the new field is added.
+
+    Q = It.department >> Collect(:employee => It.employee.name)
+
+    chicago[Q]
+    #=>
+      │ department                                    │
+      │ name    employee                              │
+    ──┼───────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
+    2 │ FIRE    JAMES A; DANIEL A; ROBERT K           │
+    3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
+    =#
+
+To remove a field from a record, replace it with the value `nothing`.
+
+    Q = It.department >> Collect(:size => Count(It.employee),
+                                 :employee => nothing)
+
+    chicago[Q]
+    #=>
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ POLICE     4 │
+    2 │ FIRE       3 │
+    3 │ OEMC       3 │
+    =#
+
+`Collect` can be used as an aggregate primitive.
+
+    Q = It.department.employee >> Collect
+
+    chicago[Q]
+    #=>
+    │ department                            employee                              │
+    ┼─────────────────────────────────────────────────────────────────────────────┼
+    │ POLICE, [JEFFERY A, SERGEANT, 101442… JEFFERY A, SERGEANT, 101442, missing;…│
     =#
 
 
