@@ -239,11 +239,11 @@ to an existing record using `Collect`.
     chicago[It.department >>
             Collect(:size => Count(It.employee))]
     #=>
-      │ department                                …      │
-      │ name    employee                          … size │
-    ──┼────────────────────────────────────────── … ─────┼
-    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; …    3 │
-    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; …    2 │
+      │ department                                                                │
+      │ name    employee                                                     size │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 1014…    3 │
+    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT…    2 │
     =#
 
 If a label is set to `nothing` then that field is excluded.
@@ -614,11 +614,11 @@ records to their positions, we use `Group` combinator:
 
     chicago[It.department.employee >> Group(It.position)]
     #=>
-      │ position         employee                                …
-    ──┼──────────────────────────────────────────────────────────…
-    1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT…
-    2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY …
-    3 │ SERGEANT         JEFFERY A, SERGEANT, 101442             …
+      │ position         employee                                                 │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-…│
+    2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLICE OFFICE…│
+    3 │ SERGEANT         JEFFERY A, SERGEANT, 101442                              │
     =#
 
 The query `Group(It.position)` rearranges the dataset into a new
@@ -997,9 +997,9 @@ constructor makes a top-level node, with a subtree for each label.
 
     chicago = DataKnot(:department => department_data)
     #=>
-    │ department                                             …
-    ┼─────────────────────────────────────────────────────── …
-    │ POLICE, [ANTHONY A, POLICE OFFICER, 72510; JEFFERY A,  …
+    │ department                                                                  │
+    ┼─────────────────────────────────────────────────────────────────────────────┼
+    │ POLICE, [ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 101442; NAN…│
     =#
 
 Here we see the root of the knot, with a single cell,
@@ -1007,11 +1007,11 @@ Here we see the root of the knot, with a single cell,
 
     chicago[It.department]
     #=>
-      │ department                                           …
-      │ name    employee                                     …
-    ──┼───────────────────────────────────────────────────── …
-    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, …
-    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K,  …
+      │ department                                                                │
+      │ name    employee                                                          │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 101442; NA…│
+    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT, 1032…│
     =#
 
 Let's remember our query to return highly compensated employees.
@@ -1035,9 +1035,9 @@ We could add to this result set to our top-level node using the
 
     chicago′ = chicago[HighlyCompensated >> Collect]
     #=>
-    │ department          …  highly_compensated            …
-    ┼──────────────────── … ────────────────────────────── …
-    │ POLICE, [ANTHONY A, …  JEFFERY A, SERGEANT, 101442;  …
+    │ department                             highly_compensated                   │
+    ┼─────────────────────────────────────────────────────────────────────────────┼
+    │ POLICE, [ANTHONY A, POLICE OFFICER, 7… JEFFERY A, SERGEANT, 101442; ROBERT …│
     =#
 
 This enables us to run queries directly upon the query results
