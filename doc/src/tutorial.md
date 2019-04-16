@@ -1103,26 +1103,27 @@ this could be done with `Group` combinator.
 
     chicago′[It.employee >> Group(It.department)]
     #=>
-      │ department  employee                                                      │                                                               
-    ──┼───────────────────────────────────────────────────────────────────────────┼                                                               
-    1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│                                                               
-    2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│                                                               
-    3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A, POLICE…│                                                               
+      │ department  employee                                                      │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│
+    2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│
+    3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A, POLICE…│
     =#
 
-With a little bit of labeling, this hierarchy could be tranformed so
-that its structure is compatible with our inital `chicago` dataset.
+With a little bit of labeling, this hierarchy could be transformed so
+that its structure is compatible with our initial `chicago` dataset.
 
-    Restructure = 
-        It.employee >> 
-        Group(It.department) >>
-        Record(
-           :name => It.department,
-           :employee => 
-               It.employee >>
-               Collect(:department => nothing))
+    Restructure =
+        :department =>
+            It.employee >>
+            Group(It.department) >>
+            Record(
+               :name => It.department,
+               :employee =>
+                   It.employee >>
+                   Collect(:department => nothing))
 
-    chicago′[Restructure >> Label(:department)]
+    chicago′[Restructure]
     #=>
       │ department                                                                │
       │ name    employee                                                          │
@@ -1135,7 +1136,7 @@ that its structure is compatible with our inital `chicago` dataset.
 Using `Collect` we could save this restructure in the `department`
 field of the top-level record.
 
-    chicago″ = chicago′[Restructure >> Label(:department) >> Collect]
+    chicago″ = chicago′[Restructure >> Collect]
     #=>
     │ employee                              department                            │
     ┼─────────────────────────────────────────────────────────────────────────────┼
