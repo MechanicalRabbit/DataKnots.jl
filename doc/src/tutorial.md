@@ -210,14 +210,13 @@ To label a record field we use Julia's `Pair` syntax, (`=>`).
     chicago[
         It.department >>
         Record(It.name,
-               :employee_count =>
-                   Count(It.employee))]
+               :size => Count(It.employee))]
     #=>
-      │ department             │
-      │ name    employee_count │
-    ──┼────────────────────────┼
-    1 │ POLICE               3 │
-    2 │ FIRE                 2 │
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ POLICE     3 │
+    2 │ FIRE       2 │
     =#
 
 This is syntax shorthand for the `Label` primitive.
@@ -225,14 +224,39 @@ This is syntax shorthand for the `Label` primitive.
     chicago[
         It.department >>
         Record(It.name,
-               Count(It.employee) >>
-               Label(:employee_count))]
+               Count(It.employee) >> Label(:size))]
     #=>
-      │ department             │
-      │ name    employee_count │
-    ──┼────────────────────────┼
-    1 │ POLICE               3 │
-    2 │ FIRE                 2 │
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ POLICE     3 │
+    2 │ FIRE       2 │
+    =#
+
+Rather than building a record from scratch, one could add a field
+to an existing record using `Collect`.
+
+    chicago[It.department >>
+            Collect(:size => Count(It.employee))]
+    #=>
+      │ department                                …      │
+      │ name    employee                          … size │
+    ──┼────────────────────────────────────────── … ─────┼
+    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; …    3 │
+    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; …    2 │
+    =#
+
+If a label is set to `nothing` then that field is excluded.
+
+    chicago[It.department >>
+            Collect(:size => Count(It.employee),
+                    :employee => nothing)]
+    #=>
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ POLICE     3 │
+    2 │ FIRE       2 │
     =#
 
 Records can be nested. The following listing includes, for each
@@ -335,31 +359,27 @@ our Chicago data starting with a list of employees.
 
 Let's extend this query to show if the salary is over 100k.
 
-    Q >>= Record(It.name,
-                 It.salary,
-                 :gt100k =>
-                     It.salary .> 100000)
+    Q >>= Collect(:gt100k => It.salary .> 100000)
 
 The query definition is tracked automatically.
 
     Q
     #=>
-    It.department.employee >>
-    Record(It.name, It.salary, :gt100k => It.salary .> 100000)
+    It.department.employee >> Collect(:gt100k => It.salary .> 100000)
     =#
 
 Let's run `Q` again.
 
     chicago[Q]
     #=>
-      │ employee                  │
-      │ name       salary  gt100k │
-    ──┼───────────────────────────┼
-    1 │ ANTHONY A   72510   false │
-    2 │ JEFFERY A  101442    true │
-    3 │ NANCY A     80016   false │
-    4 │ DANIEL A    95484   false │
-    5 │ ROBERT K   103272    true │
+      │ employee                                   │
+      │ name       position         salary  gt100k │
+    ──┼────────────────────────────────────────────┼
+    1 │ ANTHONY A  POLICE OFFICER    72510   false │
+    2 │ JEFFERY A  SERGEANT         101442    true │
+    3 │ NANCY A    POLICE OFFICER    80016   false │
+    4 │ DANIEL A   FIREFIGHTER-EMT   95484   false │
+    5 │ ROBERT K   FIREFIGHTER-EMT  103272    true │
     =#
 
 We can now filter the dataset to include only high-paid employees.
@@ -367,7 +387,7 @@ We can now filter the dataset to include only high-paid employees.
     Q >>= Filter(It.gt100k)
     #=>
     It.department.employee >>
-    Record(It.name, It.salary, :gt100k => It.salary .> 100000) >>
+    Collect(:gt100k => It.salary .> 100000) >>
     Filter(It.gt100k)
     =#
 
@@ -375,11 +395,11 @@ Let's run `Q` again.
 
     chicago[Q]
     #=>
-      │ employee                  │
-      │ name       salary  gt100k │
-    ──┼───────────────────────────┼
-    1 │ JEFFERY A  101442    true │
-    2 │ ROBERT K   103272    true │
+      │ employee                                   │
+      │ name       position         salary  gt100k │
+    ──┼────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442    true │
+    2 │ ROBERT K   FIREFIGHTER-EMT  103272    true │
     =#
 
 Well-tested queries may benefit from a `Tag` so that their
@@ -390,11 +410,11 @@ definitions are suppressed in larger compositions.
 
     chicago[HighlyCompensated]
     #=>
-      │ employee                  │
-      │ name       salary  gt100k │
-    ──┼───────────────────────────┼
-    1 │ JEFFERY A  101442    true │
-    2 │ ROBERT K   103272    true │
+      │ employee                                   │
+      │ name       position         salary  gt100k │
+    ──┼────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442    true │
+    2 │ ROBERT K   FIREFIGHTER-EMT  103272    true │
     =#
 
 This tagging can make subsequent compositions easier to read.
@@ -1038,7 +1058,7 @@ more than average.
 
     using Statistics: mean
 
-    highly_compensated = 
+    highly_compensated =
          chicago[Keep(:avg_salary => mean.(It.employee.salary)) >>
                  It.employee >>
                  Filter(It.salary .> It.avg_salary)]
