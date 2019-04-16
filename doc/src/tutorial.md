@@ -247,6 +247,7 @@ to an existing record using `Collect`.
     =#
 
 If a label is set to `nothing` then that field is excluded.
+This would let us restructure a record as we see fit.
 
     chicago[It.department >>
             Collect(:size => Count(It.employee),
@@ -501,6 +502,98 @@ We could then refine the query, and run the exact same command.
     ┼────┼
     │  2 │
     =#
+
+## Data Pipelines
+
+Sometimes it is useful to save the output of a query, and then use
+this as the basis for additional queries. The `Collect` aggregate
+is used to accomplish this. Let's remember our query to return
+highly compensated employees.
+
+    HighlyCompensated =
+        :highly_compensated =>
+            It.department.employee >>
+            Collect(:gt100k => It.salary .> 100000) >>
+            Filter(It.gt100k)
+
+    chicago[HighlyCompensated]
+    #=>
+      │ highly_compensated                         │
+      │ name       position         salary  gt100k │
+    ──┼────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442    true │
+    2 │ ROBERT K   FIREFIGHTER-EMT  103272    true │
+    =#
+
+We could count the number of output rows.
+
+    chicago[HighlyCompensated >> Count]
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
+Suppose that we wish to take a snapshot of this output, and use
+that snapshot as a basis for new queries.
+
+    chicago′ = chicago[HighlyCompensated]
+    #=>
+      │ highly_compensated                         │
+      │ name       position         salary  gt100k │
+    ──┼────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442    true │
+    2 │ ROBERT K   FIREFIGHTER-EMT  103272    true │
+    =#
+
+We could then run queries directly on this snapshot.
+
+    chicago′[It.name]
+    #=>
+      │ name      │
+    ──┼───────────┼
+    1 │ JEFFERY A │
+    2 │ ROBERT K  │
+    =#
+
+However, what if we wanted to count the number of rows in this
+dataset? Just using `Count` doesn't work since the query operation
+processes the input *elementwise* as if there was an `Each`
+surrounding the query.
+
+    chicago′[Count]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  1 │
+    =#
+
+What we want to do is count the employees, but this doesn't
+work either.
+
+    chicago[Count(It.highly_compensated)]
+    #-> ERROR: cannot find "highly_compensated" ⋮
+
+What we need to do is `Collect` the results.
+
+    chicago′ = chicago[HighlyCompensated >> Collect]
+    #=>
+    │ department                      highly_compensated             │
+    ┼────────────────────────────────────────────────────────────────┼
+    │ POLICE, [ANTHONY A, POLICE OFF… JEFFERY A, SERGEANT, 101442, t…│
+    =#
+
+This appends our new dataset to the existing top-level record.
+We could then obtain our count.
+
+    chicago[Count(It.highly_compensated)]
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
 
 ## Summarizing Data
 
