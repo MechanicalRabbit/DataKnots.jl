@@ -990,7 +990,7 @@ use `Take` with an argument that computes how many to take.
     2 │ JEFFERY A  SERGEANT        101442 │
     =#
 
-## Accumulating Datasets
+## Collecting Query Output
 
 We've seen that knots can be hierarchical. In fact, the `DataKnot`
 constructor makes a top-level node, with a subtree for each label.
@@ -1030,8 +1030,31 @@ Let's remember our query to return highly compensated employees.
     2 │ ROBERT K   FIREFIGHTER-EMT  103272 │
     =#
 
-We could add to this result set to our top-level node using the
-`Collect` primitive.
+To create a new knot containing this output, we would create a
+top-level node using the `Record` query.
+
+    chicago′ = chicago[HighlyCompensated >> Record]
+    #=>
+    │ highly_compensated                                             │
+    ┼────────────────────────────────────────────────────────────────┼
+    │ JEFFERY A, SERGEANT, 101442; ROBERT K, FIREFIGHTER-EMT, 103272 │
+    =#
+
+This enables us to run queries directly upon the query results
+that were previously saved.
+
+    chicago′[It.highly_compensated >>
+             Record(It.name, It.salary)]
+    #=>
+      │ highly_compensated │
+      │ name        salary │
+    ──┼────────────────────┼
+    1 │ JEFFERY A   101442 │
+    2 │ ROBERT K    103272 │
+    =#
+
+Alternatively, by using `Collect` we could extend our top-level
+node to add this new subtree, keeping the `department` subtree.
 
     chicago′ = chicago[HighlyCompensated >> Collect]
     #=>
@@ -1040,15 +1063,16 @@ We could add to this result set to our top-level node using the
     │ POLICE, [ANTHONY A, POLICE OFFICER, 7… JEFFERY A, SERGEANT, 101442; ROBERT …│
     =#
 
-This enables us to run queries directly upon the query results
-that were previously saved.
+We could then count both highly-compensated staff and all
+employees across all departments.
 
-    chicago′[It.highly_compensated.name]
+    chicago′[Record(
+               :no_employees => Count(It.department.employee),
+               :highly_comp  => Count(It.highly_compensated))]
     #=>
-      │ name      │
-    ──┼───────────┼
-    1 │ JEFFERY A │
-    2 │ ROBERT K  │
+    │ no_employees  highly_comp │
+    ┼───────────────────────────┼
+    │            5            2 │
     =#
 
 ## Extracting Data
