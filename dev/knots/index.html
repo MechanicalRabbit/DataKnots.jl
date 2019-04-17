@@ -104,7 +104,23 @@ cell(abc)
 #-&gt; @VectorTree (1:N) × Char [&#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;]
 
 shape(abc)
-#-&gt; BlockOf(Char, x1toN)</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
+#-&gt; BlockOf(Char, x1toN)</code></pre><p>The default constructor creates the unit <code>DataKnot</code>, which holds an empty tuple.  This knot is exported under the name <code>unitknot</code>.</p><pre><code class="language-julia">unitknot
+#=&gt;
+│ It │
+┼────┼
+│    │
+=#
+
+cell(unitknot)
+#-&gt; @VectorTree () [()]</code></pre><p>We can also construct a <code>DataKnot</code> containing a single top-level named tuple with the given fields.</p><pre><code class="language-julia">recknot = DataKnot(:hello =&gt; &quot;Hello World!&quot;, :main =&gt; &#39;a&#39;:&#39;c&#39;)
+#=&gt;
+│ hello         main    │
+┼───────────────────────┼
+│ Hello World!  a; b; c │
+=#
+
+cell(recknot)
+#-&gt; @VectorTree (hello = String, main = (0:N) × Char) [(hello = &quot;Hello World!&quot;, main = &#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;)]</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
 #=&gt;
 │ It           │
 ┼──────────────┼
@@ -117,15 +133,7 @@ shape(abc)
 =#
 
 shape(nullknot)
-#-&gt; BlockOf(NoShape(), x0to1)</code></pre><p>The value <code>nothing</code> is converted to the unit <code>DataKnot</code>.  The unit <code>DataKnot</code> is exported under the name <code>unitknot</code>.</p><pre><code class="language-julia">unitknot
-#=&gt;
-│ It │
-┼────┼
-│    │
-=#
-
-shape(unitknot)
-#-&gt; ValueOf(Nothing)</code></pre><p>A vector value is converted to a block.</p><pre><code class="language-julia">vecknot = convert(DataKnot, &#39;a&#39;:&#39;c&#39;)
+#-&gt; BlockOf(NoShape(), x0to1)</code></pre><p>A vector value is converted to a block.</p><pre><code class="language-julia">vecknot = convert(DataKnot, &#39;a&#39;:&#39;c&#39;)
 #=&gt;
   │ It │
 ──┼────┼
@@ -143,7 +151,15 @@ shape(vecknot)
 =#
 
 shape(int_ty)
-#-&gt; ValueOf(Type{Int64})</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = convert(DataKnot,
+#-&gt; ValueOf(Type{Int64})</code></pre><p><code>Tables.jl</code> interface is used for conversion when it is supported by the given value.</p><pre><code class="language-julia">convert(DataKnot, DataFrame(:name =&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;],
+                            :position =&gt; [&quot;SERGEANT&quot;, &quot;POLICE OFFICER&quot;],
+                            :salary =&gt; [101442, 80016]))
+#=&gt;
+  │ name       position        salary │
+──┼───────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT        101442 │
+2 │ NANCY A    POLICE OFFICER   80016 │
+=#</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = convert(DataKnot,
               [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
                (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016),
                (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350),
@@ -155,15 +171,25 @@ shape(int_ty)
 2 │ NANCY A    POLICE OFFICER      80016 │
 3 │ JAMES A    FIRE ENGINEER-EMT  103350 │
 4 │ DANIEL A   FIRE FIGHTER-EMT    95484 │
-=#</code></pre><p>The table is truncated if it does not fit the output screen.</p><pre><code class="language-julia">small = IOContext(stdout, :displaysize =&gt; (6, 20))
+=#</code></pre><p>If the table columns do not fit the output screen, some table cells could be truncated.</p><pre><code class="language-julia">small = IOContext(stdout, :displaysize =&gt; (24, 35))
 
 show(small, emp)
 #=&gt;
-  │ name       posi…
+  │ name       position   salary │
+──┼──────────────────────────────┼
+1 │ JEFFERY A  SERGEANT   101442 │
+2 │ NANCY A    POLICE OF…  80016 │
+3 │ JAMES A    FIRE ENGI… 103350 │
+4 │ DANIEL A   FIRE FIGH…  95484 │
+=#</code></pre><p>If the screen is too small, the whole table needs to be truncated.</p><pre><code class="language-julia">tiny = IOContext(stdout, :displaysize =&gt; (6, 20))
+
+show(tiny, emp)
+#=&gt;
+  │ name      posit…
 ──┼────────────────…
-1 │ JEFFERY A  SERG…
+1 │ JEFFERY … SERGE…
 ⋮
-4 │ DANIEL A   FIRE…
+4 │ DANIEL A  FIRE …
 =#</code></pre><p>Top-level tuples are serialized as table columns while nested tuples are rendered as comma-separated lists of tuple elements.</p><pre><code class="language-julia">convert(DataKnot, (&quot;FIRE&quot;, [(&quot;JEFFERY A&quot;, (101442, missing)), (&quot;NANCY A&quot;, (80016, missing))]))
 #=&gt;
 │ #A    #B                                                      │

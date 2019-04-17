@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Query Algebra · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Primer</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li class="current"><a class="toctext" href>Query Algebra</a><ul class="internal"><li><a class="toctext" href="#Example-Dataset-1">Example Dataset</a></li><li><a class="toctext" href="#Constructing-Queries-1">Constructing Queries</a></li><li><a class="toctext" href="#Compiling-Queries-1">Compiling Queries</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Query Algebra</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/queries.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Query Algebra</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Query-Algebra-1" href="#Query-Algebra-1">Query Algebra</a></h1><p>In this section, we sketch the design and implementation of the query algebra. We will need the following definitions.</p><pre><code class="language-julia">using DataKnots:
     @VectorTree,
+    Collect,
     Count,
     DataKnot,
     Drop,
@@ -51,9 +52,9 @@
 
 chicago = DataKnot(Any, chicago_data, :x1to1)
 #=&gt;
-│ department                                                                   …
-┼──────────────────────────────────────────────────────────────────────────────…
-│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80016…
+│ department                                                                  │
+┼─────────────────────────────────────────────────────────────────────────────┼
+│ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 800…│
 =#</code></pre><h2><a class="nav-anchor" id="Constructing-Queries-1" href="#Constructing-Queries-1">Constructing Queries</a></h2><p>In DataKnots, we query data by assembling and running <code>Query</code> objects.  Queries are constructed algebraically: they either come a set of atomic <em>primitive</em> queries, or are built from other queries using query <em>combinators</em>.</p><p>For example, consider the query:</p><pre><code class="language-julia">Employees = Get(:department) &gt;&gt; Get(:employee)
 #-&gt; Get(:department) &gt;&gt; Get(:employee)</code></pre><p>This query traverses the dataset through fields <em>department</em> and <em>employee</em>. It is constructed from two primitive queries <code>Get(:department)</code> and <code>Get(:employee)</code> connected using the query composition combinator <code>&gt;&gt;</code>.</p><p>Since attribute traversal is so common, DataKnots provides a shorthand notation.</p><pre><code class="language-julia">Employees = It.department.employee
 #-&gt; It.department.employee</code></pre><p>To apply a query to a <code>DataKnot</code>, we use indexing notation.  The output of a query is also a <code>DataKnot</code>.</p><pre><code class="language-julia">chicago[Employees]
@@ -175,7 +176,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2f839d9ac03f53a38acefae62941e0fe223919c8/src/queries.jl#L160-L164">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2f839d9ac03f53a38acefae62941e0fe223919c8/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2f839d9ac03f53a38acefae62941e0fe223919c8/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/94dd6f053228bd7ae27c20878c5a17cf97c0a33f/src/queries.jl#L160-L164">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/94dd6f053228bd7ae27c20878c5a17cf97c0a33f/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/94dd6f053228bd7ae27c20878c5a17cf97c0a33f/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -253,6 +254,67 @@ chicago[Q]
 1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
 2 │ FIRE    JAMES A; DANIEL A; ROBERT K           │
 3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
+=#</code></pre><h3><a class="nav-anchor" id="Collect-1" href="#Collect-1"><code>Collect</code></a></h3><p>The query <code>Collect(X)</code> adds a new field to the input record.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Collect(:size =&gt; Count(It.employee))
+#-&gt; It.department &gt;&gt; Collect(:size =&gt; Count(It.employee))
+
+chicago[Q]
+#=&gt;
+  │ department                                                                │
+  │ name    employee                                                     size │
+──┼───────────────────────────────────────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFIC…    4 │
+2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIRE…    3 │
+3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSIN…    3 │
+=#</code></pre><p>More than one field could be added at the same time.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Collect(:size =&gt; Count(It.employee),
+            :avg_salary =&gt; Sum(It.employee.salary) ./ It.size)
+
+chicago[Q]
+#=&gt;
+  │ department                                                                │
+  │ name    employee                                         size  avg_salary │
+──┼───────────────────────────────────────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, …    4     63492.0 │
+2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DA…    3    100702.0 │
+3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORI…    3     21464.0 │
+=#</code></pre><p>If the new field has no label, an ordinal label will be assigned to it.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Collect(Count(It.employee))
+
+chicago[Q]
+#=&gt;
+  │ department                                                                │
+  │ name    employee                                                       #C │
+──┼───────────────────────────────────────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  4 │
+2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
+3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING …  3 │
+=#</code></pre><p>If the record already has a field with the same name, that field is removed and the new field is added.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Collect(:employee =&gt; It.employee.name)
+
+chicago[Q]
+#=&gt;
+  │ department                                    │
+  │ name    employee                              │
+──┼───────────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
+2 │ FIRE    JAMES A; DANIEL A; ROBERT K           │
+3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
+=#</code></pre><p>To remove a field from a record, replace it with the value <code>nothing</code>.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Collect(:size =&gt; Count(It.employee),
+                             :employee =&gt; nothing)
+
+chicago[Q]
+#=&gt;
+  │ department   │
+  │ name    size │
+──┼──────────────┼
+1 │ POLICE     4 │
+2 │ FIRE       3 │
+3 │ OEMC       3 │
+=#</code></pre><p><code>Collect</code> can be used as an aggregate primitive.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt; Collect
+
+chicago[Q]
+#=&gt;
+│ department                            employee                              │
+┼─────────────────────────────────────────────────────────────────────────────┼
+│ POLICE, [JEFFERY A, SERGEANT, 101442… JEFFERY A, SERGEANT, 101442, missing;…│
 =#</code></pre><h3><a class="nav-anchor" id="Lift-1" href="#Lift-1"><code>Lift</code></a></h3><p>The <code>Lift</code> constructor is used to convert Julia values and functions to queries.</p><p><code>Lift(val)</code> makes a query primitive from a Julia value.</p><pre><code class="language-julia">Q = Lift(&quot;Hello World!&quot;)
 #-&gt; Lift(&quot;Hello World!&quot;)
 
@@ -868,15 +930,15 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ position              employee                                             …
-──┼────────────────────────────────────────────────────────────────────────────…
-1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…
-2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing          …
-3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; ROBERT K, …
-4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46                  …
-5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; ANTHONY A, P…
-6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                 …
-7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing       …
+  │ position              employee                                            │
+──┼───────────────────────────────────────────────────────────────────────────┼
+1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A,…│
+2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing         │
+3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; ROBERT K…│
+4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46                 │
+5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; ANTHONY A,…│
+6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                │
+7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing      │
 =#</code></pre><p>Arbitrary key expressions are supported.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Group(:size =&gt; Count(It.employee)) &gt;&gt;
     Record(It.size, :count =&gt; Count(It.department))
