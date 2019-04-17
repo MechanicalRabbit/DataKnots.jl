@@ -141,6 +141,78 @@ then arranged with with combinators, such as composition (`>>`).
 This lets us define sophisticated query components and remix them
 in creative ways.
 
+## Query Combinators
+
+A query *combinator* is a function that takes queries for
+arguments and builds a query. Consider the `Filter` combinator,
+which takes a predicate expression `P` for its argument.
+
+```julia
+    X >> Filter(P)
+```
+
+What is the action of the query `Filter(P)` for an input `X`?
+Presumably, `Filter(P)` would reproduce elements of `X` where the
+predicate `P` is `true`. But how does this work?
+
+Let's start with a simple input, a constant query that produces a
+stream of boolean values.
+
+    X = Lift([true, false, true])
+
+    unitknot[X]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │ false │
+    3 │  true │
+    =#
+
+Let's further say the predicate `P` is the identity query, `It`,
+so that the query in question is `Filter(It)`.
+
+     P = It
+
+For each value of `X` what is the predicate's value? Since `It` is
+the identity, it'd simply reproduce each input element.
+
+    unitknot[X >> P]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │ false │
+    3 │  true │
+    =#
+
+Hence, the predicate expression `P` is `true` for the 1st and 3rd
+elements of the input `X`. Therefore, `Filter(It)` would reproduce
+those two elements.
+
+    unitknot[X >> Filter(P)]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │  true │
+    =#
+
+Or expanded fully,
+
+
+    unitknot[Lift([true, false, true]) >> Filter(It)]
+    #=>
+      │ It    │
+    ──┼───────┼
+    1 │  true │
+    2 │  true │
+    =#
+
+Queries which evaluate their arguments for each input are called
+*elementwise*. Here we see `Filter` is a combinator which builds
+elementwise queries.
+
 ## Lifting Functions
 
 Any function could be used in a query. Consider the function
