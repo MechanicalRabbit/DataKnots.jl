@@ -1133,8 +1133,8 @@ that its structure is compatible with our initial `chicago` dataset.
     3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
     =#
 
-Using `Collect` we could save this restructure in the `department`
-field of the top-level record.
+Using `Collect` we could save this restructured dataset as a top-level
+field, `department`.
 
     chicago″ = chicago′[Restructure >> Collect]
     #=>
@@ -1143,9 +1143,10 @@ field of the top-level record.
     │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
     =#
 
-Then, queries that originally work with our `chicago` dataset would now
-work with `chicago″` data, as imported from a CSV file. For example, we
-could once again compute the average employee salary by department.
+Then, queries that originally worked with our hierarchical `chicago`
+dataset would now work with this imported and then restructured
+`chicago″` data. For example, we could once again compute the average
+employee salary by department.
 
     using Statistics: mean
 
