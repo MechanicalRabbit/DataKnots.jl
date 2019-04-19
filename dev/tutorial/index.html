@@ -667,12 +667,12 @@ chicago′[Restructure]
 1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFIGHTE…│
 2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING GUAR…│
 3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
-=#</code></pre><p>Using <code>Collect</code> we could save this restructure in the <code>department</code> field of the top-level record.</p><pre><code class="language-julia">chicago″ = chicago′[Restructure &gt;&gt; Collect]
+=#</code></pre><p>Using <code>Collect</code> we could save this restructured dataset as a top-level field, <code>department</code>.</p><pre><code class="language-julia">chicago″ = chicago′[Restructure &gt;&gt; Collect]
 #=&gt;
 │ employee                              department                            │
 ┼─────────────────────────────────────────────────────────────────────────────┼
 │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
-=#</code></pre><p>Then, queries that originally work with our <code>chicago</code> dataset would now work with <code>chicago″</code> data, as imported from a CSV file. For example, we could once again compute the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
+=#</code></pre><p>Then, queries that originally worked with our hierarchical <code>chicago</code> dataset would now work with this imported and then restructured <code>chicago″</code> data. For example, we could once again compute the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
 
 chicago″[
     It.department &gt;&gt;
