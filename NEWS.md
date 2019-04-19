@@ -1,5 +1,8 @@
 # Release Notes
 
+## v0.4.0
+
+- Added `Collect` combinator.
 
 ## v0.3.0
 

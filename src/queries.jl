@@ -610,40 +610,28 @@ In the combinator form, `Collect(X₁, X₂ … Xₙ)` adds fields `X₁`,
 `X₂` … `Xₙ` to the input record.
 
 ```jldoctest
-julia> unitknot[Lift(1:3) >> Record(It) >> Collect(It.A .* It.A)]
-  │ #A  #B │
-──┼────────┼
-1 │  1   1 │
-2 │  2   4 │
-3 │  3   9 │
-```
-
-Input `Tuple` and `NamedTuple` are promoted to `Record`.
-
-```jldoctest
-julia> unitknot[Lift((a=2,)) >> Collect(:b=>It.a .* It.a)]
-│ a  b │
+julia> unitknot[Record(:x => 1) >> Collect(:y => 2 .* It.x)]
+│ x  y │
 ┼──────┼
-│ 2  4 │
+│ 1  2 │
 ```
 
-Since the `unitknot` is an empty tuple, it is treated as a record.
+If a field already exists, it is replaced.
 
 ```jldoctest
-julia> unitknot[Collect(:a=>2, :b=>It.a .* It.a)]
-│ a  b │
-┼──────┼
-│ 2  4 │
-```
-
-If a label is assigned the value `nothing` then it is removed.
-
-```jldoctest
-julia> unitknot[Lift((a=2,)) >>
-                Collect(:b=>It.a .* It.a, :a => nothing)]
-│ b │
+julia> unitknot[Record(:x => 1) >> Collect(:x => 2 .* It.x)]
+│ x │
 ┼───┼
-│ 4 │
+│ 2 │
+```
+
+To remove a field, assign it the value `nothing`.
+
+```jldoctest
+julia> unitknot[Record(:x => 1) >> Collect(:y => 2 .* It.x, :x => nothing)]
+│ y │
+┼───┼
+│ 2 │
 ```
 
 ---
@@ -653,12 +641,10 @@ julia> unitknot[Lift((a=2,)) >>
 In the query form, `Collect` appends a field to the origin record.
 
 ```jldoctest
-julia> X = Lift('a':'c');
-
-julia> unitknot[X >> Collect]
-│ #A      │
-┼─────────┼
-│ a; b; c │
+julia> unitknot[Lift(1) >> Label(:x) >> Collect]
+│ x │
+┼───┼
+│ 1 │
 ```
 """
 Collect(X, Ys...) =
