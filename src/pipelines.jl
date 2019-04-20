@@ -1071,6 +1071,11 @@ function simplify_block(ps)
             elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == wrap && ps[k+1].op == flatten
                 simplified = true
                 k += 2
+            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == chain_of &&
+                   length(ps[k].args[1].args[1]) == 2 && ps[k].args[1].args[1][2].op == wrap && ps[k+1].op == flatten
+                simplified = true
+                push!(ps′, with_elements(ps[k].args[1].args[1][1]))
+                k += 2
             elseif k <= length(ps)-2 && ps[k].op == wrap && ps[k+1].op == with_elements && ps[k+2].op == flatten
                 simplified = true
                 p = ps[k+1].args[1]

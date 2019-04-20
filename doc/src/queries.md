@@ -304,15 +304,17 @@ expression.
                                     with_elements(column(:employee)))),
              flatten(),
              flatten(),
-             with_elements(chain_of(tuple_of(pass(),
-                                             chain_of(tuple_of(column(:salary),
-                                                               chain_of(
-                                                                   filler(100000),
-                                                                   wrap())),
-                                                      tuple_lift(>),
-                                                      adapt_missing(),
-                                                      block_any())),
-                                    sieve_by())),
+             with_elements(
+                 chain_of(tuple_of(pass(),
+                                   chain_of(tuple_of(column(:salary),
+                                                     chain_of(wrap(),
+                                                              with_elements(
+                                                                  filler(
+                                                                      100000)))),
+                                            tuple_lift(>),
+                                            adapt_missing(),
+                                            block_any())),
+                          sieve_by())),
              flatten())
     =#
 
