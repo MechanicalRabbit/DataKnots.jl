@@ -206,7 +206,7 @@ tuple.  This knot is exported under the name `unitknot`.
     =#
 
     cell(unitknot)
-    #-> @VectorTree () [()]
+    #-> @VectorTree (1:1) × () [()]
 
 We can also construct a `DataKnot` containing a single top-level named tuple
 with the given fields.
@@ -219,7 +219,7 @@ with the given fields.
     =#
 
     cell(recknot)
-    #-> @VectorTree (hello = String, main = (0:N) × Char) [(hello = "Hello World!", main = 'a':'\x01':'c')]
+    #-> @VectorTree (1:1) × (hello = String, main = (0:N) × Char) [(hello = "Hello World!", main = 'a':'\x01':'c')]
 
 Any Julia value can be converted to a `DataKnot` object using the `convert()`
 function.

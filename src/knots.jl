@@ -138,14 +138,14 @@ function DataKnot(::Type{Any}, elts::AbstractVector, card::Union{Cardinality,Sym
 end
 
 DataKnot() =
-    DataKnot(Any, TupleVector(1))
+    DataKnot(Any, TupleVector(1), x1to1)
 
 function DataKnot(ps::Pair{Symbol}...)
     lbls = collect(first.(ps))
     cols = collect(convert.(DataKnot, last.(ps)))
     vals = collect(AbstractVector, cell.(cols))
-    shp = TupleOf(lbls, shape.(cols))
-    return DataKnot(shp, TupleVector(lbls, 1, vals))
+    shp = BlockOf(TupleOf(lbls, shape.(cols)), x1to1)
+    return DataKnot(shp, BlockVector(:, TupleVector(lbls, 1, vals)))
 end
 
 convert(::Type{DataKnot}, db::DataKnot) = db
