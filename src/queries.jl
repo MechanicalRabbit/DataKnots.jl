@@ -130,7 +130,7 @@ query(db, F; kws...) =
 
 function query(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     db = pack(db, params)
-    q = assemble(F, shape(db))
+    q = assemble(shape(db), F)
     db′ = q(db)
     return db′
 end
@@ -146,14 +146,13 @@ function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
 end
 
 assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
-    assemble(F, shape(pack(db, params)))
+    assemble(shape(pack(db, params)), F)
 
-function assemble(F::AbstractQuery, src::AbstractShape)
-    env = Environment()
-    q = uncover(assemble(F, env, cover(src)))
-    return optimize(q)
-end
+assemble(src::AbstractShape, F::AbstractQuery) =
+    optimize(uncover(assemble(nothing, cover(src), F)))
 
+assemble(::Nothing, p::Pipeline, F) =
+    assemble(Environment(), p, F)
 
 #
 # External syntax.
@@ -276,13 +275,13 @@ Query compilation state.
 mutable struct Environment
 end
 
-assemble(F, env::Environment, p::Pipeline)::Pipeline =
-    assemble(Lift(F), env, p)
+assemble(env::Environment, p::Pipeline, F)::Pipeline =
+    assemble(env, p, Lift(F))
 
-assemble(F::Query, env::Environment, p::Pipeline)::Pipeline =
+assemble(env::Environment, p::Pipeline, F::Query)::Pipeline =
     F.op(env, p, F.args...)
 
-function assemble(nav::Navigation, env::Environment, p::Pipeline)::Pipeline
+function assemble(env::Environment, p::Pipeline, nav::Navigation)::Pipeline
     for name in getfield(nav, :__path)
         p = Get(env, p, name)
     end
@@ -549,7 +548,7 @@ quoteof(::typeof(Compose), args::Vector{Any}) =
 
 function Compose(env::Environment, p::Pipeline, Xs...)
     for X in Xs
-        p = assemble(X, env, p)
+        p = assemble(env, p, X)
     end
     p
 end
@@ -625,7 +624,7 @@ Record(Xs...) =
     Query(Record, Xs...)
 
 function Record(env::Environment, p::Pipeline, Xs...)
-    xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
+    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
     assemble_record(p, xs)
 end
 
@@ -771,7 +770,7 @@ Collect(env::Environment, p::Pipeline, X, Ys...) =
     Collect(env, Collect(env, p, X), Ys...)
 
 function Collect(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     assemble_collect(p, x)
 end
 
@@ -917,7 +916,7 @@ Lift(env::Environment, p::Pipeline, elts::AbstractVector, card::Union{Cardinalit
     Lift(env, p, DataKnot(Any, elts, card))
 
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
-    xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
+    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
     assemble_lift(p, f, xs)
 end
 
@@ -997,7 +996,7 @@ julia> unitknot[Lift(1:3) >> X]
 Each(X) = Query(Each, X)
 
 Each(env::Environment, p::Pipeline, X) =
-    compose(p, assemble(X, env, target_pipe(p)))
+    compose(p, assemble(env, target_pipe(p), X))
 
 translate(mod::Module, ::Val{:each}, args::Tuple{Any}) =
     Each(translate(mod, args[1]))
@@ -1086,10 +1085,10 @@ Tag(F::Union{Function,DataType}, args::Tuple, X) =
     Tag(nameof(F), args, X)
 
 Tag(env::Environment, p::Pipeline, name, X) =
-    assemble(X, env, p)
+    assemble(env, p, X)
 
 Tag(env::Environment, p::Pipeline, name, args, X) =
-    assemble(X, env, p)
+    assemble(env, p, X)
 
 quoteof(::typeof(Tag), args::Vector{Any}) =
     quoteof(Tag, args...)
@@ -1282,7 +1281,7 @@ Keep(env::Environment, p::Pipeline, P, Qs...) =
     Keep(env, Keep(env, p, P), Qs...)
 
 function Keep(env::Environment, p::Pipeline, P)
-    q = assemble(P, env, target_pipe(p))
+    q = assemble(env, target_pipe(p), P)
     assemble_keep(p, q)
 end
 
@@ -1319,7 +1318,7 @@ Given(env::Environment, p::Pipeline, Xs...) =
     Given(env, p, Keep(Xs[1:end-1]...) >> Each(Xs[end]))
 
 function Given(env::Environment, p::Pipeline, X)
-    q = assemble(X, env, target_pipe(p))
+    q = assemble(env, target_pipe(p), X)
     assemble_given(p, q)
 end
 
@@ -1344,7 +1343,7 @@ Then(ctor, args::Tuple) =
     Query(Then, ctor, args)
 
 Then(env::Environment, p::Pipeline, ctor, args::Tuple=()) =
-    assemble(ctor(Then(p), args...), env, source_pipe(p))
+    assemble(env, source_pipe(p), ctor(Then(p), args...))
 
 
 #
@@ -1409,7 +1408,7 @@ Lift(::typeof(Count)) =
     Then(Count)
 
 function Count(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     compose(p, assemble_count(x))
 end
 
@@ -1547,7 +1546,7 @@ Lift(::typeof(Min)) =
     Then(Min)
 
 function Sum(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     assemble_lift(p, sum, Pipeline[x])
 end
 
@@ -1555,7 +1554,7 @@ maximum_missing(v) =
     !isempty(v) ? maximum(v) : missing
 
 function Max(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     card = cardinality(target(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? maximum_missing : maximum, Pipeline[x])
@@ -1565,7 +1564,7 @@ minimum_missing(v) =
     !isempty(v) ? minimum(v) : missing
 
 function Min(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     card = cardinality(target(x))
     optional = fits(x0to1, card)
     assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
@@ -1650,7 +1649,7 @@ Filter(X) =
     Query(Filter, X)
 
 function Filter(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     assemble_filter(p, x)
 end
 
@@ -1738,7 +1737,7 @@ Take(env::Environment, p::Pipeline, n::Union{Int,Missing}, inv::Bool=false) =
     assemble_take(p, n, inv)
 
 function Take(env::Environment, p::Pipeline, N, inv::Bool=false)
-    n = assemble(N, env, source_pipe(p))
+    n = assemble(env, source_pipe(p), N)
     assemble_take(p, n, inv)
 end
 
@@ -1769,7 +1768,7 @@ Lift(::typeof(Unique)) =
     Then(Unique)
 
 function Unique(env::Environment, p::Pipeline, X)
-    x = assemble(X, env, target_pipe(p))
+    x = assemble(env, target_pipe(p), X)
     assemble_unique(p, x)
 end
 
@@ -1835,7 +1834,7 @@ Group(Xs...) =
     Query(Group, Xs...)
 
 function Group(env::Environment, p::Pipeline, Xs...)
-    xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
+    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
     assemble_group(p, xs)
 end
 

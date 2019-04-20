@@ -245,7 +245,7 @@ We use the function `assemble()` to apply a query to a pipeline.  To run
 
     env = Environment()
 
-    p1 = assemble(Get(:department), env, p0)
+    p1 = assemble(env, p0, Get(:department))
     #-> chain_of(with_elements(column(:department)), flatten())
 
 The pipeline `p1` fetches the attribute *department* from the input data.  In
@@ -253,7 +253,7 @@ general, `Get(name)` maps a pipeline to its elementwise composition with
 `column(name)`.  For example, when we apply `Get(:employee)` to `p1`, what we
 get is the result of `compose(p1, column(:employee))`.
 
-    p2 = assemble(Get(:employee), env, p1)
+    p2 = assemble(env, p1, Get(:employee))
     #=>
     chain_of(chain_of(with_elements(column(:department)), flatten()),
              chain_of(with_elements(column(:employee)), flatten()))
@@ -266,7 +266,7 @@ predicate pipeline by applying the predicate query to a trivial pipeline.
     pc0 = target_pipe(p2)
     #-> wrap()
 
-    pc1 = assemble(SalaryOver100K, env, pc0)
+    pc1 = assemble(env, pc0, SalaryOver100K)
     #=>
     chain_of(wrap(),
              chain_of(
@@ -282,7 +282,7 @@ predicate pipeline by applying the predicate query to a trivial pipeline.
 `Filter(SalaryOver100K)` then combines the pipelines `p2` and `pc1` using the
 pipeline primitive `sieve_by()`.
 
-    p3 = assemble(Filter(SalaryOver100K), env, p2)
+    p3 = assemble(env, p2, Filter(SalaryOver100K))
     #=>
     chain_of(
         chain_of(chain_of(with_elements(column(:department)), flatten()),
