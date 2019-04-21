@@ -110,6 +110,8 @@ julia> unitknot[Lift((a=(x=1,y=2),)) >> It.a.x]
 """
 const It = Navigation(())
 
+translate(mod::Module, ::Val{:it}) = It
+
 
 #
 # Querying a DataKnot.
@@ -151,6 +153,57 @@ function  assemble(F::AbstractQuery, src::AbstractShape)
     q = uncover(assemble(F, env, cover(src)))
     return optimize(q)
 end
+
+
+#
+# External syntax.
+#
+
+macro query(ex)
+    return quote
+        translate($__module__, $(QuoteNode(ex)))
+    end
+end
+
+function translate(mod::Module, ex::Expr)
+    head = ex.head
+    args = ex.args
+    if head === :block
+        return Compose(translate.(Ref(mod), filter(arg -> !(arg isa LineNumberNode), args))...)
+    elseif head === :. && length(args) == 2 && Meta.isexpr(args[2], :tuple, 1)
+        return Compose(translate(mod, args[1]), translate(mod, args[2].args[1]))
+    elseif head === :.
+        return Compose(translate.(Ref(mod), args)...)
+    elseif head === :call && length(args) >= 1
+        call = args[1]
+        if call === :(=>) && length(args) == 3 && args[2] isa Symbol
+            return Compose(translate(mod, args[3]), Label(args[2]))
+        elseif call isa Symbol
+            return translate(mod, Val(call), (args[2:end]...,))
+        elseif call isa QuoteNode && call.value isa Symbol
+            return translate(mod, Val(call.value), (args[2:end]...,))
+        elseif Meta.isexpr(call, :.) && !isempty(call.args)
+            return Compose(translate.(Ref(mod), call.args[1:end-1])...,
+                           translate(mod, Expr(:call, call.args[end], args[2:end]...)))
+        end
+    end
+    error("invalid query expression: $(repr(ex))")
+end
+
+translate(mod::Module, sym::Symbol) =
+    translate(mod, Val(sym))
+
+translate(mod::Module, qn::QuoteNode) =
+    translate(mod, qn.value)
+
+translate(mod::Module, @nospecialize(v::Val{N})) where {N} =
+    Get(N)
+
+translate(mod::Module, @nospecialize(v::Val{N}), args::Tuple) where {N} =
+    Lift(getfield(mod, N), translate.(Ref(mod), args))
+
+translate(mod::Module, val) =
+    Lift(val)
 
 
 #
@@ -430,8 +483,8 @@ end
 >>(X::Union{DataKnot,AbstractQuery,Pair{Symbol,<:Union{DataKnot,AbstractQuery}}}, Xs...) =
     Compose(X, Xs...)
 
-Compose(X, Xs...) =
-    Query(Compose, X, Xs...)
+Compose(Xs...) =
+    Query(Compose, Xs...)
 
 quoteof(::typeof(Compose), args::Vector{Any}) =
     quoteof(>>, args)
@@ -517,6 +570,9 @@ function Record(env::Environment, p::Pipeline, Xs...)
     xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_record(p, xs)
 end
+
+translate(mod::Module, ::Val{:record}, args::Tuple) =
+    Record(translate.(Ref(mod), args)...)
 
 
 #
@@ -660,6 +716,12 @@ function Collect(env::Environment, p::Pipeline, X)
     x = assemble(X, env, target_pipe(p))
     assemble_collect(p, x)
 end
+
+translate(mod::Module, ::Val{:collect}, args::Tuple) =
+    Collect(translate.(Ref(mod), args)...)
+
+translate(mod::Module, ::Val{:collect}, ::Tuple{}) =
+    Then(Collect)
 
 
 #
@@ -879,6 +941,9 @@ Each(X) = Query(Each, X)
 Each(env::Environment, p::Pipeline, X) =
     compose(p, assemble(X, env, target_pipe(p)))
 
+translate(mod::Module, ::Val{:each}, args::Tuple{Any}) =
+    Each(translate(mod, args[1]))
+
 
 #
 # Assigning labels.
@@ -913,6 +978,9 @@ Label(env::Environment, p::Pipeline, lbl::Symbol) =
 
 Lift(p::Pair{Symbol}) =
     Compose(p.second, Label(p.first))
+
+translate(mod::Module, ::Val{:label}, args::Tuple{Symbol}) =
+    Label(args[1])
 
 
 #
@@ -1160,6 +1228,9 @@ function Keep(env::Environment, p::Pipeline, P)
     assemble_keep(p, q)
 end
 
+translate(mod::Module, ::Val{:keep}, args::Tuple{Any,Vararg{Any}}) =
+    Keep(translate.(Ref(mod), args)...)
+
 
 #
 # Setting the scope for context parameters.
@@ -1193,6 +1264,9 @@ function Given(env::Environment, p::Pipeline, X)
     q = assemble(X, env, target_pipe(p))
     assemble_given(p, q)
 end
+
+translate(mod::Module, ::Val{:given}, args::Tuple{Any,Vararg{Any}}) =
+    Given(translate.(Ref(mod), args)...)
 
 
 #
@@ -1439,6 +1513,30 @@ function Min(env::Environment, p::Pipeline, X)
     assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
 end
 
+translate(mod::Module, ::Val{:count}, args::Tuple{Any}) =
+    Count(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:count}, args::Tuple{}) =
+    Then(Count)
+
+translate(mod::Module, ::Val{:sum}, args::Tuple{Any}) =
+    Sum(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:sum}, args::Tuple{}) =
+    Then(Sum)
+
+translate(mod::Module, ::Val{:max}, args::Tuple{Any}) =
+    Max(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:max}, args::Tuple{}) =
+    Then(Max)
+
+translate(mod::Module, ::Val{:min}, args::Tuple{Any}) =
+    Min(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:min}, args::Tuple{}) =
+    Then(Min)
+
 
 #
 # Filter combinator.
@@ -1497,6 +1595,9 @@ function Filter(env::Environment, p::Pipeline, X)
     x = assemble(X, env, target_pipe(p))
     assemble_filter(p, x)
 end
+
+translate(mod::Module, ::Val{:filter}, args::Tuple{Any}) =
+    Filter(translate(mod, args[1]))
 
 
 #
@@ -1586,6 +1687,12 @@ end
 Drop(env::Environment, p::Pipeline, N) =
     Take(env, p, N, true)
 
+translate(mod::Module, ::Val{:take}, args::Tuple{Any}) =
+    Take(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:drop}, args::Tuple{Any}) =
+    Drop(translate(mod, args[1]))
+
 
 #
 # Unique and Group combinators.
@@ -1607,6 +1714,12 @@ function Unique(env::Environment, p::Pipeline, X)
     x = assemble(X, env, target_pipe(p))
     assemble_unique(p, x)
 end
+
+translate(mod::Module, ::Val{:unique}, args::Tuple{Any}) =
+    Unique(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:unique}, args::Tuple{}) =
+    Then(Unique)
 
 function assemble_group(p::Pipeline, xs::Vector{Pipeline})
     lbls = Symbol[]
@@ -1667,4 +1780,7 @@ function Group(env::Environment, p::Pipeline, Xs...)
     xs = assemble.(collect(AbstractQuery, Xs), Ref(env), Ref(target_pipe(p)))
     assemble_group(p, xs)
 end
+
+translate(mod::Module, ::Val{:group}, args::Tuple) =
+    Group(translate.(Ref(mod), args)...)
 

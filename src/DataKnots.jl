@@ -5,6 +5,7 @@
 module DataKnots
 
 export
+    @query,
     Collect,
     Count,
     DataKnot,
