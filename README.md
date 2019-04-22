@@ -84,11 +84,13 @@ greater than their department's average.
 
     using Statistics: mean
 
-    chicago[It.employee >>
-            Group(It.department) >>
-            Keep(:avg_salary => mean.(It.employee.salary)) >>
-            It.employee >>
-            Filter(It.salary .> It.avg_salary)]
+    @query chicago begin
+        employee
+        group(department)
+        keep(avg_salary => mean(employee.salary))
+        employee
+        filter(salary > avg_salary)
+    end
      #=>
        │ employee                                               │
        │ name       department  position           salary  rate │
