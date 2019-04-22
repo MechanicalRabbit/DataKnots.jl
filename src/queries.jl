@@ -148,7 +148,7 @@ end
 assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
     assemble(F, shape(pack(db, params)))
 
-function  assemble(F::AbstractQuery, src::AbstractShape)
+function assemble(F::AbstractQuery, src::AbstractShape)
     env = Environment()
     q = uncover(assemble(F, env, cover(src)))
     return optimize(q)
@@ -162,6 +162,19 @@ end
 macro query(ex)
     return quote
         translate($__module__, $(QuoteNode(ex)))
+    end
+end
+
+macro query(db, exs...)
+    exs = map(exs) do ex
+        if Meta.isexpr(ex, :(=), 2)
+            esc(Expr(:kw, ex.args...))
+        else
+            :(translate($__module__, $(QuoteNode(ex))))
+        end
+    end
+    return quote
+        query($(esc(db)), $(exs...))
     end
 end
 
