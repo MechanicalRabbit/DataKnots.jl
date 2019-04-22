@@ -91,13 +91,33 @@ greater than their department's average.
         employee
         filter(salary > avg_salary)
     end
-     #=>
-       │ employee                                               │
-       │ name       department  position           salary  rate │
-     ──┼────────────────────────────────────────────────────────┼
-     1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
-     2 │ JEFFERY A  POLICE      SERGEANT           101442       │
-     =#
+    #=>
+      │ employee                                               │
+      │ name       department  position           salary  rate │
+    ──┼────────────────────────────────────────────────────────┼
+    1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
+    2 │ JEFFERY A  POLICE      SERGEANT           101442       │
+    =#
+
+There is a non-macro syntax for Julia. The query above could be
+equivalently written:
+
+    using Statistics: mean
+
+    chicago[It.employee >>
+            Group(It.department) >>
+            Keep(:avg_salary => mean.(It.employee.salary)) >>
+            It.employee >>
+            Filter(It.salary .> It.avg_salary)]
+    #=>
+      │ employee                                               │
+      │ name       department  position           salary  rate │
+    ──┼────────────────────────────────────────────────────────┼
+    1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
+    2 │ JEFFERY A  POLICE      SERGEANT           101442       │
+    =#
+
+Most of our documentation uses this non-macro syntax.
 
 ## Support
 
