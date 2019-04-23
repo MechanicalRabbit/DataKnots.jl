@@ -187,6 +187,12 @@ function translate(mod::Module, ex::Expr)
         return Compose(translate(mod, args[1]), translate(mod, args[2].args[1]))
     elseif head === :.
         return Compose(translate.(Ref(mod), args)...)
+    elseif head === :braces
+        return Record(translate.(Ref(mod), args)...)
+    elseif head === :quote && length(args) == 1 && Meta.isexpr(args[1], :braces)
+        return Record(translate.(Ref(mod), args[1].args)...)
+    elseif head === :curly && length(args) >= 1
+        return Compose(translate(mod, args[1]), Record(translate.(Ref(mod), args[2:end])...))
     elseif head === :call && length(args) >= 1
         call = args[1]
         if call === :(=>) && length(args) == 3 && args[2] isa Symbol
