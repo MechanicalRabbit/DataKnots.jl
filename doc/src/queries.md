@@ -833,6 +833,14 @@ In `@query` notation, values and functions are lifted automatically.
     @query mean(department.employee.salary)
     #-> Lift(mean, (Get(:department) >> Get(:employee) >> Get(:salary),))
 
+Query-valued functions are also supported.  They are not lifted, but applied
+immediately.
+
+    increment(x) = @query $x + 1
+
+    @query increment(1)
+    #-> Lift(+, (Lift(1), Lift(1)))
+
 ### `Each`
 
 `Each` serves as a barrier for aggregate queries.

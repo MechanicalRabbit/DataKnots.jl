@@ -176,7 +176,7 @@ macro query(db, exs...)
     end
 end
 
-function translate(mod::Module, ex::Expr)
+function translate(mod::Module, ex::Expr)::AbstractQuery
     head = ex.head
     args = ex.args
     if head === :block
@@ -222,8 +222,15 @@ translate(mod::Module, qn::QuoteNode) =
 translate(mod::Module, @nospecialize(v::Val{N})) where {N} =
     Get(N)
 
-translate(mod::Module, @nospecialize(v::Val{N}), args::Tuple) where {N} =
-    Lift(getfield(mod, N), translate.(Ref(mod), args))
+function translate(mod::Module, @nospecialize(v::Val{N}), args::Tuple) where {N}
+    fn = getfield(mod, N)
+    oty = Core.Compiler.return_type(fn, Tuple{map(arg -> Query, args)...})
+    if oty != Union{} && oty <: Union{AbstractQuery,Pair{Symbol,<:AbstractQuery}}
+        return Lift(fn(args...))
+    else
+        return Lift(fn, translate.(Ref(mod), args))
+    end
+end
 
 translate(mod::Module, val) =
     Lift(val)
