@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.5.0
+
+- Added `@macro` syntax.
+
 ## v0.4.0
 
 - Added `Collect` combinator.
