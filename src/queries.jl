@@ -160,9 +160,7 @@ end
 #
 
 macro query(ex)
-    return quote
-        translate($__module__, $(QuoteNode(ex)))
-    end
+    return :( translate($__module__, $(Expr(:quote, ex)) ) )
 end
 
 macro query(db, exs...)
@@ -170,7 +168,7 @@ macro query(db, exs...)
         if Meta.isexpr(ex, :(=), 2)
             esc(Expr(:kw, ex.args...))
         else
-            :(translate($__module__, $(QuoteNode(ex))))
+            :( Each(translate($__module__, $(Expr(:quote, ex)) )) )
         end
     end
     return quote
@@ -211,6 +209,12 @@ end
 
 translate(mod::Module, sym::Symbol) =
     translate(mod, Val(sym))
+
+translate(::Module, ::Val{:nothing}) =
+    Lift(nothing)
+
+translate(::Module, ::Val{:missing}) =
+    Lift(missing)
 
 translate(mod::Module, qn::QuoteNode) =
     translate(mod, qn.value)

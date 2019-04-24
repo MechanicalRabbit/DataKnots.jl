@@ -5,6 +5,7 @@ We will need the following definitions.
 
     using DataKnots:
         @VectorTree,
+        @query,
         Collect,
         Count,
         DataKnot,
@@ -378,6 +379,46 @@ We can use the function `assemble()` to see the query plan.
     │  3 │
     =#
 
+### `@query`
+
+`Query` objects could be constructed using a convenient notation provided
+by the macro `@query`.  For example, the query `Count(It.department)` could
+also be written as:
+
+    @query count(department)
+    #-> Count(Get(:department))
+
+The `@query` macro could also be used to apply the constructed query to
+a `DataKnot`.
+
+    @query chicago count(department)
+    #=>
+    │ It │
+    ┼────┼
+    │  3 │
+    =#
+
+Query parameters could be passed as keyword arguments.
+
+    @query chicago AMT=100000 SZ=1 begin
+        department
+        filter(count(employee.filter(salary > AMT)) >= SZ)
+        count()
+    end
+    #=>
+    │ It │
+    ┼────┼
+    │  2 │
+    =#
+
+Queries defined elsewhere could be embedded in a `@query` expression using
+interpolation syntax (`$`).
+
+    Size = @query count(employee)
+    #-> Count(Get(:employee))
+
+    @query department{name, $Size}
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)))
 
 ### Composition
 
@@ -405,6 +446,28 @@ The `It` query primitive is the identity with respect to `>>`.
     │ 42 │
     =#
 
+In `@query` notation, the identity query is called `it`.
+
+    @query it
+    #-> It
+
+Composition of queries is written as a sequence of statements in a
+`begin`/`end` block.
+
+    @query begin
+        3
+        it + 4
+        it * 6
+    end
+    #-> Lift(3) >> Lift(+, (It, Lift(4))) >> Lift(*, (It, Lift(6)))
+
+    @query (3; it + 4; it * 6)
+    #-> Lift(3) >> Lift(+, (It, Lift(4))) >> Lift(*, (It, Lift(6)))
+
+Alternatively, the `.` symbol is used as the composition combinator.
+
+    @query (3).(it + 4).(it * 6)
+    #-> Lift(3) >> Lift(+, (It, Lift(4))) >> Lift(*, (It, Lift(6)))
 
 ### `Record`
 
@@ -457,6 +520,25 @@ Similarly, when there are duplicate labels, only the last one survives.
     3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
     =#
 
+In `@query` notation, `Record(X₁, X₂ … Xₙ)` is written as
+`record(X₁, X₂ … Xₙ)`.
+
+    @query department.record(name, size => count(employee))
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)) >> Label(:size))
+
+Alternatively, we could use the `{}` brackets.
+
+    @query {count(department), max(department.count(employee))}
+    #-> Record(Count(Get(:department)), Max(Get(:department) >> Count(Get(:employee))))
+
+When `{}` is used in composition, the composition operator `.` could be
+omitted.
+
+    @query department.{name, size => count(employee)}
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)) >> Label(:size))
+
+    @query department{name, size => count(employee)}
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)) >> Label(:size))
 
 ### `Collect`
 
@@ -546,6 +628,18 @@ To remove a field from a record, replace it with the value `nothing`.
     │ POLICE, [JEFFERY A, SERGEANT, 101442… JEFFERY A, SERGEANT, 101442, missing;…│
     =#
 
+In `@query` notation, `Collect(X)` is written as `collect(X)`.
+
+    @query department.collect(size => count(employee), employee => nothing)
+    #=>
+    Get(:department) >> Collect(Count(Get(:employee)) >> Label(:size),
+                                Lift(nothing) >> Label(:employee))
+    =#
+
+The aggregate primitive `Collect` is written as `collect()`.
+
+    @query department.employee.collect()
+    #-> Get(:department) >> Get(:employee) >> Then(Collect)
 
 ### `Lift`
 
@@ -715,6 +809,29 @@ Julia functions are lifted when they are broadcasted over queries.
     │ 88638.0 │
     =#
 
+In `@query` notation, values and functions are lifted automatically.
+
+    @query "Hello World!"
+    #-> Lift("Hello World!")
+
+    @query missing
+    #-> Lift(missing)
+
+    @query 'a':'c'
+    #-> Lift(Colon, (Lift('a'), Lift('c')))
+
+    @query (0; it + 1)
+    #-> Lift(0) >> Lift(+, (It, Lift(1)))
+
+    @query department.employee{name, salary, salary > 100000}
+    #=>
+    Get(:department) >>
+    Get(:employee) >>
+    Record(Get(:name), Get(:salary), Lift(>, (Get(:salary), Lift(100000))))
+    =#
+
+    @query mean(department.employee.salary)
+    #-> Lift(mean, (Get(:department) >> Get(:employee) >> Get(:salary),))
 
 ### `Each`
 
@@ -772,6 +889,10 @@ queries.
     3 │  3 │
     =#
 
+In `@query` notation, `Each(X)` is written as `each(X)`.
+
+    @query department.each(employee.count())
+    #-> Get(:department) >> Each(Get(:employee) >> Then(Count))
 
 ### `Label`
 
@@ -799,6 +920,13 @@ As a shorthand, we can use `=>`.
     │        3 │
     =#
 
+In `@query` notation, we could use `label(name)` or `=>` syntax.
+
+    @query count(department).label(num_dept)
+    #-> Count(Get(:department)) >> Label(:num_dept)
+
+    @query num_dept => count(department)
+    #-> Count(Get(:department)) >> Label(:num_dept)
 
 ### `Tag`
 
@@ -848,7 +976,6 @@ We use `Tag()` constructor to assign a name to a query.
     2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
     3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
     =#
-
 
 ### `Get`
 
@@ -995,6 +1122,10 @@ Regular and named tuples also support attribute lookup.
     (1:1) × Tuple{String,String,Int64}
     =#
 
+In `@query` notation, `Get(:name)` is written as `name`.
+
+    @query department.name
+    #-> Get(:department) >> Get(:name)
 
 ### `Keep` and `Given`
 
@@ -1120,6 +1251,28 @@ parameters.
     10 │ BRENDA B  │
     =#
 
+In `@query` notation, `Keep(X)` and `Given(X, Q)` are written as `keep(X)` and
+`given(X, Q)`.
+
+    @query department.keep(dept_name => name).employee{dept_name, name}
+    #=>
+    Get(:department) >>
+    Keep(Get(:name) >> Label(:dept_name)) >>
+    Get(:employee) >>
+    Record(Get(:dept_name), Get(:name))
+    =#
+
+    @query begin
+        department
+        given(size => count(employee),
+              half => size ÷ 2,
+              employee.take(half))
+    end
+    #=>
+    Get(:department) >> Given(Count(Get(:employee)) >> Label(:size),
+                              Lift(div, (Get(:size), Lift(2))) >> Label(:half),
+                              Get(:employee) >> Take(Get(:half)))
+    =#
 
 ### `Count`, `Sum`, `Max`, `Min`
 
@@ -1193,6 +1346,38 @@ output.
     3 │ OEMC    17.68; 19.38      2  37.06  19.38  17.68 │
     =#
 
+These operations are also available in the `@query` notation.
+
+    @query begin
+        department.employee.rate.collect()
+        {rate, count(rate), sum(rate), max(rate), min(rate)}
+    end
+    #=>
+    Get(:department) >>
+    Get(:employee) >>
+    Get(:rate) >>
+    Then(Collect) >>
+    Record(Get(:rate),
+           Count(Get(:rate)),
+           Sum(Get(:rate)),
+           Max(Get(:rate)),
+           Min(Get(:rate)))
+    =#
+
+    @query begin
+        department
+        collect(employee.rate)
+        {rate, rate.count(), rate.sum(), rate.max(), rate.min()}
+    end
+    #=>
+    Get(:department) >>
+    Collect(Get(:employee) >> Get(:rate)) >>
+    Record(Get(:rate),
+           Get(:rate) >> Then(Count),
+           Get(:rate) >> Then(Sum),
+           Get(:rate) >> Then(Max),
+           Get(:rate) >> Then(Min))
+    =#
 
 ### `Filter`
 
@@ -1241,6 +1426,20 @@ The input data is dropped when the output of the predicate contains only
     2 │ FIRE    103350; 95484; 103272 │
     =#
 
+In `@query` notation, we write `filter(X)`.
+
+    @query begin
+        department
+        filter(name == "POLICE")
+        employee
+        filter(name == "JEFFERY A")
+    end
+    #=>
+    Get(:department) >>
+    Filter(Lift(==, (Get(:name), Lift("POLICE")))) >>
+    Get(:employee) >>
+    Filter(Lift(==, (Get(:name), Lift("JEFFERY A"))))
+    =#
 
 ### `Take` and `Drop`
 
@@ -1321,6 +1520,13 @@ source and must produce a singular integer.
     chicago[Q]
     #-> ERROR: expected a singular integer
 
+In `@query` notation, we write `take(N)` and `drop(N)`.
+
+    @query department.employee.take(3)
+    #-> Get(:department) >> Get(:employee) >> Take(Lift(3))
+
+    @query department.employee.drop(3)
+    #-> Get(:department) >> Get(:employee) >> Drop(Lift(3))
 
 ### `Unique` and `Group`
 
@@ -1356,6 +1562,21 @@ We use the `Unique` combinator to produce unique elements of a collection.
     5 │ POLICE OFFICER       │
     6 │ SERGEANT             │
     7 │ TRAFFIC CONTROL AIDE │
+    =#
+
+In `@query` notation, `Unique(X)` is written as `unique(X)`.
+
+    @query department{name, unique(employee.position)}
+    #=>
+    Get(:department) >> Record(Get(:name),
+                               Unique(Get(:employee) >> Get(:position)))
+    =#
+
+The aggregate query form of `Unique` is written as `unique()`.
+
+    @query department.employee.position.unique()
+    #=>
+    Get(:department) >> Get(:employee) >> Get(:position) >> Then(Unique)
     =#
 
 We use the `Group` combinator to group the input by the given key.
@@ -1422,5 +1643,18 @@ More than one key column could be provided.
     ──┼──────────────────┼
     1 │ false   true   7 │
     2 │  true  false   3 │
+    =#
+
+In `@query` notation, we write `group()`.
+
+    @query begin
+        department
+        group(size => count(employee))
+        {size, count => count(department)}
+    end
+    #=>
+    Get(:department) >>
+    Group(Count(Get(:employee)) >> Label(:size)) >>
+    Record(Get(:size), Count(Get(:department)) >> Label(:count))
     =#
 
