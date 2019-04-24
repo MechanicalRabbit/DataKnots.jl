@@ -1017,11 +1017,25 @@ is an `AbstractVector` specialized for column-oriented storage.
      (name = "FIRE", size = 2)
     =#
 
-## The `@query` Macro Syntax
+## The `@query` Notation
 
-There is a light macro syntax which can be used to increase the
-readability of query definitions. With macros, `It` is no longer
-needed and matched parenthesis `{}` create `Record` entities.
+Query objects could be written using a convenient lightweight
+notation provided by the `@query` macro.
+
+    @query department.name
+    #-> Get(:department) >> Get(:name)
+
+By providing the datasource, the queries can be performed.
+
+    @query chicago department.name
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    =#
+
+In this notation, parenthesis `{}` create `Record` entities.
 
     @query chicago department.employee{name, salary}
     #=>
@@ -1037,7 +1051,7 @@ needed and matched parenthesis `{}` create `Record` entities.
 
 Query composition can be done using blocks. Combinators, such as
 `Filter` and `Keep`, are available, using lower-case names.
-Operators and functions are automatically broadcast.
+Operators and functions are automatically lifted to queries.
 
     using Statistics: mean
 
@@ -1056,8 +1070,25 @@ Operators and functions are automatically broadcast.
     2 │ ROBERT K   103272 │
     =#
 
-Variables and expressions can be used with the dollar-sign `$`.
-Custom combinators can also be defined and reused.
+In this notation, the dollar-sign lets you embed a regular Julia
+expression and access function variables from within a query.
+
+    threshold = 100000
+
+    @query chicago begin
+               department.employee
+               filter(salary>$threshold)
+               {name, salary}
+           end
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┼
+    1 │ JEFFERY A  101442 │
+    2 │ ROBERT K   103272 │
+    =#
+
+It's possible to define and reuse queries and combinators. 
 
     salary = @query department.employee.salary
 
@@ -1082,9 +1113,9 @@ can be provided as the 3rd component of the macro expression.
     │ 80016  103272      4 │
     =#
 
-Aggregate queries, such as `Unique` can be used in macro form as
-functions with no arguments, such as `unique()`. Within a block,
-the semicolon can also be used for query composition.
+Aggregate queries, such as `Unique` can be used as functions with
+no arguments, such as `unique()`. Within a block, the semicolon
+can also be used for query composition.
 
     @query chicago begin
                department; filter(count(employee)>2)
