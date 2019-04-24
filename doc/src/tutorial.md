@@ -1019,7 +1019,7 @@ is an `AbstractVector` specialized for column-oriented storage.
 
 ## Importing & Exporting Data
 
-We can import data directly from systems that support the `Tables.jl`
+We can import directly from systems that support the `Tables.jl`
 interface. Here is a tabular variant of the chicago dataset.
 
     using CSV
@@ -1059,8 +1059,8 @@ interface. Here is a tabular variant of the chicago dataset.
     10 │ BRENDA B   OEMC        TRAFFIC CONTROL AIDE   64392        │
     =#
 
-This tabular data could be filtered to show employees that are paid
-more than average. Let's also prune the `rate` column.
+This tabular data could be filtered to show employees that are
+paid more than average. Let's also prune the `rate` column.
 
     using Statistics: mean
 
@@ -1097,9 +1097,9 @@ We can then export this data.
 
 ## Restructuring Imported Data
 
-After importing tabular data, it is sometimes helpful to restructure
-hierarchically to make queries more convenient. We've seen earlier how
-this could be done with `Group` combinator.
+After importing tabular data, it is sometimes helpful to
+restructure hierarchically to make queries more convenient. We've
+seen earlier how this could be done with `Group` combinator.
 
     chicago′[It.employee >> Group(It.department)]
     #=>
@@ -1110,8 +1110,8 @@ this could be done with `Group` combinator.
     3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A, POLICE…│
     =#
 
-With a little bit of labeling, this hierarchy could be transformed so
-that its structure is compatible with our initial `chicago` dataset.
+With a some labeling, this hierarchy could be transformed so that
+its structure is compatible with our initial `chicago` dataset.
 
     Restructure =
         :department =>
@@ -1133,8 +1133,8 @@ that its structure is compatible with our initial `chicago` dataset.
     3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
     =#
 
-Using `Collect` we could save this restructured dataset as a top-level
-field, `department`.
+Using `Collect` we could save this restructured dataset as a
+top-level field, `department`.
 
     chicago″ = chicago′[Restructure >> Collect]
     #=>
@@ -1143,10 +1143,10 @@ field, `department`.
     │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
     =#
 
-Then, queries that originally worked with our hierarchical `chicago`
-dataset would now work with this imported and then restructured
-`chicago″` data. For example, we could once again compute the average
-employee salary by department.
+Then, queries that originally worked with our hierarchical
+`chicago` dataset would now work with this imported and then
+restructured `chicago″` data. For example, we could once again
+compute the average employee salary by department.
 
     using Statistics: mean
 
