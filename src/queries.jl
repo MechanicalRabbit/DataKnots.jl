@@ -226,7 +226,7 @@ function translate(mod::Module, @nospecialize(v::Val{N}), args::Tuple) where {N}
     fn = getfield(mod, N)
     oty = Core.Compiler.return_type(fn, Tuple{map(arg -> Query, args)...})
     if oty != Union{} && oty <: Union{AbstractQuery,Pair{Symbol,<:AbstractQuery}}
-        return Lift(fn(args...))
+        return Lift(fn(translate.(Ref(mod), args)...))
     else
         return Lift(fn, translate.(Ref(mod), args))
     end

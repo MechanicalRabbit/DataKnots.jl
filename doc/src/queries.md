@@ -841,6 +841,13 @@ immediately.
     @query increment(1)
     #-> Lift(+, (Lift(1), Lift(1)))
 
+Query value functions could also be defined via `Lift`.
+
+    increment(x) = Lift(+, (x, 1))
+
+    @query increment(1 + 1)
+    #-> Lift(+, (Lift(+, (Lift(1), Lift(1))), 1))
+
 ### `Each`
 
 `Each` serves as a barrier for aggregate queries.
