@@ -1017,6 +1017,89 @@ is an `AbstractVector` specialized for column-oriented storage.
      (name = "FIRE", size = 2)
     =#
 
+## The `@query` Macro Syntax
+
+There is a light macro syntax which can be used to increase the
+readability of query definitions. With macros, `It` is no longer
+needed and matched parenthesis `{}` create `Record` entities.
+
+    @query chicago department.employee{name, salary}
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┼
+    1 │ ANTHONY A   72510 │
+    2 │ JEFFERY A  101442 │
+    3 │ NANCY A     80016 │
+    4 │ DANIEL A    95484 │
+    5 │ ROBERT K   103272 │
+    =#
+
+Query composition can be done using blocks. Combinators, such as
+`Filter` and `Keep`, are available, using lower-case names.
+Operators and functions are automatically broadcast.
+
+    using Statistics: mean
+
+    @query chicago begin
+               department
+               keep(avg_salary => mean(employee.salary))
+               employee
+               filter(salary > avg_salary)
+               {name, salary}
+           end
+    #=>
+      │ employee          │
+      │ name       salary │
+    ──┼───────────────────┼
+    1 │ JEFFERY A  101442 │
+    2 │ ROBERT K   103272 │
+    =#
+
+Variables and expressions can be used with the dollar-sign `$`.
+Custom combinators can also be defined and reused.
+
+    salary = @query department.employee.salary
+
+    stats(x) = @query {min=>min($x),
+                       max=>max($x),
+                       count=>count($x)}
+
+    @query chicago stats($salary)
+    #=>
+    │ min    max     count │
+    ┼──────────────────────┼
+    │ 72510  103272      5 │
+    =#
+
+The current expression can be accessed with `it`. Query parameters
+can be provided as the 3rd component of the macro expression.
+
+    @query chicago stats($salary.filter(it>cutoff)) cutoff=80000
+    #=>
+    │ min    max     count │
+    ┼──────────────────────┼
+    │ 80016  103272      4 │
+    =#
+
+Aggregate queries, such as `Unique` can be used in macro form as
+functions with no arguments, such as `unique()`. Within a block,
+the semicolon can also be used for query composition.
+
+    @query chicago begin
+               department; filter(count(employee)>2)
+               employee; position; unique()
+           end
+    #=>
+      │ position       │
+    ──┼────────────────┼
+    1 │ POLICE OFFICER │
+    2 │ SERGEANT       │
+    =#
+
+Other than these convenient syntactic differences, the queries
+behave exactly as they would be in the underlying grammar.
+
 ## Importing & Exporting Data
 
 We can import directly from systems that support the `Tables.jl`
