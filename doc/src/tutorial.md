@@ -1070,8 +1070,8 @@ Operators and functions are automatically lifted to queries.
     2 │ ROBERT K   103272 │
     =#
 
-In this notation, the dollar-sign lets you embed a regular Julia
-variables and expressions from within a query.
+In this notation, the interpolation syntax (`$`) lets you embed
+regular Julia variables and expressions from within a query.
 
     threshold = 90544.8
 
