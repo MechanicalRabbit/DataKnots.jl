@@ -1019,13 +1019,13 @@ is an `AbstractVector` specialized for column-oriented storage.
 
 ## The `@query` Notation
 
-Query objects could be written using a convenient lightweight
-notation provided by the `@query` macro.
+Query objects could be written using a convenient notation
+provided by the `@query` macro.
 
     @query department.name
     #-> Get(:department) >> Get(:name)
 
-By providing the datasource, the queries can be performed.
+When a datasource is given to `@query`, the query is performed.
 
     @query chicago department.name
     #=>
@@ -1071,24 +1071,28 @@ Operators and functions are automatically lifted to queries.
     =#
 
 In this notation, the dollar-sign lets you embed a regular Julia
-expression and access function variables from within a query.
+variables and expressions from within a query.
 
-    threshold = 100000
+    threshold = 90544.8
 
     @query chicago begin
                department.employee
                filter(salary>$threshold)
-               {name, salary}
+               {name, salary, 
+                over => salary - $(trunc(Int, threshold))}
            end
     #=>
-      │ employee          │
-      │ name       salary │
-    ──┼───────────────────┼
-    1 │ JEFFERY A  101442 │
-    2 │ ROBERT K   103272 │
+      │ employee                 │
+      │ name       salary  over  │
+    ──┼──────────────────────────┼
+    1 │ JEFFERY A  101442  10898 │
+    2 │ DANIEL A    95484   4940 │
+    3 │ ROBERT K   103272  12728 │
     =#
 
-It's possible to define and reuse queries and combinators. 
+It's possible to independently define queries and combinators.
+Function arguments in a combinator macro are accessed via `$`.
+Queries defined previously can be incorporated using `$` as well.
 
     salary = @query department.employee.salary
 
@@ -1106,16 +1110,18 @@ It's possible to define and reuse queries and combinators.
 The current expression can be accessed with `it`. Query parameters
 can be provided as the 3rd component of the macro expression.
 
-    @query chicago stats($salary.filter(it>cutoff)) cutoff=80000
+    @query chicago begin
+               stats($salary.filter(it>threshold))
+           end threshold=90544.8
     #=>
     │ min    max     count │
     ┼──────────────────────┼
-    │ 80016  103272      4 │
+    │ 95484  103272      3 │
     =#
 
-Aggregate queries, such as `Unique` can be used as functions with
-no arguments, such as `unique()`. Within a block, the semicolon
-can also be used for query composition.
+Aggregate queries, such as `Unique` can be used in this notation
+as lower-case equivalent with parenthesis, like `unique()`. Within
+a block, the semicolon can also be used for query composition.
 
     @query chicago begin
                department; filter(count(employee)>2)
