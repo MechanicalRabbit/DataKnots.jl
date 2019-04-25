@@ -1108,7 +1108,7 @@ Queries defined previously can be incorporated using `$` as well.
     =#
 
 The current expression can be accessed with `it`. Query parameters
-can be provided as the 3rd component of the macro expression.
+can be provided as keyword arguments.
 
     @query chicago begin
                stats($salary.filter(it>threshold))
