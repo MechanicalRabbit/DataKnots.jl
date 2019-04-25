@@ -233,13 +233,118 @@ plural queries.
 Lifting lets us use rich statistical and data processing functions
 from within our queries.
 
+## Structuring Data
+
+So far we've seen data flows of a single type. Furthermore, we've
+noticed that nesting plural queries doesn't produce a nested flow,
+but instead produces a flattened stream of elements.
+
+    Letters(X) = Lift(x -> 'a':'a'+x-1, (X,))
+
+    unitknot[Lift(1:3) >> Letters(It)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ a  │
+    3 │ b  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
+    =#
+
+The `Record` combinator creates a bucket that holds a parallel set
+of subordinate flows. Those flows can be singular or plural.
+
+    unitknot[Lift(1:3) >> Record(It, Letters(It))]
+    #=>
+      │ #A  #B      │
+    ──┼─────────────┼
+    1 │  1  a       │
+    2 │  2  a; b    │
+    3 │  3  a; b; c │
+    =#
+
+The `Get` query constructor builds a query that extracts the given
+flow from an underlying record. In this example, notice that the
+query results are once again flattened.
+
+    unitknot[Lift(1:3) >> Record(It, Letters(It)) >> Get(:B)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ a  │
+    3 │ b  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
+    =#
+
+Records can be constructed with named labels. This could be done
+via the `Pair` constructor (`=>`) or by the `Label` combinator.
+
+    Stats = Record(:n²=>It.*It, (It.*It.*It) >> Label(:n³))
+
+    unitknot[Lift(1:3) >> Stats]
+    #=>
+      │ n²  n³ │
+    ──┼────────┼
+    1 │  1   1 │
+    2 │  4   8 │
+    3 │  9  27 │
+    =#
+
+Property access via the identity query, `It`, is equivalent to
+using the `Get` query constructor. In this next example, while the
+underlying record is discarded by the computation, notice that the
+output flow retains the same number of input elements.
+
+    unitknot[Lift(1:3) >> Stats >> (It.n³ .+ Get(:n²))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  2 │
+    2 │ 12 │
+    3 │ 36 │
+    =#
+
+If flows resemble `Vector` types, and records resemble `Tuple`
+types, they differ since flows cannot be nested, yet records can.
+While the flattened display of nested records is a compromise, the
+underlying structure forms a hierarchy.
+
+    unitknot[Record("A", Record("B1", "B2"))]
+    #=>
+    │ #A  #B     │
+    ┼────────────┼
+    │ A   B1, B2 │
+    =#
+
+While flows don't nest, a nested list could be modeled by having
+an explicit, intermediate record between two flows.
+
+    unitknot[Lift(1:3) >> Record(Letters(It))]
+    #=>
+      │ #A      │
+    ──┼─────────┼
+    1 │ a       │
+    2 │ a; b    │
+    3 │ a; b; c │
+    =#
+
+In DataKnots, the automatic flattening of flows permits processing
+to be more fluid. If nested flows are needed, they could be easily
+modeled with an intermediate record. Together, flows and records
+are used to represent and process a wide variety of structures.
+
 ## Aggregate Queries
 
 So far queries have been *elementwise*; that is, for each input
 element, they produce zero or more output elements. Consider the
 `Count` primitive; it returns the number of its input elements.
 
-    unitknot[OneTo(3) >> Count]
+    unitknot[Lift(1:3) >> Count]
     #=>
     │ It │
     ┼────┼
@@ -248,9 +353,9 @@ element, they produce zero or more output elements. Consider the
 
 An *aggregate* query such as `Count` is computed over the input as
 a whole, and not for each individual element. The semantics of
-aggregates require discussion. Consider `OneTo(3) >> OneTo(It)`.
+aggregates require discussion. Consider `Lift(1:3) >> OneTo(It)`.
 
-    unitknot[OneTo(3) >> OneTo(It)]
+    unitknot[Lift(1:3) >> OneTo(It)]
     #=>
       │ It │
     ──┼────┼
@@ -265,18 +370,18 @@ aggregates require discussion. Consider `OneTo(3) >> OneTo(It)`.
 By appending `>> Sum` we could aggregate the entire input flow,
 producing a single output element.
 
-    unitknot[OneTo(3) >> OneTo(It) >> Sum]
+    unitknot[Lift(1:3) >> OneTo(It) >> Sum]
     #=>
     │ It │
     ┼────┼
     │ 10 │
     =#
 
-What if we wanted to produce sums by the outer query, `OneTo(3)`?
+What if we wanted to produce sums by the outer query, `Lift(1:3)`?
 Since query composition (`>>`) is associative, adding parenthesis
 around `OneTo(It) >> Sum` will not change the result.
 
-    unitknot[OneTo(3) >> (OneTo(It) >> Sum)]
+    unitknot[Lift(1:3) >> (OneTo(It) >> Sum)]
     #=>
     │ It │
     ┼────┼
@@ -287,7 +392,7 @@ We need the `Each` combinator, which acts as an elementwise
 barrier. For each input element, `Each` evaluates its argument,
 and then collects the outputs.
 
-    unitknot[OneTo(3) >> Each(OneTo(It) >> Sum)]
+    unitknot[Lift(1:3) >> Each(OneTo(It) >> Sum)]
     #=>
       │ It │
     ──┼────┼
@@ -299,7 +404,7 @@ and then collects the outputs.
 Following is an equivalent query, using the `Sum` combinator.
 Here, `Sum(X)` produces the same output as `Each(X >> Sum)`.
 
-    unitknot[OneTo(3) >> Sum(OneTo(It))]
+    unitknot[Lift(1:3) >> Sum(OneTo(It))]
     #=>
       │ It │
     ──┼────┼
@@ -315,7 +420,7 @@ plural output is converted into the function's vector argument.
     using Statistics
     Mean(X) = mean.(X)
 
-    unitknot[Mean(OneTo(3) >> Sum(OneTo(It)))]
+    unitknot[Mean(Lift(1:3) >> Sum(OneTo(It)))]
     #=>
     │ It      │
     ┼─────────┼
@@ -342,109 +447,79 @@ primitives or as query combinators taking a plural query argument.
 Moreover, custom aggregates can be constructed from native Julia
 functions and lifted into the query algebra.
 
-## Unique Elements
+## Input Source
 
-The `Unique` aggregate produces a list of distinct elements from
-its input.
+We've seen how aggregates, such as `Sum`, operate on the input as
+a whole to produce an output. We've also seen how `Each` performs
+an interesting trick by resetting what is considered the query's
+input. To discuss this in depth, let's recall a previous example.
 
-    unitknot[Lift(["b","a","c","a","c"]) >> Unique]
+    Letters(X) = Lift(x -> 'a':'a'+x-1, (X,))
+
+    unitknot[Lift(1:3) >> Letters(It)]
     #=>
       │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ a  │
+    3 │ b  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
+    =#
+
+
+Next, let's use the `Max` aggregate to report the highest letter
+encountered. In this case, the input source for `Max` happens to
+be the entire list of letters.
+
+    unitknot[Lift(1:3) >> Letters(It) >> Max]
+    #=>
+    │ It │
+    ┼────┼
+    │ c  │
+    =#
+
+We could use `Record` to bucket the letters by the outer index.
+
+    unitknot[Lift(1:3) >> Record(Letters(It))]
+    #=>
+      │ #A      │
+    ──┼─────────┼
+    1 │ a       │
+    2 │ a; b    │
+    3 │ a; b; c │
+    =#
+
+Then we could compute the maximum letter for each of the three
+records.
+
+    unitknot[Lift(1:3) >> Record(Letters(It) >> Max)]
+    #=>
+      │ #A │
     ──┼────┼
     1 │ a  │
     2 │ b  │
     3 │ c  │
     =#
 
-`Unique` also has a combinator form.
+This bucketing is what `Each` does, only that an intermediate
+record is not formed.
 
-    unitknot[Unique(["b","a","c","a","c"])]
+    unitknot[Lift(1:3) >> Each(Letters(It) >> Max)]
     #=>
       │ It │
     ──┼────┼
     1 │ a  │
     2 │ b  │
     3 │ c  │
-    =#
-
-## Filtering
-
-The `Filter` combinator has one parameter, a predicate query that,
-for each input element, decides if this element should be included
-in the output.
-
-    unitknot[OneTo(6) >> Filter(It .> 3)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
-    =#
-
-Being a combinator, `Filter` builds a query component, which could
-then be composed with any data generating query.
-
-    OnlyEven = Filter(iseven.(It))
-
-    unitknot[OneTo(6) >> OnlyEven]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
-    =#
-
-Filter can work in a nested context.
-
-    unitknot[Lift(1:3) >> Filter(Sum(OneTo(It)) .> 5)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    =#
-
-## Paging Data
-
-Like `Filter`, the `Take` and `Drop` combinators can be used to
-choose elements from an input: `Drop` is used to skip over input,
-while `Take` ignores input past a particular point.
-
-    unitknot[Lift('a':'i') >> Drop(3) >> Take(3)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ d  │
-    2 │ e  │
-    3 │ f  │
-    =#
-
-Negative indexes count backwards from the end of the input.
-
-    unitknot[Lift('a':'f') >> Take(-3)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
-    =#
-
-    unitknot[Lift('a':'f') >> Drop(-3)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ d  │
-    2 │ e  │
-    3 │ f  │
     =#
 
 Unlike `Filter`, which evaluates its argument for each element,
 the argument to `Take` is evaluated once, in the context of the
 input's *source*.
 
-    unitknot[OneTo(3) >> Each(Lift('a':'c') >> Take(It))]
+    unitknot[Lift(1:3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
       │ It │
     ──┼────┼
@@ -457,117 +532,8 @@ input's *source*.
     =#
 
 In this example, the argument of `Take` evaluates in the context
-of `OneTo(3)`. Therefore, `Take` will be performed three times,
+of `Lift(1:3)`. Therefore, `Take` will be performed three times,
 where `It` has the values `1`, `2`, and `3`.
-
-## Records & Labels
-
-Hierarchical structure can be created using the `Record`
-combinator. Values can be labeled using Julia's `Pair` syntax.
-
-    GM = Record(:name => "GARRY M", :salary => 260004)
-
-    unitknot[GM]
-    #=>
-    │ name     salary │
-    ┼─────────────────┼
-    │ GARRY M  260004 │
-    =#
-
-Field access is possible via `Get` query constructor, which takes
-a label's name. Here `Get(:name)` is an elementwise query that
-returns the value of a given label when found.
-
-    unitknot[GM >> Get(:name)]
-    #=>
-    │ name    │
-    ┼─────────┼
-    │ GARRY M │
-    =#
-
-For syntactic convenience, `It` can be used for dotted access.
-
-    unitknot[GM >> It.name]
-    #=>
-    │ name    │
-    ┼─────────┼
-    │ GARRY M │
-    =#
-
-The `Label` combinator provides a name to any expression.
-
-    unitknot[Lift("Hello World") >> Label(:greeting)]
-    #=>
-    │ greeting    │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Alternatively, Julia's pair constructor (`=>`) and and a `Symbol`
-denoted by a colon (`:`) can be used to label an expression.
-
-    Hello =
-      :greeting => Lift("Hello World")
-
-    unitknot[Hello]
-    #=>
-    │ greeting    │
-    ┼─────────────┼
-    │ Hello World │
-    =#
-
-Records can be used to make tables. Here are some statistics.
-
-    Stats = Record(:n¹=>It, :n²=>It.*It, :n³=>It.*It.*It)
-
-    unitknot[Lift(1:3) >> Stats]
-    #=>
-      │ n¹  n²  n³ │
-    ──┼────────────┼
-    1 │  1   1   1 │
-    2 │  2   4   8 │
-    3 │  3   9  27 │
-    =#
-
-Calculations can be performed using on records using field labels.
-
-    unitknot[Lift(1:3) >> Stats >> (It.n¹ .+ It.n² .+ It.n³)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    2 │ 14 │
-    3 │ 39 │
-    =#
-
-The `Collect` combinator can be used to add columns to an existing
-record. For example, the record construction above could have been
-done as follows.
-
-    Stats = Record(:n¹=>It) >>
-            Collect(:n²=> It.n¹ .* It.n¹,
-                    :n³=> It.n² .* It.n¹)
-
-    unitknot[Lift(1:3) >> Stats]
-    #=>
-      │ n¹  n²  n³ │
-    ──┼────────────┼
-    1 │  1   1   1 │
-    2 │  2   4   8 │
-    3 │  3   9  27 │
-    =#
-
-A field could be removed using `Collect` by assigning the field
-label to `nothing`.
-
-    unitknot[Lift(1:3) >> Stats >> Collect(:n¹ => nothing)]
-    #=>
-      │ n²  n³ │
-    ──┼────────┼
-    1 │  1   1 │
-    2 │  4   8 │
-    3 │  9  27 │
-    =#
 
 ## Group
 
@@ -718,36 +684,6 @@ the surrounding context.
 In DataKnots, query parameters permit external data to be used
 within query expressions. Parameters that are defined with `Given`
 can be used to remember values and reuse them.
-
-## Keeping Values
-
-The `Keep` combinator is similar to `Given` only that it does not
-increase the scope.
-
-    GT3 = Keep(:DATA => OneTo(6)) >>
-          Keep(:AVG => Mean(It.DATA)) >>
-          It.DATA >> Filter(It .> It.AVG)
-
-    unitknot[GT3]
-    #=>
-      │ DATA │
-    ──┼──────┼
-    1 │    4 │
-    2 │    5 │
-    3 │    6 │
-    =#
-
-However, unlike `Given` it does leak its parameters.
-
-    unitknot[GT3 >> Record(It, It.AVG)]
-    #=>
-      │ DATA      │
-      │ DATA  AVG │
-    ──┼───────────┼
-    1 │    4  3.5 │
-    2 │    5  3.5 │
-    3 │    6  3.5 │
-    =#
 
 ## Julia Integration
 
