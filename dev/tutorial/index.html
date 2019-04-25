@@ -638,7 +638,7 @@ stats(x) = @query {min=&gt;min($x),
 │ min    max     count │
 ┼──────────────────────┼
 │ 72510  103272      5 │
-=#</code></pre><p>The current expression can be accessed with <code>it</code>. Query parameters can be provided as the 3rd component of the macro expression.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>The current expression can be accessed with <code>it</code>. Query parameters can be provided as keyword arguments.</p><pre><code class="language-julia">@query chicago begin
            stats($salary.filter(it&gt;threshold))
        end threshold=90544.8
 #=&gt;
