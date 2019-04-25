@@ -253,8 +253,8 @@ but instead produces a flattened stream of elements.
     6 │ c  │
     =#
 
-The `Record` combinator creates a bucket that holds a parallel set
-of subordinate flows. Those flows can be singular or plural.
+The `Record` combinator creates a container that holds a parallel
+set of subordinate flows. Those flows can be singular or plural.
 
     unitknot[Lift(1:3) >> Record(It, Letters(It))]
     #=>
@@ -265,9 +265,9 @@ of subordinate flows. Those flows can be singular or plural.
     3 │  3  a; b; c │
     =#
 
-The `Get` query constructor builds a query that extracts the given
-flow from an underlying record. In this example, notice that the
-query results are once again flattened.
+The `Get` constructor builds a query that extracts a named flow
+from an underlying record. In this example, notice that the query
+results are once again flattened.
 
     unitknot[Lift(1:3) >> Record(It, Letters(It)) >> Get(:B)]
     #=>
@@ -281,8 +281,8 @@ query results are once again flattened.
     6 │ c  │
     =#
 
-Records can be constructed with named labels. This could be done
-via the `Pair` constructor (`=>`) or by the `Label` combinator.
+Records can be constructed with field labels. This could be done
+via the `Pair` constructor (`=>`) or by the `Label` query.
 
     Stats = Record(:n²=>It.*It, (It.*It.*It) >> Label(:n³))
 
@@ -296,9 +296,9 @@ via the `Pair` constructor (`=>`) or by the `Label` combinator.
     =#
 
 Property access via the identity query, `It`, is equivalent to
-using the `Get` query constructor. In this next example, while the
-underlying record is discarded by the computation, notice that the
-output flow retains the same number of input elements.
+using `Get`. In this next example, while the underlying record is
+discarded by the computation, notice that the output flow retains
+the same number of elements as found in the input.
 
     unitknot[Lift(1:3) >> Stats >> (It.n³ .+ Get(:n²))]
     #=>
@@ -333,8 +333,8 @@ an explicit, intermediate record between two flows.
     3 │ a; b; c │
     =#
 
-In DataKnots, the automatic flattening of flows permits processing
-to be more fluid. If nested flows are needed, they could be easily
+In DataKnots, flows are automatically flattened as part of query
+composition. If nested lists are needed, they could be easily
 modeled with an intermediate record. Together, flows and records
 are used to represent and process a wide variety of structures.
 
@@ -450,9 +450,9 @@ functions and lifted into the query algebra.
 ## Input Source
 
 We've seen how aggregates, such as `Sum`, operate on the input as
-a whole to produce an output. We've also seen how `Each` performs
-an interesting trick by resetting what is considered the query's
-input. To discuss this in depth, let's recall a previous example.
+a whole to produce an output. We've also seen how `Each` creates
+an aggregation barrier by changing the input *source*.  But what
+exactly does this mean?  Let's recall a previous example.
 
     Letters(X) = Lift(x -> 'a':'a'+x-1, (X,))
 
@@ -468,8 +468,7 @@ input. To discuss this in depth, let's recall a previous example.
     6 │ c  │
     =#
 
-
-Next, let's use the `Max` aggregate to report the highest letter
+Let's use the `Max` aggregate to report the highest letter
 encountered. In this case, the input source for `Max` happens to
 be the entire list of letters.
 
@@ -492,7 +491,8 @@ We could use `Record` to bucket the letters by the outer index.
     =#
 
 Then we could compute the maximum letter for each of the three
-records.
+records. In this example, the input for each invocation of `Max`
+is a set of letters, as seen above.
 
     unitknot[Lift(1:3) >> Record(Letters(It) >> Max)]
     #=>
@@ -504,7 +504,9 @@ records.
     =#
 
 This bucketing is what `Each` does, only that an intermediate
-record is not formed.
+record is not formed. For each of its input elements, it processes
+that element in its own context, where it becomes the input source
+for subsequent aggregates.
 
     unitknot[Lift(1:3) >> Each(Letters(It) >> Max)]
     #=>
@@ -515,9 +517,29 @@ record is not formed.
     3 │ c  │
     =#
 
-Unlike `Filter`, which evaluates its argument for each element,
-the argument to `Take` is evaluated once, in the context of the
-input's *source*.
+After the argument is processed for every input element to `Each`,
+the outputs are flattened into a single output flow. In this way,
+the use of `Each` in the following query doesn't do anything. It
+may process `Letters(It)` for each input element, but in the end,
+even though the outputs may be initially segregated, they are
+eventually merged together.
+
+    unitknot[Lift(1:3) >> Each(Letters(It))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ a  │
+    3 │ b  │
+    4 │ a  │
+    5 │ b  │
+    6 │ c  │
+    =#
+
+This could be seen with another aggregate, `Take`. Unlike `Filter`
+which evaluates its argument for each input element, the argument
+to `Take` is evaluated once, and in the context of the input's
+*source*.
 
     unitknot[Lift(1:3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
