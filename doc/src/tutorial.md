@@ -1020,7 +1020,8 @@ is an `AbstractVector` specialized for column-oriented storage.
 ## The `@query` Notation
 
 Query objects could be written using a convenient notation
-provided by the `@query` macro.
+provided by the `@query` macro. In the macro syntax, we can use
+field access (`.`) as query composition without needing `It`.
 
     @query department.name
     #-> Get(:department) >> Get(:name)
@@ -1049,9 +1050,11 @@ In this notation, parenthesis `{}` create `Record` entities.
     5 │ ROBERT K   103272 │
     =#
 
-Query composition can be done using blocks. Combinators, such as
-`Filter` and `Keep`, are available, using lower-case names.
-Operators and functions are automatically lifted to queries.
+Multi-line query composition could be done within blocks, marked
+by `begin` and `end`. In this format, each query to be composed is
+on its own line. Combinators, such as `Filter` and `Keep`, are
+available, using lower-case names. Operators and functions are
+automatically lifted to queries.
 
     using Statistics: mean
 
@@ -1091,8 +1094,9 @@ regular Julia variables and expressions from within a query.
     =#
 
 It's possible to independently define queries and combinators.
-Function arguments in a combinator macro are accessed via `$`.
-Queries defined previously can be incorporated using `$` as well.
+Julia values, such as `salary` below, can be queries. Furthermore,
+functions returning queries, such as `stats(x)` can be directly
+used within a query.
 
     salary = @query department.employee.salary
 
@@ -1107,8 +1111,10 @@ Queries defined previously can be incorporated using `$` as well.
     │ 72510  103272      5 │
     =#
 
-The current expression can be accessed with `it`. Query parameters
-can be provided as keyword arguments.
+Much like `It`, the query input can be accessed with `it`. For
+example, we use `it` in the query below to filter salary. Query
+parameters, such as `threshold` in the example below, can be
+provided as keyword arguments.
 
     @query chicago begin
                stats($salary.filter(it>threshold))
@@ -1119,9 +1125,9 @@ can be provided as keyword arguments.
     │ 95484  103272      3 │
     =#
 
-Aggregate queries, such as `Unique` can be used in this notation
-as lower-case equivalent with parenthesis, like `unique()`. Within
-a block, the semicolon can also be used for query composition.
+Aggregate queries, such as `Unique`, can be used in this notation
+with a lower-case equivalent having parenthesis, like `unique()`.
+In a query block, the semicolon is also composition.
 
     @query chicago begin
                department; filter(count(employee)>2)
