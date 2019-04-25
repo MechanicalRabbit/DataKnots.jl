@@ -580,8 +580,8 @@ display(vt)
 @VectorTree of 2 × (name = (1:1) × String, size = (1:1) × Int64):
  (name = &quot;POLICE&quot;, size = 3)
  (name = &quot;FIRE&quot;, size = 2)
-=#</code></pre><h2><a class="nav-anchor" id="The-@query-Notation-1" href="#The-@query-Notation-1">The <code>@query</code> Notation</a></h2><p>Query objects could be written using a convenient lightweight notation provided by the <code>@query</code> macro.</p><pre><code class="language-julia">@query department.name
-#-&gt; Get(:department) &gt;&gt; Get(:name)</code></pre><p>By providing the datasource, the queries can be performed.</p><pre><code class="language-julia">@query chicago department.name
+=#</code></pre><h2><a class="nav-anchor" id="The-@query-Notation-1" href="#The-@query-Notation-1">The <code>@query</code> Notation</a></h2><p>Query objects could be written using a convenient notation provided by the <code>@query</code> macro.</p><pre><code class="language-julia">@query department.name
+#-&gt; Get(:department) &gt;&gt; Get(:name)</code></pre><p>When a datasource is given to <code>@query</code>, the query is performed.</p><pre><code class="language-julia">@query chicago department.name
 #=&gt;
   │ name   │
 ──┼────────┼
@@ -612,20 +612,22 @@ display(vt)
 ──┼───────────────────┼
 1 │ JEFFERY A  101442 │
 2 │ ROBERT K   103272 │
-=#</code></pre><p>In this notation, the dollar-sign lets you embed a regular Julia expression and access function variables from within a query.</p><pre><code class="language-julia">threshold = 100000
+=#</code></pre><p>In this notation, the dollar-sign lets you embed a regular Julia variables and expressions from within a query.</p><pre><code class="language-julia">threshold = 90544.8
 
 @query chicago begin
            department.employee
            filter(salary&gt;$threshold)
-           {name, salary}
+           {name, salary, 
+            over =&gt; salary - $(trunc(Int, threshold))}
        end
 #=&gt;
-  │ employee          │
-  │ name       salary │
-──┼───────────────────┼
-1 │ JEFFERY A  101442 │
-2 │ ROBERT K   103272 │
-=#</code></pre><p>It&#39;s possible to define and reuse queries and combinators. </p><pre><code class="language-julia">salary = @query department.employee.salary
+  │ employee                 │
+  │ name       salary  over  │
+──┼──────────────────────────┼
+1 │ JEFFERY A  101442  10898 │
+2 │ DANIEL A    95484   4940 │
+3 │ ROBERT K   103272  12728 │
+=#</code></pre><p>It&#39;s possible to independently define queries and combinators. Function arguments in a combinator macro are accessed via <code>$</code>. Queries defined previously can be incorporated using <code>$</code> as well.</p><pre><code class="language-julia">salary = @query department.employee.salary
 
 stats(x) = @query {min=&gt;min($x),
                    max=&gt;max($x),
@@ -636,12 +638,14 @@ stats(x) = @query {min=&gt;min($x),
 │ min    max     count │
 ┼──────────────────────┼
 │ 72510  103272      5 │
-=#</code></pre><p>The current expression can be accessed with <code>it</code>. Query parameters can be provided as the 3rd component of the macro expression.</p><pre><code class="language-julia">@query chicago stats($salary.filter(it&gt;cutoff)) cutoff=80000
+=#</code></pre><p>The current expression can be accessed with <code>it</code>. Query parameters can be provided as the 3rd component of the macro expression.</p><pre><code class="language-julia">@query chicago begin
+           stats($salary.filter(it&gt;threshold))
+       end threshold=90544.8
 #=&gt;
 │ min    max     count │
 ┼──────────────────────┼
-│ 80016  103272      4 │
-=#</code></pre><p>Aggregate queries, such as <code>Unique</code> can be used as functions with no arguments, such as <code>unique()</code>. Within a block, the semicolon can also be used for query composition.</p><pre><code class="language-julia">@query chicago begin
+│ 95484  103272      3 │
+=#</code></pre><p>Aggregate queries, such as <code>Unique</code> can be used in this notation as lower-case equivalent with parenthesis, like <code>unique()</code>. Within a block, the semicolon can also be used for query composition.</p><pre><code class="language-julia">@query chicago begin
            department; filter(count(employee)&gt;2)
            employee; position; unique()
        end
