@@ -612,7 +612,7 @@ display(vt)
 ──┼───────────────────┼
 1 │ JEFFERY A  101442 │
 2 │ ROBERT K   103272 │
-=#</code></pre><p>In this notation, the dollar-sign lets you embed a regular Julia variables and expressions from within a query.</p><pre><code class="language-julia">threshold = 90544.8
+=#</code></pre><p>In this notation, the interpolation syntax (<code>$</code>) lets you embed regular Julia variables and expressions from within a query.</p><pre><code class="language-julia">threshold = 90544.8
 
 @query chicago begin
            department.employee
