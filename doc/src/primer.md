@@ -314,17 +314,16 @@ the colon (`,`) for nested record fields and the semi-colon (`;`)
 to separate elements in a plural flow.
 
     Q = Record(:n² => It .* It,
-               :n³ => It .* It .* It,
                :letters => Chars(It),
                :nested => Record(It, Chars(It)))
 
     unitknot[Lift(1:3) >> Q]
     #=>
-      │ n²  n³  letters  nested       │
-    ──┼───────────────────────────────┼
-    1 │  1   1  a        1, [a]       │
-    2 │  4   8  a; b     2, [a; b]    │
-    3 │  9  27  a; b; c  3, [a; b; c] │
+      │ n²  letters  nested       │
+    ──┼───────────────────────────┼
+    1 │  1  a        1, [a]       │
+    2 │  4  a; b     2, [a; b]    │
+    3 │  9  a; b; c  3, [a; b; c] │
     =#
 
 Previously we've seen how the composition of two plural queries
@@ -357,10 +356,9 @@ progression.
     3 │  3  a; b; c │
     =#
 
-In DataKnots, flows are automatically flattened as part of query
-composition. If nested lists are needed, they could be easily
-modeled with an intermediate record. Together, flows and records
-are used to represent and process a wide variety of structures.
+In DataKnots, records together with flows are used to represent
+process a wide variety of structures. While one cannot create a
+nested flow, they could be modeled with an intermediate record.
 
 ## Aggregate Queries
 
@@ -378,6 +376,8 @@ element, they produce zero or more output elements. Consider the
 An *aggregate* query such as `Count` is computed over the input as
 a whole, and not for each individual element. The semantics of
 aggregates require discussion. Consider `Lift(1:3) >> OneTo(It)`.
+
+    OneTo(X) = Lift(:, (1, X))
 
     unitknot[Lift(1:3) >> OneTo(It)]
     #=>
@@ -412,9 +412,22 @@ around `OneTo(It) >> Sum` will not change the result.
     │ 10 │
     =#
 
-We need the `Each` combinator, which acts as an elementwise
-barrier. For each input element, `Each` evaluates its argument,
-and then collects the outputs.
+We could use `Record` to create this elementwise barrier.
+However, it introduces an intermediate, unwanted structure:
+we asked for a single flow, not a table with one column.
+
+    unitknot[Lift(1:3) >> Record(:sum => OneTo(It) >> Sum)]
+    #=>
+      │ sum │
+    ──┼─────┼
+    1 │   1 │
+    2 │   3 │
+    3 │   6 │
+    =#
+
+We need the `Each` combinator, which much the same as `Record`,
+acts as an elementwise barrier. For each input element, `Each`
+evaluates its argument, and then collects the outputs.
 
     unitknot[Lift(1:3) >> Each(OneTo(It) >> Sum)]
     #=>
@@ -425,8 +438,27 @@ and then collects the outputs.
     3 │  6 │
     =#
 
-Following is an equivalent query, using the `Sum` combinator.
-Here, `Sum(X)` produces the same output as `Each(X >> Sum)`.
+That said, unlike `Record`, `Each` affects only computation and
+doesn't introduce an intermediate structure. This could be seen in
+the example below. The elements produced by the argument to `Each`
+are folded into the final output flow.
+
+    unitknot[Lift(1:3) >> Each(OneTo(It))]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  1 │
+    2 │  1 │
+    3 │  2 │
+    4 │  1 │
+    5 │  2 │
+    6 │  3 │
+    =#
+
+Normally, one wouldn't need to use `Each` — for aggregates such as
+`Sum` or `Count`, the query `Y >> Each(X >> Count)` is equivalent
+to `Y >> Count(X)`. Hence, we could use the combinator form of
+`Sum` to do this relative summation.
 
     unitknot[Lift(1:3) >> Sum(OneTo(It))]
     #=>
@@ -453,7 +485,7 @@ plural output is converted into the function's vector argument.
 
 To use `Mean` as a query primitive, we use `Then` to build a query
 that aggregates elements from its input. Next, we register this
-query so it is used when `Mean` is treated as a query.
+query aggregate so it is used when `Mean` is treated as a query.
 
     DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)
 
@@ -471,99 +503,11 @@ primitives or as query combinators taking a plural query argument.
 Moreover, custom aggregates can be constructed from native Julia
 functions and lifted into the query algebra.
 
-## Input Source
+## Take
 
-We've seen how aggregates, such as `Sum`, operate on the input as
-a whole to produce an output. We've also seen how `Each` creates
-an aggregation barrier by changing the input *source*.  But what
-exactly does this mean?  Let's recall a previous example.
-
-    Chars(X) = Lift(x -> 'a':'a'+x-1, (X,))
-
-    unitknot[Lift(1:3) >> Chars(It)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ a  │
-    3 │ b  │
-    4 │ a  │
-    5 │ b  │
-    6 │ c  │
-    =#
-
-Let's use the `Max` aggregate to report the highest letter
-encountered. In this case, the input source for `Max` happens to
-be the entire list of letters.
-
-    unitknot[Lift(1:3) >> Chars(It) >> Max]
-    #=>
-    │ It │
-    ┼────┼
-    │ c  │
-    =#
-
-We could use `Record` to bucket the letters by the outer index.
-
-    unitknot[Lift(1:3) >> Record(Chars(It))]
-    #=>
-      │ #A      │
-    ──┼─────────┼
-    1 │ a       │
-    2 │ a; b    │
-    3 │ a; b; c │
-    =#
-
-Then we could compute the maximum letter for each of the three
-records. In this example, the input for each invocation of `Max`
-is a set of letters, as seen above.
-
-    unitknot[Lift(1:3) >> Record(Chars(It) >> Max)]
-    #=>
-      │ #A │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
-    =#
-
-This bucketing is what `Each` does, only that an intermediate
-record is not formed. For each of its input elements, it processes
-that element in its own context, where it becomes the input source
-for subsequent aggregates.
-
-    unitknot[Lift(1:3) >> Each(Chars(It) >> Max)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
-    =#
-
-After the argument is processed for every input element to `Each`,
-the outputs are flattened into a single output flow. In this way,
-the use of `Each` in the following query doesn't do anything. It
-may process `Chars(It)` for each input element, but in the end,
-even though the outputs may be initially segregated, they are
-eventually merged together.
-
-    unitknot[Lift(1:3) >> Each(Chars(It))]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ a  │
-    3 │ b  │
-    4 │ a  │
-    5 │ b  │
-    6 │ c  │
-    =#
-
-This could be seen with another aggregate, `Take`. Unlike `Filter`
-which evaluates its argument for each input element, the argument
-to `Take` is evaluated once, and in the context of the input's
-*source*.
+Unlike `Filter` which evaluates its argument for each input
+element, the argument to `Take` is evaluated once, and in the
+context of the input's *source*.
 
     unitknot[Lift(1:3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
