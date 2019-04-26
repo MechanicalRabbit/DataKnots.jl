@@ -230,18 +230,108 @@ plural queries.
     3 │  3 │
     =#
 
+Since later in this guide we'll want to enumerate the alphabet,
+let's define a combinator for that as well. In this definition,
+anonymous function syntax (`->`) is used to build an expression
+that is then lifted to queries.
+
+    Chars(N) = Lift(n -> 'a':'a'+n-1, (N,))
+
+    unitknot[Chars(3)]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+    =#
+
 Lifting lets us use rich statistical and data processing functions
 from within our queries.
 
 ## Structuring Data
 
-So far we've seen data flows of a single type. Furthermore, we've
-noticed that nesting plural queries doesn't produce a nested flow,
-but instead produces a flattened stream of elements.
+Thus far we've seen query results that are consist of a single
+output flow. Using the `Record` combinator, we could construct
+outputs with parallel, subordinate query flows.
 
-    Letters(X) = Lift(x -> 'a':'a'+x-1, (X,))
+    unitknot[Record("Hello World", Lift(1:3), Chars(3))]
+    #=>
+    │ #A           #B       #C      │
+    ┼───────────────────────────────┼
+    │ Hello World  1; 2; 3  a; b; c │
+    =#
 
-    unitknot[Lift(1:3) >> Letters(It)]
+To help navigate these structures, each field of a record could be
+optionally named using the `Label` primitive. Alternatively, the
+`Pair` syntax could be used to provide labels. If a field label is
+omitted, one generated based upon column position is provided.
+
+    ExampleRecord = Record(:greeting => "Hello World",
+                           Lift(1:3) >> Label(:numbers),
+                           Chars(3))
+
+    unitknot[ExampleRecord]
+    #=>
+    │ greeting     numbers  #C      │
+    ┼───────────────────────────────┼
+    │ Hello World  1; 2; 3  a; b; c │
+    =#
+
+The `Get` constructor builds a query that, given a particular
+label, extracts the corresponding flow from an underlying record.
+Attribute access on the identity constant, `It`, is syntax sugar
+for this same operation.
+
+    unitknot[ExampleRecord >> Get(:greeting)]
+    #=>
+    │ greeting    │
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+    unitknot[ExampleRecord >> It.numbers]
+    #=>
+      │ numbers │
+    ──┼─────────┼
+    1 │       1 │
+    2 │       2 │
+    3 │       3 │
+    =#
+
+    unitknot[ExampleRecord >> It.C]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │ a  │
+    2 │ b  │
+    3 │ c  │
+    =#
+
+Records can be used to construct arbitrary hierarchies, including
+tables with plural and nested columns. The display of records uses
+the colon (`,`) for nested record fields and the semi-colon (`;`)
+to separate elements in a plural flow.
+
+    Q = Record(:n² => It .* It,
+               :n³ => It .* It .* It,
+               :letters => Chars(It),
+               :nested => Record(It, Chars(It)))
+
+    unitknot[Lift(1:3) >> Q]
+    #=>
+      │ n²  n³  letters  nested       │
+    ──┼───────────────────────────────┼
+    1 │  1   1  a        1, [a]       │
+    2 │  4   8  a; b     2, [a; b]    │
+    3 │  9  27  a; b; c  3, [a; b; c] │
+    =#
+
+Previously we've seen how the composition of two plural queries
+doesn't produce a nested result, but instead a flattened stream.
+Let's take a look at this case again.
+
+    unitknot[Lift(1:3) >> Chars(It)]
     #=>
       │ It │
     ──┼────┼
@@ -253,84 +343,18 @@ but instead produces a flattened stream of elements.
     6 │ c  │
     =#
 
-The `Record` combinator creates a container that holds a parallel
-set of subordinate flows. Those flows can be singular or plural.
+In this example, as the outer query goes from `1` to `3`, the
+inner query goes from producing `a` to producing `a`, `b`, `c`.
+With an intermediate `Record`, we might better see this
+progression.
 
-    unitknot[Lift(1:3) >> Record(It, Letters(It))]
+    unitknot[Lift(1:3) >> Record(It, Chars(It))]
     #=>
       │ #A  #B      │
     ──┼─────────────┼
     1 │  1  a       │
     2 │  2  a; b    │
     3 │  3  a; b; c │
-    =#
-
-The `Get` constructor builds a query that extracts a named flow
-from an underlying record. In this example, notice that the query
-results are once again flattened.
-
-    unitknot[Lift(1:3) >> Record(It, Letters(It)) >> Get(:B)]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ a  │
-    3 │ b  │
-    4 │ a  │
-    5 │ b  │
-    6 │ c  │
-    =#
-
-Records can be constructed with field labels. This could be done
-via the `Pair` constructor (`=>`) or by the `Label` query.
-
-    Stats = Record(:n²=>It.*It, (It.*It.*It) >> Label(:n³))
-
-    unitknot[Lift(1:3) >> Stats]
-    #=>
-      │ n²  n³ │
-    ──┼────────┼
-    1 │  1   1 │
-    2 │  4   8 │
-    3 │  9  27 │
-    =#
-
-Property access via the identity query, `It`, is equivalent to
-using `Get`. In this next example, while the underlying record is
-discarded by the computation, notice that the output flow retains
-the same number of elements as found in the input.
-
-    unitknot[Lift(1:3) >> Stats >> (It.n³ .+ Get(:n²))]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │ 12 │
-    3 │ 36 │
-    =#
-
-If flows resemble `Vector` types, and records resemble `Tuple`
-types, they differ since flows cannot be nested, yet records can.
-While the flattened display of nested records is a compromise, the
-underlying structure forms a hierarchy.
-
-    unitknot[Record("A", Record("B1", "B2"))]
-    #=>
-    │ #A  #B     │
-    ┼────────────┼
-    │ A   B1, B2 │
-    =#
-
-While flows don't nest, a nested list could be modeled by having
-an explicit, intermediate record between two flows.
-
-    unitknot[Lift(1:3) >> Record(Letters(It))]
-    #=>
-      │ #A      │
-    ──┼─────────┼
-    1 │ a       │
-    2 │ a; b    │
-    3 │ a; b; c │
     =#
 
 In DataKnots, flows are automatically flattened as part of query
@@ -454,9 +478,9 @@ a whole to produce an output. We've also seen how `Each` creates
 an aggregation barrier by changing the input *source*.  But what
 exactly does this mean?  Let's recall a previous example.
 
-    Letters(X) = Lift(x -> 'a':'a'+x-1, (X,))
+    Chars(X) = Lift(x -> 'a':'a'+x-1, (X,))
 
-    unitknot[Lift(1:3) >> Letters(It)]
+    unitknot[Lift(1:3) >> Chars(It)]
     #=>
       │ It │
     ──┼────┼
@@ -472,7 +496,7 @@ Let's use the `Max` aggregate to report the highest letter
 encountered. In this case, the input source for `Max` happens to
 be the entire list of letters.
 
-    unitknot[Lift(1:3) >> Letters(It) >> Max]
+    unitknot[Lift(1:3) >> Chars(It) >> Max]
     #=>
     │ It │
     ┼────┼
@@ -481,7 +505,7 @@ be the entire list of letters.
 
 We could use `Record` to bucket the letters by the outer index.
 
-    unitknot[Lift(1:3) >> Record(Letters(It))]
+    unitknot[Lift(1:3) >> Record(Chars(It))]
     #=>
       │ #A      │
     ──┼─────────┼
@@ -494,7 +518,7 @@ Then we could compute the maximum letter for each of the three
 records. In this example, the input for each invocation of `Max`
 is a set of letters, as seen above.
 
-    unitknot[Lift(1:3) >> Record(Letters(It) >> Max)]
+    unitknot[Lift(1:3) >> Record(Chars(It) >> Max)]
     #=>
       │ #A │
     ──┼────┼
@@ -508,7 +532,7 @@ record is not formed. For each of its input elements, it processes
 that element in its own context, where it becomes the input source
 for subsequent aggregates.
 
-    unitknot[Lift(1:3) >> Each(Letters(It) >> Max)]
+    unitknot[Lift(1:3) >> Each(Chars(It) >> Max)]
     #=>
       │ It │
     ──┼────┼
@@ -520,11 +544,11 @@ for subsequent aggregates.
 After the argument is processed for every input element to `Each`,
 the outputs are flattened into a single output flow. In this way,
 the use of `Each` in the following query doesn't do anything. It
-may process `Letters(It)` for each input element, but in the end,
+may process `Chars(It)` for each input element, but in the end,
 even though the outputs may be initially segregated, they are
 eventually merged together.
 
-    unitknot[Lift(1:3) >> Each(Letters(It))]
+    unitknot[Lift(1:3) >> Each(Chars(It))]
     #=>
       │ It │
     ──┼────┼
