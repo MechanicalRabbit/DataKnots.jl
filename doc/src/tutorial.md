@@ -1019,14 +1019,23 @@ is an `AbstractVector` specialized for column-oriented storage.
 
 ## The `@query` Notation
 
-Query objects could be written using a convenient notation
-provided by the `@query` macro. In the macro syntax, we can use
-field access (`.`) as query composition without needing `It`.
+Queries could be written using a convenient notation provided by
+the `@query` macro. In the `@query` notation, we can query fields
+without using `It`.
 
     @query department.name
     #-> Get(:department) >> Get(:name)
 
-When a datasource is given to `@query`, the query is performed.
+    chicago[@query department.name]
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    =#
+
+Alternatively, we can pass the input dataset as the first argument
+to `@query`.
 
     @query chicago department.name
     #=>
@@ -1036,25 +1045,46 @@ When a datasource is given to `@query`, the query is performed.
     2 │ FIRE   │
     =#
 
-In this notation, parenthesis `{}` create `Record` entities.
+In `@query` notation, the period (`.`) is used not only for
+navigation, but also as a composition operator, replacing `>>`.
 
-    @query chicago department.employee{name, salary}
+    @query department.count(employee)
+    #-> Get(:department) >> Count(Get(:employee))
+
+    @query chicago department.count(employee)
     #=>
-      │ employee          │
-      │ name       salary │
-    ──┼───────────────────┼
-    1 │ ANTHONY A   72510 │
-    2 │ JEFFERY A  101442 │
-    3 │ NANCY A     80016 │
-    4 │ DANIEL A    95484 │
-    5 │ ROBERT K   103272 │
+      │ It │
+    ──┼────┼
+    1 │  3 │
+    2 │  2 │
     =#
 
-Multi-line query composition could be done within blocks, marked
-by `begin` and `end`. In this format, each query to be composed is
-on its own line. Combinators, such as `Filter` and `Keep`, are
-available, using lower-case names. Operators and functions are
-automatically lifted to queries.
+Queries could also be composed by placing the query components
+in a `begin`/`end` block.
+
+    @query begin
+        department
+        count(employee)
+    end
+    #-> Get(:department) >> Count(Get(:employee))
+
+Curly brackets `{}` are used to construct `Record` queries.
+
+    @query department{name, count(employee)}
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)))
+
+    @query chicago department{name, count(employee)}
+    #=>
+      │ department │
+      │ name    #B │
+    ──┼────────────┼
+    1 │ POLICE   3 │
+    2 │ FIRE     2 │
+    =#
+
+Combinators, such as `Filter` and `Keep`, are available, using
+lower-case names. Operators and functions are automatically lifted
+to queries.
 
     using Statistics: mean
 
@@ -1073,15 +1103,41 @@ automatically lifted to queries.
     2 │ ROBERT K   103272 │
     =#
 
-In this notation, the interpolation syntax (`$`) lets you embed
-regular Julia variables and expressions from within a query.
+Some operations have a combinator and aggregate query forms.
+In `@query` notation, the aggregate form requires parenthesis.
+
+    @query chicago department.employee.position.unique().count()
+    #=>
+    │ It │
+    ┼────┼
+    │  3 │
+    =#
+
+Query parameters are passed as keyword arguments to `@query`.
+
+    @query chicago begin
+        department
+        employee
+        filter(salary>threshold)
+    end threshold=90544.8
+    #=>
+      │ employee                           │
+      │ name       position         salary │
+    ──┼────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT         101442 │
+    2 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+    3 │ ROBERT K   FIREFIGHTER-EMT  103272 │
+    =#
+
+To embed regular Julia variables and expressions from within a
+`@query`, we can use the interpolation syntax (`$`).
 
     threshold = 90544.8
 
     @query chicago begin
                department.employee
                filter(salary>$threshold)
-               {name, salary, 
+               {name, salary,
                 over => salary - $(trunc(Int, threshold))}
            end
     #=>
@@ -1093,10 +1149,7 @@ regular Julia variables and expressions from within a query.
     3 │ ROBERT K   103272  12728 │
     =#
 
-It's possible to independently define queries and combinators.
-Julia values, such as `salary` below, can be queries. Furthermore,
-functions returning queries, such as `stats(x)` can be directly
-used within a query.
+We can use `@query` to define reusable queries and combinators.
 
     salary = @query department.employee.salary
 
@@ -1110,38 +1163,6 @@ used within a query.
     ┼──────────────────────┼
     │ 72510  103272      5 │
     =#
-
-Much like `It`, the query input can be accessed with `it`. For
-example, we use `it` in the query below to filter salary. Query
-parameters, such as `threshold` in the example below, can be
-provided as keyword arguments.
-
-    @query chicago begin
-               stats($salary.filter(it>threshold))
-           end threshold=90544.8
-    #=>
-    │ min    max     count │
-    ┼──────────────────────┼
-    │ 95484  103272      3 │
-    =#
-
-Aggregate queries, such as `Unique`, can be used in this notation
-with a lower-case equivalent having parenthesis, like `unique()`.
-In a query block, the semicolon is also composition.
-
-    @query chicago begin
-               department; filter(count(employee)>2)
-               employee; position; unique()
-           end
-    #=>
-      │ position       │
-    ──┼────────────────┼
-    1 │ POLICE OFFICER │
-    2 │ SERGEANT       │
-    =#
-
-Other than these convenient syntactic differences, the queries
-behave exactly as they would be in the underlying grammar.
 
 ## Importing & Exporting Data
 
