@@ -12,6 +12,65 @@ DataKnots is designed to let data analysts and other
 accidental programmers query and analyze complex
 structured data.
 
+## Showcase
+
+Let's take some Chicago public data and convert it
+into a `DataKnot`.
+
+    using DataKnots, CSV
+
+    employee_csv_file = """
+        name,department,position,salary
+        "JEFFERY A", "POLICE", "SERGEANT", 101442
+        "NANCY A", "POLICE", "POLICE OFFICER", 80016
+        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350
+        "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484
+        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392
+        """ |> IOBuffer |> CSV.File
+
+    chicago = DataKnot(:employee => employee_csv_file)
+
+We could then query this data to return employees with
+salaries greater than their department's average.
+
+    using Statistics: mean
+
+    @query chicago begin
+        employee
+        group(department)
+        keep(avg_salary => mean(employee.salary))
+        employee
+        filter(salary > avg_salary)
+    end
+    #=>
+      │ employee                                         │
+      │ name       department  position           salary │
+    ──┼──────────────────────────────────────────────────┼
+    1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
+    2 │ JEFFERY A  POLICE      SERGEANT           101442 │
+    =#
+
+Queries could also be constructed with pure Julia code,
+without using macros. The query above could be
+equivalently written:
+
+    using Statistics: mean
+
+    chicago[It.employee >>
+            Group(It.department) >>
+            Keep(:avg_salary => mean.(It.employee.salary)) >>
+            It.employee >>
+            Filter(It.salary .> It.avg_salary)]
+    #=>
+      │ employee                                         │
+      │ name       department  position           salary │
+    ──┼──────────────────────────────────────────────────┼
+    1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
+    2 │ JEFFERY A  POLICE      SERGEANT           101442 │
+    =#
+
+## Objectives
+
 DataKnots implements an algebraic query interface of
 [Query Combinators]. This algebra’s elements, or queries,
 represent relationships among class entities and data
@@ -41,83 +100,6 @@ significant advantages over the state of the art:
 * DataKnots is fully extensible with Julia; this makes
   it possible to specialize it into various domain
   specific query languages.
-
-## Installation
-
-To install `DataKnots`, run in the package shell
-(enter with `]` from the Julia shell):
-
-```juliarepl
-pkg> add DataKnots
-```
-
-DataKnots.jl requires Julia 1.0 or higher.
-
-If you want to modify the source code of DataKnots.jl,
-you need to install it in development mode with:
-
-```juliarepl
-pkg> dev https://github.com/rbt-lang/DataKnots.jl
-```
-
-## Showcase
-
-Let's take some Chicago public data and convert it into a *knot*.
-
-    using DataKnots, CSV
-
-    employee_csv_file = """
-        name,department,position,salary,rate
-        "JEFFERY A", "POLICE", "SERGEANT", 101442,
-        "NANCY A", "POLICE", "POLICE OFFICER", 80016,
-        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
-        "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
-        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
-        "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
-        "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
-        """ |> IOBuffer |> CSV.File
-
-    chicago = DataKnot(:employee => employee_csv_file)
-
-We could then query this data to return employees with salaries
-greater than their department's average.
-
-    using Statistics: mean
-
-    @query chicago begin
-        employee
-        group(department)
-        keep(avg_salary => mean(employee.salary))
-        employee
-        filter(salary > avg_salary)
-    end
-    #=>
-      │ employee                                               │
-      │ name       department  position           salary  rate │
-    ──┼────────────────────────────────────────────────────────┼
-    1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
-    2 │ JEFFERY A  POLICE      SERGEANT           101442       │
-    =#
-
-There is a non-macro syntax for Julia. The query above could be
-equivalently written:
-
-    using Statistics: mean
-
-    chicago[It.employee >>
-            Group(It.department) >>
-            Keep(:avg_salary => mean.(It.employee.salary)) >>
-            It.employee >>
-            Filter(It.salary .> It.avg_salary)]
-    #=>
-      │ employee                                               │
-      │ name       department  position           salary  rate │
-    ──┼────────────────────────────────────────────────────────┼
-    1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350       │
-    2 │ JEFFERY A  POLICE      SERGEANT           101442       │
-    =#
-
-Most of our documentation uses this non-macro syntax.
 
 ## Support
 
