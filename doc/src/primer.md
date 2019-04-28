@@ -303,15 +303,17 @@ around `OneTo(It) >> Sum` will not change the result.
 
 We could use `Record` to create this elementwise barrier.
 However, it introduces an intermediate, unwanted structure:
-we asked for a single flow, not a table with one column.
+we asked for sums, not a table with sums.
 
-    unitknot[Lift(1:3) >> Record(:sum => OneTo(It) >> Sum)]
+    unitknot[Lift(1:3) >>
+             Record(:data => OneTo(It),
+                    :sum => OneTo(It) >> Sum)]
     #=>
-      │ sum │
-    ──┼─────┼
-    1 │   1 │
-    2 │   3 │
-    3 │   6 │
+      │ data     sum │
+    ──┼──────────────┼
+    1 │ 1          1 │
+    2 │ 1; 2       3 │
+    3 │ 1; 2; 3    6 │
     =#
 
 We need the `Each` combinator, which much the same as `Record`,
@@ -325,23 +327,6 @@ evaluates its argument, and then collects the outputs.
     1 │  1 │
     2 │  3 │
     3 │  6 │
-    =#
-
-That said, unlike `Record`, `Each` affects only computation and
-doesn't introduce an intermediate structure. This could be seen in
-the example below. The elements produced by the argument to `Each`
-are folded into the final output flow.
-
-    unitknot[Lift(1:3) >> Each(OneTo(It))]
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  1 │
-    3 │  2 │
-    4 │  1 │
-    5 │  2 │
-    6 │  3 │
     =#
 
 Normally, one wouldn't need to use `Each` — for aggregates such as
