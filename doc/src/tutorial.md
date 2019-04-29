@@ -1022,27 +1022,27 @@ is an `AbstractVector` specialized for column-oriented storage.
 Queries could be written using a convenient path-like notation
 provided by the `@query` macro. In this notation:
 
-* navigation via field names, translated to `Get`, is the default
-* query combinators, such as `Count(X)`, use lower-case names
-* the period (`.`) is used for query composition (`>>`)
-* aggregate queries, such as `Count`, require parenthesis
-* records can be constructed using curly brackets, `{}`
+* bare identifiers are translated to navigation with `Get`;
+* query combinators, such as `Count(X)`, use lower-case names;
+* the period (`.`) is used for query composition (`>>`);
+* aggregate queries, such as `Count`, require parenthesis; and
+* records can be constructed using curly brackets, `{}`.
 
 The `@query` Notation        | Equivalent Query
 -----------------------------|------------------------------------
 `department`                 | `Get(:department)`
-`count(department)`          | `Count(It.department)`
+`count(department)`          | `Count(Get(:department))`
 `department.count()`         | `Get(:department) >> Count`
 `department.employee`        | `Get(:department) >> Get(:employee)`
-`department.count(employee)` | `Get(:department) >> Count(Get(:employee)`
-`department.record(name)`    | `Get(:department) >> Record(Get(:name))`
+`department.count(employee)` | `Get(:department) >> Count(Get(:employee))`
 `department{name}`           | `Get(:department) >> Record(Get(:name))`
 
-A `@query` with only one argument is translated to a `Query` as if
-were typed in long-hand.
+A `@query` macro with one argument creates a query object.
 
     @query department.name
     #-> Get(:department) >> Get(:name)
+
+This query object could be used to query a `DataKnot` as usual.
 
     chicago[@query department.name]
     #=>
@@ -1052,8 +1052,8 @@ were typed in long-hand.
     2 │ FIRE   │
     =#
 
-Alternatively, we can provide the input dataset as the first
-argument to `@query`.
+Alternatively, we can provide the input dataset as an argument
+to `@query`.
 
     @query chicago department.name
     #=>
