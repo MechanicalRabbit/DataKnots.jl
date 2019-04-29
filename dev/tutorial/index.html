@@ -580,7 +580,7 @@ display(vt)
 @VectorTree of 2 × (name = (1:1) × String, size = (1:1) × Int64):
  (name = &quot;POLICE&quot;, size = 3)
  (name = &quot;FIRE&quot;, size = 2)
-=#</code></pre><h2><a class="nav-anchor" id="The-@query-Notation-1" href="#The-@query-Notation-1">The <code>@query</code> Notation</a></h2><p>Queries could be written using a convenient notation provided by the <code>@query</code> macro. In the <code>@query</code> notation, we can query fields without using <code>It</code>.</p><pre><code class="language-julia">@query department.name
+=#</code></pre><h2><a class="nav-anchor" id="The-@query-Notation-1" href="#The-@query-Notation-1">The <code>@query</code> Notation</a></h2><p>Queries could be written using a convenient path-like notation provided by the <code>@query</code> macro. In this notation:</p><ul><li>navigation via field names, translated to <code>Get</code>, is the default</li><li>query combinators, such as <code>Count(X)</code>, use lower-case names</li><li>the period (<code>.</code>) is used for query composition (<code>&gt;&gt;</code>)</li><li>aggregate queries, such as <code>Count</code>, require parenthesis</li><li>records can be constructed using curly brackets, <code>{}</code></li></ul><table><tr><th style="text-align: right">The <code>@query</code> Notation</th><th style="text-align: right">Equivalent Query</th></tr><tr><td style="text-align: right"><code>department</code></td><td style="text-align: right"><code>Get(:department)</code></td></tr><tr><td style="text-align: right"><code>count(department)</code></td><td style="text-align: right"><code>Count(It.department)</code></td></tr><tr><td style="text-align: right"><code>department.count()</code></td><td style="text-align: right"><code>It.department &gt;&gt; Count</code></td></tr><tr><td style="text-align: right"><code>department.employee</code></td><td style="text-align: right"><code>Get(:department) &gt;&gt; Get(:employee)</code></td></tr><tr><td style="text-align: right"><code>department.count(employee)</code></td><td style="text-align: right"><code>It.department &gt;&gt; Count(It.employee)</code></td></tr><tr><td style="text-align: right"><code>department.record(name)</code></td><td style="text-align: right"><code>It.department &gt;&gt; Record(It.name)</code></td></tr><tr><td style="text-align: right"><code>department{name}</code></td><td style="text-align: right"><code>It.department &gt;&gt; Record(It.name)</code></td></tr></table><p>A <code>@query</code> with only one argument is translated to a <code>Query</code> as if were typed in long-hand.</p><pre><code class="language-julia">@query department.name
 #-&gt; Get(:department) &gt;&gt; Get(:name)
 
 chicago[@query department.name]
@@ -589,13 +589,13 @@ chicago[@query department.name]
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>Alternatively, we can pass the input dataset as the first argument to <code>@query</code>.</p><pre><code class="language-julia">@query chicago department.name
+=#</code></pre><p>Alternatively, we can provide the input dataset as the first argument to <code>@query</code>.</p><pre><code class="language-julia">@query chicago department.name
 #=&gt;
   │ name   │
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>In <code>@query</code> notation, the period (<code>.</code>) is used not only for navigation, but also as a composition operator, replacing <code>&gt;&gt;</code>.</p><pre><code class="language-julia">@query department.count(employee)
+=#</code></pre><p>In <code>@query</code> notation, the period (<code>.</code>) is used for query composition, replacing <code>&gt;&gt;</code>.</p><pre><code class="language-julia">@query department.count(employee)
 #-&gt; Get(:department) &gt;&gt; Count(Get(:employee))
 
 @query chicago department.count(employee)
@@ -633,7 +633,7 @@ end
 ──┼───────────────────┼
 1 │ JEFFERY A  101442 │
 2 │ ROBERT K   103272 │
-=#</code></pre><p>Some operations have a combinator and aggregate query forms. In <code>@query</code> notation, the aggregate form requires parenthesis.</p><pre><code class="language-julia">@query chicago department.employee.position.unique().count()
+=#</code></pre><p>In <code>@query</code> notation, query aggregates, such as <code>Count</code> and <code>Unique</code>, are lower-case and require parenthesis.</p><pre><code class="language-julia">@query chicago department.employee.position.unique().count()
 #=&gt;
 │ It │
 ┼────┼
@@ -650,7 +650,7 @@ end threshold=90544.8
 1 │ JEFFERY A  SERGEANT         101442 │
 2 │ DANIEL A   FIREFIGHTER-EMT   95484 │
 3 │ ROBERT K   FIREFIGHTER-EMT  103272 │
-=#</code></pre><p>To embed regular Julia variables and expressions from within a <code>@query</code>, we can use the interpolation syntax (<code>$</code>).</p><pre><code class="language-julia">threshold = 90544.8
+=#</code></pre><p>To embed regular Julia variables and expressions from within a <code>@query</code>, use the interpolation syntax (<code>$</code>).</p><pre><code class="language-julia">threshold = 90544.8
 
 @query chicago begin
            department.employee
