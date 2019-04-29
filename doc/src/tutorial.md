@@ -1032,11 +1032,11 @@ The `@query` Notation        | Equivalent Query
 -----------------------------|------------------------------------
 `department`                 | `Get(:department)`
 `count(department)`          | `Count(It.department)`
-`department.count()`         | `It.department >> Count`
+`department.count()`         | `Get(:department) >> Count`
 `department.employee`        | `Get(:department) >> Get(:employee)`
-`department.count(employee)` | `It.department >> Count(It.employee)`
-`department.record(name)`    | `It.department >> Record(It.name)`
-`department{name}`           | `It.department >> Record(It.name)`
+`department.count(employee)` | `Get(:department) >> Count(Get(:employee)`
+`department.record(name)`    | `Get(:department) >> Record(Get(:name))`
+`department{name}`           | `Get(:department) >> Record(Get(:name))`
 
 A `@query` with only one argument is translated to a `Query` as if
 were typed in long-hand.
