@@ -112,7 +112,7 @@ shape(abc)
 =#
 
 cell(unitknot)
-#-&gt; @VectorTree () [()]</code></pre><p>We can also construct a <code>DataKnot</code> containing a single top-level named tuple with the given fields.</p><pre><code class="language-julia">recknot = DataKnot(:hello =&gt; &quot;Hello World!&quot;, :main =&gt; &#39;a&#39;:&#39;c&#39;)
+#-&gt; @VectorTree (1:1) × () [()]</code></pre><p>We can also construct a <code>DataKnot</code> containing a single top-level named tuple with the given fields.</p><pre><code class="language-julia">recknot = DataKnot(:hello =&gt; &quot;Hello World!&quot;, :main =&gt; &#39;a&#39;:&#39;c&#39;)
 #=&gt;
 │ hello         main    │
 ┼───────────────────────┼
@@ -120,7 +120,7 @@ cell(unitknot)
 =#
 
 cell(recknot)
-#-&gt; @VectorTree (hello = String, main = (0:N) × Char) [(hello = &quot;Hello World!&quot;, main = &#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;)]</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
+#-&gt; @VectorTree (1:1) × (hello = String, main = (0:N) × Char) [(hello = &quot;Hello World!&quot;, main = &#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;)]</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
 #=&gt;
 │ It           │
 ┼──────────────┼
