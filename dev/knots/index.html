@@ -255,37 +255,20 @@ convert(DataKnot, [35.6, 2.65])
 2 │  2.65 │
 =#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>When a knot has a tabular form, it can be exported via <code>Tables.jl</code>.</p><p>This is the case when a <code>DataKnot</code> wraps a vector of named tuples.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
 
-Tables.schema(table)
-#=&gt;
-Tables.Schema:
- :x  String
- :y  Float64
-=#
+Tables.istable(table)
+#-&gt; true
+
+Tables.columnaccess(table)
+#-&gt; true
 
 Tables.columns(table)
-#-&gt; (x = [&quot;A&quot;, &quot;B&quot;], y = [1.0, 2.0])
+#-&gt; (x = [&quot;A&quot;, &quot;B&quot;], y = [1.0, 2.0])</code></pre><p>A plural set of records will also be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
 
 Tables.istable(table)
 #-&gt; true
 
 Tables.columnaccess(table)
-#-&gt; true</code></pre><p>A plural set of records will also be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
-
-Tables.schema(table)
-#=&gt;
-Tables.Schema:
- :idx  Int64
- :val  String
-=#
-
-Tables.columns(table)[:idx]
-#-&gt; @VectorTree (1:1) × Int64 [1, 2, 3]
-
-Tables.columns(table)[:val]
-#-&gt; @VectorTree (1:1) × String [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;]
-
-Tables.istable(table)
 #-&gt; true
 
-Tables.columnaccess(table)
-#-&gt; true</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>
+Tables.columns(table)
+#-&gt; (idx = [1, 2, 3], val = [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;])</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>

@@ -580,24 +580,45 @@ display(vt)
 @VectorTree of 2 × (name = (1:1) × String, size = (1:1) × Int64):
  (name = &quot;POLICE&quot;, size = 3)
  (name = &quot;FIRE&quot;, size = 2)
-=#</code></pre><h2><a class="nav-anchor" id="The-@query-Notation-1" href="#The-@query-Notation-1">The <code>@query</code> Notation</a></h2><p>Query objects could be written using a convenient notation provided by the <code>@query</code> macro. In the macro syntax, we can use field access (<code>.</code>) as query composition without needing <code>It</code>.</p><pre><code class="language-julia">@query department.name
-#-&gt; Get(:department) &gt;&gt; Get(:name)</code></pre><p>When a datasource is given to <code>@query</code>, the query is performed.</p><pre><code class="language-julia">@query chicago department.name
+=#</code></pre><h2><a class="nav-anchor" id="The-@query-Notation-1" href="#The-@query-Notation-1">The <code>@query</code> Notation</a></h2><p>Queries could be written using a convenient notation provided by the <code>@query</code> macro. In the <code>@query</code> notation, we can query fields without using <code>It</code>.</p><pre><code class="language-julia">@query department.name
+#-&gt; Get(:department) &gt;&gt; Get(:name)
+
+chicago[@query department.name]
 #=&gt;
   │ name   │
 ──┼────────┼
 1 │ POLICE │
 2 │ FIRE   │
-=#</code></pre><p>In this notation, parenthesis <code>{}</code> create <code>Record</code> entities.</p><pre><code class="language-julia">@query chicago department.employee{name, salary}
+=#</code></pre><p>Alternatively, we can pass the input dataset as the first argument to <code>@query</code>.</p><pre><code class="language-julia">@query chicago department.name
 #=&gt;
-  │ employee          │
-  │ name       salary │
-──┼───────────────────┼
-1 │ ANTHONY A   72510 │
-2 │ JEFFERY A  101442 │
-3 │ NANCY A     80016 │
-4 │ DANIEL A    95484 │
-5 │ ROBERT K   103272 │
-=#</code></pre><p>Multi-line query composition could be done within blocks, marked by <code>begin</code> and <code>end</code>. In this format, each query to be composed is on its own line. Combinators, such as <code>Filter</code> and <code>Keep</code>, are available, using lower-case names. Operators and functions are automatically lifted to queries.</p><pre><code class="language-julia">using Statistics: mean
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+=#</code></pre><p>In <code>@query</code> notation, the period (<code>.</code>) is used not only for navigation, but also as a composition operator, replacing <code>&gt;&gt;</code>.</p><pre><code class="language-julia">@query department.count(employee)
+#-&gt; Get(:department) &gt;&gt; Count(Get(:employee))
+
+@query chicago department.count(employee)
+#=&gt;
+  │ It │
+──┼────┼
+1 │  3 │
+2 │  2 │
+=#</code></pre><p>Queries could also be composed by placing the query components in a <code>begin</code>/<code>end</code> block.</p><pre><code class="language-julia">@query begin
+    department
+    count(employee)
+end
+#-&gt; Get(:department) &gt;&gt; Count(Get(:employee))</code></pre><p>Curly brackets <code>{}</code> are used to construct <code>Record</code> queries.</p><pre><code class="language-julia">@query department{name, count(employee)}
+#-&gt; Get(:department) &gt;&gt; Record(Get(:name), Count(Get(:employee)))
+
+@query chicago department{name, count(employee)}
+#=&gt;
+  │ department │
+  │ name    #B │
+──┼────────────┼
+1 │ POLICE   3 │
+2 │ FIRE     2 │
+=#</code></pre><p>Combinators, such as <code>Filter</code> and <code>Keep</code>, are available, using lower-case names. Operators and functions are automatically lifted to queries.</p><pre><code class="language-julia">using Statistics: mean
 
 @query chicago begin
            department
@@ -612,12 +633,29 @@ display(vt)
 ──┼───────────────────┼
 1 │ JEFFERY A  101442 │
 2 │ ROBERT K   103272 │
-=#</code></pre><p>In this notation, the interpolation syntax (<code>$</code>) lets you embed regular Julia variables and expressions from within a query.</p><pre><code class="language-julia">threshold = 90544.8
+=#</code></pre><p>Some operations have a combinator and aggregate query forms. In <code>@query</code> notation, the aggregate form requires parenthesis.</p><pre><code class="language-julia">@query chicago department.employee.position.unique().count()
+#=&gt;
+│ It │
+┼────┼
+│  3 │
+=#</code></pre><p>Query parameters are passed as keyword arguments to <code>@query</code>.</p><pre><code class="language-julia">@query chicago begin
+    department
+    employee
+    filter(salary&gt;threshold)
+end threshold=90544.8
+#=&gt;
+  │ employee                           │
+  │ name       position         salary │
+──┼────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT         101442 │
+2 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+3 │ ROBERT K   FIREFIGHTER-EMT  103272 │
+=#</code></pre><p>To embed regular Julia variables and expressions from within a <code>@query</code>, we can use the interpolation syntax (<code>$</code>).</p><pre><code class="language-julia">threshold = 90544.8
 
 @query chicago begin
            department.employee
            filter(salary&gt;$threshold)
-           {name, salary, 
+           {name, salary,
             over =&gt; salary - $(trunc(Int, threshold))}
        end
 #=&gt;
@@ -627,7 +665,7 @@ display(vt)
 1 │ JEFFERY A  101442  10898 │
 2 │ DANIEL A    95484   4940 │
 3 │ ROBERT K   103272  12728 │
-=#</code></pre><p>It&#39;s possible to independently define queries and combinators. Julia values, such as <code>salary</code> below, can be queries. Furthermore, functions returning queries, such as <code>stats(x)</code> can be directly used within a query.</p><pre><code class="language-julia">salary = @query department.employee.salary
+=#</code></pre><p>We can use <code>@query</code> to define reusable queries and combinators.</p><pre><code class="language-julia">salary = @query department.employee.salary
 
 stats(x) = @query {min=&gt;min($x),
                    max=&gt;max($x),
@@ -638,23 +676,7 @@ stats(x) = @query {min=&gt;min($x),
 │ min    max     count │
 ┼──────────────────────┼
 │ 72510  103272      5 │
-=#</code></pre><p>Much like <code>It</code>, the query input can be accessed with <code>it</code>. For example, we use <code>it</code> in the query below to filter salary. Query parameters, such as <code>threshold</code> in the example below, can be provided as keyword arguments.</p><pre><code class="language-julia">@query chicago begin
-           stats($salary.filter(it&gt;threshold))
-       end threshold=90544.8
-#=&gt;
-│ min    max     count │
-┼──────────────────────┼
-│ 95484  103272      3 │
-=#</code></pre><p>Aggregate queries, such as <code>Unique</code>, can be used in this notation with a lower-case equivalent having parenthesis, like <code>unique()</code>. In a query block, the semicolon is also composition.</p><pre><code class="language-julia">@query chicago begin
-           department; filter(count(employee)&gt;2)
-           employee; position; unique()
-       end
-#=&gt;
-  │ position       │
-──┼────────────────┼
-1 │ POLICE OFFICER │
-2 │ SERGEANT       │
-=#</code></pre><p>Other than these convenient syntactic differences, the queries behave exactly as they would be in the underlying grammar.</p><h2><a class="nav-anchor" id="Importing-and-Exporting-Data-1" href="#Importing-and-Exporting-Data-1">Importing &amp; Exporting Data</a></h2><p>We can import directly from systems that support the <code>Tables.jl</code> interface. Here is a tabular variant of the chicago dataset.</p><pre><code class="language-julia">using CSV
+=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-Data-1" href="#Importing-and-Exporting-Data-1">Importing &amp; Exporting Data</a></h2><p>We can import directly from systems that support the <code>Tables.jl</code> interface. Here is a tabular variant of the chicago dataset.</p><pre><code class="language-julia">using CSV
 
 employee_csv = &quot;&quot;&quot;
     name,department,position,salary,rate

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Primer · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li class="current"><a class="toctext" href>Primer</a><ul class="internal"><li><a class="toctext" href="#The-Unit-Knot-1">The Unit Knot</a></li><li><a class="toctext" href="#Constant-Queries-1">Constant Queries</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Lifting-Functions-1">Lifting Functions</a></li><li><a class="toctext" href="#Structuring-Data-1">Structuring Data</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Input-Source-1">Input Source</a></li><li><a class="toctext" href="#Group-1">Group</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Julia-Integration-1">Julia Integration</a></li></ul></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Primer</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/primer.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Primer</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Primer-1" href="#Primer-1">Primer</a></h1><p>DataKnots is a Julia library for building database queries. In DataKnots, queries are assembled algebraically: they either come from a set of atomic <em>primitives</em> or are built from other queries using <em>combinators</em>.</p><p>To start working with DataKnots, we import the package:</p><pre><code class="language-julia">using DataKnots</code></pre><h2><a class="nav-anchor" id="The-Unit-Knot-1" href="#The-Unit-Knot-1">The Unit Knot</a></h2><p>A <code>DataKnot</code>, or just <em>knot</em>, is a container for structured, vectorized data. The <code>unitknot</code> is a trivial knot used as the starting point for constructing other knots.</p><pre><code class="language-julia">unitknot
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Primer · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li class="current"><a class="toctext" href>Primer</a><ul class="internal"><li><a class="toctext" href="#The-Unit-Knot-1">The Unit Knot</a></li><li><a class="toctext" href="#Constant-Queries-1">Constant Queries</a></li><li><a class="toctext" href="#Composition-and-Identity-1">Composition &amp; Identity</a></li><li><a class="toctext" href="#Lifting-Functions-1">Lifting Functions</a></li><li><a class="toctext" href="#Aggregate-Queries-1">Aggregate Queries</a></li><li><a class="toctext" href="#Take-1">Take</a></li><li><a class="toctext" href="#Group-1">Group</a></li><li><a class="toctext" href="#Query-Parameters-1">Query Parameters</a></li><li><a class="toctext" href="#Julia-Integration-1">Julia Integration</a></li></ul></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Primer</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/primer.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Primer</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Primer-1" href="#Primer-1">Primer</a></h1><p>DataKnots is a Julia library for building database queries. In DataKnots, queries are assembled algebraically: they either come from a set of atomic <em>primitives</em> or are built from other queries using <em>combinators</em>.</p><p>To start working with DataKnots, we import the package:</p><pre><code class="language-julia">using DataKnots</code></pre><h2><a class="nav-anchor" id="The-Unit-Knot-1" href="#The-Unit-Knot-1">The Unit Knot</a></h2><p>A <code>DataKnot</code>, or just <em>knot</em>, is a container for structured, vectorized data. The <code>unitknot</code> is a trivial knot used as the starting point for constructing other knots.</p><pre><code class="language-julia">unitknot
 #=&gt;
 │ It │
 ┼────┼
@@ -110,78 +110,14 @@ unitknot[Chars(3)]
 1 │ a  │
 2 │ b  │
 3 │ c  │
-=#</code></pre><p>Lifting lets us use rich statistical and data processing functions from within our queries.</p><h2><a class="nav-anchor" id="Structuring-Data-1" href="#Structuring-Data-1">Structuring Data</a></h2><p>Thus far we&#39;ve seen query results that are consist of a single output flow. Using the <code>Record</code> combinator, we could construct outputs with parallel, subordinate query flows.</p><pre><code class="language-julia">unitknot[Record(&quot;Hello World&quot;, Lift(1:3), Chars(3))]
-#=&gt;
-│ #A           #B       #C      │
-┼───────────────────────────────┼
-│ Hello World  1; 2; 3  a; b; c │
-=#</code></pre><p>To help navigate these structures, each field of a record could be optionally named using the <code>Label</code> primitive. Alternatively, the <code>Pair</code> syntax could be used to provide labels. If a field label is omitted, one generated based upon column position is provided.</p><pre><code class="language-julia">ExampleRecord = Record(:greeting =&gt; &quot;Hello World&quot;,
-                       Lift(1:3) &gt;&gt; Label(:numbers),
-                       Chars(3))
-
-unitknot[ExampleRecord]
-#=&gt;
-│ greeting     numbers  #C      │
-┼───────────────────────────────┼
-│ Hello World  1; 2; 3  a; b; c │
-=#</code></pre><p>The <code>Get</code> constructor builds a query that, given a particular label, extracts the corresponding flow from an underlying record. Attribute access on the identity constant, <code>It</code>, is syntax sugar for this same operation.</p><pre><code class="language-julia">unitknot[ExampleRecord &gt;&gt; Get(:greeting)]
-#=&gt;
-│ greeting    │
-┼─────────────┼
-│ Hello World │
-=#
-
-unitknot[ExampleRecord &gt;&gt; It.numbers]
-#=&gt;
-  │ numbers │
-──┼─────────┼
-1 │       1 │
-2 │       2 │
-3 │       3 │
-=#
-
-unitknot[ExampleRecord &gt;&gt; It.C]
-#=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
-=#</code></pre><p>Records can be used to construct arbitrary hierarchies, including tables with plural and nested columns. The display of records uses the colon (<code>,</code>) for nested record fields and the semi-colon (<code>;</code>) to separate elements in a plural flow.</p><pre><code class="language-julia">Q = Record(:n² =&gt; It .* It,
-           :n³ =&gt; It .* It .* It,
-           :letters =&gt; Chars(It),
-           :nested =&gt; Record(It, Chars(It)))
-
-unitknot[Lift(1:3) &gt;&gt; Q]
-#=&gt;
-  │ n²  n³  letters  nested       │
-──┼───────────────────────────────┼
-1 │  1   1  a        1, [a]       │
-2 │  4   8  a; b     2, [a; b]    │
-3 │  9  27  a; b; c  3, [a; b; c] │
-=#</code></pre><p>Previously we&#39;ve seen how the composition of two plural queries doesn&#39;t produce a nested result, but instead a flattened stream. Let&#39;s take a look at this case again.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Chars(It)]
-#=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ a  │
-3 │ b  │
-4 │ a  │
-5 │ b  │
-6 │ c  │
-=#</code></pre><p>In this example, as the outer query goes from <code>1</code> to <code>3</code>, the inner query goes from producing <code>a</code> to producing <code>a</code>, <code>b</code>, <code>c</code>. With an intermediate <code>Record</code>, we might better see this progression.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Record(It, Chars(It))]
-#=&gt;
-  │ #A  #B      │
-──┼─────────────┼
-1 │  1  a       │
-2 │  2  a; b    │
-3 │  3  a; b; c │
-=#</code></pre><p>In DataKnots, flows are automatically flattened as part of query composition. If nested lists are needed, they could be easily modeled with an intermediate record. Together, flows and records are used to represent and process a wide variety of structures.</p><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider the <code>Count</code> primitive; it returns the number of its input elements.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Count]
+=#</code></pre><p>Lifting lets us use rich statistical and data processing functions from within our queries.</p><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider the <code>Count</code> primitive; it returns the number of its input elements.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Count]
 #=&gt;
 │ It │
 ┼────┼
 │  3 │
-=#</code></pre><p>An <em>aggregate</em> query such as <code>Count</code> is computed over the input as a whole, and not for each individual element. The semantics of aggregates require discussion. Consider <code>Lift(1:3) &gt;&gt; OneTo(It)</code>.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; OneTo(It)]
+=#</code></pre><p>An <em>aggregate</em> query such as <code>Count</code> is computed over the input as a whole, and not for each individual element. The semantics of aggregates require discussion. Consider <code>Lift(1:3) &gt;&gt; OneTo(It)</code>.</p><pre><code class="language-julia">OneTo(X) = Lift(:, (1, X))
+
+unitknot[Lift(1:3) &gt;&gt; OneTo(It)]
 #=&gt;
   │ It │
 ──┼────┼
@@ -201,14 +137,23 @@ unitknot[Lift(1:3) &gt;&gt; Q]
 │ It │
 ┼────┼
 │ 10 │
-=#</code></pre><p>We need the <code>Each</code> combinator, which acts as an elementwise barrier. For each input element, <code>Each</code> evaluates its argument, and then collects the outputs.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum)]
+=#</code></pre><p>We could use <code>Record</code> to create this elementwise barrier. However, it introduces an intermediate, unwanted structure: we asked for sums, not a table with sums.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt;
+         Record(:data =&gt; OneTo(It),
+                :sum =&gt; OneTo(It) &gt;&gt; Sum)]
+#=&gt;
+  │ data     sum │
+──┼──────────────┼
+1 │ 1          1 │
+2 │ 1; 2       3 │
+3 │ 1; 2; 3    6 │
+=#</code></pre><p>We need the <code>Each</code> combinator, which much the same as <code>Record</code>, acts as an elementwise barrier. For each input element, <code>Each</code> evaluates its argument, and then collects the outputs.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum)]
 #=&gt;
   │ It │
 ──┼────┼
 1 │  1 │
 2 │  3 │
 3 │  6 │
-=#</code></pre><p>Following is an equivalent query, using the <code>Sum</code> combinator. Here, <code>Sum(X)</code> produces the same output as <code>Each(X &gt;&gt; Sum)</code>.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Sum(OneTo(It))]
+=#</code></pre><p>Normally, one wouldn&#39;t need to use <code>Each</code> — for aggregates such as <code>Sum</code> or <code>Count</code>, the query <code>Y &gt;&gt; Each(X &gt;&gt; Count)</code> is equivalent to <code>Y &gt;&gt; Count(X)</code>. Hence, we could use the combinator form of <code>Sum</code> to do this relative summation.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Sum(OneTo(It))]
 #=&gt;
   │ It │
 ──┼────┼
@@ -223,60 +168,12 @@ unitknot[Mean(Lift(1:3) &gt;&gt; Sum(OneTo(It)))]
 │ It      │
 ┼─────────┼
 │ 3.33333 │
-=#</code></pre><p>To use <code>Mean</code> as a query primitive, we use <code>Then</code> to build a query that aggregates elements from its input. Next, we register this query so it is used when <code>Mean</code> is treated as a query.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean]
+=#</code></pre><p>To use <code>Mean</code> as a query primitive, we use <code>Then</code> to build a query that aggregates elements from its input. Next, we register this query aggregate so it is used when <code>Mean</code> is treated as a query.</p><pre><code class="language-julia">DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean]
 #=&gt;
 │ It      │
 ┼─────────┼
 │ 3.33333 │
-=#</code></pre><p>In DataKnots, summary operations are expressed as aggregate query primitives or as query combinators taking a plural query argument. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra.</p><h2><a class="nav-anchor" id="Input-Source-1" href="#Input-Source-1">Input Source</a></h2><p>We&#39;ve seen how aggregates, such as <code>Sum</code>, operate on the input as a whole to produce an output. We&#39;ve also seen how <code>Each</code> creates an aggregation barrier by changing the input <em>source</em>.  But what exactly does this mean?  Let&#39;s recall a previous example.</p><pre><code class="language-julia">Chars(X) = Lift(x -&gt; &#39;a&#39;:&#39;a&#39;+x-1, (X,))
-
-unitknot[Lift(1:3) &gt;&gt; Chars(It)]
-#=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ a  │
-3 │ b  │
-4 │ a  │
-5 │ b  │
-6 │ c  │
-=#</code></pre><p>Let&#39;s use the <code>Max</code> aggregate to report the highest letter encountered. In this case, the input source for <code>Max</code> happens to be the entire list of letters.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Chars(It) &gt;&gt; Max]
-#=&gt;
-│ It │
-┼────┼
-│ c  │
-=#</code></pre><p>We could use <code>Record</code> to bucket the letters by the outer index.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Record(Chars(It))]
-#=&gt;
-  │ #A      │
-──┼─────────┼
-1 │ a       │
-2 │ a; b    │
-3 │ a; b; c │
-=#</code></pre><p>Then we could compute the maximum letter for each of the three records. In this example, the input for each invocation of <code>Max</code> is a set of letters, as seen above.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Record(Chars(It) &gt;&gt; Max)]
-#=&gt;
-  │ #A │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
-=#</code></pre><p>This bucketing is what <code>Each</code> does, only that an intermediate record is not formed. For each of its input elements, it processes that element in its own context, where it becomes the input source for subsequent aggregates.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Each(Chars(It) &gt;&gt; Max)]
-#=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
-=#</code></pre><p>After the argument is processed for every input element to <code>Each</code>, the outputs are flattened into a single output flow. In this way, the use of <code>Each</code> in the following query doesn&#39;t do anything. It may process <code>Chars(It)</code> for each input element, but in the end, even though the outputs may be initially segregated, they are eventually merged together.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Each(Chars(It))]
-#=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ a  │
-3 │ b  │
-4 │ a  │
-5 │ b  │
-6 │ c  │
-=#</code></pre><p>This could be seen with another aggregate, <code>Take</code>. Unlike <code>Filter</code> which evaluates its argument for each input element, the argument to <code>Take</code> is evaluated once, and in the context of the input&#39;s <em>source</em>.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
+=#</code></pre><p>In DataKnots, summary operations are expressed as aggregate query primitives or as query combinators taking a plural query argument. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra.</p><h2><a class="nav-anchor" id="Take-1" href="#Take-1">Take</a></h2><p>Unlike <code>Filter</code> which evaluates its argument for each input element, the argument to <code>Take</code> is evaluated once, and in the context of the input&#39;s <em>source</em>.</p><pre><code class="language-julia">unitknot[Lift(1:3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
 #=&gt;
   │ It │
 ──┼────┼
