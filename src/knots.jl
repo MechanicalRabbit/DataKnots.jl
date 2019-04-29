@@ -164,6 +164,10 @@ convert(::Type{DataKnot}, elt::Union{Tuple, NamedTuple}) =
 
 convert(::Type{DataKnot}, elt) =
     if Tables.schema(elt) !== nothing
+        # As of 0.1.19, there is no way to know if an object directly
+        # supports the Tables interface. By chance, both `CSVFile` and
+        # `DataFrame` both support asking for the schema, even though
+        # it isn't the interface specified in Table.jl's README.
         fromtable(elt)
     else
         DataKnot(Any, [elt])
@@ -216,6 +220,9 @@ cell_columns(cell::Union{BlockVector{x0toN},BlockVector{x1toN}}) =
     Tables.columns(elements(cell))
 
 function fromtable(table, card::Union{Cardinality, Symbol}=x0toN)
+    # Although the `Tables.jl` interface documents a way to get the
+    # schema, it doesn't seem to be used in pratice. We follow this
+    # tradition and only convert via the properties and vector types.
     card = convert(Cardinality, card)
     cols = Tables.columns(table)
     flds = Pair{Symbol,AbstractVector}[]
