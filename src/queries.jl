@@ -158,11 +158,39 @@ end
 #
 # External syntax.
 #
+"""
+     @query expr
 
+Creates a query object from a specialized path-like notation:
+
+* bare identifiers are translated to navigation with `Get`;
+* query combinators, such as `Count(X)`, use lower-case names;
+* the period (`.`) is used for query composition (`>>`);
+* aggregate queries, such as `Count`, require parentheses;
+* records can be constructed using curly brackets, `{}`; and
+* functions and operators are lifted automatically.
+
+```jldoctest
+julia> @query 2x+1
+Lift(+, (Lift(*, (Lift(2), Get(:x))), Lift(1)))
+```
+"""
 macro query(ex)
     return :( translate($__module__, $(Expr(:quote, ex)) ) )
 end
 
+"""
+     @query dataset expr param=...
+
+Applies the query to a dataset with a given set of parameters.
+
+```jldoctest
+julia> @query unitknot 2x+1 x=1
+│ It │
+┼────┼
+│  3 │
+```
+"""
 macro query(db, exs...)
     exs = map(exs) do ex
         if Meta.isexpr(ex, :(=), 2)

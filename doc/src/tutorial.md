@@ -1025,8 +1025,9 @@ provided by the `@query` macro. In this notation:
 * bare identifiers are translated to navigation with `Get`;
 * query combinators, such as `Count(X)`, use lower-case names;
 * the period (`.`) is used for query composition (`>>`);
-* aggregate queries, such as `Count`, require parenthesis; and
-* records can be constructed using curly brackets, `{}`.
+* aggregate queries, such as `Count`, require parentheses;
+* records can be constructed using curly brackets, `{}`; and
+* functions and operators are lifted automatically.
 
 The `@query` Notation        | Equivalent Query
 -----------------------------|------------------------------------
@@ -1061,20 +1062,6 @@ to `@query`.
     ──┼────────┼
     1 │ POLICE │
     2 │ FIRE   │
-    =#
-
-In `@query` notation, the period (`.`) is used for query
-composition, replacing `>>`.
-
-    @query department.count(employee)
-    #-> Get(:department) >> Count(Get(:employee))
-
-    @query chicago department.count(employee)
-    #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    2 │  2 │
     =#
 
 Queries could also be composed by placing the query components in
@@ -1122,7 +1109,7 @@ to queries.
     =#
 
 In `@query` notation, query aggregates, such as `Count` and
-`Unique`, are lower-case and require parenthesis.
+`Unique`, are lower-case and require parentheses.
 
     @query chicago department.employee.position.unique().count()
     #=>
