@@ -2,7 +2,8 @@
 
 ## v0.5.0
 
-- Added `@macro` syntax.
+- Added `@query` notation.
+- Fixed Tables.jl integration.
 
 ## v0.4.0
 
