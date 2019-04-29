@@ -177,11 +177,8 @@ Tables.istable(tv::TupleVector) = !isempty(tv.lbls)
 
 Tables.columnaccess(::TupleVector) = true
 
-Tables.schema(tv::TupleVector) =
-    Tables.Schema(labels(tv), eltype.(columns(tv)))
-
 Tables.columns(tv::TupleVector) =
-    NamedTuple{(labels(tv)...,)}(columns(tv))
+    NamedTuple{(labels(tv)...,)}(collect.(columns(tv)))
 
 """
     (::TupleVector)[ks::AbstractVector{Int}] :: TupleVector

@@ -418,42 +418,25 @@ This is the case when a `DataKnot` wraps a vector of named tuples.
 
     table = convert(DataKnot, [(x="A", y=1.0), (x="B", y=2.0)])
 
-    Tables.schema(table)
-    #=>
-    Tables.Schema:
-     :x  String
-     :y  Float64
-    =#
-
-    Tables.columns(table)
-    #-> (x = ["A", "B"], y = [1.0, 2.0])
-
     Tables.istable(table)
     #-> true
 
     Tables.columnaccess(table)
     #-> true
+
+    Tables.columns(table)
+    #-> (x = ["A", "B"], y = [1.0, 2.0])
 
 A plural set of records will also be treated as a table.
 
     table = unitknot[Lift(1:3) >> Record(:idx => It, :val => "Test")]
 
-    Tables.schema(table)
-    #=>
-    Tables.Schema:
-     :idx  Int64
-     :val  String
-    =#
-
-    Tables.columns(table)[:idx]
-    #-> @VectorTree (1:1) × Int64 [1, 2, 3]
-
-    Tables.columns(table)[:val]
-    #-> @VectorTree (1:1) × String ["Test", "Test", "Test"]
-
     Tables.istable(table)
     #-> true
 
     Tables.columnaccess(table)
     #-> true
+
+    Tables.columns(table)
+    #-> (idx = [1, 2, 3], val = ["Test", "Test", "Test"])
 

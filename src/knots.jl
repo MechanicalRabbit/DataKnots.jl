@@ -209,13 +209,9 @@ quoteof(db::DataKnot) =
 Tables.istable(knot::DataKnot) = Tables.istable(eltype(knot.cell))
 Tables.columnaccess(knot::DataKnot) = Tables.istable(knot)
 
-Tables.schema(knot::DataKnot) = cell_schema(knot.cell)
 Tables.columns(knot::DataKnot) = cell_columns(knot.cell)
 
-cell_schema(cell::AbstractVector) = Tables.schema(cell[1])
 cell_columns(cell::AbstractVector) = Tables.columns(cell[1])
-cell_schema(cell::Union{BlockVector{x0toN},BlockVector{x1toN}}) =
-    Tables.schema(elements(cell))
 cell_columns(cell::Union{BlockVector{x0toN},BlockVector{x1toN}}) =
     Tables.columns(elements(cell))
 
