@@ -1814,3 +1814,66 @@ end
 translate(mod::Module, ::Val{:group}, args::Tuple) =
     Group(translate.(Ref(mod), args)...)
 
+
+#
+# Cardinality assertions.
+#
+
+function assemble_cardinality(p::Pipeline, card::Cardinality)
+    src = source(p)
+    tgt = BlockOf(elements(target(p)), card) |> IsFlow
+    chain_of(p, cardinality(card)) |> designate(src, tgt)
+end
+
+Is0to1(X) = Query(Is0to1, X)
+
+Is0toN(X) = Query(Is0toN, X)
+
+Is1to1(X) = Query(Is1to1, X)
+
+Is1toN(X) = Query(Is1toN, X)
+
+Lift(::typeof(Is0to1)) = Then(Is0to1)
+
+Lift(::typeof(Is0toN)) = Then(Is0toN)
+
+Lift(::typeof(Is1to1)) = Then(Is1to1)
+
+Lift(::typeof(Is1toN)) = Then(Is1toN)
+
+Is0to1(env::Environment, p::Pipeline, X) =
+    assemble_cardinality(assemble(X, env, p), x0to1)
+
+Is0toN(env::Environment, p::Pipeline, X) =
+    assemble_cardinality(assemble(X, env, p), x0toN)
+
+Is1to1(env::Environment, p::Pipeline, X) =
+    assemble_cardinality(assemble(X, env, p), x1to1)
+
+Is1toN(env::Environment, p::Pipeline, X) =
+    assemble_cardinality(assemble(X, env, p), x1toN)
+
+translate(mod::Module, ::Val{:is0to1}, args::Tuple{Any}) =
+    Is0to1(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:is0toN}, args::Tuple{Any}) =
+    Is0toN(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:is1to1}, args::Tuple{Any}) =
+    Is1to1(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:is1toN}, args::Tuple{Any}) =
+    Is1toN(translate(mod, args[1]))
+
+translate(mod::Module, ::Val{:is0to1}, args::Tuple{}) =
+    Then(Is0to1)
+
+translate(mod::Module, ::Val{:is0toN}, args::Tuple{}) =
+    Then(Is0toN)
+
+translate(mod::Module, ::Val{:is1to1}, args::Tuple{}) =
+    Then(Is1to1)
+
+translate(mod::Module, ::Val{:is1toN}, args::Tuple{}) =
+    Then(Is1toN)
+

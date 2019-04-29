@@ -612,6 +612,25 @@ end
 end
 
 """
+    cardinality(card::Cardinality) :: Pipeline
+
+This pipeline asserts the cardinality of the input block vector.
+"""
+cardinality(card::Cardinality) = Pipeline(cardinality, card)
+
+function cardinality(rt::Runtime, input::AbstractVector, card)
+    @assert input isa BlockVector
+    if cardinality(input) == card
+        return input
+    elseif fits(cardinality(input), card)
+        @inbounds output = BlockVector(offsets(input), elements(input), card)
+        return output
+    else
+        return BlockVector(offsets(input), elements(input), card)
+    end
+end
+
+"""
     block_length() :: Pipeline
 
 This pipeline converts a block vector to a vector of block lengths.
