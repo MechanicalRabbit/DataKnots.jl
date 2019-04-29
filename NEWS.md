@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.6.0
+
+- Added Cardinality assertion combinators.
+
 ## v0.5.0
 
 - Added `@query` notation.
