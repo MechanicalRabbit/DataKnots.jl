@@ -1019,9 +1019,27 @@ is an `AbstractVector` specialized for column-oriented storage.
 
 ## The `@query` Notation
 
-Queries could be written using a convenient notation provided by
-the `@query` macro. In the `@query` notation, we can query fields
-without using `It`.
+Queries could be written using a convenient path-like notation
+provided by the `@query` macro. In this notation:
+
+* navigation via field names, translated to `Get`, is the default
+* query combinators, such as `Count(X)`, use lower-case names
+* the period (`.`) is used for query composition (`>>`)
+* aggregate queries, such as `Count`, require parenthesis
+* records can be constructed using curly brackets, `{}`
+
+The `@query` Notation        | Equivalent Query
+-----------------------------|------------------------------------
+`department`                 | `Get(:department)`
+`count(department)`          | `Count(It.department)`
+`department.count()`         | `It.department >> Count`
+`department.employee`        | `Get(:department) >> Get(:employee)`
+`department.count(employee)` | `It.department >> Count(It.employee)`
+`department.record(name)`    | `It.department >> Record(It.name)`
+`department{name}`           | `It.department >> Record(It.name)`
+
+A `@query` with only one argument is translated to a `Query` as if
+were typed in long-hand.
 
     @query department.name
     #-> Get(:department) >> Get(:name)
@@ -1034,8 +1052,8 @@ without using `It`.
     2 │ FIRE   │
     =#
 
-Alternatively, we can pass the input dataset as the first argument
-to `@query`.
+Alternatively, we can provide the input dataset as the first
+argument to `@query`.
 
     @query chicago department.name
     #=>
@@ -1045,8 +1063,8 @@ to `@query`.
     2 │ FIRE   │
     =#
 
-In `@query` notation, the period (`.`) is used not only for
-navigation, but also as a composition operator, replacing `>>`.
+In `@query` notation, the period (`.`) is used for query
+composition, replacing `>>`.
 
     @query department.count(employee)
     #-> Get(:department) >> Count(Get(:employee))
@@ -1059,8 +1077,8 @@ navigation, but also as a composition operator, replacing `>>`.
     2 │  2 │
     =#
 
-Queries could also be composed by placing the query components
-in a `begin`/`end` block.
+Queries could also be composed by placing the query components in
+a `begin`/`end` block.
 
     @query begin
         department
@@ -1103,8 +1121,8 @@ to queries.
     2 │ ROBERT K   103272 │
     =#
 
-Some operations have a combinator and aggregate query forms.
-In `@query` notation, the aggregate form requires parenthesis.
+In `@query` notation, query aggregates, such as `Count` and
+`Unique`, are lower-case and require parenthesis.
 
     @query chicago department.employee.position.unique().count()
     #=>
@@ -1130,7 +1148,7 @@ Query parameters are passed as keyword arguments to `@query`.
     =#
 
 To embed regular Julia variables and expressions from within a
-`@query`, we can use the interpolation syntax (`$`).
+`@query`, use the interpolation syntax (`$`).
 
     threshold = 90544.8
 
