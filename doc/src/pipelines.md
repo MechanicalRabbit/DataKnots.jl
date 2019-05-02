@@ -11,6 +11,7 @@ transformations.  We will use the following definitions:
         adapt_tuple,
         adapt_vector,
         block_any,
+        block_cardinality,
         block_filler,
         block_length,
         block_lift,
@@ -32,6 +33,8 @@ transformations.  We will use the following definitions:
         with_column,
         with_elements,
         wrap,
+        x0toN,
+        x1to1,
         x1toN
 
 ## Lifting and Fillers
@@ -506,6 +509,49 @@ have any `true` values.
 
     p(@VectorTree [Bool] [missing, true, false, [true, false], [false, false], [false, true]])
     #-> Bool[0, 1, 0, 1, 0, 1]
+
+The pipeline `block_cardinality()` asserts the cardinality of a block vector.
+
+    p = block_cardinality(x1to1, :employee, :name)
+    #-> block_cardinality(x1to1, :employee, :name)
+
+    p(@VectorTree [String] [["GARRY M"], ["ANTHONY R"], ["DANA A"]])
+    #-> @VectorTree (1:1) × String ["GARRY M", "ANTHONY R", "DANA A"]
+
+    p(@VectorTree [String] [["GARRY M"], ["ANTHONY R", "DANA A"]])
+    #-> ERROR: "name": expected a singular value, relative to "employee"
+
+    p(@VectorTree [String] [["GARRY M"], [], ["DANA A"]])
+    #-> ERROR: "name": expected a mandatory value, relative to "employee"
+
+The source and/or target labels could be omitted.
+
+    p = block_cardinality(x1to1, :employee, nothing)
+
+    p(@VectorTree [String] [[]])
+    #-> ERROR: expected a mandatory value, relative to "employee"
+
+    p = block_cardinality(x1to1, nothing, :name)
+
+    p(@VectorTree [String] [[]])
+    #-> ERROR: "name": expected a mandatory value
+
+    p = block_cardinality(x1to1, nothing, nothing)
+
+    p(@VectorTree [String] [[]])
+    #-> ERROR: expected a mandatory value
+
+The `block_cardinality()` pipeline could also be used to widen the cardinality
+constraint.
+
+    p = block_cardinality(x0toN)
+    #-> block_cardinality(x0toN)
+
+    p(@VectorTree [String] [["GARRY M"], ["ANTHONY R"], ["DANA A"]])
+    #-> @VectorTree (0:N) × String [["GARRY M"], ["ANTHONY R"], ["DANA A"]]
+
+    p(@VectorTree (1:1)String ["GARRY M", "ANTHONY R", "DANA A"])
+    #-> @VectorTree (0:N) × String [["GARRY M"], ["ANTHONY R"], ["DANA A"]]
 
 
 ### Filtering

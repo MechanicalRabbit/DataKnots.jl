@@ -1849,7 +1849,8 @@ translate(mod::Module, ::Val{:group}, args::Tuple) =
 function assemble_cardinality(p::Pipeline, card::Cardinality)
     src = source(p)
     tgt = BlockOf(elements(target(p)), card) |> IsFlow
-    chain_of(p, cardinality(card)) |> designate(src, tgt)
+    q = block_cardinality(card, getlabel(src, nothing), getlabel(tgt, nothing))
+    chain_of(p, q) |> designate(src, tgt)
 end
 
 Is0to1(X) = Query(Is0to1, X)

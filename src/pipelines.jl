@@ -612,23 +612,38 @@ end
 end
 
 """
-    cardinality(card::Cardinality) :: Pipeline
+    block_cardinality(card::Cardinality, src_lbl, tgt_lbl) :: Pipeline
 
 This pipeline asserts the cardinality of the input block vector.
 """
-cardinality(card::Cardinality) = Pipeline(cardinality, card)
+block_cardinality(card::Cardinality, src_lbl::Union{Symbol,Nothing}, tgt_lbl::Union{Symbol,Nothing}) =
+    Pipeline(block_cardinality, card, src_lbl, tgt_lbl)
 
-function cardinality(rt::Runtime, input::AbstractVector, card)
+block_cardinality(card::Cardinality) =
+    Pipeline(block_cardinality, card)
+
+function block_cardinality(rt::Runtime, input::AbstractVector, card, src_lbl=nothing, tgt_lbl=nothing)
     @assert input isa BlockVector
-    if cardinality(input) == card
-        return input
-    elseif fits(cardinality(input), card)
-        @inbounds output = BlockVector(offsets(input), elements(input), card)
-        return output
-    else
-        return BlockVector(offsets(input), elements(input), card)
+    cardinality(input) != card || return input
+    if !fits(cardinality(input), card) && !(offsets(input) isa OneTo)
+        offs = offsets(input)
+        @inbounds off = offs[1]
+        for k = 2:lastindex(offs)
+            @inbounds off′ = offs[k]
+            !issingular(card) || off′ <= off+1 || _cardinality_error(src_lbl, tgt_lbl, "singular")
+            !ismandatory(card) || off′ >= off+1 || _cardinality_error(src_lbl, tgt_lbl, "mandatory")
+            off = off′
+        end
     end
+    card != x1to1 || return BlockVector(:, elements(input))
+    @inbounds output = BlockVector(offsets(input), elements(input), card)
+    return output
 end
+
+_cardinality_error(src_lbl, tgt_lbl, kind) =
+    error(tgt_lbl !== nothing ? "\"$tgt_lbl\": " : "",
+          "expected a $kind value",
+          src_lbl !== nothing ? ", relative to \"$src_lbl\"" : "")
 
 """
     block_length() :: Pipeline
