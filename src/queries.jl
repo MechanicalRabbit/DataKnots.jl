@@ -998,8 +998,8 @@ Each(X) = Query(Each, X)
 Each(env::Environment, p::Pipeline, X) =
     compose(p, assemble(env, target_pipe(p), X))
 
-translate(mod::Module, ::Val{:each}, args::Tuple{Any}) =
-    Each(translate(mod, args[1]))
+translate(mod::Module, ::Val{:each}, (arg,)::Tuple{Any}) =
+    Each(translate(mod, arg))
 
 
 #
@@ -1036,8 +1036,8 @@ Label(env::Environment, p::Pipeline, lbl::Symbol) =
 Lift(p::Pair{Symbol}) =
     Compose(p.second, Label(p.first))
 
-translate(mod::Module, ::Val{:label}, args::Tuple{Symbol}) =
-    Label(args[1])
+translate(mod::Module, ::Val{:label}, (arg,)::Tuple{Symbol}) =
+    Label(arg)
 
 
 #
@@ -1570,28 +1570,28 @@ function Min(env::Environment, p::Pipeline, X)
     assemble_lift(p, optional ? minimum_missing : minimum, Pipeline[x])
 end
 
-translate(mod::Module, ::Val{:count}, args::Tuple{Any}) =
-    Count(translate(mod, args[1]))
+translate(mod::Module, ::Val{:count}, (arg,)::Tuple{Any}) =
+    Count(translate(mod, arg))
 
-translate(mod::Module, ::Val{:count}, args::Tuple{}) =
+translate(mod::Module, ::Val{:count}, ::Tuple{}) =
     Then(Count)
 
-translate(mod::Module, ::Val{:sum}, args::Tuple{Any}) =
-    Sum(translate(mod, args[1]))
+translate(mod::Module, ::Val{:sum}, (arg,)::Tuple{Any}) =
+    Sum(translate(mod, arg))
 
-translate(mod::Module, ::Val{:sum}, args::Tuple{}) =
+translate(mod::Module, ::Val{:sum}, ::Tuple{}) =
     Then(Sum)
 
-translate(mod::Module, ::Val{:max}, args::Tuple{Any}) =
-    Max(translate(mod, args[1]))
+translate(mod::Module, ::Val{:max}, (arg,)::Tuple{Any}) =
+    Max(translate(mod, arg))
 
-translate(mod::Module, ::Val{:max}, args::Tuple{}) =
+translate(mod::Module, ::Val{:max}, ::Tuple{}) =
     Then(Max)
 
-translate(mod::Module, ::Val{:min}, args::Tuple{Any}) =
-    Min(translate(mod, args[1]))
+translate(mod::Module, ::Val{:min}, (arg,)::Tuple{Any}) =
+    Min(translate(mod, arg))
 
-translate(mod::Module, ::Val{:min}, args::Tuple{}) =
+translate(mod::Module, ::Val{:min}, ::Tuple{}) =
     Then(Min)
 
 
@@ -1653,8 +1653,8 @@ function Filter(env::Environment, p::Pipeline, X)
     assemble_filter(p, x)
 end
 
-translate(mod::Module, ::Val{:filter}, args::Tuple{Any}) =
-    Filter(translate(mod, args[1]))
+translate(mod::Module, ::Val{:filter}, (arg,)::Tuple{Any}) =
+    Filter(translate(mod, arg))
 
 
 #
@@ -1744,11 +1744,11 @@ end
 Drop(env::Environment, p::Pipeline, N) =
     Take(env, p, N, true)
 
-translate(mod::Module, ::Val{:take}, args::Tuple{Any}) =
-    Take(translate(mod, args[1]))
+translate(mod::Module, ::Val{:take}, (arg,)::Tuple{Any}) =
+    Take(translate(mod, arg))
 
-translate(mod::Module, ::Val{:drop}, args::Tuple{Any}) =
-    Drop(translate(mod, args[1]))
+translate(mod::Module, ::Val{:drop}, (arg,)::Tuple{Any}) =
+    Drop(translate(mod, arg))
 
 
 #
@@ -1772,10 +1772,10 @@ function Unique(env::Environment, p::Pipeline, X)
     assemble_unique(p, x)
 end
 
-translate(mod::Module, ::Val{:unique}, args::Tuple{Any}) =
-    Unique(translate(mod, args[1]))
+translate(mod::Module, ::Val{:unique}, (arg,)::Tuple{Any}) =
+    Unique(translate(mod, arg))
 
-translate(mod::Module, ::Val{:unique}, args::Tuple{}) =
+translate(mod::Module, ::Val{:unique}, ::Tuple{}) =
     Then(Unique)
 
 function assemble_group(p::Pipeline, xs::Vector{Pipeline})
@@ -1880,27 +1880,27 @@ Is1to1(env::Environment, p::Pipeline, X) =
 Is1toN(env::Environment, p::Pipeline, X) =
     assemble_cardinality(assemble(env, p, X), x1toN)
 
-translate(mod::Module, ::Val{:is0to1}, args::Tuple{Any}) =
-    Is0to1(translate(mod, args[1]))
+translate(mod::Module, ::Val{:is0to1}, (arg,)::Tuple{Any}) =
+    Is0to1(translate(mod, arg))
 
-translate(mod::Module, ::Val{:is0toN}, args::Tuple{Any}) =
-    Is0toN(translate(mod, args[1]))
+translate(mod::Module, ::Val{:is0toN}, (arg,)::Tuple{Any}) =
+    Is0toN(translate(mod, arg))
 
-translate(mod::Module, ::Val{:is1to1}, args::Tuple{Any}) =
-    Is1to1(translate(mod, args[1]))
+translate(mod::Module, ::Val{:is1to1}, (arg,)::Tuple{Any}) =
+    Is1to1(translate(mod, arg))
 
-translate(mod::Module, ::Val{:is1toN}, args::Tuple{Any}) =
-    Is1toN(translate(mod, args[1]))
+translate(mod::Module, ::Val{:is1toN}, (arg,)::Tuple{Any}) =
+    Is1toN(translate(mod, arg))
 
-translate(mod::Module, ::Val{:is0to1}, args::Tuple{}) =
+translate(mod::Module, ::Val{:is0to1}, ::Tuple{}) =
     Then(Is0to1)
 
-translate(mod::Module, ::Val{:is0toN}, args::Tuple{}) =
+translate(mod::Module, ::Val{:is0toN}, ::Tuple{}) =
     Then(Is0toN)
 
-translate(mod::Module, ::Val{:is1to1}, args::Tuple{}) =
+translate(mod::Module, ::Val{:is1to1}, ::Tuple{}) =
     Then(Is1to1)
 
-translate(mod::Module, ::Val{:is1toN}, args::Tuple{}) =
+translate(mod::Module, ::Val{:is1toN}, ::Tuple{}) =
     Then(Is1toN)
 
