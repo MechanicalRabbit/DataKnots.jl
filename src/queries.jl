@@ -1869,16 +1869,16 @@ Lift(::typeof(Is1to1)) = Then(Is1to1)
 Lift(::typeof(Is1toN)) = Then(Is1toN)
 
 Is0to1(env::Environment, p::Pipeline, X) =
-    assemble_cardinality(assemble(X, env, p), x0to1)
+    assemble_cardinality(assemble(env, p, X), x0to1)
 
 Is0toN(env::Environment, p::Pipeline, X) =
-    assemble_cardinality(assemble(X, env, p), x0toN)
+    assemble_cardinality(assemble(env, p, X), x0toN)
 
 Is1to1(env::Environment, p::Pipeline, X) =
-    assemble_cardinality(assemble(X, env, p), x1to1)
+    assemble_cardinality(assemble(env, p, X), x1to1)
 
 Is1toN(env::Environment, p::Pipeline, X) =
-    assemble_cardinality(assemble(X, env, p), x1toN)
+    assemble_cardinality(assemble(env, p, X), x1toN)
 
 translate(mod::Module, ::Val{:is0to1}, args::Tuple{Any}) =
     Is0to1(translate(mod, args[1]))
