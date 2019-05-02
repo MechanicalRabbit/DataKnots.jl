@@ -16,6 +16,10 @@ We will need the following definitions.
         Get,
         Given,
         Group,
+        Is0to1,
+        Is0toN,
+        Is1to1,
+        Is1toN,
         It,
         Keep,
         Label,
@@ -30,6 +34,7 @@ We will need the following definitions.
         assemble,
         elements,
         optimize,
+        shape,
         trivial_pipe,
         target_pipe,
         uncover
@@ -1544,6 +1549,119 @@ In `@query` notation, we write `take(N)` and `drop(N)`.
 
     @query department.employee.drop(3)
     #-> Get(:department) >> Get(:employee) >> Drop(Lift(3))
+
+### `Is0to1`, `Is0toN`, `Is1to1`, `Is1toN`
+
+The `Is1to1` query asserts that the input exists and is singular.
+
+    Q = It.department >>
+        Take(1) >>
+        Is1to1
+    #-> It.department >> Take(1) >> Is1to1
+
+    chicago[Q]
+    #=>
+    │ department                                                                  │
+    │ name    employee                                                            │
+    ┼─────────────────────────────────────────────────────────────────────────────┼
+    │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 8001…│
+    =#
+
+    shape(chicago[Q])
+    #=>
+    BlockOf(⋮
+            x1to1) |>
+    IsLabeled(:department)
+    =#
+
+This operation can also be used in a combinator form.
+
+    Q >>= Is1to1(It.employee >> Take(1))
+    #-> It.department >> Take(1) >> Is1to1 >> Is1to1(It.employee >> Take(1))
+
+    chicago[Q]
+    #=>
+    │ employee                          │
+    │ name       position  salary  rate │
+    ┼───────────────────────────────────┼
+    │ JEFFERY A  SERGEANT  101442       │
+    =#
+
+Other cardinality constraints can also be asserted.
+
+    chicago[It.department.name >> Take(1) >> Is0to1] |> shape
+    #-> BlockOf(String, x0to1) |> IsLabeled(:name)
+
+    chicago[It.department.name >> Take(1) >> Is0toN] |> shape
+    #-> BlockOf(String) |> IsLabeled(:name)
+
+    chicago[It.department.name >> Take(1) >> Is1toN] |> shape
+    #-> BlockOf(String, x1toN) |> IsLabeled(:name)
+
+    chicago[Is0to1(It.department.name >> Take(1))] |> shape
+    #-> BlockOf(String, x0to1) |> IsLabeled(:name)
+
+    chicago[Is0toN(It.department.name >> Take(1))] |> shape
+    #-> BlockOf(String) |> IsLabeled(:name)
+
+    chicago[Is1toN(It.department.name >> Take(1))] |> shape
+    #-> BlockOf(String, x1toN) |> IsLabeled(:name)
+
+When the constraint is not satisfied, an error is reported.
+
+    Q = It.department >> Record(It.name, It.employee >> Is1to1)
+
+    chicago[Q]
+    #-> ERROR: "employee": expected a singular value, relative to "department"
+
+These operations could also be used to widen the cardinality constraint.
+
+    Q = Count(It.department) >> Is1toN
+
+    chicago[Q]
+    #=>
+      │ It │
+    ──┼────┼
+    1 │  3 │
+    =#
+
+    shape(chicago[Q])
+    #-> BlockOf(Int64, x1toN)
+
+In `@query` notation, these operations are written as `is0to1()`, `is0toN()`,
+`is1to1()`, `is1toN()`.
+
+    @query chicago department.name.take(1).is1to1()
+    #=>
+    │ name   │
+    ┼────────┼
+    │ POLICE │
+    =#
+
+    @query chicago is1to1(department.name.take(1))
+    #=>
+    │ name   │
+    ┼────────┼
+    │ POLICE │
+    =#
+
+    shape(@query chicago department.name.take(1).is0to1())
+    #-> BlockOf(String, x0to1) |> IsLabeled(:name)
+
+    shape(@query chicago department.name.take(1).is0toN())
+    #-> BlockOf(String) |> IsLabeled(:name)
+
+    shape(@query chicago department.name.take(1).is1toN())
+    #-> BlockOf(String, x1toN) |> IsLabeled(:name)
+
+    shape(@query chicago is0to1(department.name.take(1)))
+    #-> BlockOf(String, x0to1) |> IsLabeled(:name)
+
+    shape(@query chicago is0toN(department.name.take(1)))
+    #-> BlockOf(String) |> IsLabeled(:name)
+
+    shape(@query chicago is1toN(department.name.take(1)))
+    #-> BlockOf(String, x1toN) |> IsLabeled(:name)
 
 ### `Unique` and `Group`
 
