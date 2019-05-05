@@ -667,21 +667,19 @@ stats(x) = @query {min=&gt;min($x),
 │ 72510  103272      5 │
 =#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-Data-1" href="#Importing-and-Exporting-Data-1">Importing &amp; Exporting Data</a></h2><p>We can import directly from systems that support the <code>Tables.jl</code> interface. Here is a tabular variant of the chicago dataset.</p><pre><code class="language-julia">using CSV
 
-employee_csv = &quot;&quot;&quot;
+employee_data = &quot;&quot;&quot;
     name,department,position,salary,rate
-    &quot;JEFFERY A&quot;, &quot;POLICE&quot;, &quot;SERGEANT&quot;, 101442,
-    &quot;NANCY A&quot;, &quot;POLICE&quot;, &quot;POLICE OFFICER&quot;, 80016,
-    &quot;ANTHONY A&quot;, &quot;POLICE&quot;, &quot;POLICE OFFICER&quot;, 72510,
-    &quot;ALBA M&quot;, &quot;POLICE&quot;, &quot;POLICE CADET&quot;,, 9.46
-    &quot;JAMES A&quot;, &quot;FIRE&quot;, &quot;FIRE ENGINEER-EMT&quot;, 103350,
-    &quot;DANIEL A&quot;, &quot;FIRE&quot;, &quot;FIREFIGHTER-EMT&quot;, 95484,
-    &quot;ROBERT K&quot;, &quot;FIRE&quot;, &quot;FIREFIGHTER-EMT&quot;, 103272,
-    &quot;LAKENYA A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;,, 17.68
-    &quot;DORIS A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;,, 19.38
-    &quot;BRENDA B&quot;, &quot;OEMC&quot;, &quot;TRAFFIC CONTROL AIDE&quot;, 64392,
-    &quot;&quot;&quot; |&gt; IOBuffer
-
-employee_data = CSV.File(employee_csv, allowmissing=:auto)
+    &quot;JEFFERY A&quot;,&quot;POLICE&quot;,&quot;SERGEANT&quot;,101442,
+    &quot;NANCY A&quot;,&quot;POLICE&quot;,&quot;POLICE OFFICER&quot;,80016,
+    &quot;ANTHONY A&quot;,&quot;POLICE&quot;,&quot;POLICE OFFICER&quot;,72510,
+    &quot;ALBA M&quot;,&quot;POLICE&quot;,&quot;POLICE CADET&quot;,,9.46
+    &quot;JAMES A&quot;,&quot;FIRE&quot;,&quot;FIRE ENGINEER-EMT&quot;,103350,
+    &quot;DANIEL A&quot;,&quot;FIRE&quot;,&quot;FIREFIGHTER-EMT&quot;,95484,
+    &quot;ROBERT K&quot;,&quot;FIRE&quot;,&quot;FIREFIGHTER-EMT&quot;,103272,
+    &quot;LAKENYA A&quot;,&quot;OEMC&quot;,&quot;CROSSING GUARD&quot;,,17.68
+    &quot;DORIS A&quot;,&quot;OEMC&quot;,&quot;CROSSING GUARD&quot;,,19.38
+    &quot;BRENDA B&quot;,&quot;OEMC&quot;,&quot;TRAFFIC CONTROL AIDE&quot;,64392,
+    &quot;&quot;&quot; |&gt; IOBuffer |&gt; CSV.File
 
 chicago′ = DataKnot(:employee =&gt; employee_data)
 

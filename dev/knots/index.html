@@ -36,17 +36,15 @@ using DataFrames</code></pre><h2><a class="nav-anchor" id="Overview-1" href="#Ov
 1 │ a    │
 2 │ b    │
 3 │ c    │
-=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-1" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></h2><p>We support the conversion to/from objects with the <code>Tables.jl</code> interface. For example, we could import CSV data.</p><pre><code class="language-julia">chicago_data = IOBuffer(&quot;&quot;&quot;
+=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-1" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></h2><p>We support the conversion to/from objects with the <code>Tables.jl</code> interface. For example, we could import CSV data.</p><pre><code class="language-julia">chicago_file = &quot;&quot;&quot;
 name,department,position,salary,rate
-&quot;JEFFERY A&quot;, &quot;POLICE&quot;, &quot;SERGEANT&quot;, 101442,
-&quot;NANCY A&quot;, &quot;POLICE&quot;, &quot;POLICE OFFICER&quot;, 80016,
-&quot;JAMES A&quot;, &quot;FIRE&quot;, &quot;FIRE ENGINEER-EMT&quot;, 103350,
-&quot;DANIEL A&quot;, &quot;FIRE&quot;, &quot;FIRE FIGHTER-EMT&quot;, 95484,
-&quot;LAKENYA A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 17.68
-&quot;DORIS A&quot;, &quot;OEMC&quot;, &quot;CROSSING GUARD&quot;, , 19.38
-&quot;&quot;&quot;)
-
-chicago_file = CSV.File(chicago_data, allowmissing=:auto)
+&quot;JEFFERY A&quot;,&quot;POLICE&quot;,&quot;SERGEANT&quot;,101442,
+&quot;NANCY A&quot;,&quot;POLICE&quot;,&quot;POLICE OFFICER&quot;,80016,
+&quot;JAMES A&quot;,&quot;FIRE&quot;,&quot;FIRE ENGINEER-EMT&quot;,103350,
+&quot;DANIEL A&quot;,&quot;FIRE&quot;,&quot;FIRE FIGHTER-EMT&quot;,95484,
+&quot;LAKENYA A&quot;,&quot;OEMC&quot;,&quot;CROSSING GUARD&quot;,,17.68
+&quot;DORIS A&quot;,&quot;OEMC&quot;,&quot;CROSSING GUARD&quot;,,19.38
+&quot;&quot;&quot; |&gt; IOBuffer |&gt; CSV.File
 
 chicago = DataKnot(:employee =&gt; chicago_file)
 

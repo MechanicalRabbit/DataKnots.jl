@@ -12,6 +12,10 @@
     Get,
     Given,
     Group,
+    Is0to1,
+    Is0toN,
+    Is1to1,
+    Is1toN,
     It,
     Keep,
     Label,
@@ -26,6 +30,7 @@
     assemble,
     elements,
     optimize,
+    shape,
     trivial_pipe,
     target_pipe,
     uncover</code></pre><h2><a class="nav-anchor" id="Example-Dataset-1" href="#Example-Dataset-1">Example Dataset</a></h2><p>As a running example, we will use the following dataset of city departments with associated employees.  This dataset is serialized as a nested structure with a singleton root record, which holds all department records, each of which holds associated employee records.</p><pre><code class="language-julia">chicago_data =
@@ -179,7 +184,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/77ff27e2b6907a6a50c4992708617d9b31797038/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/77ff27e2b6907a6a50c4992708617d9b31797038/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/77ff27e2b6907a6a50c4992708617d9b31797038/src/queries.jl#L120-L124">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/7a6b68882a629c8f20eebfa8ea2cdbb6488e52dd/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/7a6b68882a629c8f20eebfa8ea2cdbb6488e52dd/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/7a6b68882a629c8f20eebfa8ea2cdbb6488e52dd/src/queries.jl#L120-L124">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -1035,7 +1040,93 @@ chicago[Q]
 #-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Take(Lift(3))
 
 @query department.employee.drop(3)
-#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Drop(Lift(3))</code></pre><h3><a class="nav-anchor" id="Unique-and-Group-1" href="#Unique-and-Group-1"><code>Unique</code> and <code>Group</code></a></h3><p>We use the <code>Unique</code> combinator to produce unique elements of a collection.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Drop(Lift(3))</code></pre><h3><a class="nav-anchor" id="Is0to1,-Is0toN,-Is1to1,-Is1toN-1" href="#Is0to1,-Is0toN,-Is1to1,-Is1toN-1"><code>Is0to1</code>, <code>Is0toN</code>, <code>Is1to1</code>, <code>Is1toN</code></a></h3><p>The <code>Is1to1</code> query asserts that the input exists and is singular.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Take(1) &gt;&gt;
+    Is1to1
+#-&gt; It.department &gt;&gt; Take(1) &gt;&gt; Is1to1
+
+chicago[Q]
+#=&gt;
+│ department                                                                  │
+│ name    employee                                                            │
+┼─────────────────────────────────────────────────────────────────────────────┼
+│ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 8001…│
+=#
+
+shape(chicago[Q])
+#=&gt;
+BlockOf(⋮
+        x1to1) |&gt;
+IsLabeled(:department)
+=#</code></pre><p>This operation can also be used in a combinator form.</p><pre><code class="language-julia">Q &gt;&gt;= Is1to1(It.employee &gt;&gt; Take(1))
+#-&gt; It.department &gt;&gt; Take(1) &gt;&gt; Is1to1 &gt;&gt; Is1to1(It.employee &gt;&gt; Take(1))
+
+chicago[Q]
+#=&gt;
+│ employee                          │
+│ name       position  salary  rate │
+┼───────────────────────────────────┼
+│ JEFFERY A  SERGEANT  101442       │
+=#</code></pre><p>Other cardinality constraints can also be asserted.</p><pre><code class="language-julia">chicago[It.department.name &gt;&gt; Take(1) &gt;&gt; Is0to1] |&gt; shape
+#-&gt; BlockOf(String, x0to1) |&gt; IsLabeled(:name)
+
+chicago[It.department.name &gt;&gt; Take(1) &gt;&gt; Is0toN] |&gt; shape
+#-&gt; BlockOf(String) |&gt; IsLabeled(:name)
+
+chicago[It.department.name &gt;&gt; Take(1) &gt;&gt; Is1toN] |&gt; shape
+#-&gt; BlockOf(String, x1toN) |&gt; IsLabeled(:name)
+
+chicago[Is0to1(It.department.name &gt;&gt; Take(1))] |&gt; shape
+#-&gt; BlockOf(String, x0to1) |&gt; IsLabeled(:name)
+
+chicago[Is0toN(It.department.name &gt;&gt; Take(1))] |&gt; shape
+#-&gt; BlockOf(String) |&gt; IsLabeled(:name)
+
+chicago[Is1toN(It.department.name &gt;&gt; Take(1))] |&gt; shape
+#-&gt; BlockOf(String, x1toN) |&gt; IsLabeled(:name)</code></pre><p>When the constraint is not satisfied, an error is reported.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Record(It.name, It.employee &gt;&gt; Is1to1)
+
+chicago[Q]
+#-&gt; ERROR: &quot;employee&quot;: expected a singular value, relative to &quot;department&quot;</code></pre><p>These operations could also be used to widen the cardinality constraint.</p><pre><code class="language-julia">Q = Count(It.department) &gt;&gt; Is1toN
+
+chicago[Q]
+#=&gt;
+  │ It │
+──┼────┼
+1 │  3 │
+=#
+
+shape(chicago[Q])
+#-&gt; BlockOf(Int64, x1toN)</code></pre><p>In <code>@query</code> notation, these operations are written as <code>is0to1()</code>, <code>is0toN()</code>, <code>is1to1()</code>, <code>is1toN()</code>.</p><pre><code class="language-julia">@query chicago department.name.take(1).is1to1()
+#=&gt;
+│ name   │
+┼────────┼
+│ POLICE │
+=#
+
+@query chicago is1to1(department.name.take(1))
+#=&gt;
+│ name   │
+┼────────┼
+│ POLICE │
+=#
+
+shape(@query chicago department.name.take(1).is0to1())
+#-&gt; BlockOf(String, x0to1) |&gt; IsLabeled(:name)
+
+shape(@query chicago department.name.take(1).is0toN())
+#-&gt; BlockOf(String) |&gt; IsLabeled(:name)
+
+shape(@query chicago department.name.take(1).is1toN())
+#-&gt; BlockOf(String, x1toN) |&gt; IsLabeled(:name)
+
+shape(@query chicago is0to1(department.name.take(1)))
+#-&gt; BlockOf(String, x0to1) |&gt; IsLabeled(:name)
+
+shape(@query chicago is0toN(department.name.take(1)))
+#-&gt; BlockOf(String) |&gt; IsLabeled(:name)
+
+shape(@query chicago is1toN(department.name.take(1)))
+#-&gt; BlockOf(String, x1toN) |&gt; IsLabeled(:name)</code></pre><h3><a class="nav-anchor" id="Unique-and-Group-1" href="#Unique-and-Group-1"><code>Unique</code> and <code>Group</code></a></h3><p>We use the <code>Unique</code> combinator to produce unique elements of a collection.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Record(It.name, Unique(It.employee.position))
 #-&gt; It.department &gt;&gt; Record(It.name, Unique(It.employee.position))
 
