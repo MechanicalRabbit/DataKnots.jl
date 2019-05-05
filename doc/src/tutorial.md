@@ -1176,21 +1176,19 @@ interface. Here is a tabular variant of the chicago dataset.
 
     using CSV
 
-    employee_csv = """
+    employee_data = """
         name,department,position,salary,rate
-        "JEFFERY A", "POLICE", "SERGEANT", 101442,
-        "NANCY A", "POLICE", "POLICE OFFICER", 80016,
-        "ANTHONY A", "POLICE", "POLICE OFFICER", 72510,
-        "ALBA M", "POLICE", "POLICE CADET",, 9.46
-        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
-        "DANIEL A", "FIRE", "FIREFIGHTER-EMT", 95484,
-        "ROBERT K", "FIRE", "FIREFIGHTER-EMT", 103272,
-        "LAKENYA A", "OEMC", "CROSSING GUARD",, 17.68
-        "DORIS A", "OEMC", "CROSSING GUARD",, 19.38
-        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392,
-        """ |> IOBuffer
-
-    employee_data = CSV.File(employee_csv, allowmissing=:auto)
+        "JEFFERY A","POLICE","SERGEANT",101442,
+        "NANCY A","POLICE","POLICE OFFICER",80016,
+        "ANTHONY A","POLICE","POLICE OFFICER",72510,
+        "ALBA M","POLICE","POLICE CADET",,9.46
+        "JAMES A","FIRE","FIRE ENGINEER-EMT",103350,
+        "DANIEL A","FIRE","FIREFIGHTER-EMT",95484,
+        "ROBERT K","FIRE","FIREFIGHTER-EMT",103272,
+        "LAKENYA A","OEMC","CROSSING GUARD",,17.68
+        "DORIS A","OEMC","CROSSING GUARD",,19.38
+        "BRENDA B","OEMC","TRAFFIC CONTROL AIDE",64392,
+        """ |> IOBuffer |> CSV.File
 
     chicago′ = DataKnot(:employee => employee_data)
 

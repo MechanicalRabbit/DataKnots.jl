@@ -84,17 +84,15 @@ A specific dataset could be focused by navigating.
 We support the conversion to/from objects with the `Tables.jl`
 interface. For example, we could import CSV data.
 
-    chicago_data = IOBuffer("""
+    chicago_file = """
     name,department,position,salary,rate
-    "JEFFERY A", "POLICE", "SERGEANT", 101442,
-    "NANCY A", "POLICE", "POLICE OFFICER", 80016,
-    "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350,
-    "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484,
-    "LAKENYA A", "OEMC", "CROSSING GUARD", , 17.68
-    "DORIS A", "OEMC", "CROSSING GUARD", , 19.38
-    """)
-
-    chicago_file = CSV.File(chicago_data, allowmissing=:auto)
+    "JEFFERY A","POLICE","SERGEANT",101442,
+    "NANCY A","POLICE","POLICE OFFICER",80016,
+    "JAMES A","FIRE","FIRE ENGINEER-EMT",103350,
+    "DANIEL A","FIRE","FIRE FIGHTER-EMT",95484,
+    "LAKENYA A","OEMC","CROSSING GUARD",,17.68
+    "DORIS A","OEMC","CROSSING GUARD",,19.38
+    """ |> IOBuffer |> CSV.File
 
     chicago = DataKnot(:employee => chicago_file)
 

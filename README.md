@@ -21,11 +21,11 @@ into a `DataKnot`.
 
     employee_csv_file = """
         name,department,position,salary
-        "JEFFERY A", "POLICE", "SERGEANT", 101442
-        "NANCY A", "POLICE", "POLICE OFFICER", 80016
-        "JAMES A", "FIRE", "FIRE ENGINEER-EMT", 103350
-        "DANIEL A", "FIRE", "FIRE FIGHTER-EMT", 95484
-        "BRENDA B", "OEMC", "TRAFFIC CONTROL AIDE", 64392
+        "JEFFERY A","POLICE","SERGEANT",101442
+        "NANCY A","POLICE","POLICE OFFICER",80016
+        "JAMES A","FIRE","FIRE ENGINEER-EMT",103350
+        "DANIEL A","FIRE","FIRE FIGHTER-EMT",95484
+        "BRENDA B","OEMC","TRAFFIC CONTROL AIDE",64392
         """ |> IOBuffer |> CSV.File
 
     chicago = DataKnot(:employee => employee_csv_file)
