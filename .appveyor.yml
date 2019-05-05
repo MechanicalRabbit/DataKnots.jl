@@ -29,7 +29,7 @@ install:
 - ps: iex ((new-object net.webclient).DownloadString("https://raw.githubusercontent.com/JuliaCI/Appveyor.jl/version-1/bin/install.ps1"))
 
 build_script:
-- C:\julia\bin\julia -e "using Pkg; Pkg.clone(\"https://github.com/rbt-lang/PrettyPrinting.jl\"); Pkg.build(); Pkg.add(\"Random\")"
+- C:\julia\bin\julia -e "using Pkg; Pkg.build(); Pkg.add(\"Random\")"
 
 test_script:
 - echo "%JL_TEST_SCRIPT%"
