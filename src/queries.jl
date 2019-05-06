@@ -627,6 +627,61 @@ translate(mod::Module, ::Val{:record}, args::Tuple) =
 
 
 #
+# Mix combinator.
+#
+
+function assemble_mix(p::Pipeline, xs::Vector{Pipeline})
+    lbls = Symbol[]
+    cols = Pipeline[]
+    card = x1to1
+    seen = Dict{Symbol,Int}()
+    for (i, x) in enumerate(xs)
+        card |= cardinality(target(x))
+        x = uncover(x)
+        lbl = getlabel(x, nothing)
+        if lbl !== nothing
+            x = relabel(x, nothing)
+        else
+            lbl = ordinal_label(i)
+        end
+        if lbl in keys(seen)
+            lbls[seen[lbl]] = ordinal_label(seen[lbl])
+        end
+        seen[lbl] = i
+        push!(lbls, lbl)
+        x = chain_of(
+                x,
+                with_elements(wrap()),
+        ) |> designate(source(x), replace_elements(target(x), elts -> BlockOf(elts, x1to1)))
+        push!(cols, x)
+    end
+    src = elements(target(p))
+    tgt = BlockOf(TupleOf(lbls, elements.(target.(cols))), card)
+    lbl = getlabel(p, nothing)
+    if lbl !== nothing
+        tgt = relabel(tgt, lbl)
+    end
+    q = chain_of(
+            tuple_of(lbls, cols),
+            distribute_all(),
+    ) |> designate(src, tgt)
+    q = cover(q)
+    compose(p, q)
+end
+
+Mix(Xs...) =
+    Query(Mix, Xs...)
+
+function Mix(env::Environment, p::Pipeline, Xs...)
+    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
+    assemble_mix(p, xs)
+end
+
+translate(mod::Module, ::Val{:mix}, args::Tuple) =
+    Mix(translate.(Ref(mod), args)...)
+
+
+#
 # Collect combinator.
 #
 

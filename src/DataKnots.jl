@@ -25,6 +25,7 @@ export
     Lift,
     Max,
     Min,
+    Mix,
     Record,
     Sum,
     Tag,
