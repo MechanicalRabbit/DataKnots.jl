@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.7.0
+
+- Added `Mix` combinator.
+
 ## v0.6.0
 
 - Added Cardinality assertion combinators.
