@@ -240,7 +240,7 @@ to an existing record using `Collect`.
             Collect(:size => Count(It.employee))]
     #=>
       │ department                                                                │
-      │ name    employee                                                     size │
+      │ name    employee{name,position,salary}                               size │
     ──┼───────────────────────────────────────────────────────────────────────────┼
     1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 1014…    3 │
     2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT…    2 │
@@ -271,7 +271,7 @@ department, employees' name and salary.
                       It.salary))]
     #=>
       │ department                                                  │
-      │ name    employee                                            │
+      │ name    employee{name,salary}                               │
     ──┼─────────────────────────────────────────────────────────────┼
     1 │ POLICE  ANTHONY A, 72510; JEFFERY A, 101442; NANCY A, 80016 │
     2 │ FIRE    DANIEL A, 95484; ROBERT K, 103272                   │
@@ -614,7 +614,7 @@ records to their positions, we use `Group` combinator:
 
     chicago[It.department.employee >> Group(It.position)]
     #=>
-      │ position         employee                                                 │
+      │ position         employee{name,position,salary}                           │
     ──┼───────────────────────────────────────────────────────────────────────────┼
     1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-…│
     2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLICE OFFICE…│
@@ -1253,7 +1253,7 @@ seen earlier how this could be done with `Group` combinator.
 
     chicago′[It.employee >> Group(It.department)]
     #=>
-      │ department  employee                                                      │
+      │ department  employee{name,department,position,salary,rate}                │
     ──┼───────────────────────────────────────────────────────────────────────────┼
     1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│
     2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│
@@ -1276,7 +1276,7 @@ its structure is compatible with our initial `chicago` dataset.
     chicago′[Restructure]
     #=>
       │ department                                                                │
-      │ name    employee                                                          │
+      │ name    employee{name,position,salary,rate}                               │
     ──┼───────────────────────────────────────────────────────────────────────────┼
     1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFIGHTE…│
     2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING GUAR…│
@@ -1288,7 +1288,7 @@ top-level field, `department`.
 
     chicago″ = chicago′[Restructure >> Collect]
     #=>
-    │ employee                              department                            │
+    │ employee{name,department,position,sa… department{name,employee{name,positio…│
     ┼─────────────────────────────────────────────────────────────────────────────┼
     │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
     =#

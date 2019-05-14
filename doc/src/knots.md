@@ -335,7 +335,7 @@ rendered as comma-separated lists of tuple elements.
 
     convert(DataKnot, ("FIRE", [("JEFFERY A", (101442, missing)), ("NANCY A", (80016, missing))]))
     #=>
-    │ #A    #B                                                      │
+    │ #A    #B{#A,#B{#A,#B}}                                        │
     ┼───────────────────────────────────────────────────────────────┼
     │ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
     =#
@@ -343,7 +343,7 @@ rendered as comma-separated lists of tuple elements.
     convert(DataKnot, (name = "FIRE", employee = [(name = "JEFFERY A", compensation = (salary = 101442, rate = missing)),
                                                   (name = "NANCY A", compensation = (salary = 80016, rate = missing))]))
     #=>
-    │ name  employee                                                │
+    │ name  employee{name,compensation{salary,rate}}                │
     ┼───────────────────────────────────────────────────────────────┼
     │ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
     =#
@@ -357,7 +357,7 @@ rendered as comma-separated lists of tuple elements.
             (name = "FIRE", employee = [(name = "JEFFERY A", compensation = (salary = 101442, rate = missing)),
                                         (name = "NANCY A", compensation = (salary = 80016, rate = missing))])]),)
     #=>
-    │ name  employee                                                │
+    │ name  employee{name,compensation{salary,rate}}                │
     ┼───────────────────────────────────────────────────────────────┼
     │ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
     =#

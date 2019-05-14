@@ -430,7 +430,7 @@ values of a particular expression together with its matching data.
 
     unitknot[DataSet >> Group(It.char)]
     #=>
-      │ char  data                                 │
+      │ char  data{no,even,char}                   │
     ──┼────────────────────────────────────────────┼
     1 │ a     1, false, a; 4, true, a; 7, false, a │
     2 │ b     2, true, b; 5, false, b; 8, true, b  │
