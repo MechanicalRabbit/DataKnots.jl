@@ -238,7 +238,7 @@ function show(io::IO, db::DataKnot)
 end
 
 function render_dataknot(maxx::Int, maxy::Int, db::DataKnot)
-    d = tear_data(table_data(db), maxy)
+    d = table_data(db, maxy)
     l = table_layout(d, maxx)
     c = table_draw(l, maxx)
     return lines!(c)
@@ -264,7 +264,7 @@ TableData(d::TableData; head=nothing, body=nothing, shp=nothing, idxs=nothing, t
               idxs !== nothing ? idxs : d.idxs,
               tear !== nothing ? tear : d.tear)
 
-function table_data(db::DataKnot)
+function table_data(db::DataKnot, maxy::Int)
     shp = shape(db)
     title = String(getlabel(shp, ""))
     shp = relabel(shp, nothing)
@@ -272,7 +272,7 @@ function table_data(db::DataKnot)
     body = TupleVector(1, AbstractVector[cell(db)])
     shp = TupleOf(shp)
     d = TableData(head, body, shp)
-    return default_data_header(focus_data(d, 1))
+    return tear_data(default_data_header(nested_headers(focus_data(d, 1))), maxy)
 end
 
 focus_data(d::TableData, pos) =
@@ -374,6 +374,39 @@ as_tuples(ity::Type{<:NamedTuple}) =
 as_tuples(ity::Type{<:Tuple}) =
     adapt_tuple() |> designate(ity,
                                TupleOf(collect(AbstractShape, ity.parameters)))
+
+function nested_headers(d::TableData)
+    hh, hw = size(d.head)
+    hh > 0 || return d
+    head′ = copy(d.head)
+    for col = 1:hw
+        row = hh
+        d.head[row, col][2] == 1 || continue
+        while d.head[row, col] == ("", 1) && row > 1 && d.head[row-1, col] == ("", 1)
+            row -= 1
+        end
+        sel = nested_selector(column(d.shp, col))
+        sel != "" || continue
+        head′[row, col] = (d.head[row, col][1] * sel, 1)
+    end
+    TableData(d, head=head′)
+end
+
+function nested_selector(shp::AbstractShape)
+    p = as_blocks(shp)
+    if p !== nothing
+        shp = elements(target(p))
+    end
+    p = as_tuples(shp)
+    p !== nothing || return ""
+    shp = target(p)
+    sels = String[]
+    for k = 1:width(shp)
+        text = String(label(shp, k))
+        push!(sels, text * nested_selector(column(shp, k)))
+    end
+    "{" * join(sels, ",") * "}"
+end
 
 function default_data_header(d::TableData)
     hh, hw = size(d.head)
