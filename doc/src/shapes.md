@@ -28,6 +28,7 @@ definitions.
         fits,
         label,
         labels,
+        print_graph,
         replace_column,
         replace_elements,
         shapeof,
@@ -527,4 +528,51 @@ Components of the signature can be easily extracted.
 
     source(sig)
     #-> ValueOf(UInt64)
+
+
+## Rendering as a graph
+
+Function `print_graph()` visualizes a shape constraint as a tree.
+
+    print_graph(ValueOf(String))
+    #-> _  String
+
+    print_graph(BlockOf(String, x1to1))
+    #-> _  1:1 × String
+
+    print_graph(BlockOf(String, x1to1) |> IsLabeled(:name))
+    #-> name  1:1 × String
+
+    print_graph(
+        TupleOf(
+            :name => String,
+            :position => String,
+            :salary => Int) |> IsLabeled(:employee))
+    #=>
+    employee
+    ├╴name      String
+    ├╴position  String
+    └╴salary    Int64
+    =#
+
+    print_graph(
+        BlockOf(
+            TupleOf(
+                TupleOf(
+                    :name => BlockOf(String, x1to1),
+                    :position => BlockOf(String, x1to1),
+                    :salary => BlockOf(Int, x0to1),
+                    :rate => BlockOf(Float64, x0to1)) |> IsLabeled(:employee),
+                TupleOf(:mean_salary => BlockOf(Float64, x0to1))) |> IsScope,
+            x0toN) |> IsFlow)
+    #=>
+    _                0:N
+    ├╴employee
+    │ ├╴name         1:1 × String
+    │ ├╴position     1:1 × String
+    │ ├╴salary       0:1 × Int64
+    │ └╴rate         0:1 × Float64
+    └╴#B
+      └╴mean_salary  0:1 × Float64
+    =#
 

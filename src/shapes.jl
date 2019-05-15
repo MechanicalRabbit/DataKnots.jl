@@ -434,3 +434,77 @@ source(sig::Signature) = sig.src
 
 target(sig::Signature) = sig.tgt
 
+
+#
+# Rendering as a tree.
+#
+
+print_graph(shp::AbstractShape) =
+    print_graph(stdout, shp)
+
+function print_graph(io::IO, shp::AbstractShape)
+    gr = graphof(shp)
+    w = 0
+    for (ind, name, descr) in gr
+        w = max(w, ind*2 + textwidth(name))
+    end
+    for (k, (ind, name, descr)) in enumerate(gr)
+        for j = 1:ind
+            more = false
+            k′ = k + 1
+            while k′ <= length(gr)
+                ind′ = gr[k′][1]
+                if ind′ == j
+                    more = true
+                end
+                ind′ > j || break
+                k′ += 1
+            end
+            print(io, j < ind ? (more ? "│ " : "  ") : (more ? "├╴" : "└╴"))
+        end
+        print(io, name)
+        if !isempty(descr)
+            print(io, " " ^ (2 + w - ind*2 - textwidth(name)))
+            print(io, descr)
+        end
+        println(io)
+    end
+end
+
+function graphof(shp::AbstractShape)
+    gr = Tuple{Int,String,String}[]
+    graphof!(gr, shp, nothing, 0, "_")
+    gr
+end
+
+function graphof!(gr, shp::AbstractShape, card, ind, name)
+    descr = "$(syntaxof(shp))"
+    if card !== nothing
+        descr = "$card × $descr"
+    end
+    push!(gr, (ind, name, descr))
+end
+
+function graphof!(gr, shp::BlockOf, card, ind, name)
+    card′ = "$(syntaxof(cardinality(shp)))"
+    if card !== nothing
+        card′ = "$card × $card′"
+    end
+    graphof!(gr, elements(shp), card′, ind, name)
+end
+
+function graphof!(gr, shp::TupleOf, card, ind, name)
+    descr = card !== nothing ? card : ""
+    push!(gr, (ind, name, descr))
+    for j = 1:width(shp)
+        graphof!(gr, column(shp, j), nothing, ind+1, string(label(shp, j)))
+    end
+    gr
+end
+
+graphof!(gr, shp::IsLabeled, card, ind, name) =
+    graphof!(gr, subject(shp), card, ind, string(label(shp)))
+
+graphof!(gr, shp::Annotation, card, ind, name) =
+    graphof!(gr, subject(shp), card, ind, name)
+
