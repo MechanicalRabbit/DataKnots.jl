@@ -670,6 +670,31 @@ function _block_length(offs::AbstractVector{Int})
 end
 
 """
+    block_not_empty() :: Pipeline
+
+This pipeline converts a block vector to a vector of Boolean values, where each
+value indicates whether the corresponding block is empty or not.
+"""
+block_not_empty() = Pipeline(block_not_empty)
+
+function block_not_empty(rt::Runtime, input::AbstractVector)
+    @assert input isa BlockVector
+    _block_not_empty(offsets(input))
+end
+
+_block_not_empty(offs::OneTo{Int}) =
+    fill(true, length(offs)-1)
+
+function _block_not_empty(offs::AbstractVector{Int})
+    len = length(offs) - 1
+    output = Vector{Bool}(undef, len)
+    @inbounds for k = 1:len
+        output[k] = offs[k+1] > offs[k]
+    end
+    output
+end
+
+"""
     block_any() :: Pipeline
 
 This pipeline applies `any` to a block vector with `Bool` elements.
