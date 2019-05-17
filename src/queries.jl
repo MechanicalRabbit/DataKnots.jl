@@ -1724,6 +1724,93 @@ translate(mod::Module, ::Val{:filter}, (arg,)::Tuple{Any}) =
 
 
 #
+# First, Last, Nth.
+#
+
+assemble_first(p::Pipeline, inv::Bool=false) =
+    assemble_nth(p, !inv ? 1 : -1, cardinality(target(p))&x0to1)
+
+function assemble_nth(p::Pipeline, n::Int, card::Cardinality=x0to1)
+    elts = elements(target(p))
+    chain_of(
+        p,
+        get_by(n, card),
+    ) |> designate(source(p), BlockOf(elts, card) |> IsFlow)
+end
+
+function assemble_nth(p::Pipeline, n::Pipeline)
+    n = uncover(n)
+    fits(target(n), BlockOf(ValueOf(Int), x1to1)) || error("expected a singular mandatory integer")
+    src = source(p)
+    tgt = BlockOf(elements(target(p)), x0to1) |> IsFlow
+    chain_of(
+        tuple_of(p, n),
+        get_by(),
+    ) |> designate(src, tgt)
+end
+
+First(X) = Query(First, X)
+
+Last(X) = Query(Last, X)
+
+Nth(X, N) = Query(Nth, X, N)
+
+Lift(::typeof(First)) =
+    Then(First)
+
+Lift(::typeof(Last)) =
+    Then(Last)
+
+Nth(N) = Query(Nth, N)
+
+function First(env::Environment, p::Pipeline, X)
+    x = assemble(env, target_pipe(p), X)
+    compose(p, assemble_first(x))
+end
+
+function Last(env::Environment, p::Pipeline, X)
+    x = assemble(env, target_pipe(p), X)
+    compose(p, assemble_first(x, true))
+end
+
+function Nth(env::Environment, p::Pipeline, X, N::Int)
+    x = assemble(env, target_pipe(p), X)
+    compose(p, assemble_nth(x, N))
+end
+
+function Nth(env::Environment, p::Pipeline, X, N)
+    p0 = target_pipe(p)
+    x = assemble(env, p0, X)
+    n = assemble(env, p0, N)
+    compose(p, assemble_nth(x, n))
+end
+
+Nth(env::Environment, p::Pipeline, N::Int) =
+    assemble_nth(p, N)
+
+Nth(env::Environment, p::Pipeline, N) =
+    assemble_nth(p, assemble(env, source_pipe(p), N))
+
+translate(mod::Module, ::Val{:first}, (arg,)::Tuple{Any}) =
+    First(translate(mod, arg))
+
+translate(mod::Module, ::Val{:first}, ::Tuple{}) =
+    Then(First)
+
+translate(mod::Module, ::Val{:last}, (arg,)::Tuple{Any}) =
+    Last(translate(mod, arg))
+
+translate(mod::Module, ::Val{:last}, ::Tuple{}) =
+    Then(Last)
+
+translate(mod::Module, ::Val{:nth}, args::Tuple{Any,Any}) =
+    Nth(translate.(Ref(mod), args)...)
+
+translate(mod::Module, ::Val{:nth}, (arg,)::Tuple{Any}) =
+    Nth(translate(mod, arg))
+
+
+#
 # Take and Drop combinators.
 #
 
