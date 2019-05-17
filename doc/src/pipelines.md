@@ -15,6 +15,7 @@ transformations.  We will use the following definitions:
         block_filler,
         block_length,
         block_lift,
+        block_not_empty,
         chain_of,
         column,
         distribute,
@@ -501,6 +502,15 @@ The pipeline `block_length()` calculates the lengths of blocks in a block vector
 
     p(@VectorTree [String] [missing, "GARRY M", ["ANTHONY R", "DANA A"]])
     #-> [0, 1, 2]
+
+The pipeline `block_not_empty()` produces a vector of Boolean values indicating
+whether the input block is empty or not.
+
+    p = block_not_empty()
+    #-> block_not_empty()
+
+    p(@VectorTree [String] [missing, "GARRY M", ["ANTHONY R", "DANA A"]])
+    #-> Bool[0, 1, 1]
 
 The pipeline `block_any()` checks whether the blocks in a `Bool` block vector
 have any `true` values.
