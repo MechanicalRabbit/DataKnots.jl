@@ -12,6 +12,7 @@ We will need the following definitions.
         Drop,
         Each,
         Environment,
+        Exists,
         Filter,
         First,
         Get,
@@ -1341,7 +1342,7 @@ In `@query` notation, `Keep(X)` and `Given(X, Q)` are written as `keep(X)` and
                               Get(:employee) >> Take(Get(:half)))
     =#
 
-### `Count`, `Sum`, `Max`, `Min`
+### `Count`, `Exists`, `Sum`, `Max`, `Min`
 
 `Count(X)`, `Sum(X)`, `Max(X)`, `Min(X)` evaluate the `X` and emit the number
 of elements, their sum, maximum, and minimum respectively.
@@ -1413,6 +1414,40 @@ output.
     3 │ OEMC    17.68; 19.38      2  37.06  19.38  17.68 │
     =#
 
+`Exists(X)` evaluates `X` and emits a Boolean value that indicates whether `X`
+produces at least one value or not.
+
+    Q = It.department.employee >>
+        Record(It.name,
+               It.salary,
+               :has_salary => Exists(It.salary),
+               It.rate,
+               :has_rate => It.rate >> Exists)
+    #=>
+    It.department.employee >> Record(It.name,
+                                     It.salary,
+                                     :has_salary => Exists(It.salary),
+                                     It.rate,
+                                     :has_rate => It.rate >> Exists)
+    =#
+
+    chicago[Q]
+    #=>
+       │ employee                                       │
+       │ name       salary  has_salary  rate   has_rate │
+    ───┼────────────────────────────────────────────────┼
+     1 │ JEFFERY A  101442        true            false │
+     2 │ NANCY A     80016        true            false │
+     3 │ ANTHONY A   72510        true            false │
+     4 │ ALBA M                  false   9.46      true │
+     5 │ JAMES A    103350        true            false │
+     6 │ DANIEL A    95484        true            false │
+     7 │ ROBERT K   103272        true            false │
+     8 │ LAKENYA A               false  17.68      true │
+     9 │ DORIS A                 false  19.38      true │
+    10 │ BRENDA B    64392        true            false │
+    =#
+
 These operations are also available in the `@query` notation.
 
     @query begin
@@ -1444,6 +1479,13 @@ These operations are also available in the `@query` notation.
            Get(:rate) >> Then(Sum),
            Get(:rate) >> Then(Max),
            Get(:rate) >> Then(Min))
+    =#
+
+    @query department.employee{name, exists(salary), rate.exists()}
+    #=>
+    Get(:department) >>
+    Get(:employee) >>
+    Record(Get(:name), Exists(Get(:salary)), Get(:rate) >> Then(Exists))
     =#
 
 ### `Filter`

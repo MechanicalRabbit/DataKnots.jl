@@ -11,6 +11,7 @@ export
     DataKnot,
     Drop,
     Each,
+    Exists,
     Filter,
     First,
     Get,

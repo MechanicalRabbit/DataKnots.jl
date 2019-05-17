@@ -1424,6 +1424,14 @@ function assemble_count(p::Pipeline)
     cover(q)
 end
 
+function assemble_exists(p::Pipeline)
+    p = uncover(p)
+    q = chain_of(p,
+                 block_not_empty(),
+    ) |> designate(source(p), Bool)
+    cover(q)
+end
+
 """
     Count(X) :: Query
 
@@ -1476,6 +1484,17 @@ Lift(::typeof(Count)) =
 function Count(env::Environment, p::Pipeline, X)
     x = assemble(env, target_pipe(p), X)
     compose(p, assemble_count(x))
+end
+
+Exists(X) =
+    Query(Exists, X)
+
+Lift(::typeof(Exists)) =
+    Then(Exists)
+
+function Exists(env::Environment, p::Pipeline, X)
+    x = assemble(env, target_pipe(p), X)
+    compose(p, assemble_exists(x))
 end
 
 """
@@ -1641,6 +1660,12 @@ translate(mod::Module, ::Val{:count}, (arg,)::Tuple{Any}) =
 
 translate(mod::Module, ::Val{:count}, ::Tuple{}) =
     Then(Count)
+
+translate(mod::Module, ::Val{:exists}, (arg,)::Tuple{Any}) =
+    Exists(translate(mod, arg))
+
+translate(mod::Module, ::Val{:exists}, ::Tuple{}) =
+    Then(Exists)
 
 translate(mod::Module, ::Val{:sum}, (arg,)::Tuple{Any}) =
     Sum(translate(mod, arg))
