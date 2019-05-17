@@ -609,6 +609,7 @@ the first column containing the blocks and the second column with the indexes.
     p(@VectorTree ([String], Int) [(["GARRY M", "ANTHONY R", "DANA A"], 1), (["JOSE S", "CHARLES S"], -1)])
     #-> @VectorTree (0:1) × String ["GARRY M", "CHARLES S"]
 
+
 ### Slicing
 
 The pipeline `slice_by(N)` transforms a block vector by keeping the first `N`

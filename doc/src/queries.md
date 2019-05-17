@@ -13,6 +13,7 @@ We will need the following definitions.
         Each,
         Environment,
         Filter,
+        First,
         Get,
         Given,
         Group,
@@ -23,10 +24,12 @@ We will need the following definitions.
         It,
         Keep,
         Label,
+        Last,
         Lift,
         Max,
         Min,
         Mix,
+        Nth,
         Record,
         Sum,
         Tag,
@@ -1528,6 +1531,119 @@ In `@query` notation, we write `filter(X)`.
     Get(:employee) >>
     Filter(Lift(==, (Get(:name), Lift("JEFFERY A"))))
     =#
+
+### `First`, `Last`, `Nth`
+
+We can use `First(X)`, `Last(X)` and `Nth(X, N)` to extract the first, the
+last, or the `N`-th element of the output of `X`.
+
+    chicago[It.department.name]
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    3 │ OEMC   │
+    =#
+
+    Q = First(It.department.name)
+    #-> First(It.department.name)
+
+    chicago[Q]
+    #=>
+    │ name   │
+    ┼────────┼
+    │ POLICE │
+    =#
+
+    Q = Last(It.department.name)
+    #-> Last(It.department.name)
+
+    chicago[Q]
+    #=>
+    │ name │
+    ┼──────┼
+    │ OEMC │
+    =#
+
+    Q = Nth(It.department.name, 2)
+    #-> Nth(It.department.name, 2)
+
+    chicago[Q]
+    #=>
+    │ name │
+    ┼──────┼
+    │ FIRE │
+    =#
+
+These operations also have an aggregate form.
+
+    Q = It.department.name >> First
+    #-> It.department.name >> First
+
+    chicago[Q]
+    #=>
+    │ name   │
+    ┼────────┼
+    │ POLICE │
+    =#
+
+    Q = It.department.name >> Last
+    #-> It.department.name >> Last
+
+    chicago[Q]
+    #=>
+    │ name │
+    ┼──────┼
+    │ OEMC │
+    =#
+
+    Q = It.department.name >> Nth(2)
+    #-> It.department.name >> Nth(2)
+
+    chicago[Q]
+    #=>
+    │ name │
+    ┼──────┼
+    │ FIRE │
+    =#
+
+`Nth` can take a query argument, which is evaluated against the input source
+and must produce a singular mandatory integer value.
+
+    chicago[Nth(It.department.name, Count(It.department) .- 1)]
+    #=>
+    │ name │
+    ┼──────┼
+    │ FIRE │
+    =#
+
+    chicago[It.department.name >> Nth(Count(It.department) .- 1)]
+    #=>
+    │ name │
+    ┼──────┼
+    │ FIRE │
+    =#
+
+In `@query` notation, we write `first()`, `last()` and `nth(N)`.
+
+    @query first(department)
+    #-> First(Get(:department))
+
+    @query last(department)
+    #-> Last(Get(:department))
+
+    @query nth(department, 2)
+    #-> Nth(Get(:department), Lift(2))
+
+    @query department.first()
+    #-> Get(:department) >> Then(First)
+
+    @query department.last()
+    #-> Get(:department) >> Then(Last)
+
+    @query department.nth(2)
+    #-> Get(:department) >> Nth(Lift(2))
 
 ### `Take` and `Drop`
 
