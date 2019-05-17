@@ -744,8 +744,130 @@ end
 
 
 #
-# Slicing.
+# Extracting and slicing.
 #
+
+"""
+    get_by(N::Int) :: Pipeline
+
+This pipeline extracts the `N`-th element from the given block vector.
+"""
+get_by(N::Int) =
+    Pipeline(get_by, N)
+
+get_by(rt::Runtime, input::AbstractVector, N::Int) =
+    get_by(rt, input, N, x0to1)
+
+get_by(N::Int, card::Cardinality) =
+    Pipeline(get_by, N, card)
+
+function get_by(::Runtime, input::AbstractVector, N::Int, card::Cardinality)
+    @assert input isa BlockVector
+    len = length(input)
+    offs = offsets(input)
+    elts = elements(input)
+    sz = 0
+    R = 1
+    for k = 1:len
+        L = R
+        @inbounds R = offs[k+1]
+        sz += checkindex(Bool, L:R-1, _get_index(L, R-1, N))
+    end
+    if sz == len
+        if N == 1
+            elts′ = elts[view(offs, 1:len)]
+            return BlockVector(:, elts′, card)
+        end
+        perm = Vector{Int}(undef, sz)
+        R = 1
+        for k = 1:len
+            L = R
+            @inbounds R = offs[k+1]
+            @inbounds perm[k] = _get_index(L, R-1, N)
+        end
+        elts′ = elts[perm]
+        return BlockVector(:, elts′, card)
+    end
+    offs′ = Vector{Int}(undef, len+1)
+    perm = Vector{Int}(undef, sz)
+    @inbounds offs′[1] = top = 1
+    R = 1
+    for k = 1:len
+        L = R
+        @inbounds R = offs[k+1]
+        i = _get_index(L, R-1, N)
+        if checkindex(Bool, L:R-1, i)
+            perm[top] = i
+            top += 1
+        end
+        offs′[k+1] = top
+    end
+    elts′ = elts[perm]
+    return BlockVector(offs′, elts′, card)
+end
+
+"""
+    get_by() :: Pipeline
+
+This pipeline takes a pair vector of blocks and integers, and returns the first
+column indexed by the second column.
+"""
+get_by() =
+    Pipeline(get_by)
+
+function get_by(::Runtime, input::AbstractVector)
+    @assert input isa TupleVector
+    cols = columns(input)
+    @assert length(cols) == 2
+    vals, Ns = cols
+    @assert vals isa BlockVector
+    @assert eltype(Ns) <: Int
+    _get_by(elements(vals), offsets(vals), Ns)
+end
+
+function _get_by(@nospecialize(elts), offs, Ns)
+    len = length(Ns)
+    R = 1
+    sz = 0
+    for k = 1:len
+        L = R
+        @inbounds N = Ns[k]
+        @inbounds R = offs[k+1]
+        sz += checkindex(Bool, L:R-1, _get_index(L, R-1, N))
+    end
+    if sz == len
+        perm = Vector{Int}(undef, sz)
+        R = 1
+        for k = 1:len
+            L = R
+            @inbounds N = Ns[k]
+            @inbounds R = offs[k+1]
+            @inbounds perm[k] = _get_index(L, R-1, N)
+        end
+        elts′ = elts[perm]
+        return BlockVector(:, elts′, x0to1)
+    end
+    offs′ = Vector{Int}(undef, len+1)
+    perm = Vector{Int}(undef, sz)
+    @inbounds offs′[1] = top = 1
+    R = 1
+    for k = 1:len
+        L = R
+        @inbounds N = Ns[k]
+        @inbounds R = offs[k+1]
+        i = _get_index(L, R-1, N)
+        if checkindex(Bool, L:R-1, i)
+            perm[top] = i
+            top += 1
+        end
+        offs′[k+1] = top
+    end
+    elts′ = elts[perm]
+    return BlockVector(offs′, elts′, x0to1)
+end
+
+@inline _get_index(l, r, n) =
+    n >= 0 ? l + n - 1 : r + n + 1
 
 """
     slice_by(N::Int, inv::Bool=false) :: Pipeline
@@ -757,15 +879,20 @@ each block.
 slice_by(N::Union{Int,Missing}, inv::Bool=false) =
     Pipeline(slice_by, N, inv)
 
-function slice_by(rt::Runtime, input::AbstractVector, ::Missing, inv::Bool)
+slice_by(N::Union{Int,Missing}, card::Cardinality, inv::Bool=false) =
+    Pipeline(splice_by, N, card, inv)
+
+slice_by(rt::Runtime, input::AbstractVector, N::Union{Int,Missing}, inv::Bool) =
+    slice_by(rt, input, N, cardinality(input)|x0to1, inv)
+
+function slice_by(rt::Runtime, input::AbstractVector, ::Missing, card::Cardinality, inv::Bool)
     @assert input isa BlockVector
     offs′ = !inv ? offsets(input) : fill(1, length(input)+1)
     elts′ = !inv ? elements(input) : elements(input)[Int[]]
-    card = cardinality(input)|x0to1
     return BlockVector(offs′, elts′, card)
 end
 
-function slice_by(rt::Runtime, input::AbstractVector, N::Int, inv::Bool)
+function slice_by(rt::Runtime, input::AbstractVector, N::Int, card::Cardinality, inv::Bool)
     @assert input isa BlockVector
     len = length(input)
     offs = offsets(input)
@@ -779,7 +906,7 @@ function slice_by(rt::Runtime, input::AbstractVector, N::Int, inv::Bool)
         sz += r - l + 1
     end
     if sz == length(elts)
-        return input
+        return BlockVector(offs, elts, card)
     end
     offs′ = Vector{Int}(undef, len+1)
     perm = Vector{Int}(undef, sz)
@@ -796,7 +923,6 @@ function slice_by(rt::Runtime, input::AbstractVector, N::Int, inv::Bool)
         offs′[k+1] = top
     end
     elts′ = elts[perm]
-    card = cardinality(input)|x0to1
     return BlockVector(offs′, elts′, card)
 end
 
