@@ -17,9 +17,8 @@ starting point for constructing other knots.
 
     unitknot
     #=>
-    │ It │
-    ┼────┼
-    │    │
+    ┼──┼
+    │  │
     =#
 
 The unit knot has a single value, an empty tuple. You could get
@@ -43,7 +42,6 @@ To query `unitknot` with `Hello`, we use indexing notation
 
     unitknot[Hello]
     #=>
-    │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
@@ -61,19 +59,17 @@ A `missing` value lifted to a constant query produces no output.
 
     unitknot[Lift(missing)]
     #=>
-    │ It │
-    ┼────┼
+    (empty)
     =#
 
 A `Vector` lifted to a constant query will produce plural output.
 
     unitknot[Lift('a':'c')]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
     =#
 
 We call queries constructed this way primitives, as they do not
@@ -89,7 +85,6 @@ it with `Lift(1:3)` generates three copies of `"Hello World"`.
 
     unitknot[Lift(1:3) >> Hello]
     #=>
-      │ It          │
     ──┼─────────────┼
     1 │ Hello World │
     2 │ Hello World │
@@ -101,14 +96,13 @@ the output will contain the elements of `'a':'c'` repeated twice.
 
     unitknot[Lift(1:2) >> Lift('a':'c')]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
-    4 │ a  │
-    5 │ b  │
-    6 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
+    4 │ a │
+    5 │ b │
+    6 │ c │
     =#
 
 The *identity* with respect to query composition is called `It`.
@@ -117,7 +111,6 @@ query's output.
 
     unitknot[Hello >> It]
     #=>
-    │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
@@ -128,11 +121,10 @@ which rely upon the output from previous processing.
     Increment = It .+ 1
     unitknot[Lift(1:3) >> Increment]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  3 │
-    3 │  4 │
+    ──┼───┼
+    1 │ 2 │
+    2 │ 3 │
+    3 │ 4 │
     =#
 
 In DataKnots, queries are built algebraically, starting with query
@@ -161,11 +153,10 @@ and then runs each output element though the `double` function.
 
     unitknot[Lift(1:3) >> Double(It)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 2 │
+    2 │ 4 │
+    3 │ 6 │
     =#
 
 Alternatively, instead of `Lift` we could use broadcasting. For
@@ -173,29 +164,26 @@ example, `double.(It)` is equivalent to `Lift(double, (It,))`.
 
     unitknot[Lift(1:3) >> double.(It)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 2 │
+    2 │ 4 │
+    3 │ 6 │
     =#
 
 Broadcasting also works with operators.
 
     unitknot[Lift(1:3) >> (It .+ 1)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  3 │
-    3 │  4 │
+    ──┼───┼
+    1 │ 2 │
+    2 │ 3 │
+    3 │ 4 │
     =#
 
 Unary operators can be broadcast as well.
 
     unitknot[Lift(1:3) >> (√).(It)]
     #=>
-      │ It      │
     ──┼─────────┼
     1 │ 1.0     │
     2 │ 1.41421 │
@@ -210,7 +198,6 @@ recommended to use `Lift` over broadcasting.
 
     unitknot[Sqrt(2)]
     #=>
-    │ It      │
     ┼─────────┼
     │ 1.41421 │
     =#
@@ -223,11 +210,10 @@ plural queries.
 
     unitknot[OneTo(3)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    3 │  3 │
+    ──┼───┼
+    1 │ 1 │
+    2 │ 2 │
+    3 │ 3 │
     =#
 
 Since later in this guide we'll want to enumerate the alphabet,
@@ -239,11 +225,10 @@ that is then lifted to queries.
 
     unitknot[Chars(3)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
     =#
 
 Lifting lets us use rich statistical and data processing functions
@@ -257,9 +242,8 @@ element, they produce zero or more output elements. Consider the
 
     unitknot[Lift(1:3) >> Count]
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
 An *aggregate* query such as `Count` is computed over the input as
@@ -270,14 +254,13 @@ aggregates require discussion. Consider `Lift(1:3) >> OneTo(It)`.
 
     unitknot[Lift(1:3) >> OneTo(It)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  1 │
-    3 │  2 │
-    4 │  1 │
-    5 │  2 │
-    6 │  3 │
+    ──┼───┼
+    1 │ 1 │
+    2 │ 1 │
+    3 │ 2 │
+    4 │ 1 │
+    5 │ 2 │
+    6 │ 3 │
     =#
 
 By appending `>> Sum` we could aggregate the entire input flow,
@@ -285,7 +268,6 @@ producing a single output element.
 
     unitknot[Lift(1:3) >> OneTo(It) >> Sum]
     #=>
-    │ It │
     ┼────┼
     │ 10 │
     =#
@@ -296,7 +278,6 @@ around `OneTo(It) >> Sum` will not change the result.
 
     unitknot[Lift(1:3) >> (OneTo(It) >> Sum)]
     #=>
-    │ It │
     ┼────┼
     │ 10 │
     =#
@@ -322,11 +303,10 @@ evaluates its argument, and then collects the outputs.
 
     unitknot[Lift(1:3) >> Each(OneTo(It) >> Sum)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  3 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 1 │
+    2 │ 3 │
+    3 │ 6 │
     =#
 
 Normally, one wouldn't need to use `Each` — for aggregates such as
@@ -336,11 +316,10 @@ to `Y >> Count(X)`. Hence, we could use the combinator form of
 
     unitknot[Lift(1:3) >> Sum(OneTo(It))]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  3 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 1 │
+    2 │ 3 │
+    3 │ 6 │
     =#
 
 Julia functions taking a vector argument, such as `mean`, can be
@@ -352,7 +331,6 @@ plural output is converted into the function's vector argument.
 
     unitknot[Mean(Lift(1:3) >> Sum(OneTo(It)))]
     #=>
-    │ It      │
     ┼─────────┼
     │ 3.33333 │
     =#
@@ -367,7 +345,6 @@ Once these are done, one could take an average of sums as follows:
 
     unitknot[Lift(1:3) >> Sum(OneTo(It)) >> Mean]
     #=>
-    │ It      │
     ┼─────────┼
     │ 3.33333 │
     =#
@@ -385,14 +362,13 @@ context of the input's *source*.
 
     unitknot[Lift(1:3) >> Each(Lift('a':'c') >> Take(It))]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ a  │
-    3 │ b  │
-    4 │ a  │
-    5 │ b  │
-    6 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ a │
+    3 │ b │
+    4 │ a │
+    5 │ b │
+    6 │ c │
     =#
 
 In this example, the argument of `Take` evaluates in the context
@@ -481,7 +457,6 @@ case, singular labels for query parameters.
 
     unitknot["Hello " .* Get(:WHO), WHO="World"]
     #=>
-    │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
@@ -490,7 +465,6 @@ To make `Get` convenient, `It` provides a shorthand syntax.
 
     unitknot["Hello " .* It.WHO, WHO="World"]
     #=>
-    │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
@@ -502,11 +476,10 @@ for example be used within a filter.
 
     unitknot[query, START=3]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 4 │
+    2 │ 5 │
+    3 │ 6 │
     =#
 
 Parameters can also be defined as part of a query using `Given`.
@@ -517,7 +490,6 @@ available for reuse.
 
     unitknot[Given(:WHO => "World", "Hello " .* Get(:WHO))]
     #=>
-    │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
@@ -532,11 +504,10 @@ than once.
 
     unitknot[GreaterThanAverage(OneTo(6))]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  5 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 4 │
+    2 │ 5 │
+    3 │ 6 │
     =#
 
 With `Given` the parameter provided, `AVG` does not leak into
@@ -572,11 +543,10 @@ To fix this query, we add parentheses.
 
     unitknot[Lift(1:3) >> (It .+ It)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  2 │
-    2 │  4 │
-    3 │  6 │
+    ──┼───┼
+    1 │ 2 │
+    2 │ 4 │
+    3 │ 6 │
     =#
 
 ### Composition of Queries
@@ -592,7 +562,6 @@ query.
 
     unitknot[Lift(1:3) >> "Hello"]
     #=>
-      │ It    │
     ──┼───────┼
     1 │ Hello │
     2 │ Hello │
@@ -610,7 +579,6 @@ as expected.
 
     unitknot[iseven.(2)]
     #=>
-    │ It   │
     ┼──────┼
     │ true │
     =#
@@ -630,11 +598,10 @@ We could try to make the following query.
 
     unitknot[Lift(1:3) >> rand('a':'z')]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ c  │
-    2 │ c  │
-    3 │ c  │
+    ──┼───┼
+    1 │ c │
+    2 │ c │
+    3 │ c │
     =#
 
 Unfortunately, the function `rand` evaluated once, which gives us
@@ -649,9 +616,8 @@ could make one using `Lift`.
 
     unitknot[Lift(1:3) >> rand.(Lift('a':'z'))]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ h  │
-    2 │ b  │
-    3 │ v  │
+    ──┼───┼
+    1 │ h │
+    2 │ b │
+    3 │ v │
     =#

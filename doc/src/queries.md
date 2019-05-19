@@ -151,7 +151,6 @@ composition combinator.
 
     chicago[Employees >> SalaryOver100K]
     #=>
-      │ It    │
     ──┼───────┼
     1 │  true │
     2 │ false │
@@ -206,9 +205,8 @@ the number of items produced by a query, we can use the `Count` combinator.
 
     chicago[Count(EmployeesWithSalaryOver100K)]
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
 In general, query algebra forms an XPath-like domain-specific language.  It is
@@ -354,9 +352,8 @@ A `Query` is applied to a `DataKnot` using the array indexing syntax.
 
     chicago[Q]
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
 Any parameters to the query should be be passed as keyword arguments.
@@ -367,9 +364,8 @@ Any parameters to the query should be be passed as keyword arguments.
 
     chicago[Q, AMT=100000, SZ=1]
     #=>
-    │ It │
-    ┼────┼
-    │  2 │
+    ┼───┼
+    │ 2 │
     =#
 
 We can use the function `assemble()` to see the query plan.
@@ -382,9 +378,8 @@ We can use the function `assemble()` to see the query plan.
 
     p(chicago)
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
 ### `@query`
@@ -401,9 +396,8 @@ a `DataKnot`.
 
     @query chicago count(department)
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
 Query parameters could be passed as keyword arguments.
@@ -414,9 +408,8 @@ Query parameters could be passed as keyword arguments.
         count()
     end
     #=>
-    │ It │
-    ┼────┼
-    │  2 │
+    ┼───┼
+    │ 2 │
     =#
 
 Queries defined elsewhere could be embedded in a `@query` expression using
@@ -437,7 +430,6 @@ Queries can be composed sequentially using the `>>` combinator.
 
     chicago[Q]
     #=>
-    │ It │
     ┼────┼
     │ 42 │
     =#
@@ -449,7 +441,6 @@ The `It` query primitive is the identity with respect to `>>`.
 
     chicago[Q]
     #=>
-    │ It │
     ┼────┼
     │ 42 │
     =#
@@ -726,7 +717,6 @@ queries.
 
     chicago[Q]
     #=>
-    │ It           │
     ┼──────────────┼
     │ Hello World! │
     =#
@@ -738,8 +728,7 @@ Lifting `missing` produces no output.
 
     chicago[Q]
     #=>
-    │ It │
-    ┼────┼
+    (empty)
     =#
 
 Lifting a vector produces plural output.
@@ -749,11 +738,10 @@ Lifting a vector produces plural output.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
     =#
 
 When lifting a vector, we can specify the cardinality constraint.
@@ -763,11 +751,10 @@ When lifting a vector, we can specify the cardinality constraint.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
     =#
 
 `Lift` can also convert Julia functions to query combinators.
@@ -779,9 +766,8 @@ When lifting a vector, we can specify the cardinality constraint.
 
     chicago[Q]
     #=>
-    │ It │
-    ┼────┼
-    │  1 │
+    ┼───┼
+    │ 1 │
     =#
 
 Functions of multiple arguments are also supported.
@@ -823,7 +809,6 @@ Just as functions with no arguments.
 
     chicago[Q]
     #=>
-    │ It       │
     ┼──────────┼
     │ 0.823648 │
     =#
@@ -839,7 +824,6 @@ Functions with vector arguments are supported.
 
     chicago[Q]
     #=>
-    │ It      │
     ┼─────────┼
     │ 88638.0 │
     =#
@@ -852,8 +836,7 @@ no and plural output.
 
     chicago[Q]
     #=>
-    │ It │
-    ┼────┼
+    (empty)
     =#
 
     OneTo(N) = Lift(UnitRange, (1, N))
@@ -863,11 +846,10 @@ no and plural output.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  1 │
-    2 │  2 │
-    3 │  3 │
+    ──┼───┼
+    1 │ 1 │
+    2 │ 2 │
+    3 │ 3 │
     =#
 
 Julia functions are lifted when they are broadcasted over queries.
@@ -877,7 +859,6 @@ Julia functions are lifted when they are broadcasted over queries.
 
     chicago[Q]
     #=>
-    │ It      │
     ┼─────────┼
     │ 88638.0 │
     =#
@@ -930,7 +911,6 @@ Query value functions could also be defined via `Lift`.
 
     chicago[Q]
     #=>
-    │ It │
     ┼────┼
     │ 10 │
     =#
@@ -940,11 +920,10 @@ Query value functions could also be defined via `Lift`.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  3 │
-    3 │  3 │
+    ──┼───┼
+    1 │ 4 │
+    2 │ 3 │
+    3 │ 3 │
     =#
 
 Note that `Record` and `Lift` also serve as natural barriers for aggregate
@@ -970,11 +949,10 @@ queries.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  3 │
-    3 │  3 │
+    ──┼───┼
+    1 │ 4 │
+    2 │ 3 │
+    3 │ 3 │
     =#
 
 In `@query` notation, `Each(X)` is written as `each(X)`.
@@ -1104,11 +1082,10 @@ preserved.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  4 │
-    2 │  3 │
-    3 │  3 │
+    ──┼───┼
+    1 │ 4 │
+    2 │ 3 │
+    3 │ 3 │
     =#
 
 Same notation is used to extract values of context parameters defined with
@@ -1196,7 +1173,6 @@ Regular and named tuples also support attribute lookup.
 
     chicago[Q]
     #=>
-    │ It       │
     ┼──────────┼
     │ SERGEANT │
     =#
@@ -1686,9 +1662,8 @@ These operations could also be used to widen the cardinality constraint.
 
     chicago[Q]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
+    ──┼───┼
+    1 │ 3 │
     =#
 
     shape(chicago[Q])

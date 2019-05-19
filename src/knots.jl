@@ -304,7 +304,7 @@ function table_data(db::DataKnot, maxy::Int)
     body = TupleVector(1, AbstractVector[cell(db)])
     shp = TupleOf(shp)
     d = TableData(head, body, shp)
-    return tear_data(default_data_header(nested_headers(focus_data(d, 1))), maxy)
+    return tear_data(nested_headers(focus_data(d, 1)), maxy)
 end
 
 focus_data(d::TableData, pos) =
@@ -446,14 +446,6 @@ function nested_selector(shp::AbstractShape)
     "{" * join(sels, ",") * "}"
 end
 
-function default_data_header(d::TableData)
-    hh, hw = size(d.head)
-    hh == 0 && hw > 0 || return d
-    head′ = fill(("", 0), (1, hw))
-    head′[1, 1] = ("It", hw)
-    TableData(d, head=head′)
-end
-
 function tear_data(d::TableData, maxy::Int)
     L = length(d.body)
     avail = max(3, maxy - size(d.head, 1) - 4)
@@ -482,9 +474,10 @@ struct TableLayout
     idxs_cols::Int
     head_rows::Int
     tear_row::Int
+    empty::Bool
 
-    TableLayout(w, h, idxs_cols, head_rows, tear_row) =
-        new(fill(TableCell(), (h, w)), fill((0, 0), w), idxs_cols, head_rows, tear_row)
+    TableLayout(w, h, idxs_cols, head_rows, tear_row, empty) =
+        new(fill(TableCell(), (h, w)), fill((0, 0), w), idxs_cols, head_rows, tear_row, empty)
 end
 
 function table_layout(d::TableData, maxx::Int)
@@ -493,7 +486,7 @@ function table_layout(d::TableData, maxx::Int)
     idxs_cols = 0 + (!isempty(d.idxs))
     head_rows = size(d.head, 1)
     tear_row = d.tear > 0 ? head_rows + d.tear : 0
-    l = TableLayout(w, h, idxs_cols, head_rows, tear_row)
+    l = TableLayout(w, h, idxs_cols, head_rows, tear_row, isempty(d.body))
     populate_body!(d, l, maxx)
     populate_head!(d, l)
     squeeze!(l, maxx)
@@ -755,22 +748,31 @@ lines!(c::TableCanvas) =
     String.(take!.(c.bufs))
 
 function table_draw(l::TableLayout, maxx::Int)
-    maxy = size(l.cells, 1) + (l.tear_row > 0) + 1
+    maxy = size(l.cells, 1) > 0 ? size(l.cells, 1) + (l.tear_row > 0) + l.empty + 1 : 1
     c = TableCanvas(maxx, maxy)
-    extent = 0
-    for col = 1:size(l.cells, 2)
-        if col == l.idxs_cols + 1
-            extent = draw_bar!(c, extent, l)
+    if size(l.cells, 1) > 0
+        extent = 0
+        for col = 1:size(l.cells, 2)
+            if col == l.idxs_cols + 1
+                extent = draw_bar!(c, extent, l)
+            end
+            extent = draw_column!(c, extent, l, col)
         end
-        extent = draw_column!(c, extent, l, col)
+        draw_bar!(c, extent, l)
     end
-    draw_bar!(c, extent, l)
+    if l.empty
+        write!(c, 1, maxy, "(empty)")
+    end
     c
 end
 
 function draw_bar!(c::TableCanvas, extent::Int, l::TableLayout)
     x = extent + 1
     y = 1
+    if l.head_rows == 0
+        write!(c, x, y, "┼")
+        y += 1
+    end
     for row = 1:size(l.cells, 1)
         write!(c, x, y, "│")
         y += 1
@@ -792,6 +794,10 @@ function draw_column!(c::TableCanvas, extent::Int, l::TableLayout, col::Int)
         sz -= 1
     end
     y = 1
+    if l.head_rows == 0
+        write!(c, extent + 1, y, "─" ^ (sz + 2))
+        y += 1
+    end
     for row = 1:size(l.cells, 1)
         x = extent + 2
         cell = l.cells[row, col]
