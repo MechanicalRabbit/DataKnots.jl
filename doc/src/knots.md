@@ -394,6 +394,21 @@ decimal point.
     2 │  2.65 │
     =#
 
+`DataKnot` objects provide alternative output modes.  For example,
+we can visualize the shape of a `DataKnot` as a tree.
+
+    show(chicago, as=:shape)
+    #=>
+    1-element DataKnot:
+      #               1:1
+      └╴employee      0:N
+        ├╴name        String
+        ├╴department  String
+        ├╴position    String
+        ├╴salary      Union{Missing, Int64}
+        └╴rate        Union{Missing, Float64}
+    =#
+
 ### Exporting via Table.jl Interface
 
 When a knot has a tabular form, it can be exported via `Tables.jl`.

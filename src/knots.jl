@@ -247,8 +247,8 @@ cell_length(cell::BlockVector) =
 show(db::DataKnot; kws...) =
     show(stdout, db; kws...)
 
-function show(io::IO, db::DataKnot; format::Symbol=:table)
-    if format == :shape
+function show(io::IO, db::DataKnot; as::Symbol=:table)
+    if as == :shape
         print_shape(io, db)
     else
         print_table(io, db)
