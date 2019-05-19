@@ -301,6 +301,9 @@ end
 as_blocks(::AbstractShape) =
     nothing
 
+as_blocks(shp::Annotation) =
+    as_blocks(subject(shp))
+
 as_blocks(src::BlockOf) =
     pass() |> designate(src, src)
 
@@ -356,6 +359,9 @@ end
 
 as_tuples(::AbstractShape) =
     nothing
+
+as_tuples(shp::Annotation) =
+    as_tuples(subject(shp))
 
 as_tuples(src::TupleOf) =
     pass() |> designate(src, src)
