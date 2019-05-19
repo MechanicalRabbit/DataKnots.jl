@@ -442,13 +442,14 @@ target(sig::Signature) = sig.tgt
 print_graph(shp::AbstractShape) =
     print_graph(stdout, shp)
 
-function print_graph(io::IO, shp::AbstractShape)
+function print_graph(io::IO, shp::AbstractShape; indent=0)
     gr = graphof(shp)
     w = 0
     for (ind, name, descr) in gr
         w = max(w, ind*2 + textwidth(name))
     end
     for (k, (ind, name, descr)) in enumerate(gr)
+        print(io, " " ^ indent)
         for j = 1:ind
             more = false
             k′ = k + 1
