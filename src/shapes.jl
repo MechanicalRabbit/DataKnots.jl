@@ -473,7 +473,7 @@ end
 
 function graphof(shp::AbstractShape)
     gr = Tuple{Int,String,String}[]
-    graphof!(gr, shp, nothing, 0, "_")
+    graphof!(gr, shp, nothing, 0, "#")
     gr
 end
 

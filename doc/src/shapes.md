@@ -535,10 +535,10 @@ Components of the signature can be easily extracted.
 Function `print_graph()` visualizes a shape constraint as a tree.
 
     print_graph(ValueOf(String))
-    #-> _  String
+    #-> #  String
 
     print_graph(BlockOf(String, x1to1))
-    #-> _  1:1 × String
+    #-> #  1:1 × String
 
     print_graph(BlockOf(String, x1to1) |> IsLabeled(:name))
     #-> name  1:1 × String
@@ -566,7 +566,7 @@ Function `print_graph()` visualizes a shape constraint as a tree.
                 TupleOf(:mean_salary => BlockOf(Float64, x0to1))) |> IsScope,
             x0toN) |> IsFlow)
     #=>
-    _                0:N
+    #                0:N
     ├╴employee
     │ ├╴name         1:1 × String
     │ ├╴position     1:1 × String
