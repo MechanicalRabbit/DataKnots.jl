@@ -204,12 +204,18 @@ quoteof(db::DataKnot) =
 # Tables.jl interface.
 #
 
-Tables.istable(knot::DataKnot) = Tables.istable(eltype(knot.cell))
-Tables.columnaccess(knot::DataKnot) = Tables.istable(knot)
+Tables.istable(db::DataKnot) =
+    Tables.istable(eltype(db.cell))
 
-Tables.columns(knot::DataKnot) = cell_columns(knot.cell)
+Tables.columnaccess(db::DataKnot) =
+    Tables.istable(db)
 
-cell_columns(cell::AbstractVector) = Tables.columns(cell[1])
+Tables.columns(db::DataKnot) =
+    cell_columns(db.cell)
+
+cell_columns(cell::AbstractVector) =
+    Tables.columns(cell[1])
+
 cell_columns(cell::Union{BlockVector{x0toN},BlockVector{x1toN}}) =
     Tables.columns(elements(cell))
 
@@ -229,15 +235,41 @@ end
 # Rendering.
 #
 
-function show(io::IO, db::DataKnot)
+summary(io::IO, db::DataKnot) =
+    print(io, "$(cell_length(db.cell))-element DataKnot")
+
+cell_length(cell::AbstractVector) =
+    eltype(cell) <: AbstractVector ? length(cell[1]) : 1
+
+cell_length(cell::BlockVector) =
+    length(elements(cell))
+
+show(db::DataKnot; kws...) =
+    show(stdout, db; kws...)
+
+function show(io::IO, db::DataKnot; format::Symbol=:table)
+    if format == :shape
+        print_shape(io, db)
+    else
+        print_table(io, db)
+    end
+end
+
+function print_shape(io::IO, db::DataKnot)
+    summary(io, db)
+    println(":")
+    print_graph(io, shape(db); indent=2)
+end
+
+function print_table(io::IO, db::DataKnot)
     maxy, maxx = displaysize(io)
-    lines = render_dataknot(maxx, maxy, db)
+    lines = render_table(maxx, maxy, db)
     for line in lines
         println(io, line)
     end
 end
 
-function render_dataknot(maxx::Int, maxy::Int, db::DataKnot)
+function render_table(maxx::Int, maxy::Int, db::DataKnot)
     d = table_data(db, maxy)
     l = table_layout(d, maxx)
     c = table_draw(l, maxx)
