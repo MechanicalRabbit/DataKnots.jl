@@ -158,9 +158,8 @@ provided to `Count()`, `It.department`, is itself a query.
 
     chicago[Count(It.department)]
     #=>
-    │ It │
-    ┼────┼
-    │  2 │
+    ┼───┼
+    │ 2 │
     =#
 
 We could also count the total number of employees across all
@@ -168,9 +167,8 @@ departments.
 
     chicago[Count(It.department.employee)]
     #=>
-    │ It │
-    ┼────┼
-    │  5 │
+    ┼───┼
+    │ 5 │
     =#
 
 What if we wanted to count employees by department? Using query
@@ -178,10 +176,9 @@ composition (`>>`), we can perform `Count` in a nested context.
 
     chicago[It.department >> Count(It.employee)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    2 │  2 │
+    ──┼───┼
+    1 │ 3 │
+    2 │ 2 │
     =#
 
 In this output, we see that one department has `3` employees,
@@ -293,9 +290,8 @@ This query can be used in different ways.
 
     chicago[Max(It.department >> DeptSize)]
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
     chicago[
@@ -440,9 +436,8 @@ employees as input, and produces their number as output.
 
     chicago[It.department.employee >> Count]
     #=>
-    │ It │
-    ┼────┼
-    │  5 │
+    ┼───┼
+    │ 5 │
     =#
 
 Previously we've only seen *elementwise* queries, which emit an
@@ -454,9 +449,8 @@ expectation, adding parentheses will not change the output.
 
     chicago[It.department >> (It.employee >> Count)]
     #=>
-    │ It │
-    ┼────┼
-    │  5 │
+    ┼───┼
+    │ 5 │
     =#
 
 To count employees in *each* department, we use the `Each()`
@@ -464,10 +458,9 @@ combinator, which evaluates its argument elementwise.
 
     chicago[It.department >> Each(It.employee >> Count)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    2 │  2 │
+    ──┼───┼
+    1 │ 3 │
+    2 │ 2 │
     =#
 
 Alternatively, we could use the `Count()` combinator to get the
@@ -475,10 +468,9 @@ same result.
 
     chicago[It.department >> Count(It.employee)]
     #=>
-      │ It │
-    ──┼────┼
-    1 │  3 │
-    2 │  2 │
+    ──┼───┼
+    1 │ 3 │
+    2 │ 2 │
     =#
 
 Which form of `Count` to use depends upon what is notationally
@@ -488,9 +480,8 @@ append `>> Count` is often very helpful.
     Q = It.department.employee
     chicago[Q >> Count]
     #=>
-    │ It │
-    ┼────┼
-    │  5 │
+    ┼───┼
+    │ 5 │
     =#
 
 We could then refine the query, and run the exact same command.
@@ -498,9 +489,8 @@ We could then refine the query, and run the exact same command.
     Q >>= Filter(It.salary .> 100000)
     chicago[Q >> Count]
     #=>
-    │ It │
-    ┼────┼
-    │  2 │
+    ┼───┼
+    │ 2 │
     =#
 
 ## Summarizing Data
@@ -711,7 +701,6 @@ broadcasting notation.
         It.department.employee >>
         titlecase.(It.name)]
     #=>
-      │ It        │
     ──┼───────────┼
     1 │ Anthony A │
     2 │ Jeffery A │
@@ -838,7 +827,6 @@ salary? This average could be computed first.
 
     mean_salary = chicago[MeanSalary]
     #=>
-    │ It      │
     ┼─────────┼
     │ 90544.8 │
     =#
@@ -1113,9 +1101,8 @@ In `@query` notation, query aggregates, such as `Count` and
 
     @query chicago department.employee.position.unique().count()
     #=>
-    │ It │
-    ┼────┼
-    │  3 │
+    ┼───┼
+    │ 3 │
     =#
 
 Query parameters are passed as keyword arguments to `@query`.

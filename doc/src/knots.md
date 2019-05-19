@@ -27,7 +27,6 @@ Any Julia value can be converted to a `DataKnot`.
 
     hello = convert(DataKnot, "Hello World!")
     #=>
-    │ It           │
     ┼──────────────┼
     │ Hello World! │
     =#
@@ -53,7 +52,6 @@ query is also a `DataKnot` object.
 
     hello[length.(It)]
     #=>
-    │ It │
     ┼────┼
     │ 12 │
     =#
@@ -143,7 +141,6 @@ A `DataKnot` object is created from a one-element *cell* vector and its shape.
 
     hello = DataKnot(ValueOf(String), ["Hello World"])
     #=>
-    │ It          │
     ┼─────────────┼
     │ Hello World │
     =#
@@ -180,11 +177,10 @@ its cardinality.
 
     abc = DataKnot(Any, 'a':'c', :x1toN)
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
     =#
 
     cell(abc)
@@ -198,9 +194,8 @@ tuple.  This knot is exported under the name `unitknot`.
 
     unitknot
     #=>
-    │ It │
-    ┼────┼
-    │    │
+    ┼──┼
+    │  │
     =#
 
     cell(unitknot)
@@ -224,7 +219,6 @@ function.
 
     hello = convert(DataKnot, "Hello World!")
     #=>
-    │ It           │
     ┼──────────────┼
     │ Hello World! │
     =#
@@ -238,8 +232,7 @@ The value `missing` is converted to an empty `DataKnot`.
 
     nullknot = convert(DataKnot, missing)
     #=>
-    │ It │
-    ┼────┼
+    (empty)
     =#
 
     shape(nullknot)
@@ -249,11 +242,10 @@ A vector value is converted to a block.
 
     vecknot = convert(DataKnot, 'a':'c')
     #=>
-      │ It │
-    ──┼────┼
-    1 │ a  │
-    2 │ b  │
-    3 │ c  │
+    ──┼───┼
+    1 │ a │
+    2 │ b │
+    3 │ c │
     =#
 
     shape(vecknot)
@@ -263,7 +255,6 @@ A `Ref` object is converted into the referenced value.
 
     int_ty = convert(DataKnot, Base.broadcastable(Int))
     #=>
-    │ It    │
     ┼───────┼
     │ Int64 │
     =#
@@ -367,7 +358,6 @@ are rendered as semicolon-separated lists.
 
     convert(DataKnot, [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"]])
     #=>
-      │ It                 │
     ──┼────────────────────┼
     1 │ JEFFERY A; NANCY A │
     2 │ JAMES A; DANIEL A  │
@@ -375,7 +365,6 @@ are rendered as semicolon-separated lists.
 
     convert(DataKnot, @VectorTree [String] [["JEFFERY A", "NANCY A"], ["JAMES A", "DANIEL A"]])
     #=>
-      │ It                 │
     ──┼────────────────────┼
     1 │ JEFFERY A; NANCY A │
     2 │ JAMES A; DANIEL A  │
@@ -386,7 +375,6 @@ decimal point.
 
     convert(DataKnot, [true, false])
     #=>
-      │ It    │
     ──┼───────┼
     1 │  true │
     2 │ false │
@@ -394,7 +382,6 @@ decimal point.
 
     convert(DataKnot, [101442, 80016])
     #=>
-      │ It     │
     ──┼────────┼
     1 │ 101442 │
     2 │  80016 │
@@ -402,7 +389,6 @@ decimal point.
 
     convert(DataKnot, [35.6, 2.65])
     #=>
-      │ It    │
     ──┼───────┼
     1 │ 35.6  │
     2 │  2.65 │
