@@ -423,8 +423,13 @@ This is the case when a `DataKnot` wraps a vector of named tuples.
     Tables.columnaccess(table)
     #-> true
 
-    Tables.columns(table)
-    #-> Tables.CopiedColumns{ … }((x = ["A", "B"], y = [1.0, 2.0]))
+    cols = Tables.columns(table)
+
+    cols.x
+    #-> ["A", "B"]
+
+    cols.y
+    #-> [1.0, 2.0]
 
 A plural set of records will also be treated as a table.
 
@@ -436,6 +441,11 @@ A plural set of records will also be treated as a table.
     Tables.columnaccess(table)
     #-> true
 
-    Tables.columns(table)
-    #-> (idx = [1, 2, 3], val = ["Test", "Test", "Test"])
+    cols = Tables.columns(table)
+
+    cols.idx
+    #-> [1, 2, 3]
+
+    cols.val
+    #-> ["Test", "Test", "Test"]
 
