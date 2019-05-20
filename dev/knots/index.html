@@ -78,7 +78,7 @@ julia&gt; show(unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It
 ──┼──────┼
 1 │ 1  1 │
 2 │ 2  4 │
-3 │ 3  9 │</code></pre><pre><code class="language-julia">show(::DataKnot; as=:shape)</code></pre><p>This visualizes the shape of a <code>DataKnot</code> in a form of a tree.</p><p>```jldoctest julia&gt; using DataKnots</p><p>julia&gt; show(as=:shape, unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It)]) 3-element DataKnot:</p><p><strong>0:N</strong></p><p>├╴x  1:1 × Int64   └╴y  1:1 × Int64</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/ee05902c28cfd3fed688906e31adc62c1c81a06b/src/knots.jl#L241-L270">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
+3 │ 3  9 │</code></pre><pre><code class="language-julia">show(::DataKnot; as=:shape)</code></pre><p>This visualizes the shape of a <code>DataKnot</code> in a form of a tree.</p><p>```jldoctest julia&gt; using DataKnots</p><p>julia&gt; show(as=:shape, unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It)]) 3-element DataKnot:</p><p><strong>0:N</strong></p><p>├╴x  1:1 × Int64   └╴y  1:1 × Int64</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/89829b9caf08919150bb3c82fea458a77e995582/src/knots.jl#L241-L270">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
 #=&gt;
 ┼─────────────┼
 │ Hello World │
@@ -262,8 +262,13 @@ Tables.istable(table)
 Tables.columnaccess(table)
 #-&gt; true
 
-Tables.columns(table)
-#-&gt; Tables.CopiedColumns{ … }((x = [&quot;A&quot;, &quot;B&quot;], y = [1.0, 2.0]))</code></pre><p>A plural set of records will also be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
+cols = Tables.columns(table)
+
+cols.x
+#-&gt; [&quot;A&quot;, &quot;B&quot;]
+
+cols.y
+#-&gt; [1.0, 2.0]</code></pre><p>A plural set of records will also be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
 
 Tables.istable(table)
 #-&gt; true
@@ -271,5 +276,10 @@ Tables.istable(table)
 Tables.columnaccess(table)
 #-&gt; true
 
-Tables.columns(table)
-#-&gt; (idx = [1, 2, 3], val = [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;])</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>
+cols = Tables.columns(table)
+
+cols.idx
+#-&gt; [1, 2, 3]
+
+cols.val
+#-&gt; [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;]</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>
