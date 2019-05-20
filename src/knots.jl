@@ -47,19 +47,17 @@ An empty knot can be constructed with `missing`.
 
 ```jldoctest
 julia> convert(DataKnot, missing)
-│ It │
-┼────┼
+(empty)
 ```
 
 A plural knot is constructed from a vector.
 
 ```jldoctest
 julia> convert(DataKnot, 'a':'c')
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 
 An object that complies with the `Table` interface, such as
@@ -96,20 +94,18 @@ We can query a knot using array indexing notation.
 
 ```jldoctest
 julia> convert(DataKnot, (dataset='a':'c',))[Count(It.dataset)]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 
 Query parameters are provided as keyword arguments.
 
 ```jldoctest
 julia> convert(DataKnot, 1:3)[PWR=2, It .^ It.PWR]
-  │ It │
-──┼────┼
-1 │  1 │
-2 │  4 │
-3 │  9 │
+──┼───┼
+1 │ 1 │
+2 │ 4 │
+3 │ 9 │
 ```
 """
 struct DataKnot
@@ -174,9 +170,8 @@ The unit knot holds an empty tuple.
 
 ```jldoctest
 julia> unitknot
-│ It │
-┼────┼
-│    │
+┼──┼
+│  │
 ```
 
 The `unitknot` is useful for constructing queries that
@@ -184,7 +179,6 @@ do not originate from another datasource.
 
 ```jldoctest
 julia> unitknot["Hello"]
-│ It    │
 ┼───────┼
 │ Hello │
 ```

@@ -76,20 +76,18 @@ In a query expression, use `It` to refer to the query's input.
 
 ```jldoctest
 julia> unitknot[Lift(3) >> (It .+ 1)]
-│ It │
-┼────┼
-│  4 │
+┼───┼
+│ 4 │
 ```
 
 `It` is the identity with respect to query composition.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> It]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 
 `It` provides a shorthand notation for data navigation using
@@ -185,9 +183,8 @@ Applies the query to a dataset with a given set of parameters.
 
 ```jldoctest
 julia> @query unitknot 2x+1 x=1
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 """
 macro query(db, exs...)
@@ -881,7 +878,6 @@ This converts any value to a constant query.
 
 ```jldoctest
 julia> unitknot[Lift("Hello")]
-│ It    │
 ┼───────┼
 │ Hello │
 ```
@@ -890,11 +886,10 @@ julia> unitknot[Lift("Hello")]
 
 ```jldoctest
 julia> unitknot[Lift('a':'c')]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 
 To specify the vector cardinality, add `:x0to1`, `:x0toN`,
@@ -902,19 +897,17 @@ To specify the vector cardinality, add `:x0to1`, `:x0toN`,
 
 ```jldoctest
 julia> unitknot[Lift('a':'c', :x1toN)]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 
 The `missing` value makes an query with no output.
 
 ```jldoctest
 julia> unitknot[Lift(missing)]
-│ It │
-┼────┼
+(empty)
 ```
 """
 Lift(val) =
@@ -930,9 +923,8 @@ Lift(elts::AbstractVector, card::Union{Cardinality,Symbol}) =
 
 ```jldoctest
 julia> unitknot[Lift((x=1, y=2)) >> Lift(+, (It.x, It.y))]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 
 `Lift` is implicitly used when a function is broadcast over
@@ -940,9 +932,8 @@ queries.
 
 ```jldoctest
 julia> unitknot[Lift((x=1, y=2)) >> (It.x .+ It.y)]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 
 Functions accepting a `AbstractVector` can be used with plural
@@ -950,20 +941,18 @@ queries.
 
 ```jldoctest
 julia> unitknot[sum.(Lift(1:3))]
-│ It │
-┼────┼
-│  6 │
+┼───┼
+│ 6 │
 ```
 
 Functions returning `AbstractVector` become plural queries.
 
 ```jldoctest
 julia> unitknot[Lift((x='a', y='c')) >> Lift(:, (It.x, It.y))]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 """
 Lift(f, Xs::Tuple) =
@@ -1041,11 +1030,10 @@ This evaluates `X` elementwise.
 julia> X = Lift('a':'c') >> Count;
 
 julia> unitknot[Lift(1:3) >> Each(X)]
-  │ It │
-──┼────┼
-1 │  3 │
-2 │  3 │
-3 │  3 │
+──┼───┼
+1 │ 3 │
+2 │ 3 │
+3 │ 3 │
 ```
 
 Compare this with the query without `Each`.
@@ -1054,9 +1042,8 @@ Compare this with the query without `Each`.
 julia> X = Lift('a':'c') >> Count;
 
 julia> unitknot[Lift(1:3) >> X]
-│ It │
-┼────┼
-│  9 │
+┼───┼
+│ 9 │
 ```
 """
 Each(X) = Query(Each, X)
@@ -1195,9 +1182,8 @@ With unlabeled fields, ordinal labels (A, B, ...) can be used.
 
 ```jldoctest
 julia> unitknot[Lift((1,2)) >> It.B]
-│ It │
-┼────┼
-│  2 │
+┼───┼
+│ 2 │
 ```
 """
 Get(name) =
@@ -1335,9 +1321,8 @@ julia> unitknot[Keep(:x => 2) >> It.x]
 
 ```jldoctest
 julia> unitknot[Lift(1) >> Keep(:x => 2) >> (It .+ It.x)]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 """
 Keep(P, Qs...) =
@@ -1372,9 +1357,8 @@ added by a set of queries.
 
 ```jldoctest
 julia> unitknot[Given(:x => 2, It.x .+ 1)]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 """
 Given(P, Xs...) =
@@ -1442,9 +1426,8 @@ produced by `X`.
 julia> X = Lift('a':'c');
 
 julia> unitknot[Count(X)]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 
 ---
@@ -1457,9 +1440,8 @@ In the query form, `Count` emits the number of elements in its input.
 julia> X = Lift('a':'c');
 
 julia> unitknot[X >> Count]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 
 To limit the scope of aggregation, use `Each`.
@@ -1468,11 +1450,10 @@ To limit the scope of aggregation, use `Each`.
 julia> X = Lift('a':'c');
 
 julia> unitknot[Lift(1:3) >> Each(X >> Count)]
-  │ It │
-──┼────┼
-1 │  3 │
-2 │  3 │
-3 │  3 │
+──┼───┼
+1 │ 3 │
+2 │ 3 │
+3 │ 3 │
 ```
 """
 Count(X) =
@@ -1507,18 +1488,16 @@ produced by `X`.
 julia> X = Lift(1:3);
 
 julia> unitknot[Sum(X)]
-│ It │
-┼────┼
-│  6 │
+┼───┼
+│ 6 │
 ```
 
 The `Sum` of an empty input is `0`.
 
 ```jldoctest
 julia> unitknot[Sum(Int[])]
-│ It │
-┼────┼
-│  0 │
+┼───┼
+│ 0 │
 ```
 
 ---
@@ -1531,9 +1510,8 @@ In the query form, `Sum` emits the sum of input elements.
 julia> X = Lift(1:3);
 
 julia> unitknot[X >> Sum]
-│ It │
-┼────┼
-│  6 │
+┼───┼
+│ 6 │
 ```
 """
 Sum(X) =
@@ -1552,17 +1530,15 @@ elements produced by `X`.
 julia> X = Lift(1:3);
 
 julia> unitknot[Max(X)]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 
 The `Max` of an empty input is empty.
 
 ```jldoctest
 julia> unitknot[Max(Int[])]
-│ It │
-┼────┼
+(empty)
 ```
 
 ---
@@ -1575,9 +1551,8 @@ In the query form, `Max` finds the maximum of its input elements.
 julia> X = Lift(1:3);
 
 julia> unitknot[X >> Max]
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 ```
 """
 Max(X) =
@@ -1596,17 +1571,15 @@ elements produced by `X`.
 julia> X = Lift(1:3);
 
 julia> unitknot[Min(X)]
-│ It │
-┼────┼
-│  1 │
+┼───┼
+│ 1 │
 ```
 
 The `Min` of an empty input is empty.
 
 ```jldoctest
 julia> unitknot[Min(Int[])]
-│ It │
-┼────┼
+(empty)
 ```
 
 ---
@@ -1619,9 +1592,8 @@ In the query form, `Min` finds the minimum of its input elements.
 julia> X = Lift(1:3);
 
 julia> unitknot[X >> Min]
-│ It │
-┼────┼
-│  1 │
+┼───┼
+│ 1 │
 ```
 """
 Min(X) =
@@ -1708,11 +1680,10 @@ condition.
 
 ```jldoctest
 julia> unitknot[Lift(1:5) >> Filter(isodd.(It))]
-  │ It │
-──┼────┼
-1 │  1 │
-2 │  3 │
-3 │  5 │
+──┼───┼
+1 │ 1 │
+2 │ 3 │
+3 │ 5 │
 ```
 
 When the predicate query produces an empty output, the condition
@@ -1720,8 +1691,7 @@ is presumed to have failed.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> Filter(missing)]
-│ It │
-┼────┼
+(empty)
 ```
 
 When the predicate produces plural output, the condition succeeds
@@ -1729,11 +1699,10 @@ if at least one output value is `true`.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> Filter([true,false])]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 """
 Filter(X) =
@@ -1867,19 +1836,17 @@ the rest.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> Take(2)]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
+──┼───┼
+1 │ a │
+2 │ b │
 ```
 
 `Take(-N)` drops the last `N` elements.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> Take(-2)]
-  │ It │
-──┼────┼
-1 │ a  │
+──┼───┼
+1 │ a │
 ```
 """
 Take(N) =
@@ -1893,19 +1860,17 @@ the rest.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> Drop(2)]
-  │ It │
-──┼────┼
-1 │ c  │
+──┼───┼
+1 │ c │
 ```
 
 `Drop(-N)` takes the last `N` elements.
 
 ```jldoctest
 julia> unitknot[Lift('a':'c') >> Drop(-2)]
-  │ It │
-──┼────┼
-1 │ b  │
-2 │ c  │
+──┼───┼
+1 │ b │
+2 │ c │
 ```
 """
 Drop(N) =
@@ -1946,11 +1911,10 @@ This query produces all distinct elements emitted by `X`.
 
 ```jldoctest
 julia> unitknot[Unique(['a','b','b','c','c','c'])]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 
 ---
@@ -1961,11 +1925,10 @@ In the query form, `Unique` produces all distinct elements of its input.
 
 ```jldoctest
 julia> unitknot[Lift(['a','b','b','c','c','c']) >> Unique]
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 ```
 """
 Unique(X) =
