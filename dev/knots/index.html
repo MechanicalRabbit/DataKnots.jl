@@ -71,7 +71,27 @@ chicago[It.employee]
 │ 4   │ DANIEL A  │ FIRE       │ 95484   │
 │ 5   │ LAKENYA A │ OEMC       │ missing │
 │ 6   │ DORIS A   │ OEMC       │ missing │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.show-Tuple{DataKnot}" href="#Base.show-Tuple{DataKnot}"><code>Base.show</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">show(knot, as=:table)</code></pre><p>This displays a hierarchical <code>knot</code> as a tabular projection that would fit the current display, truncating as needed. For cells with structure, semi-colon and then comma are used as delimiters.</p><pre><code class="language-julia-repl">julia&gt; using DataKnots;
+
+julia&gt; Row = Record(:n =&gt; It, :c =&gt; Lift(Char.( 64 .+ It)));
+
+julia&gt; Table = Lift(1:3) &gt;&gt; Row &gt;&gt; Label(:letters);
+
+julia&gt; show(unitknot[Record(Table)])
+│ letters{n,c}     │
+┼──────────────────┼
+│ 1, A; 2, B; 3, C │</code></pre><p>When shown as a <code>:shape</code>, this function outputs a graphical display of that knot&#39;s shape.</p><pre><code class="language-julia-repl">julia&gt; using DataKnots;
+
+julia&gt; Row = Record(:n =&gt; It, :c =&gt; Lift(Char.( 64 .+ It)));
+
+julia&gt; Table = Lift(1:3) &gt;&gt; Row &gt;&gt; Label(:letters);
+
+julia&gt; show(unitknot[Record(Table)], as=:shape)
+1-element DataKnot:
+  #          1:1
+  └╴letters  0:N
+    ├╴n      1:1 × Int64
+    └╴c      1:1 × Char</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/085cd9cad7c2aee7f4ee64d4a6be2c9eccd923d3/src/knots.jl#L241-L278">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
 #=&gt;
 ┼─────────────┼
 │ Hello World │
