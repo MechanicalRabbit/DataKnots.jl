@@ -238,6 +238,36 @@ cell_length(cell::AbstractVector) =
 cell_length(cell::BlockVector) =
     length(elements(cell))
 
+"""
+    show(::DataKnot[; as=:table])
+
+This displays a `DataKnot` as a table, truncating the data
+to fit the current display.
+
+```jldoctest
+julia> using DataKnots
+
+julia> show(unitknot[Lift(1:3) >> Record(:x => It, :y => It .* It)])
+  │ x  y │
+──┼──────┼
+1 │ 1  1 │
+2 │ 2  4 │
+3 │ 3  9 │
+```
+
+    show(::DataKnot; as=:shape)
+
+This visualizes the shape of a `DataKnot` in a form of a tree.
+
+```jldoctest
+julia> using DataKnots
+
+julia> show(as=:shape, unitknot[Lift(1:3) >> Record(:x => It, :y => It .* It)])
+3-element DataKnot:
+  #    0:N
+  ├╴x  1:1 × Int64
+  └╴y  1:1 × Int64
+"""
 show(db::DataKnot; kws...) =
     show(stdout, db; kws...)
 
