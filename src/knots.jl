@@ -238,44 +238,6 @@ cell_length(cell::AbstractVector) =
 cell_length(cell::BlockVector) =
     length(elements(cell))
 
-"""
-    show(knot, as=:table)
-
-This displays a hierarchical `knot` as a tabular projection that
-would fit the current display, truncating as needed. For cells
-with structure, semi-colon and then comma are used as delimiters.
-
-```jldoctest
-julia> using DataKnots;
-
-julia> Row = Record(:n => It, :c => Lift(Char.( 64 .+ It)));
-
-julia> Table = Lift(1:3) >> Row >> Label(:letters);
-
-julia> show(unitknot[Record(Table)])
-│ letters{n,c}     │
-┼──────────────────┼
-│ 1, A; 2, B; 3, C │
-```
-
-When shown as a `:shape`, this function outputs a graphical
-display of that knot's shape.
-
-```jldoctest
-julia> using DataKnots;
-
-julia> Row = Record(:n => It, :c => Lift(Char.( 64 .+ It)));
-
-julia> Table = Lift(1:3) >> Row >> Label(:letters);
-
-julia> show(unitknot[Record(Table)], as=:shape)
-1-element DataKnot:
-  #          1:1
-  └╴letters  0:N
-    ├╴n      1:1 × Int64
-    └╴c      1:1 × Char
-```
-"""
 show(db::DataKnot; kws...) =
     show(stdout, db; kws...)
 
