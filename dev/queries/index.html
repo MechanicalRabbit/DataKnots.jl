@@ -8,7 +8,9 @@
     Drop,
     Each,
     Environment,
+    Exists,
     Filter,
+    First,
     Get,
     Given,
     Group,
@@ -19,10 +21,12 @@
     It,
     Keep,
     Label,
+    Last,
     Lift,
     Max,
     Min,
     Mix,
+    Nth,
     Record,
     Sum,
     Tag,
@@ -183,7 +187,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2eeea7b1f5d33f02b1354549f75d71582dbc0f25/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2eeea7b1f5d33f02b1354549f75d71582dbc0f25/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2eeea7b1f5d33f02b1354549f75d71582dbc0f25/src/queries.jl#L120-L124">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/3cbb360372b60572e7cfdcc44d09bc74c87b9c2f/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/3cbb360372b60572e7cfdcc44d09bc74c87b9c2f/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/3cbb360372b60572e7cfdcc44d09bc74c87b9c2f/src/queries.jl#L120-L124">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -868,7 +872,7 @@ end
 Get(:department) &gt;&gt; Given(Count(Get(:employee)) &gt;&gt; Label(:size),
                           Lift(div, (Get(:size), Lift(2))) &gt;&gt; Label(:half),
                           Get(:employee) &gt;&gt; Take(Get(:half)))
-=#</code></pre><h3><a class="nav-anchor" id="Count,-Sum,-Max,-Min-1" href="#Count,-Sum,-Max,-Min-1"><code>Count</code>, <code>Sum</code>, <code>Max</code>, <code>Min</code></a></h3><p><code>Count(X)</code>, <code>Sum(X)</code>, <code>Max(X)</code>, <code>Min(X)</code> evaluate the <code>X</code> and emit the number of elements, their sum, maximum, and minimum respectively.</p><pre><code class="language-julia">Rate = It.department.employee.rate
+=#</code></pre><h3><a class="nav-anchor" id="Count,-Exists,-Sum,-Max,-Min-1" href="#Count,-Exists,-Sum,-Max,-Min-1"><code>Count</code>, <code>Exists</code>, <code>Sum</code>, <code>Max</code>, <code>Min</code></a></h3><p><code>Count(X)</code>, <code>Sum(X)</code>, <code>Max(X)</code>, <code>Min(X)</code> evaluate the <code>X</code> and emit the number of elements, their sum, maximum, and minimum respectively.</p><pre><code class="language-julia">Rate = It.department.employee.rate
 
 Q = Record(Rate,
            :count =&gt; Count(Rate),
@@ -924,6 +928,35 @@ chicago[Q]
 1 │ POLICE  9.46              1   9.46   9.46   9.46 │
 2 │ FIRE                      0   0.0                │
 3 │ OEMC    17.68; 19.38      2  37.06  19.38  17.68 │
+=#</code></pre><p><code>Exists(X)</code> evaluates <code>X</code> and emits a Boolean value that indicates whether <code>X</code> produces at least one value or not.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
+    Record(It.name,
+           It.salary,
+           :has_salary =&gt; Exists(It.salary),
+           It.rate,
+           :has_rate =&gt; It.rate &gt;&gt; Exists)
+#=&gt;
+It.department.employee &gt;&gt; Record(It.name,
+                                 It.salary,
+                                 :has_salary =&gt; Exists(It.salary),
+                                 It.rate,
+                                 :has_rate =&gt; It.rate &gt;&gt; Exists)
+=#
+
+chicago[Q]
+#=&gt;
+   │ employee                                       │
+   │ name       salary  has_salary  rate   has_rate │
+───┼────────────────────────────────────────────────┼
+ 1 │ JEFFERY A  101442        true            false │
+ 2 │ NANCY A     80016        true            false │
+ 3 │ ANTHONY A   72510        true            false │
+ 4 │ ALBA M                  false   9.46      true │
+ 5 │ JAMES A    103350        true            false │
+ 6 │ DANIEL A    95484        true            false │
+ 7 │ ROBERT K   103272        true            false │
+ 8 │ LAKENYA A               false  17.68      true │
+ 9 │ DORIS A                 false  19.38      true │
+10 │ BRENDA B    64392        true            false │
 =#</code></pre><p>These operations are also available in the <code>@query</code> notation.</p><pre><code class="language-julia">@query begin
     department.employee.rate.collect()
     {rate, count(rate), sum(rate), max(rate), min(rate)}
@@ -953,6 +986,13 @@ Record(Get(:rate),
        Get(:rate) &gt;&gt; Then(Sum),
        Get(:rate) &gt;&gt; Then(Max),
        Get(:rate) &gt;&gt; Then(Min))
+=#
+
+@query department.employee{name, exists(salary), rate.exists()}
+#=&gt;
+Get(:department) &gt;&gt;
+Get(:employee) &gt;&gt;
+Record(Get(:name), Exists(Get(:salary)), Get(:rate) &gt;&gt; Then(Exists))
 =#</code></pre><h3><a class="nav-anchor" id="Filter-1" href="#Filter-1"><code>Filter</code></a></h3><p>We use <code>Filter()</code> to filter the input by the given predicate.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Filter(It.name .== &quot;POLICE&quot;) &gt;&gt;
     It.employee &gt;&gt;
@@ -996,7 +1036,100 @@ Get(:department) &gt;&gt;
 Filter(Lift(==, (Get(:name), Lift(&quot;POLICE&quot;)))) &gt;&gt;
 Get(:employee) &gt;&gt;
 Filter(Lift(==, (Get(:name), Lift(&quot;JEFFERY A&quot;))))
-=#</code></pre><h3><a class="nav-anchor" id="Take-and-Drop-1" href="#Take-and-Drop-1"><code>Take</code> and <code>Drop</code></a></h3><p>We use <code>Take(N)</code> and <code>Drop(N)</code> to pass or drop the first <code>N</code> input elements.</p><pre><code class="language-julia">Employee =
+=#</code></pre><h3><a class="nav-anchor" id="First,-Last,-Nth-1" href="#First,-Last,-Nth-1"><code>First</code>, <code>Last</code>, <code>Nth</code></a></h3><p>We can use <code>First(X)</code>, <code>Last(X)</code> and <code>Nth(X, N)</code> to extract the first, the last, or the <code>N</code>-th element of the output of <code>X</code>.</p><pre><code class="language-julia">chicago[It.department.name]
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+3 │ OEMC   │
+=#
+
+Q = First(It.department.name)
+#-&gt; First(It.department.name)
+
+chicago[Q]
+#=&gt;
+│ name   │
+┼────────┼
+│ POLICE │
+=#
+
+Q = Last(It.department.name)
+#-&gt; Last(It.department.name)
+
+chicago[Q]
+#=&gt;
+│ name │
+┼──────┼
+│ OEMC │
+=#
+
+Q = Nth(It.department.name, 2)
+#-&gt; Nth(It.department.name, 2)
+
+chicago[Q]
+#=&gt;
+│ name │
+┼──────┼
+│ FIRE │
+=#</code></pre><p>These operations also have an aggregate form.</p><pre><code class="language-julia">Q = It.department.name &gt;&gt; First
+#-&gt; It.department.name &gt;&gt; First
+
+chicago[Q]
+#=&gt;
+│ name   │
+┼────────┼
+│ POLICE │
+=#
+
+Q = It.department.name &gt;&gt; Last
+#-&gt; It.department.name &gt;&gt; Last
+
+chicago[Q]
+#=&gt;
+│ name │
+┼──────┼
+│ OEMC │
+=#
+
+Q = It.department.name &gt;&gt; Nth(2)
+#-&gt; It.department.name &gt;&gt; Nth(2)
+
+chicago[Q]
+#=&gt;
+│ name │
+┼──────┼
+│ FIRE │
+=#</code></pre><p><code>Nth</code> can take a query argument, which is evaluated against the input source and must produce a singular mandatory integer value.</p><pre><code class="language-julia">chicago[Nth(It.department.name, Count(It.department) .- 1)]
+#=&gt;
+│ name │
+┼──────┼
+│ FIRE │
+=#
+
+chicago[It.department.name &gt;&gt; Nth(Count(It.department) .- 1)]
+#=&gt;
+│ name │
+┼──────┼
+│ FIRE │
+=#</code></pre><p>In <code>@query</code> notation, we write <code>first()</code>, <code>last()</code> and <code>nth(N)</code>.</p><pre><code class="language-julia">@query first(department)
+#-&gt; First(Get(:department))
+
+@query last(department)
+#-&gt; Last(Get(:department))
+
+@query nth(department, 2)
+#-&gt; Nth(Get(:department), Lift(2))
+
+@query department.first()
+#-&gt; Get(:department) &gt;&gt; Then(First)
+
+@query department.last()
+#-&gt; Get(:department) &gt;&gt; Then(Last)
+
+@query department.nth(2)
+#-&gt; Get(:department) &gt;&gt; Nth(Lift(2))</code></pre><h3><a class="nav-anchor" id="Take-and-Drop-1" href="#Take-and-Drop-1"><code>Take</code> and <code>Drop</code></a></h3><p>We use <code>Take(N)</code> and <code>Drop(N)</code> to pass or drop the first <code>N</code> input elements.</p><pre><code class="language-julia">Employee =
     It.department &gt;&gt;
     Filter(It.name .== &quot;POLICE&quot;) &gt;&gt;
     It.employee
