@@ -1790,10 +1790,92 @@ function assemble_nth(p::Pipeline, n::Pipeline)
     ) |> designate(src, tgt)
 end
  
+"""
+    First(X) :: Query
+
+In the combinator form, `First(X)` emits the first element produced by its argument `X`.
+
+```jldoctest
+julia> X = Lift('a':'c');
+
+julia> unitknot[First(X)]
+┼───┼
+│ a │
+```
+---
+
+    Each(X >> Exists) :: Query
+
+In the query form, `First` emits the first element of its input.
+
+```jldoctest
+julia> X = Lift('a':'c');
+
+julia> unitknot[X >> First]
+┼───┼
+│ a │
+```
+"""
 First(X) = Query(First, X)
 
+"""
+    Last(X) :: Query
+
+In the combinator form, `Last(X)` emits the last element produced by its argument `X`.
+
+```jldoctest
+julia> X = Lift('a':'c');
+
+julia> unitknot[Last(X)]
+┼───┼
+│ c │
+```
+---
+
+    Each(X >> Exists) :: Query
+
+In the query form, `Last` emits the last element of its input.
+
+```jldoctest
+julia> X = Lift('a':'c');
+
+julia> unitknot[X >> Last]
+┼───┼
+│ c │
+```
+"""
 Last(X) = Query(Last, X)
 
+"""
+    Nth(X, N) :: Query
+
+In the combinator form, `Nth(X, N)` emits the `N`th element produced by its argument `X`.
+
+```jldoctest
+julia> X = Lift('a':'d');
+
+julia> N = Count(X) .÷ 2;
+
+julia> unitknot[Nth(X, N)]
+┼───┼
+│ b │
+```
+---
+
+    Each(X >> Nth(N)) :: Query
+
+In the query form, `Nth(N)` emits the `N`th element produced by its input.
+
+```jldoctest
+julia> X = Lift('a':'d');
+
+julia> N = Count(X) .÷ 2;
+
+julia> unitknot[X >> Nth(N)]
+┼───┼
+│ b │
+```
+"""
 Nth(X, N) = Query(Nth, X, N)
 
 Lift(::typeof(First)) =
