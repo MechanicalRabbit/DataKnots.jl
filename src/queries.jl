@@ -1804,7 +1804,7 @@ julia> unitknot[First(X)]
 ```
 ---
 
-    Each(X >> Exists) :: Query
+    Each(X >> First) :: Query
 
 In the query form, `First` emits the first element of its input.
 
@@ -1832,7 +1832,7 @@ julia> unitknot[Last(X)]
 ```
 ---
 
-    Each(X >> Exists) :: Query
+    Each(X >> Last) :: Query
 
 In the query form, `Last` emits the last element of its input.
 
