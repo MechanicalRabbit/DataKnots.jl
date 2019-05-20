@@ -59,7 +59,7 @@
 
 chicago = DataKnot(Any, chicago_data, :x1to1)
 #=&gt;
-│ department                                                                  │
+│ department{name,employee{name,position,salary,rate}}                        │
 ┼─────────────────────────────────────────────────────────────────────────────┼
 │ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 800…│
 =#</code></pre><h2><a class="nav-anchor" id="Constructing-Queries-1" href="#Constructing-Queries-1">Constructing Queries</a></h2><p>In DataKnots, we query data by assembling and running <code>Query</code> objects.  Queries are constructed algebraically: they either come a set of atomic <em>primitive</em> queries, or are built from other queries using query <em>combinators</em>.</p><p>For example, consider the query:</p><pre><code class="language-julia">Employees = Get(:department) &gt;&gt; Get(:employee)
@@ -83,7 +83,6 @@ chicago = DataKnot(Any, chicago_data, :x1to1)
 #-&gt; Lift(&gt;, (Get(:salary), Lift(100000)))</code></pre><p>This query expression is constructed from two primitive components: <code>Get(:salary)</code> and <code>Lift(100000)</code>, which serve as parameters of the <code>Lift(&gt;)</code> combinator.  Here, <code>Lift</code> is used twice.  <code>Lift</code> applied to a regular Julia value converts it to a <em>constant</em> query primitive while <code>Lift</code> applied to a function <em>lifts</em> it to a query combinator.</p><p>As a shorthand notation for lifting functions and operators, DataKnots supports broadcasting syntax:</p><pre><code class="language-julia">SalaryOver100K = It.salary .&gt; 100000
 #-&gt; It.salary .&gt; 100000</code></pre><p>To test this query, we can append it to the <code>Employees</code> query using the composition combinator.</p><pre><code class="language-julia">chicago[Employees &gt;&gt; SalaryOver100K]
 #=&gt;
-  │ It    │
 ──┼───────┼
 1 │  true │
 2 │ false │
@@ -122,9 +121,8 @@ chicago[EmployeesWithSalaryOver100K]
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
 =#</code></pre><p>DataKnots provides a number of useful query constructors.  For example, to find the number of items produced by a query, we can use the <code>Count</code> combinator.</p><pre><code class="language-julia">chicago[Count(EmployeesWithSalaryOver100K)]
 #=&gt;
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 =#</code></pre><p>In general, query algebra forms an XPath-like domain-specific language.  It is designed to let the user construct queries incrementally, with each step being individually crafted and tested.  It also encourages the user to create reusable query components and remix them in creative ways.</p><h2><a class="nav-anchor" id="Compiling-Queries-1" href="#Compiling-Queries-1">Compiling Queries</a></h2><p>In DataKnots, applying a query to the input data is a two-phase process. First, the query generates a pipeline.  Second, this pipeline transforms the input data to the output data.</p><p>Let us elaborate on the role of pipelines and queries.  In DataKnots, just like pipelines are used to transform data, a query can transform pipelines.  That is, a query can be applied to a pipeline to produce a new pipeline.</p><p>To run a query on the given data, we apply the query to a <em>trivial</em> pipeline. The generated pipeline is used to actually transform the data.</p><p>To demonstrate how to apply a query, let us use <code>EmployeesWithSalaryOver100K</code> from the previous section.  Recall that it could be represented as follows:</p><pre><code class="language-julia">Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Filter(Get(:salary) .&gt; 100000)
 #-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Filter(Get(:salary) .&gt; 100000)</code></pre><p>This query is constructed using a composition combinator.  A query composition transforms a pipeline by sequentially applying the component queries. Therefore, to find the pipeline of <code>EmployeesWithSalaryOver100K</code>, we need to start with a trivial pipeline and sequentially tranfrorm it with the queries <code>Get(:department)</code>, <code>Get(:employee)</code> and <code>Filter(SalaryOver100K)</code>.</p><p>The trivial pipeline can be obtained from the input data.</p><pre><code class="language-julia">p0 = trivial_pipe(chicago)
 #-&gt; pass()</code></pre><p>We use the function <code>assemble()</code> to apply a query to a pipeline.  To run <code>assemble()</code> we need to create the <em>environment</em> object.</p><pre><code class="language-julia">env = Environment()
@@ -185,22 +183,20 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/04ba941c77413ff9348d8001445ba2a2455eb221/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/04ba941c77413ff9348d8001445ba2a2455eb221/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/04ba941c77413ff9348d8001445ba2a2455eb221/src/queries.jl#L120-L124">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2eeea7b1f5d33f02b1354549f75d71582dbc0f25/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2eeea7b1f5d33f02b1354549f75d71582dbc0f25/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2eeea7b1f5d33f02b1354549f75d71582dbc0f25/src/queries.jl#L120-L124">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 =#</code></pre><p>Any parameters to the query should be be passed as keyword arguments.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Filter(Count(It.employee &gt;&gt; Filter(It.salary .&gt; It.AMT)) .&gt;= It.SZ) &gt;&gt;
     Count
 
 chicago[Q, AMT=100000, SZ=1]
 #=&gt;
-│ It │
-┼────┼
-│  2 │
+┼───┼
+│ 2 │
 =#</code></pre><p>We can use the function <code>assemble()</code> to see the query plan.</p><pre><code class="language-julia">p = assemble(chicago, Count(It.department))
 #=&gt;
 chain_of(with_elements(chain_of(column(:department), block_length(), wrap())),
@@ -209,24 +205,21 @@ chain_of(with_elements(chain_of(column(:department), block_length(), wrap())),
 
 p(chicago)
 #=&gt;
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 =#</code></pre><h3><a class="nav-anchor" id="@query-1" href="#@query-1"><code>@query</code></a></h3><p><code>Query</code> objects could be constructed using a convenient notation provided by the macro <code>@query</code>.  For example, the query <code>Count(It.department)</code> could also be written as:</p><pre><code class="language-julia">@query count(department)
 #-&gt; Count(Get(:department))</code></pre><p>The <code>@query</code> macro could also be used to apply the constructed query to a <code>DataKnot</code>.</p><pre><code class="language-julia">@query chicago count(department)
 #=&gt;
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 =#</code></pre><p>Query parameters could be passed as keyword arguments.</p><pre><code class="language-julia">@query chicago AMT=100000 SZ=1 begin
     department
     filter(count(employee.filter(salary &gt; AMT)) &gt;= SZ)
     count()
 end
 #=&gt;
-│ It │
-┼────┼
-│  2 │
+┼───┼
+│ 2 │
 =#</code></pre><p>Queries defined elsewhere could be embedded in a <code>@query</code> expression using interpolation syntax (<code>$</code>).</p><pre><code class="language-julia">Size = @query count(employee)
 #-&gt; Count(Get(:employee))
 
@@ -236,7 +229,6 @@ end
 
 chicago[Q]
 #=&gt;
-│ It │
 ┼────┼
 │ 42 │
 =#</code></pre><p>The <code>It</code> query primitive is the identity with respect to <code>&gt;&gt;</code>.</p><pre><code class="language-julia">Q = It &gt;&gt; Q &gt;&gt; It
@@ -244,7 +236,6 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-│ It │
 ┼────┼
 │ 42 │
 =#</code></pre><p>In <code>@query</code> notation, the identity query is called <code>it</code>.</p><pre><code class="language-julia">@query it
@@ -304,7 +295,7 @@ chicago[Q]
 chicago[Q]
 #=&gt;
   │ department                                                                │
-  │ name    employee                                                     size │
+  │ name    employee{name,position,salary,rate}                          size │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFIC…    4 │
 2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIRE…    3 │
@@ -316,7 +307,7 @@ chicago[Q]
 chicago[Q]
 #=&gt;
   │ department                                                                │
-  │ name    employee                                         size  avg_salary │
+  │ name    employee{name,position,salary,rate}              size  avg_salary │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, …    4     63492.0 │
 2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DA…    3    100702.0 │
@@ -326,7 +317,7 @@ chicago[Q]
 chicago[Q]
 #=&gt;
   │ department                                                                │
-  │ name    employee                                                       #C │
+  │ name    employee{name,position,salary,rate}                            #C │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  4 │
 2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
@@ -356,7 +347,7 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-│ department                            employee                              │
+│ department{name,employee{name,positi… employee{name,position,salary,rate}   │
 ┼─────────────────────────────────────────────────────────────────────────────┼
 │ POLICE, [JEFFERY A, SERGEANT, 101442… JEFFERY A, SERGEANT, 101442, missing;…│
 =#</code></pre><p>In <code>@query</code> notation, <code>Collect(X)</code> is written as <code>collect(X)</code>.</p><pre><code class="language-julia">@query department.collect(size =&gt; count(employee), employee =&gt; nothing)
@@ -370,7 +361,7 @@ Get(:department) &gt;&gt; Collect(Count(Get(:employee)) &gt;&gt; Label(:size),
 chicago[Q]
 #=&gt;
    │ department                                             │
-   │ name    employee                                       │
+   │ name    employee{name,position,salary,rate}            │
 ───┼────────────────────────────────────────────────────────┼
  1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing           │
  2 │ POLICE  NANCY A, POLICE OFFICER, 80016, missing        │
@@ -415,7 +406,6 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-│ It           │
 ┼──────────────┼
 │ Hello World! │
 =#</code></pre><p>Lifting <code>missing</code> produces no output.</p><pre><code class="language-julia">Q = Lift(missing)
@@ -423,28 +413,25 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-│ It │
-┼────┼
+(empty)
 =#</code></pre><p>Lifting a vector produces plural output.</p><pre><code class="language-julia">Q = Lift(&#39;a&#39;:&#39;c&#39;)
 #-&gt; Lift(&#39;a&#39;:1:&#39;c&#39;)
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 =#</code></pre><p>When lifting a vector, we can specify the cardinality constraint.</p><pre><code class="language-julia">Q = Lift(&#39;a&#39;:&#39;c&#39;, :x1toN)
 #-&gt; Lift(&#39;a&#39;:1:&#39;c&#39;, :x1toN)
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │ a  │
-2 │ b  │
-3 │ c  │
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
 =#</code></pre><p><code>Lift</code> can also convert Julia functions to query combinators.</p><pre><code class="language-julia">Inc(X) = Lift(x -&gt; x+1, (X,))
 
 Q = Lift(0) &gt;&gt; Inc(It)
@@ -452,9 +439,8 @@ Q = Lift(0) &gt;&gt; Inc(It)
 
 chicago[Q]
 #=&gt;
-│ It │
-┼────┼
-│  1 │
+┼───┼
+│ 1 │
 =#</code></pre><p>Functions of multiple arguments are also supported.</p><pre><code class="language-julia">GT(X, Y) = Lift(&gt;, (X, Y))
 
 Q = It.department.employee &gt;&gt;
@@ -488,7 +474,6 @@ Q = Lift(rand, ())
 
 chicago[Q]
 #=&gt;
-│ It       │
 ┼──────────┼
 │ 0.823648 │
 =#</code></pre><p>Functions with vector arguments are supported.</p><pre><code class="language-julia">using Statistics: mean
@@ -500,7 +485,6 @@ Q = Mean(It.department.employee.salary)
 
 chicago[Q]
 #=&gt;
-│ It      │
 ┼─────────┼
 │ 88638.0 │
 =#</code></pre><p>Just like with regular values, <code>missing</code> and vector results are interpreted as no and plural output.</p><pre><code class="language-julia">Q = Inc(missing)
@@ -508,8 +492,7 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-│ It │
-┼────┼
+(empty)
 =#
 
 OneTo(N) = Lift(UnitRange, (1, N))
@@ -519,17 +502,15 @@ Q = OneTo(3)
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  1 │
-2 │  2 │
-3 │  3 │
+──┼───┼
+1 │ 1 │
+2 │ 2 │
+3 │ 3 │
 =#</code></pre><p>Julia functions are lifted when they are broadcasted over queries.</p><pre><code class="language-julia">Q = mean.(It.department.employee.salary)
 #-&gt; mean.(It.department.employee.salary)
 
 chicago[Q]
 #=&gt;
-│ It      │
 ┼─────────┼
 │ 88638.0 │
 =#</code></pre><p>In <code>@query</code> notation, values and functions are lifted automatically.</p><pre><code class="language-julia">@query &quot;Hello World!&quot;
@@ -563,7 +544,6 @@ Record(Get(:name), Get(:salary), Lift(&gt;, (Get(:salary), Lift(100000))))
 
 chicago[Q]
 #=&gt;
-│ It │
 ┼────┼
 │ 10 │
 =#
@@ -573,11 +553,10 @@ Q = It.department &gt;&gt; Each(It.employee &gt;&gt; Count)
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  4 │
-2 │  3 │
-3 │  3 │
+──┼───┼
+1 │ 4 │
+2 │ 3 │
+3 │ 3 │
 =#</code></pre><p>Note that <code>Record</code> and <code>Lift</code> also serve as natural barriers for aggregate queries.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Record(It.name, It.employee &gt;&gt; Count)
 #-&gt; It.department &gt;&gt; Record(It.name, It.employee &gt;&gt; Count)
@@ -598,11 +577,10 @@ Q = It.department &gt;&gt;
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  4 │
-2 │  3 │
-3 │  3 │
+──┼───┼
+1 │ 4 │
+2 │ 3 │
+3 │ 3 │
 =#</code></pre><p>In <code>@query</code> notation, <code>Each(X)</code> is written as <code>each(X)</code>.</p><pre><code class="language-julia">@query department.each(employee.count())
 #-&gt; Get(:department) &gt;&gt; Each(Get(:employee) &gt;&gt; Then(Count))</code></pre><h3><a class="nav-anchor" id="Label-1" href="#Label-1"><code>Label</code></a></h3><p>We use the <code>Label()</code> primitive to assign a label to the output.</p><pre><code class="language-julia">Q = Count(It.department) &gt;&gt; Label(:num_dept)
 #-&gt; Count(It.department) &gt;&gt; Label(:num_dept)
@@ -689,11 +667,10 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  4 │
-2 │  3 │
-3 │  3 │
+──┼───┼
+1 │ 4 │
+2 │ 3 │
+3 │ 3 │
 =#</code></pre><p>Same notation is used to extract values of context parameters defined with <code>Keep()</code> or <code>Given()</code>.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(:dept_name =&gt; It.name) &gt;&gt;
     It.employee &gt;&gt;
@@ -764,7 +741,6 @@ Q = Lift((&quot;JEFFERY A&quot;, &quot;SERGEANT&quot;, 101442)) &gt;&gt;
 
 chicago[Q]
 #=&gt;
-│ It       │
 ┼──────────┼
 │ SERGEANT │
 =#
@@ -1095,7 +1071,7 @@ chicago[Q]
 chicago[Q]
 #=&gt;
 │ department                                                                  │
-│ name    employee                                                            │
+│ name    employee{name,position,salary,rate}                                 │
 ┼─────────────────────────────────────────────────────────────────────────────┼
 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 8001…│
 =#
@@ -1137,9 +1113,8 @@ chicago[Q]
 
 chicago[Q]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  3 │
+──┼───┼
+1 │ 3 │
 =#
 
 shape(chicago[Q])
@@ -1212,7 +1187,7 @@ Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Get(:position) &gt;&gt; Then(U
 
 chicago[Q]
 #=&gt;
-  │ position              employee                                            │
+  │ position              employee{name,position,salary,rate}                 │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A,…│
 2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing         │

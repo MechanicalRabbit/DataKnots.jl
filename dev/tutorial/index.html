@@ -67,20 +67,17 @@ chicago = DataKnot(:department =&gt; department_data)</code></pre><h2><a class="
 2 │ FIRE   │
 =#</code></pre><p>In DataKnots, queries are either <em>primitives</em>, such as <code>Get</code> and <code>It</code>, or built from other queries with <em>combinators</em>, such as composition (<code>&gt;&gt;</code>). Let&#39;s explore some other combinators.</p><h2><a class="nav-anchor" id="Context-and-Counting-1" href="#Context-and-Counting-1">Context &amp; Counting</a></h2><p>To count the number of departments in this <code>chicago</code> dataset we write the query <code>Count(It.department)</code>. Observe that the argument provided to <code>Count()</code>, <code>It.department</code>, is itself a query.</p><pre><code class="language-julia">chicago[Count(It.department)]
 #=&gt;
-│ It │
-┼────┼
-│  2 │
+┼───┼
+│ 2 │
 =#</code></pre><p>We could also count the total number of employees across all departments.</p><pre><code class="language-julia">chicago[Count(It.department.employee)]
 #=&gt;
-│ It │
-┼────┼
-│  5 │
+┼───┼
+│ 5 │
 =#</code></pre><p>What if we wanted to count employees by department? Using query composition (<code>&gt;&gt;</code>), we can perform <code>Count</code> in a nested context.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Count(It.employee)]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  3 │
-2 │  2 │
+──┼───┼
+1 │ 3 │
+2 │ 2 │
 =#</code></pre><p>In this output, we see that one department has <code>3</code> employees, while the other has <code>2</code>.</p><h2><a class="nav-anchor" id="Record-Construction-1" href="#Record-Construction-1">Record Construction</a></h2><p>Let&#39;s improve the previous query by including each department&#39;s name alongside employee counts. This can be done by using the <code>Record</code> combinator.</p><pre><code class="language-julia">chicago[
     It.department &gt;&gt;
     Record(It.name,
@@ -115,7 +112,7 @@ chicago = DataKnot(:department =&gt; department_data)</code></pre><h2><a class="
         Collect(:size =&gt; Count(It.employee))]
 #=&gt;
   │ department                                                                │
-  │ name    employee                                                     size │
+  │ name    employee{name,position,salary}                               size │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 1014…    3 │
 2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT…    2 │
@@ -136,7 +133,7 @@ chicago = DataKnot(:department =&gt; department_data)</code></pre><h2><a class="
                   It.salary))]
 #=&gt;
   │ department                                                  │
-  │ name    employee                                            │
+  │ name    employee{name,salary}                               │
 ──┼─────────────────────────────────────────────────────────────┼
 1 │ POLICE  ANTHONY A, 72510; JEFFERY A, 101442; NANCY A, 80016 │
 2 │ FIRE    DANIEL A, 95484; ROBERT K, 103272                   │
@@ -144,9 +141,8 @@ chicago = DataKnot(:department =&gt; department_data)</code></pre><h2><a class="
     :size =&gt;
         Count(It.employee)</code></pre><p>This query can be used in different ways.</p><pre><code class="language-julia">chicago[Max(It.department &gt;&gt; DeptSize)]
 #=&gt;
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 =#
 
 chicago[
@@ -234,38 +230,32 @@ chicago[Q]
 2 │ ROBERT K  │
 =#</code></pre><h2><a class="nav-anchor" id="Aggregate-Queries-1" href="#Aggregate-Queries-1">Aggregate Queries</a></h2><p>We&#39;ve demonstrated the <code>Count</code> combinator, but <code>Count</code> could also be used as a query. In this next example, <code>Count</code> receives employees as input, and produces their number as output.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Count]
 #=&gt;
-│ It │
-┼────┼
-│  5 │
+┼───┼
+│ 5 │
 =#</code></pre><p>Previously we&#39;ve only seen <em>elementwise</em> queries, which emit an output for each of its input elements. The <code>Count</code> query is an <em>aggregate</em>, which means it emits an output for its entire input.</p><p>We may wish to count employees by department. Contrary to expectation, adding parentheses will not change the output.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; (It.employee &gt;&gt; Count)]
 #=&gt;
-│ It │
-┼────┼
-│  5 │
+┼───┼
+│ 5 │
 =#</code></pre><p>To count employees in <em>each</em> department, we use the <code>Each()</code> combinator, which evaluates its argument elementwise.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Each(It.employee &gt;&gt; Count)]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  3 │
-2 │  2 │
+──┼───┼
+1 │ 3 │
+2 │ 2 │
 =#</code></pre><p>Alternatively, we could use the <code>Count()</code> combinator to get the same result.</p><pre><code class="language-julia">chicago[It.department &gt;&gt; Count(It.employee)]
 #=&gt;
-  │ It │
-──┼────┼
-1 │  3 │
-2 │  2 │
+──┼───┼
+1 │ 3 │
+2 │ 2 │
 =#</code></pre><p>Which form of <code>Count</code> to use depends upon what is notationally convenient. For incremental construction, being able to simply append <code>&gt;&gt; Count</code> is often very helpful.</p><pre><code class="language-julia">Q = It.department.employee
 chicago[Q &gt;&gt; Count]
 #=&gt;
-│ It │
-┼────┼
-│  5 │
+┼───┼
+│ 5 │
 =#</code></pre><p>We could then refine the query, and run the exact same command.</p><pre><code class="language-julia">Q &gt;&gt;= Filter(It.salary .&gt; 100000)
 chicago[Q &gt;&gt; Count]
 #=&gt;
-│ It │
-┼────┼
-│  2 │
+┼───┼
+│ 2 │
 =#</code></pre><h2><a class="nav-anchor" id="Summarizing-Data-1" href="#Summarizing-Data-1">Summarizing Data</a></h2><p>To summarize data, we could use query combinators such as <code>Min</code>, <code>Max</code>, and <code>Sum</code>. Let&#39;s compute some salary statistics.</p><pre><code class="language-julia">Salary = It.department.employee.salary
 
 chicago[
@@ -335,7 +325,7 @@ chicago[
 3 │ SERGEANT        │
 =#</code></pre><p>However, <code>Unique</code> is not sufficient because positions are not associated to the respective employees. To associate employee records to their positions, we use <code>Group</code> combinator:</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Group(It.position)]
 #=&gt;
-  │ position         employee                                                 │
+  │ position         employee{name,position,salary}                           │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-…│
 2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLICE OFFICE…│
@@ -400,7 +390,6 @@ chicago[
     It.department.employee &gt;&gt;
     titlecase.(It.name)]
 #=&gt;
-  │ It        │
 ──┼───────────┼
 1 │ Anthony A │
 2 │ Jeffery A │
@@ -480,7 +469,6 @@ chicago[
 
 mean_salary = chicago[MeanSalary]
 #=&gt;
-│ It      │
 ┼─────────┼
 │ 90544.8 │
 =#</code></pre><p>Then, this value could be passed as our parameter.</p><pre><code class="language-julia">chicago[PaidOverAmt, AMT=mean_salary]
@@ -624,9 +612,8 @@ end
 2 │ ROBERT K   103272 │
 =#</code></pre><p>In <code>@query</code> notation, query aggregates, such as <code>Count</code> and <code>Unique</code>, are lower-case and require parentheses.</p><pre><code class="language-julia">@query chicago department.employee.position.unique().count()
 #=&gt;
-│ It │
-┼────┼
-│  3 │
+┼───┼
+│ 3 │
 =#</code></pre><p>Query parameters are passed as keyword arguments to <code>@query</code>.</p><pre><code class="language-julia">@query chicago begin
     department
     employee
@@ -727,7 +714,7 @@ highly_compensated |&gt; DataFrame
 │ 4   │ ROBERT K  │ FIRE       │ FIREFIGHTER-EMT   │ 103272 │
 =#</code></pre><h2><a class="nav-anchor" id="Restructuring-Imported-Data-1" href="#Restructuring-Imported-Data-1">Restructuring Imported Data</a></h2><p>After importing tabular data, it is sometimes helpful to restructure hierarchically to make queries more convenient. We&#39;ve seen earlier how this could be done with <code>Group</code> combinator.</p><pre><code class="language-julia">chicago′[It.employee &gt;&gt; Group(It.department)]
 #=&gt;
-  │ department  employee                                                      │
+  │ department  employee{name,department,position,salary,rate}                │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│
 2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│
@@ -745,14 +732,14 @@ highly_compensated |&gt; DataFrame
 chicago′[Restructure]
 #=&gt;
   │ department                                                                │
-  │ name    employee                                                          │
+  │ name    employee{name,position,salary,rate}                               │
 ──┼───────────────────────────────────────────────────────────────────────────┼
 1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFIGHTE…│
 2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING GUAR…│
 3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
 =#</code></pre><p>Using <code>Collect</code> we could save this restructured dataset as a top-level field, <code>department</code>.</p><pre><code class="language-julia">chicago″ = chicago′[Restructure &gt;&gt; Collect]
 #=&gt;
-│ employee                              department                            │
+│ employee{name,department,position,sa… department{name,employee{name,positio…│
 ┼─────────────────────────────────────────────────────────────────────────────┼
 │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
 =#</code></pre><p>Then, queries that originally worked with our hierarchical <code>chicago</code> dataset would now work with this imported and then restructured <code>chicago″</code> data. For example, we could once again compute the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
