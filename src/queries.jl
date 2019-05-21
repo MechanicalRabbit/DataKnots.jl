@@ -845,6 +845,73 @@ translate(mod::Module, ::Val{:collect}, ::Tuple{}) =
 
 
 #
+# Join combinator.
+#
+
+function assemble_join(p::Pipeline, x::Pipeline)
+    p = as_record(p)
+    dom = domain(target(p))
+    dom isa TupleOf || error("expected a record; got\n$(syntaxof(dom))")
+    q = assemble_join(target(p), target(x))
+    chain_of(tuple_of(p, x), q) |> designate(source(p), target(q))
+end
+
+function assemble_join(tgt::IsFlow, x_tgt::AbstractShape)
+    q = assemble_join(elements(tgt), x_tgt)
+    q′ = chain_of(distribute(1), with_elements(q))
+    q′ |> designate(TupleOf(tgt, x_tgt), replace_elements(tgt, target(q)))
+end
+
+function assemble_join(tgt::IsScope, x_tgt::AbstractShape)
+    q = assemble_join(column(tgt), x_tgt)
+    q′ = tuple_of(chain_of(tuple_of(chain_of(column(1), column(1)), column(2)), q),
+                  chain_of(chain_of(column(1), column(2))))
+    q′ |> designate(TupleOf(tgt, x_tgt), replace_column(tgt, target(q)))
+end
+
+function assemble_join(tgt::AbstractShape, x_tgt::AbstractShape)
+    dom = domain(tgt)::TupleOf
+    x = uncover(x_tgt)
+    x_lbl = getlabel(x, nothing)
+    x = relabel(x, nothing)
+    cols = Pipeline[]
+    col_shps = AbstractShape[]
+    lbls = Symbol[]
+    for i in 1:width(dom)
+        lbl = label(dom, i)
+        lbl != x_lbl || continue
+        col = lookup(tgt, i)
+        push!(cols, chain_of(column(1), col))
+        push!(col_shps, target(col))
+        if lbl == ordinal_label(i)
+            lbl = ordinal_label(length(cols))
+        end
+        push!(lbls, lbl)
+    end
+    push!(cols, chain_of(column(2), x))
+    push!(col_shps, target(x))
+    push!(lbls, x_lbl !== nothing ? x_lbl : ordinal_label(length(cols)))
+    tgt′ = TupleOf(lbls, col_shps)
+    lbl = getlabel(tgt, nothing)
+    if lbl !== nothing
+        tgt′ = relabel(tgt′, lbl)
+    end
+    tuple_of(lbls, cols) |> designate(TupleOf(tgt, x_tgt), tgt′)
+end
+
+Join(X) =
+    Query(Join, X)
+
+function Join(env::Environment, p::Pipeline, X)
+    x = assemble(env, source_pipe(p), X)
+    assemble_join(p, x)
+end
+
+translate(mod::Module, ::Val{:join}, (arg,)::Tuple{Any}) =
+    Join(translate(mod, arg))
+
+
+#
 # Lifting Julia values and functions.
 #
 
