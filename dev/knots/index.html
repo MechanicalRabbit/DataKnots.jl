@@ -71,7 +71,20 @@ chicago[It.employee]
 │ 4   │ DANIEL A  │ FIRE       │ 95484   │
 │ 5   │ LAKENYA A │ OEMC       │ missing │
 │ 6   │ DORIS A   │ OEMC       │ missing │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.show-Tuple{DataKnot}" href="#Base.show-Tuple{DataKnot}"><code>Base.show</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">show(::DataKnot[; as=:table])</code></pre><p>This displays a <code>DataKnot</code> as a table, truncating the data to fit the current display.</p><pre><code class="language-julia-repl">julia&gt; using DataKnots
+
+julia&gt; show(unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It)])
+  │ x  y │
+──┼──────┼
+1 │ 1  1 │
+2 │ 2  4 │
+3 │ 3  9 │</code></pre><pre><code class="language-julia">show(::DataKnot; as=:shape)</code></pre><p>This visualizes the shape of a <code>DataKnot</code> in a form of a tree.</p><pre><code class="language-julia-repl">julia&gt; using DataKnots
+
+julia&gt; show(as=:shape, unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It)])
+3-element DataKnot:
+  #    0:N
+  ├╴x  1:1 × Int64
+  └╴y  1:1 × Int64</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/52520170cda99f484e62ba60da575e4e1ad31a7a/src/knots.jl#L241-L271">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
 #=&gt;
 ┼─────────────┼
 │ Hello World │
