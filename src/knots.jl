@@ -267,7 +267,9 @@ julia> show(as=:shape, unitknot[Lift(1:3) >> Record(:x => It, :y => It .* It)])
   #    0:N
   ├╴x  1:1 × Int64
   └╴y  1:1 × Int64
+```
 """
+
 show(db::DataKnot; kws...) =
     show(stdout, db; kws...)
 
