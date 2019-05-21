@@ -22,6 +22,7 @@ export
     Is1to1,
     Is1toN,
     It,
+    Join,
     Keep,
     Label,
     Last,
