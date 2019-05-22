@@ -1392,6 +1392,8 @@ function Given(env::Environment, p::Pipeline, X)
     assemble_given(p, q)
 end
 
+const Let = Given
+
 translate(mod::Module, ::Val{:given}, args::Tuple{Any,Vararg{Any}}) =
     Given(translate.(Ref(mod), args)...)
 
