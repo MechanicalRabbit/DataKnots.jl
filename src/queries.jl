@@ -213,6 +213,8 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
         return Compose(translate(mod, args[2]), Label(args[1]))
     elseif head === :(:=) && length(args) == 2 && args[1] isa Symbol
         return Keep(Compose(translate(mod, args[2]), Label(args[1])))
+    elseif head === :let && length(args) == 2 && (Xs = _translate_let(mod, args[1])) !== nothing
+        return Given(Xs..., translate(mod, args[2]))
     elseif head === :braces
         return Record(translate.(Ref(mod), args)...)
     elseif head === :quote && length(args) == 1 && Meta.isexpr(args[1], :braces)
@@ -233,6 +235,20 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
         end
     end
     error("invalid query expression: $(repr(ex))")
+end
+
+function _translate_let(mod::Module, ex)
+    if Meta.isexpr(ex, :(=), 2) && ex.args[1] isa Symbol
+        return AbstractQuery[Compose(translate(mod, ex.args[2]), Label(ex.args[1]))]
+    elseif Meta.isexpr(ex, :block)
+        Xs = AbstractQuery[]
+        for arg in ex.args
+            Ys = _translate_let(mod, arg)
+            Ys !== nothing || return
+            append!(Xs, Ys)
+        end
+        return Xs
+    end
 end
 
 translate(mod::Module, sym::Symbol) =
