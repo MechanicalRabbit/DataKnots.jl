@@ -50,6 +50,12 @@ salaries greater than their department's average.
     2 │ JEFFERY A  POLICE      SERGEANT           101442 │
     =#
 
+In this example, nouns, such as `employee`, `department` and
+`salary`, are *query primitives*. The verbs, such as `group`,
+`keep`, `mean` and `filter` are *query combinators*. Together,
+query expressions, such as `group(department)`, are built from
+existing queries by applying these combinators.
+
 Queries could also be constructed with pure Julia code,
 without using macros. The query above could be
 equivalently written:
