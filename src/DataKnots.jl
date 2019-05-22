@@ -25,6 +25,7 @@ export
     Keep,
     Label,
     Last,
+    Let,
     Lift,
     Max,
     Min,
