@@ -209,6 +209,8 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
         return Compose(translate(mod, args[1]), translate(mod, args[2].args[1]))
     elseif head === :.
         return Compose(translate.(Ref(mod), args)...)
+    elseif head === :(=) || head === :kw && length(args) == 2 && args[1] isa Symbol
+        return Compose(translate(mod, args[2]), Label(args[1]))
     elseif head === :braces
         return Record(translate.(Ref(mod), args)...)
     elseif head === :quote && length(args) == 1 && Meta.isexpr(args[1], :braces)
