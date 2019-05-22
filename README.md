@@ -52,8 +52,8 @@ salaries greater than their department's average.
 
 In this example, nouns, such as `employee`, `department` and
 `salary`, are *query primitives*. The verbs, such as `group`,
-`keep`, `mean` and `filter` are *query combinators*. Together,
-query expressions, such as `group(department)`, are built from
+`keep`, `mean` and `filter` are *query combinators*. Query
+expressions, such as `group(department)`, are built from
 existing queries by applying these combinators.
 
 Queries could also be constructed with pure Julia code,
