@@ -26,6 +26,7 @@ We will need the following definitions.
         Keep,
         Label,
         Last,
+        Let,
         Lift,
         Max,
         Min,
@@ -990,13 +991,19 @@ As a shorthand, we can use `=>`.
     │        3 │
     =#
 
-In `@query` notation, we could use `label(name)` or `=>` syntax.
+In `@query` notation, we could use `label(name)` or `=>` or `=` syntax.
 
     @query count(department).label(num_dept)
     #-> Count(Get(:department)) >> Label(:num_dept)
 
     @query num_dept => count(department)
     #-> Count(Get(:department)) >> Label(:num_dept)
+
+    @query num_dept = count(department)
+    #-> Count(Get(:department)) >> Label(:num_dept)
+
+    @query keep(mean_salary = mean(employee.salary))
+    #-> Keep(Lift(mean, (Get(:employee) >> Get(:salary),)) >> Label(:mean_salary))
 
 ### `Tag`
 
@@ -1319,6 +1326,11 @@ parameters.
     10 │ BRENDA B  │
     =#
 
+`Given` has an alias called `Let`.
+
+    Let
+    #-> DataKnots.Given
+
 In `@query` notation, `Keep(X)` and `Given(X, Q)` are written as `keep(X)` and
 `given(X, Q)`.
 
@@ -1335,6 +1347,32 @@ In `@query` notation, `Keep(X)` and `Given(X, Q)` are written as `keep(X)` and
         given(size => count(employee),
               half => size ÷ 2,
               employee.take(half))
+    end
+    #=>
+    Get(:department) >> Given(Count(Get(:employee)) >> Label(:size),
+                              Lift(div, (Get(:size), Lift(2))) >> Label(:half),
+                              Get(:employee) >> Take(Get(:half)))
+    =#
+
+Alternatively, the `let` clause is translated to a `Given` expression.
+
+    @query begin
+        department
+        let dept_name = name
+            employee{dept_name, name}
+        end
+    end
+    #=>
+    Get(:department) >> Given(Get(:name) >> Label(:dept_name),
+                              Get(:employee) >> Record(Get(:dept_name),
+                                                       Get(:name)))
+    =#
+
+    @query begin
+        department
+        let size = count(employee), half => size ÷ 2
+            employee.take(half)
+        end
     end
     #=>
     Get(:department) >> Given(Count(Get(:employee)) >> Label(:size),
