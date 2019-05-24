@@ -22,6 +22,7 @@
     Keep,
     Label,
     Last,
+    Let,
     Lift,
     Max,
     Min,
@@ -187,7 +188,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/3171707245fe41d833339426d72b8a4788406c84/src/queries.jl#L267-L271">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/3171707245fe41d833339426d72b8a4788406c84/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/3171707245fe41d833339426d72b8a4788406c84/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/b1c992eeb3d843419a1f6e4fbb70c3430ea636bb/src/queries.jl#L272-L276">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/b1c992eeb3d843419a1f6e4fbb70c3430ea636bb/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/b1c992eeb3d843419a1f6e4fbb70c3430ea636bb/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -602,11 +603,17 @@ chicago[Q]
 │ num_dept │
 ┼──────────┼
 │        3 │
-=#</code></pre><p>In <code>@query</code> notation, we could use <code>label(name)</code> or <code>=&gt;</code> syntax.</p><pre><code class="language-julia">@query count(department).label(num_dept)
+=#</code></pre><p>In <code>@query</code> notation, we could use <code>label(name)</code> or <code>=&gt;</code> or <code>=</code> syntax.</p><pre><code class="language-julia">@query count(department).label(num_dept)
 #-&gt; Count(Get(:department)) &gt;&gt; Label(:num_dept)
 
 @query num_dept =&gt; count(department)
-#-&gt; Count(Get(:department)) &gt;&gt; Label(:num_dept)</code></pre><h3><a class="nav-anchor" id="Tag-1" href="#Tag-1"><code>Tag</code></a></h3><p>We use <code>Tag()</code> constructor to assign a name to a query.</p><pre><code class="language-julia">DeptSize = Count(It.employee) &gt;&gt; Label(:dept_size)
+#-&gt; Count(Get(:department)) &gt;&gt; Label(:num_dept)
+
+@query num_dept = count(department)
+#-&gt; Count(Get(:department)) &gt;&gt; Label(:num_dept)
+
+@query keep(mean_salary = mean(employee.salary))
+#-&gt; Keep(Lift(mean, (Get(:employee) &gt;&gt; Get(:salary),)) &gt;&gt; Label(:mean_salary))</code></pre><h3><a class="nav-anchor" id="Tag-1" href="#Tag-1"><code>Tag</code></a></h3><p>We use <code>Tag()</code> constructor to assign a name to a query.</p><pre><code class="language-julia">DeptSize = Count(It.employee) &gt;&gt; Label(:dept_size)
 #-&gt; Count(It.employee) &gt;&gt; Label(:dept_size)
 
 DeptSize = Tag(:DeptSize, DeptSize)
@@ -854,7 +861,8 @@ chicago[Q]
  8 │ LAKENYA A │
  9 │ DORIS A   │
 10 │ BRENDA B  │
-=#</code></pre><p>In <code>@query</code> notation, <code>Keep(X)</code> and <code>Given(X, Q)</code> are written as <code>keep(X)</code> and <code>given(X, Q)</code>.</p><pre><code class="language-julia">@query department.keep(dept_name =&gt; name).employee{dept_name, name}
+=#</code></pre><p><code>Given</code> has an alias called <code>Let</code>.</p><pre><code class="language-julia">Let
+#-&gt; DataKnots.Given</code></pre><p>In <code>@query</code> notation, <code>Keep(X)</code> and <code>Given(X, Q)</code> are written as <code>keep(X)</code> and <code>given(X, Q)</code>.</p><pre><code class="language-julia">@query department.keep(dept_name =&gt; name).employee{dept_name, name}
 #=&gt;
 Get(:department) &gt;&gt;
 Keep(Get(:name) &gt;&gt; Label(:dept_name)) &gt;&gt;
@@ -867,6 +875,28 @@ Record(Get(:dept_name), Get(:name))
     given(size =&gt; count(employee),
           half =&gt; size ÷ 2,
           employee.take(half))
+end
+#=&gt;
+Get(:department) &gt;&gt; Given(Count(Get(:employee)) &gt;&gt; Label(:size),
+                          Lift(div, (Get(:size), Lift(2))) &gt;&gt; Label(:half),
+                          Get(:employee) &gt;&gt; Take(Get(:half)))
+=#</code></pre><p>Alternatively, the <code>let</code> clause is translated to a <code>Given</code> expression.</p><pre><code class="language-julia">@query begin
+    department
+    let dept_name = name
+        employee{dept_name, name}
+    end
+end
+#=&gt;
+Get(:department) &gt;&gt; Given(Get(:name) &gt;&gt; Label(:dept_name),
+                          Get(:employee) &gt;&gt; Record(Get(:dept_name),
+                                                   Get(:name)))
+=#
+
+@query begin
+    department
+    let size = count(employee), half =&gt; size ÷ 2
+        employee.take(half)
+    end
 end
 #=&gt;
 Get(:department) &gt;&gt; Given(Count(Get(:employee)) &gt;&gt; Label(:size),
