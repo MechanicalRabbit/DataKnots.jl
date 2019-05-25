@@ -253,6 +253,12 @@ syntaxof(shp::Annotation) =
 eltype(shp::Annotation) =
     eltype(subject(shp))
 
+deannotate(shp::AbstractShape) =
+    shp
+
+deannotate(shp::Annotation) =
+    deannotate(subject(shp))
+
 """
     sub |> IsLabeled(::Symbol)
 
