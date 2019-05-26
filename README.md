@@ -38,7 +38,7 @@ salaries greater than their department's average.
     @query chicago begin
         employee
         group(department)
-        keep(avg_salary => mean(employee.salary))
+        keep(avg_salary = mean(employee.salary))
         employee
         filter(salary > avg_salary)
     end
