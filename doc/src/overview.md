@@ -168,30 +168,6 @@ Combining queries is generative. Since we know that `salary >
     3 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
     =#
 
-Queries exist independently from the knot they may be applied to.
-We could build a query `highly_compensated` that returns the
-`name` and `salary` of employees with `salary` over 100K.
-
-    highly_compensated =
-        @query begin
-            employee
-            filter(salary > 100_000)
-            {name, salary}
-        end
-
-Index notation performs a query, such as `highly_compensated`,
-against a knot, such as `chicago`.
-
-    chicago[highly_compensated]
-    #=>
-      │ employee          │
-      │ name       salary │
-    ──┼───────────────────┼
-    1 │ JAMES A    103350 │
-    2 │ JEFFERY A  101442 │
-    3 │ ROBERT K   103272 │
-    =#
-
 In this section, we have built a query that produces
 highly-compensated employees. More broadly, we've demonstrated how
 an algebra of queries permits us to combine previously proven
