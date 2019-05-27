@@ -41,7 +41,7 @@ Then, to answer this inquiry, we query `chicago` as follows.
     @query chicago begin
         employee
         group(department)
-        keep(mean_salary = mean(employee.salary))
+        keep(mean_salary => mean(employee.salary))
         employee
         filter(salary > mean_salary)
     end
@@ -117,8 +117,8 @@ above without the period delimiter.
     end
 
 Often it's helpful to see the combined output from correlated
-queries. The *record* combinator, which is delimited with a pair
-of curly braces (`{}`), is used to build queries that produce
+queries.  The *record* combinator, which is delimited with a pair
+of curly braces `{}`, is used to build queries that produce
 parallel results.
 
     @query chicago employee{name, salary}
@@ -137,11 +137,11 @@ parallel results.
 Within a `@query` macro, constants, such as `100_000` are query
 primitives. Functions, such as `titlecase`, and operators, such as
 greater-than (`>`), are treated as query combinators. We can label
-each expression with the assignment syntax (`=`).
+each expression with the pair syntax (`=>`).
 
     @query chicago begin
         employee
-        {name = titlecase(name), highly_paid = salary > 100_000}
+        {name => titlecase(name), highly_paid => salary > 100_000}
     end
     #=>
       │ employee               │
@@ -227,7 +227,7 @@ display. For `chicago`, the root element gets its own row with
 `employee` elements packed into a single cell: each `employee` is
 delimited by a semi-colon; and attribute values are separated by a
 comma. For packed cells, such as `employee`, the header shows the
-subordinate fields within a pair of curly braces (`{}`).
+subordinate fields within a pair of curly braces.
 
     chicago
     #=>
@@ -282,7 +282,7 @@ employees with `mean(employee.salary)`.
     using Statistics: mean
 
     @query chicago begin
-        mean_salary = mean(employee.salary)
+        mean_salary => mean(employee.salary)
     end
     #=>
     │ mean_salary │
@@ -319,7 +319,7 @@ elements at the same hierarchical level.
         └╴salary      Int64
     =#
 
-Once constructed, grouping records can be used as any other query.
+Once constructed, grouping records can be used as any other input.
 In this next query, we show salaries of employees by department.
 
     @query chicago begin
@@ -341,7 +341,7 @@ department, rather than across all employees.
     @query chicago begin
         employee
         group(department)
-        {department, mean_salary = mean(employee.salary)}
+        {department, mean_salary => mean(employee.salary)}
     end
     #=>
       │ department  mean_salary │
@@ -374,7 +374,7 @@ and `mean_salary` in the same context.
 
     @query chicago begin
         employee
-        {name, salary, mean_salary = mean(employee.salary)}
+        {name, salary, mean_salary => mean(employee.salary)}
     end
     #-> ERROR: cannot find "employee" ⋮
 
@@ -384,7 +384,7 @@ query computes `mean_salary` relative to the entire dataset, and
 then displays this value in the context of each employee.
 
     @query chicago begin
-        keep(mean_salary = mean(employee.salary))
+        keep(mean_salary => mean(employee.salary))
         employee
         {name, salary, mean_salary}
     end
@@ -407,7 +407,7 @@ the previous query.
     @query chicago begin
         employee
         group(department)
-        keep(mean_salary = mean(employee.salary))
+        keep(mean_salary => mean(employee.salary))
         employee
         {name, salary, mean_salary}
     end
@@ -429,7 +429,7 @@ paid more than the average for their department?*
     @query chicago begin
         employee
         group(department)
-        keep(mean_salary = mean(employee.salary))
+        keep(mean_salary => mean(employee.salary))
         employee
         filter(salary > mean_salary)
     end
