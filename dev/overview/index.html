@@ -88,19 +88,6 @@ end
 1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
 2 │ JEFFERY A  POLICE      SERGEANT           101442 │
 3 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
-=#</code></pre><p>Queries exist independently from the knot they may be applied to. We could build a query <code>highly_compensated</code> that returns the <code>name</code> and <code>salary</code> of employees with <code>salary</code> over 100K.</p><pre><code class="language-julia">highly_compensated =
-    @query begin
-        employee
-        filter(salary &gt; 100_000)
-        {name, salary}
-    end</code></pre><p>Index notation performs a query, such as <code>highly_compensated</code>, against a knot, such as <code>chicago</code>.</p><pre><code class="language-julia">chicago[highly_compensated]
-#=&gt;
-  │ employee          │
-  │ name       salary │
-──┼───────────────────┼
-1 │ JAMES A    103350 │
-2 │ JEFFERY A  101442 │
-3 │ ROBERT K   103272 │
 =#</code></pre><p>In this section, we have built a query that produces highly-compensated employees. More broadly, we&#39;ve demonstrated how an algebra of queries permits us to combine previously proven queries in an intuitive way.</p><p>Before we could move onto the original inquiry, we need to discuss how queries see their input.</p><h2><a class="nav-anchor" id="What-is-a-Knot?-1" href="#What-is-a-Knot?-1">What is a Knot?</a></h2><p>A <code>DataKnot</code> is a container for structured, vectorized data. Knots serve as the input and output of our queries. We&#39;ve seen tabular knots, as produced by <code>employee{name, salary}</code>, and single-valued knots, as produced by <code>count(employee)</code>. These are special cases. Generally, a knot is a hierarchy of arbitrary depth.</p><p>For the <code>chicago</code> knot, our hierarchy has 3 levels: a single unlabeled root (shown with a <code>#</code>), branch level of <code>employee</code> records, and, a leaf level with fields <code>name</code>, <code>department</code>, etc.</p><pre><code class="language-julia">show(as=:shape, chicago)
 #=&gt;
 1-element DataKnot:
