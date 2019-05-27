@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Overview · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li class="current"><a class="toctext" href>Overview</a><ul class="internal"><li><a class="toctext" href="#Answering-an-Inquiry-1">Answering an Inquiry</a></li><li><a class="toctext" href="#Basic-Queries-1">Basic Queries</a></li><li><a class="toctext" href="#What-is-a-Knot?-1">What is a Knot?</a></li><li><a class="toctext" href="#Hierarchical-Transformations-1">Hierarchical Transformations</a></li><li><a class="toctext" href="#Contextual-Operations-1">Contextual Operations</a></li></ul></li><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Thinking in Queries</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Overview</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/overview.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Overview</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h1><p>DataKnots is a toolkit for representing and querying complex structured data. It is designed for data analysts and domain experts (e.g. accountants, engineers, clinicians) who need to build and share domain-specific queries. This overview introduces DataKnots and its query algebra.</p><h2><a class="nav-anchor" id="Answering-an-Inquiry-1" href="#Answering-an-Inquiry-1">Answering an Inquiry</a></h2><p>To guide us with a concrete objective, we open with a particular inquiry: <em>Which City of Chicago employees are paid more than the average for their department?</em></p><p>Let&#39;s use a tiny subset of public data from the City of Chicago. It includes employees and their annual salary.</p><pre><code class="language-julia">using CSV
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Overview · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li class="current"><a class="toctext" href>Overview</a><ul class="internal"><li><a class="toctext" href="#Answering-an-Inquiry-1">Answering an Inquiry</a></li><li><a class="toctext" href="#Basic-Queries-1">Basic Queries</a></li><li><a class="toctext" href="#What-is-a-DataKnot?-1">What is a DataKnot?</a></li><li><a class="toctext" href="#Hierarchical-Transformations-1">Hierarchical Transformations</a></li><li><a class="toctext" href="#Contextual-Operations-1">Contextual Operations</a></li></ul></li><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Thinking in Queries</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li><a class="toctext" href="../knots/">Data Knots</a></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Manual</li><li><a href>Overview</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/overview.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Overview</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h1><p>DataKnots is a toolkit for representing and querying complex structured data. It is designed for data analysts and domain experts (e.g. accountants, engineers, clinicians) who need to build and share domain-specific queries. This overview introduces DataKnots and its query algebra.</p><h2><a class="nav-anchor" id="Answering-an-Inquiry-1" href="#Answering-an-Inquiry-1">Answering an Inquiry</a></h2><p>To focus our attention, let&#39;s discuss a particular inquiry: <em>Which City of Chicago employees are paid more than the average for their department?</em></p><p>Let&#39;s use a tiny subset of public data from the City of Chicago. It includes employees and their annual salary.</p><pre><code class="language-julia">using CSV
 
 chicago_csv_data = &quot;&quot;&quot;
     name,department,position,salary
@@ -55,7 +55,7 @@ end
 =#</code></pre><p>Within a multi-line macro block, each individual statement is composed with its predecessor. Hence, we could write the query above without the period delimiter.</p><pre><code class="language-julia">@query chicago begin
     employee
     name
-end</code></pre><p>Often it&#39;s helpful to see the combined output from correlated queries.  The <em>record</em> combinator, which is delimited with a pair of curly braces <code>{}</code>, is used to build queries that produce parallel results.</p><pre><code class="language-julia">@query chicago employee{name, salary}
+end</code></pre><p>Often it&#39;s helpful to see the combined output from correlated queries. The <em>record</em> combinator, which is delimited with a pair of curly braces <code>{}</code>, is used to build queries that produce parallel results.</p><pre><code class="language-julia">@query chicago employee{name, salary}
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -88,17 +88,7 @@ end
 1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
 2 │ JEFFERY A  POLICE      SERGEANT           101442 │
 3 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
-=#</code></pre><p>In this section, we have built a query that produces highly-compensated employees. More broadly, we&#39;ve demonstrated how an algebra of queries permits us to combine previously proven queries in an intuitive way.</p><p>Before we could move onto the original inquiry, we need to discuss how queries see their input.</p><h2><a class="nav-anchor" id="What-is-a-Knot?-1" href="#What-is-a-Knot?-1">What is a Knot?</a></h2><p>A <code>DataKnot</code> is a container for structured, vectorized data. Knots serve as the input and output of our queries. We&#39;ve seen tabular knots, as produced by <code>employee{name, salary}</code>, and single-valued knots, as produced by <code>count(employee)</code>. These are special cases. Generally, a knot is a hierarchy of arbitrary depth.</p><p>For the <code>chicago</code> knot, our hierarchy has 3 levels: a single unlabeled root (shown with a <code>#</code>), branch level of <code>employee</code> records, and, a leaf level with fields <code>name</code>, <code>department</code>, etc.</p><pre><code class="language-julia">show(as=:shape, chicago)
-#=&gt;
-1-element DataKnot:
-  #               1:1
-  └╴employee      0:N
-    ├╴name        String
-    ├╴department  String
-    ├╴position    String
-    └╴salary      Int64
-=#</code></pre><p>We could see this <code>chicago</code> knot as a flow of data elements. In this particular knot, there is only one root element. This root element (<code>#</code>) contains plurality of <code>employee</code> elements.</p><pre><code class="language-julia">    #=&gt;
-    1-element DataKnot:
+=#</code></pre><p>In this section, we have built a query that produces highly-compensated employees. More broadly, we&#39;ve demonstrated how an algebra of queries permits us to combine previously proven queries in an intuitive way.</p><p>Before moving on to the original inquiry, we need to discuss how queries see their input.</p><h2><a class="nav-anchor" id="What-is-a-DataKnot?-1" href="#What-is-a-DataKnot?-1">What is a DataKnot?</a></h2><p>Input and output of queries are serialized as <code>DataKnot</code> objects. A DataKnot is a container that stores a hierarchy of labeled elements, where each element is either a scalar value, such as an integer or a string, or a collection of nested elements.</p><p>Our <code>chicago</code> knot is a hierarchy of three levels: a single unlabeled root (shown with a <code>#</code>), branch level of <code>employee</code> elements, and leaf elements <code>name</code>, <code>department</code>, etc.</p><pre><code class="language-literal">    1-element DataKnot:
       #:
         employee:
           name: &quot;ANTHONY A&quot;
@@ -110,13 +100,21 @@ end
           department: &quot;FIRE&quot;
           position: &quot;FIRE FIGHTER-EMT&quot;
           salary: 95484
-        ⋮
-    =#</code></pre><p>When we <code>show</code> a knot, its hierarchy is projected to a tabular display. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: each <code>employee</code> is delimited by a semi-colon; and attribute values are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate fields within a pair of curly braces.</p><pre><code class="language-julia">chicago
+        ⋮</code></pre><p>The structure of a DataKnot is called its <em>shape</em> and can be visualized using <code>show(::DataKnot, as=:shape)</code>.</p><pre><code class="language-julia">show(as=:shape, chicago)
+#=&gt;
+1-element DataKnot:
+  #               1:1
+  └╴employee      0:N
+    ├╴name        String
+    ├╴department  String
+    ├╴position    String
+    └╴salary      Int64
+=#</code></pre><p>When we <code>show</code> a knot, its hierarchy is projected to a tabular display. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: each <code>employee</code> is delimited by a semi-colon; and attribute values are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate fields within a pair of curly braces.</p><pre><code class="language-julia">chicago
 #=&gt;
 │ employee{name,department,position,salary}                                   │
 ┼─────────────────────────────────────────────────────────────────────────────┼
 │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGHTER-EMT,…│
-=#</code></pre><p>We could contrast this knot with the one created by the query <code>employee{name, salary}</code>.</p><pre><code class="language-julia">@query chicago employee{name, salary}
+=#</code></pre><p>We could contrast this display with the tabular display of the knot created by the query <code>employee{name, salary}</code>.</p><pre><code class="language-julia">@query chicago employee{name, salary}
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -127,13 +125,13 @@ end
 4 │ JEFFERY A  101442 │
 5 │ NANCY A     80016 │
 6 │ ROBERT K   103272 │
-=#</code></pre><p>Note that this particular output knot has a 2-level hierarchy, and that the top-level, labeled <code>employee</code>, is plural. This is why the output above is shown with six rows and has the header <code>employee</code>.</p><pre><code class="language-julia">show(as=:shape, @query chicago employee{name, salary})
+=#</code></pre><p>This particular output knot has a 2-level hierarchy, where the top level, labeled <code>employee</code>, is plural.</p><pre><code class="language-julia">show(as=:shape, @query chicago employee{name, salary})
 #=&gt;
 6-element DataKnot:
   employee  0:N
   ├╴name    1:1 × String
   └╴salary  1:1 × Int64
-=#</code></pre><p>In this section, we&#39;ve described our input knot, <code>chicago</code> and seen how its 3-level hierarchy is projected to a tabular display. Further, we&#39;ve also seen how 2-level hierarchies are comfortably displayed as a table.</p><p>Getting back to our inquiry, let&#39;s next compute the average salary by department. We could then later filter by this average.</p><h2><a class="nav-anchor" id="Hierarchical-Transformations-1" href="#Hierarchical-Transformations-1">Hierarchical Transformations</a></h2><p>DataKnots&#39; combinators implement hierarchical transformations. Summary combinators, such as <code>count</code>, collapse a subtree into a single value. For example, we can compute average salary across employees with <code>mean(employee.salary)</code>.</p><pre><code class="language-julia">using Statistics: mean
+=#</code></pre><p>In the next section, we show how these hierarchies can be created and collapsed.</p><h2><a class="nav-anchor" id="Hierarchical-Transformations-1" href="#Hierarchical-Transformations-1">Hierarchical Transformations</a></h2><p>DataKnots&#39; combinators implement hierarchical transformations. Summary combinators, such as <code>count</code>, collapse a subtree into a single value. For example, we can compute average salary across employees with <code>mean(employee.salary)</code>.</p><pre><code class="language-julia">using Statistics: mean
 
 @query chicago begin
     mean_salary =&gt; mean(employee.salary)
@@ -197,7 +195,7 @@ end
 4 │ JEFFERY A  101442      92679.0 │
 5 │ NANCY A     80016      92679.0 │
 6 │ ROBERT K   103272      92679.0 │
-=#</code></pre><p>But, the inquiry asks us to use average salary <em>by department</em>. This can be done by composing <code>employee.group(department)</code> with the previous query.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>However, the inquiry asks us to use average salary <em>by department</em>. This can be done by composing <code>employee.group(department)</code> with the previous query.</p><pre><code class="language-julia">@query chicago begin
     employee
     group(department)
     keep(mean_salary =&gt; mean(employee.salary))
