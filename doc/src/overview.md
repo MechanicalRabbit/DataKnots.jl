@@ -8,9 +8,9 @@ DataKnots and its query algebra.
 
 ## Answering an Inquiry
 
-To guide us with a concrete objective, we open with a particular
-inquiry: *Which City of Chicago employees are paid more than the
-average for their department?*
+To focus our attention, let's discuss a particular inquiry: *Which
+City of Chicago employees are paid more than the average for their
+department?*
 
 Let's use a tiny subset of public data from the City of Chicago.
 It includes employees and their annual salary.
@@ -117,7 +117,7 @@ above without the period delimiter.
     end
 
 Often it's helpful to see the combined output from correlated
-queries.  The *record* combinator, which is delimited with a pair
+queries. The *record* combinator, which is delimited with a pair
 of curly braces `{}`, is used to build queries that produce
 parallel results.
 
@@ -173,39 +173,21 @@ highly-compensated employees. More broadly, we've demonstrated how
 an algebra of queries permits us to combine previously proven
 queries in an intuitive way.
 
-Before we could move onto the original inquiry, we need to discuss
-how queries see their input.
+Before moving on to the original inquiry, we need to discuss how
+queries see their input.
 
-## What is a Knot?
+## What is a DataKnot?
 
-A `DataKnot` is a container for structured, vectorized data.
-Knots serve as the input and output of our queries. We've seen
-tabular knots, as produced by `employee{name, salary}`, and
-single-valued knots, as produced by `count(employee)`. These are
-special cases. Generally, a knot is a hierarchy of arbitrary
-depth.
+Input and output of queries are serialized as `DataKnot` objects.
+A DataKnot is a container that stores a hierarchy of labeled
+elements, where each element is either a scalar value, such as an
+integer or a string, or a collection of nested elements.
 
-For the `chicago` knot, our hierarchy has 3 levels: a single
+Our `chicago` knot is a hierarchy of three levels: a single
 unlabeled root (shown with a `#`), branch level of `employee`
-records, and, a leaf level with fields `name`, `department`, etc.
+elements, and leaf elements `name`, `department`, etc.
 
-    show(as=:shape, chicago)
-    #=>
-    1-element DataKnot:
-      #               1:1
-      └╴employee      0:N
-        ├╴name        String
-        ├╴department  String
-        ├╴position    String
-        └╴salary      Int64
-    =#
-
-We could see this `chicago` knot as a flow of data elements. In
-this particular knot, there is only one root element. This root
-element (`#`) contains plurality of `employee` elements.
-
-```julia
-    #=>
+```literal
     1-element DataKnot:
       #:
         employee:
@@ -219,8 +201,21 @@ element (`#`) contains plurality of `employee` elements.
           position: "FIRE FIGHTER-EMT"
           salary: 95484
         ⋮
-    =#
 ```
+
+The structure of a DataKnot is called its *shape* and can be
+visualized using `show(::DataKnot, as=:shape)`.
+
+    show(as=:shape, chicago)
+    #=>
+    1-element DataKnot:
+      #               1:1
+      └╴employee      0:N
+        ├╴name        String
+        ├╴department  String
+        ├╴position    String
+        └╴salary      Int64
+    =#
 
 When we `show` a knot, its hierarchy is projected to a tabular
 display. For `chicago`, the root element gets its own row with
@@ -236,8 +231,8 @@ subordinate fields within a pair of curly braces.
     │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGHTER-EMT,…│
     =#
 
-We could contrast this knot with the one created by the query
-`employee{name, salary}`.
+We could contrast this display with the tabular display of the
+knot created by the query `employee{name, salary}`.
 
     @query chicago employee{name, salary}
     #=>
@@ -252,9 +247,8 @@ We could contrast this knot with the one created by the query
     6 │ ROBERT K   103272 │
     =#
 
-Note that this particular output knot has a 2-level hierarchy, and
-that the top-level, labeled `employee`, is plural. This is why the
-output above is shown with six rows and has the header `employee`.
+This particular output knot has a 2-level hierarchy, where the top
+level, labeled `employee`, is plural.
 
     show(as=:shape, @query chicago employee{name, salary})
     #=>
@@ -264,13 +258,8 @@ output above is shown with six rows and has the header `employee`.
       └╴salary  1:1 × Int64
     =#
 
-In this section, we've described our input knot, `chicago` and
-seen how its 3-level hierarchy is projected to a tabular display.
-Further, we've also seen how 2-level hierarchies are comfortably
-displayed as a table.
-
-Getting back to our inquiry, let's next compute the average salary
-by department. We could then later filter by this average.
+In the next section, we show how these hierarchies can be created
+and collapsed.
 
 ## Hierarchical Transformations
 
@@ -400,7 +389,7 @@ then displays this value in the context of each employee.
     6 │ ROBERT K   103272      92679.0 │
     =#
 
-But, the inquiry asks us to use average salary *by department*.
+However, the inquiry asks us to use average salary *by department*.
 This can be done by composing `employee.group(department)` with
 the previous query.
 
