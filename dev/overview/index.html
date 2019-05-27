@@ -16,7 +16,7 @@ chicago = DataKnot(:employee =&gt; chicago_csv_data)</code></pre><p>Then, to ans
 @query chicago begin
     employee
     group(department)
-    keep(mean_salary = mean(employee.salary))
+    keep(mean_salary =&gt; mean(employee.salary))
     employee
     filter(salary &gt; mean_salary)
 end
@@ -55,7 +55,7 @@ end
 =#</code></pre><p>Within a multi-line macro block, each individual statement is composed with its predecessor. Hence, we could write the query above without the period delimiter.</p><pre><code class="language-julia">@query chicago begin
     employee
     name
-end</code></pre><p>Often it&#39;s helpful to see the combined output from correlated queries. The <em>record</em> combinator, which is delimited with a pair of curly braces (<code>{}</code>), is used to build queries that produce parallel results.</p><pre><code class="language-julia">@query chicago employee{name, salary}
+end</code></pre><p>Often it&#39;s helpful to see the combined output from correlated queries.  The <em>record</em> combinator, which is delimited with a pair of curly braces <code>{}</code>, is used to build queries that produce parallel results.</p><pre><code class="language-julia">@query chicago employee{name, salary}
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -66,9 +66,9 @@ end</code></pre><p>Often it&#39;s helpful to see the combined output from correl
 4 │ JEFFERY A  101442 │
 5 │ NANCY A     80016 │
 6 │ ROBERT K   103272 │
-=#</code></pre><p>Within a <code>@query</code> macro, constants, such as <code>100_000</code> are query primitives. Functions, such as <code>titlecase</code>, and operators, such as greater-than (<code>&gt;</code>), are treated as query combinators. We can label each expression with the assignment syntax (<code>=</code>).</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>Within a <code>@query</code> macro, constants, such as <code>100_000</code> are query primitives. Functions, such as <code>titlecase</code>, and operators, such as greater-than (<code>&gt;</code>), are treated as query combinators. We can label each expression with the pair syntax (<code>=&gt;</code>).</p><pre><code class="language-julia">@query chicago begin
     employee
-    {name = titlecase(name), highly_paid = salary &gt; 100_000}
+    {name =&gt; titlecase(name), highly_paid =&gt; salary &gt; 100_000}
 end
 #=&gt;
   │ employee               │
@@ -111,7 +111,7 @@ end
           position: &quot;FIRE FIGHTER-EMT&quot;
           salary: 95484
         ⋮
-    =#</code></pre><p>When we <code>show</code> a knot, its hierarchy is projected to a tabular display. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: each <code>employee</code> is delimited by a semi-colon; and attribute values are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate fields within a pair of curly braces (<code>{}</code>).</p><pre><code class="language-julia">chicago
+    =#</code></pre><p>When we <code>show</code> a knot, its hierarchy is projected to a tabular display. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: each <code>employee</code> is delimited by a semi-colon; and attribute values are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate fields within a pair of curly braces.</p><pre><code class="language-julia">chicago
 #=&gt;
 │ employee{name,department,position,salary}                                   │
 ┼─────────────────────────────────────────────────────────────────────────────┼
@@ -136,7 +136,7 @@ end
 =#</code></pre><p>In this section, we&#39;ve described our input knot, <code>chicago</code> and seen how its 3-level hierarchy is projected to a tabular display. Further, we&#39;ve also seen how 2-level hierarchies are comfortably displayed as a table.</p><p>Getting back to our inquiry, let&#39;s next compute the average salary by department. We could then later filter by this average.</p><h2><a class="nav-anchor" id="Hierarchical-Transformations-1" href="#Hierarchical-Transformations-1">Hierarchical Transformations</a></h2><p>DataKnots&#39; combinators implement hierarchical transformations. Summary combinators, such as <code>count</code>, collapse a subtree into a single value. For example, we can compute average salary across employees with <code>mean(employee.salary)</code>.</p><pre><code class="language-julia">using Statistics: mean
 
 @query chicago begin
-    mean_salary = mean(employee.salary)
+    mean_salary =&gt; mean(employee.salary)
 end
 #=&gt;
 │ mean_salary │
@@ -158,7 +158,7 @@ end
     ├╴department  String
     ├╴position    String
     └╴salary      Int64
-=#</code></pre><p>Once constructed, grouping records can be used as any other query. In this next query, we show salaries of employees by department.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>Once constructed, grouping records can be used as any other input. In this next query, we show salaries of employees by department.</p><pre><code class="language-julia">@query chicago begin
     employee
     group(department)
     {department, employee.salary}
@@ -171,7 +171,7 @@ end
 =#</code></pre><p>We can use summary operations relative to grouping records. In this next example, <code>mean(employee.salary)</code> is computed for each department, rather than across all employees.</p><pre><code class="language-julia">@query chicago begin
     employee
     group(department)
-    {department, mean_salary = mean(employee.salary)}
+    {department, mean_salary =&gt; mean(employee.salary)}
 end
 #=&gt;
   │ department  mean_salary │
@@ -180,10 +180,10 @@ end
 2 │ POLICE          84656.0 │
 =#</code></pre><p>In this section, we have built a query that computes the average employee compensation for each department. Further, we&#39;ve shown how <code>group</code> is used to transform hierarchies. Finally, we&#39;ve demonstrated that grouping and summary combinators are independent, yet work fluidly together.</p><p>We&#39;re close to answering our original inquiry. We&#39;ve built a query that filters employees. We&#39;ve built a query that produces average salary by department. We need only connect these queries.</p><h2><a class="nav-anchor" id="Contextual-Operations-1" href="#Contextual-Operations-1">Contextual Operations</a></h2><p>DataKnots&#39; queries are interpreted contextually, relative to the input that they receive. We&#39;ve seen this earlier: depending where it is placed, <code>mean(employee.salary)</code> can produce either the average salary over the entire dataset, or averages within each department.</p><p>For our inquiry, we need to compare each employee&#39;s salary with the the average salary. However, we cannot evaluate both <code>salary</code> and <code>mean_salary</code> in the same context.</p><pre><code class="language-julia">@query chicago begin
     employee
-    {name, salary, mean_salary = mean(employee.salary)}
+    {name, salary, mean_salary =&gt; mean(employee.salary)}
 end
 #-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>To evaluate an expression in one context and then use its value in a different context, we could use the <code>keep</code> combinator. This next query computes <code>mean_salary</code> relative to the entire dataset, and then displays this value in the context of each employee.</p><pre><code class="language-julia">@query chicago begin
-    keep(mean_salary = mean(employee.salary))
+    keep(mean_salary =&gt; mean(employee.salary))
     employee
     {name, salary, mean_salary}
 end
@@ -200,7 +200,7 @@ end
 =#</code></pre><p>But, the inquiry asks us to use average salary <em>by department</em>. This can be done by composing <code>employee.group(department)</code> with the previous query.</p><pre><code class="language-julia">@query chicago begin
     employee
     group(department)
-    keep(mean_salary = mean(employee.salary))
+    keep(mean_salary =&gt; mean(employee.salary))
     employee
     {name, salary, mean_salary}
 end
@@ -217,7 +217,7 @@ end
 =#</code></pre><p>We can then answer our initial inquiry, <em>which employees are paid more than the average for their department?</em></p><pre><code class="language-julia">@query chicago begin
     employee
     group(department)
-    keep(mean_salary = mean(employee.salary))
+    keep(mean_salary =&gt; mean(employee.salary))
     employee
     filter(salary &gt; mean_salary)
 end
