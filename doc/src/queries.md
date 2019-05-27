@@ -991,19 +991,13 @@ As a shorthand, we can use `=>`.
     │        3 │
     =#
 
-In `@query` notation, we could use `label(name)` or `=>` or `=` syntax.
+In `@query` notation, we could use `label(name)` or `=>` syntax.
 
     @query count(department).label(num_dept)
     #-> Count(Get(:department)) >> Label(:num_dept)
 
     @query num_dept => count(department)
     #-> Count(Get(:department)) >> Label(:num_dept)
-
-    @query num_dept = count(department)
-    #-> Count(Get(:department)) >> Label(:num_dept)
-
-    @query keep(mean_salary = mean(employee.salary))
-    #-> Keep(Lift(mean, (Get(:employee) >> Get(:salary),)) >> Label(:mean_salary))
 
 ### `Tag`
 
@@ -1358,7 +1352,7 @@ Alternatively, the `let` clause is translated to a `Given` expression.
 
     @query begin
         department
-        let dept_name = name
+        let dept_name => name
             employee{dept_name, name}
         end
     end
@@ -1370,7 +1364,7 @@ Alternatively, the `let` clause is translated to a `Given` expression.
 
     @query begin
         department
-        let size = count(employee), half => size ÷ 2
+        let size => count(employee), half => size ÷ 2
             employee.take(half)
         end
     end
