@@ -9,6 +9,7 @@ DataKnots is not yet usable for general audiences.
 
 ```@contents
 Pages = [
+    "overview.md",
     "tutorial.md",
     "reference.md",
 ]
