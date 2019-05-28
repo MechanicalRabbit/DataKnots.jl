@@ -23,6 +23,7 @@ We will need the following definitions.
         Is1to1,
         Is1toN,
         It,
+        Join,
         Keep,
         Label,
         Last,
@@ -643,6 +644,98 @@ The aggregate primitive `Collect` is written as `collect()`.
 
     @query department.employee.collect()
     #-> Get(:department) >> Get(:employee) >> Then(Collect)
+
+### `Join`
+
+`Join(X)`, just like `Collect(X)`, adds a field to the input record.  As opposed to
+`Collect`, `Join(X)` evaluates its argument against the input source.
+
+    Q = It.department >> Each(It.employee >> Join(:dept_name => It.name))
+    #-> It.department >> Each(It.employee >> Join(:dept_name => It.name))
+
+    chicago[Q]
+    #=>
+       │ name       position              salary  rate   dept_name │
+    ───┼───────────────────────────────────────────────────────────┼
+     1 │ JEFFERY A  SERGEANT              101442         POLICE    │
+     2 │ NANCY A    POLICE OFFICER         80016         POLICE    │
+     3 │ ANTHONY A  POLICE OFFICER         72510         POLICE    │
+     4 │ ALBA M     POLICE CADET                   9.46  POLICE    │
+     5 │ JAMES A    FIRE ENGINEER-EMT     103350         FIRE      │
+     6 │ DANIEL A   FIREFIGHTER-EMT        95484         FIRE      │
+     7 │ ROBERT K   FIREFIGHTER-EMT       103272         FIRE      │
+     8 │ LAKENYA A  CROSSING GUARD                17.68  OEMC      │
+     9 │ DORIS A    CROSSING GUARD                19.38  OEMC      │
+    10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392         OEMC      │
+    =#
+
+At the same time, `Join(X)` uses the target source, which allows us to
+correlate the joined field with the input data.
+
+    Q = It.department.employee >>
+        Filter(Exists(It.salary)) >>
+        Keep(:the_salary => It.salary) >>
+        Join(:rank => Count(It.department.employee >> Filter(It.salary .>= It.the_salary)))
+
+    chicago[Q]
+    #=>
+      │ name       position              salary  rate  rank │
+    ──┼─────────────────────────────────────────────────────┼
+    1 │ JEFFERY A  SERGEANT              101442           3 │
+    2 │ NANCY A    POLICE OFFICER         80016           5 │
+    3 │ ANTHONY A  POLICE OFFICER         72510           6 │
+    4 │ JAMES A    FIRE ENGINEER-EMT     103350           1 │
+    5 │ DANIEL A   FIREFIGHTER-EMT        95484           4 │
+    6 │ ROBERT K   FIREFIGHTER-EMT       103272           2 │
+    7 │ BRENDA B   TRAFFIC CONTROL AIDE   64392           7 │
+    =#
+
+If the new field has no label, it will have an ordinal label assigned to it.
+
+    Q = It.department >>
+        Keep(:the_size => Count(It.employee)) >>
+        Join(Count(It.department >> Filter(Count(It.employee) .>= It.the_size)))
+
+    chicago[Q]
+    #=>
+      │ name    employee{name,position,salary,rate}                            #C │
+    ──┼───────────────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  1 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING …  3 │
+    =#
+
+If the record already has a field with the same name, that field is removed and
+the new field is added.
+
+    Q = It.department >>
+        Each(It.employee >>
+             Keep(:the_position => It.position) >>
+             Join(:position => It.the_position .* " (" .* It.name .* ")"))
+
+    chicago[Q]
+    #=>
+       │ name       salary  rate   position                    │
+    ───┼───────────────────────────────────────────────────────┼
+     1 │ JEFFERY A  101442         SERGEANT (POLICE)           │
+     2 │ NANCY A     80016         POLICE OFFICER (POLICE)     │
+     3 │ ANTHONY A   72510         POLICE OFFICER (POLICE)     │
+     4 │ ALBA M              9.46  POLICE CADET (POLICE)       │
+     5 │ JAMES A    103350         FIRE ENGINEER-EMT (FIRE)    │
+     6 │ DANIEL A    95484         FIREFIGHTER-EMT (FIRE)      │
+     7 │ ROBERT K   103272         FIREFIGHTER-EMT (FIRE)      │
+     8 │ LAKENYA A          17.68  CROSSING GUARD (OEMC)       │
+     9 │ DORIS A            19.38  CROSSING GUARD (OEMC)       │
+    10 │ BRENDA B    64392         TRAFFIC CONTROL AIDE (OEMC) │
+    =#
+
+In `@query` notation, `Join(X)` is written as `join(X)`.
+
+    @query department.each(employee.join(dept_name => name))
+    #=>
+    Get(:department) >> Each(Get(:employee) >> Join(Get(:name) >>
+                                                    Label(:dept_name)))
+    =#
 
 ### `Mix`
 

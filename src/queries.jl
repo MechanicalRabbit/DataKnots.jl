@@ -810,7 +810,7 @@ julia> unitknot[Record(:x => 1) >> Collect(:y => 2 .* It.x, :x => nothing)]
 
     Each(X >> Record) :: Query
 
-In the query form, `Collect` appends a field to the origin record.
+In the query form, `Collect` appends a field to the source record.
 
 ```jldoctest
 julia> unitknot[Lift(1) >> Label(:x) >> Collect]
@@ -905,6 +905,19 @@ function assemble_join(src::AbstractShape, src0::AbstractShape, x::Pipeline)
     tuple_of(lbls, cols) |> designate(TupleOf(src, src0), tgt)
 end
 
+"""
+    Join(X) :: Query
+
+`Join(X)` evaluates `X` in the source context and adds it
+as a field to the input record.
+
+```jldoctest
+julia> unitknot[Record(:x => 1) >> Each(Record(:y => 2 .* It.x) >> Join(It.x))]
+│ y  x │
+┼──────┼
+│ 2  1 │
+```
+"""
 Join(X) =
     Query(Join, X)
 
