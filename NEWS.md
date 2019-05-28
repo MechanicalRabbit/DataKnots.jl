@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.9.0
+
+- Added `Join` combinator.
+- Added `@query let ... end` notation.
+- Added Overview document.
+
 ## v0.8.0
 
 - Added `Exists` combinator.

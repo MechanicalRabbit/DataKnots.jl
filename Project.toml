@@ -1,7 +1,7 @@
 name = "DataKnots"
 uuid = "f3f2b2ad-91c8-5588-b964-d77e2d3bb090"
 authors = ["Kirill Simonov <xi@resolvent.net>", "Clark C. Evans <cce@clarkevans.com"]
-version = "0.8.0"
+version = "0.9.0"
 
 [deps]
 PrettyPrinting = "54e16d92-306c-5ea0-a30b-337be88ac337"
