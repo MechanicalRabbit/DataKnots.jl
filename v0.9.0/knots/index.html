@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Data Knots · DataKnots.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>DataKnots.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../">Home</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../overview/">Overview</a></li><li><a class="toctext" href="../tutorial/">Tutorial</a></li><li><a class="toctext" href="../reference/">Reference</a></li></ul></li><li><span class="toctext">Concepts</span><ul><li><a class="toctext" href="../primer/">Thinking in Queries</a></li><li><a class="toctext" href="../vectors/">Column Store</a></li><li><a class="toctext" href="../pipelines/">Pipeline Algebra</a></li><li><a class="toctext" href="../shapes/">Shapes and Signatures</a></li><li class="current"><a class="toctext" href>Data Knots</a><ul class="internal"><li><a class="toctext" href="#Overview-1">Overview</a></li><li><a class="toctext" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></li><li><a class="toctext" href="#API-Reference-1">API Reference</a></li><li><a class="toctext" href="#Test-Suite-1">Test Suite</a></li></ul></li><li><a class="toctext" href="../queries/">Query Algebra</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Concepts</li><li><a href>Data Knots</a></li></ul><a class="edit-page" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/knots.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Data Knots</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Data-Knots-1" href="#Data-Knots-1">Data Knots</a></h1><p>A <code>DataKnot</code> object contains a single data value serialized in a column-oriented form.</p><pre><code class="language-julia">using DataKnots:
+    @VectorTree,
+    DataKnot,
+    Lift,
+    It,
+    Record,
+    ValueOf,
+    cell,
+    fromtable,
+    shape,
+    unitknot</code></pre><p>To integrate with other tabular systems, we need the following:</p><pre><code class="language-julia">using Tables
+using CSV
+using DataFrames</code></pre><h2><a class="nav-anchor" id="Overview-1" href="#Overview-1">Overview</a></h2><p>Any Julia value can be converted to a <code>DataKnot</code>.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
+#=&gt;
+┼──────────────┼
+│ Hello World! │
+=#</code></pre><p>To obtain a Julia value from a DataKnot object, we use the <code>get()</code> function.</p><pre><code class="language-julia">get(hello)
+#-&gt; &quot;Hello World!&quot;</code></pre><p>To preserve the column-oriented structure of the data, <code>DataKnot</code> keeps the value in a one-element vector.</p><pre><code class="language-julia">cell(hello)
+#-&gt; [&quot;Hello World!&quot;]</code></pre><p><code>DataKnot</code> also stores the shape of the data.</p><pre><code class="language-julia">shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>We use indexing notation to apply a <code>Query</code> to a <code>DataKnot</code>.  The output of a query is also a <code>DataKnot</code> object.</p><pre><code class="language-julia">hello[length.(It)]
+#=&gt;
+┼────┼
+│ 12 │
+=#</code></pre><p>To place several datasets into a single <code>DataKnot</code> we use a special constructor that takes datasets with their names.</p><pre><code class="language-julia">sets = DataKnot(:main=&gt;&#39;a&#39;:&#39;c&#39;, :more=&gt;&quot;data&quot;)
+#=&gt;
+│ main     more │
+┼───────────────┼
+│ a; b; c  data │
+=#</code></pre><p>A specific dataset could be focused by navigating.</p><pre><code class="language-julia">sets[It.main]
+#=&gt;
+  │ main │
+──┼──────┼
+1 │ a    │
+2 │ b    │
+3 │ c    │
+=#</code></pre><h2><a class="nav-anchor" id="Importing-and-Exporting-1" href="#Importing-and-Exporting-1">Importing &amp; Exporting</a></h2><p>We support the conversion to/from objects with the <code>Tables.jl</code> interface. For example, we could import CSV data.</p><pre><code class="language-julia">chicago_file = &quot;&quot;&quot;
+name,department,position,salary,rate
+&quot;JEFFERY A&quot;,&quot;POLICE&quot;,&quot;SERGEANT&quot;,101442,
+&quot;NANCY A&quot;,&quot;POLICE&quot;,&quot;POLICE OFFICER&quot;,80016,
+&quot;JAMES A&quot;,&quot;FIRE&quot;,&quot;FIRE ENGINEER-EMT&quot;,103350,
+&quot;DANIEL A&quot;,&quot;FIRE&quot;,&quot;FIRE FIGHTER-EMT&quot;,95484,
+&quot;LAKENYA A&quot;,&quot;OEMC&quot;,&quot;CROSSING GUARD&quot;,,17.68
+&quot;DORIS A&quot;,&quot;OEMC&quot;,&quot;CROSSING GUARD&quot;,,19.38
+&quot;&quot;&quot; |&gt; IOBuffer |&gt; CSV.File
+
+chicago = DataKnot(:employee =&gt; chicago_file)
+
+chicago[It.employee]
+#=&gt;
+  │ employee                                                │
+  │ name       department  position           salary  rate  │
+──┼─────────────────────────────────────────────────────────┼
+1 │ JEFFERY A  POLICE      SERGEANT           101442        │
+2 │ NANCY A    POLICE      POLICE OFFICER      80016        │
+3 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350        │
+4 │ DANIEL A   FIRE        FIRE FIGHTER-EMT    95484        │
+5 │ LAKENYA A  OEMC        CROSSING GUARD             17.68 │
+6 │ DORIS A    OEMC        CROSSING GUARD             19.38 │
+=#</code></pre><p>This knot could then be queried and exported to a <code>DataFrame</code>.</p><pre><code class="language-julia">chicago[It.employee &gt;&gt;
+        Record(It.name, It.department, It.salary)
+       ] |&gt; DataFrame
+#=&gt;
+6×3 DataFrames.DataFrame
+│ Row │ name      │ department │ salary  │
+│     │ String    │ String     │ Int64⍰  │
+├─────┼───────────┼────────────┼─────────┤
+│ 1   │ JEFFERY A │ POLICE     │ 101442  │
+│ 2   │ NANCY A   │ POLICE     │ 80016   │
+│ 3   │ JAMES A   │ FIRE       │ 103350  │
+│ 4   │ DANIEL A  │ FIRE       │ 95484   │
+│ 5   │ LAKENYA A │ OEMC       │ missing │
+│ 6   │ DORIS A   │ OEMC       │ missing │
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.show-Tuple{DataKnot}" href="#Base.show-Tuple{DataKnot}"><code>Base.show</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">show(::DataKnot[; as=:table])</code></pre><p>This displays a <code>DataKnot</code> as a table, truncating the data to fit the current display.</p><pre><code class="language-julia-repl">julia&gt; using DataKnots
+
+julia&gt; show(unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It)])
+  │ x  y │
+──┼──────┼
+1 │ 1  1 │
+2 │ 2  4 │
+3 │ 3  9 │</code></pre><pre><code class="language-julia">show(::DataKnot; as=:shape)</code></pre><p>This visualizes the shape of a <code>DataKnot</code> in a form of a tree.</p><pre><code class="language-julia-repl">julia&gt; using DataKnots
+
+julia&gt; show(as=:shape, unitknot[Lift(1:3) &gt;&gt; Record(:x =&gt; It, :y =&gt; It .* It)])
+3-element DataKnot:
+  #    0:N
+  ├╴x  1:1 × Int64
+  └╴y  1:1 × Int64</code></pre></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/2893dba22badd24d5f3a12dd91298be489a45f18/src/knots.jl#L241-L271">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Constructors-1" href="#Constructors-1">Constructors</a></h3><p>A <code>DataKnot</code> object is created from a one-element <em>cell</em> vector and its shape.</p><pre><code class="language-julia">hello = DataKnot(ValueOf(String), [&quot;Hello World&quot;])
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>It is an error if the cell length is different from 1.</p><pre><code class="language-julia">DataKnot(ValueOf(String), String[])
+#-&gt; ERROR: AssertionError: length(cell) == 1</code></pre><p>The cell and its shape can be retrieved.</p><pre><code class="language-julia">cell(hello)
+#-&gt; [&quot;Hello World&quot;]
+
+shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>The shape could be specified by the element type.</p><pre><code class="language-julia">hello = DataKnot(String, [&quot;Hello World&quot;])
+
+shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>The shape could also be introspected from the given cell.</p><pre><code class="language-julia">hello = DataKnot(Any, [&quot;Hello World&quot;])
+
+shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>To make a <code>DataKnot</code> with a block cell, we can provide the block elements and its cardinality.</p><pre><code class="language-julia">abc = DataKnot(Any, &#39;a&#39;:&#39;c&#39;, :x1toN)
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+=#
+
+cell(abc)
+#-&gt; @VectorTree (1:N) × Char [&#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;]
+
+shape(abc)
+#-&gt; BlockOf(Char, x1toN)</code></pre><p>The default constructor creates the unit <code>DataKnot</code>, which holds an empty tuple.  This knot is exported under the name <code>unitknot</code>.</p><pre><code class="language-julia">unitknot
+#=&gt;
+┼──┼
+│  │
+=#
+
+cell(unitknot)
+#-&gt; @VectorTree (1:1) × () [()]</code></pre><p>We can also construct a <code>DataKnot</code> containing a single top-level named tuple with the given fields.</p><pre><code class="language-julia">recknot = DataKnot(:hello =&gt; &quot;Hello World!&quot;, :main =&gt; &#39;a&#39;:&#39;c&#39;)
+#=&gt;
+│ hello         main    │
+┼───────────────────────┼
+│ Hello World!  a; b; c │
+=#
+
+cell(recknot)
+#-&gt; @VectorTree (1:1) × (hello = String, main = (0:N) × Char) [(hello = &quot;Hello World!&quot;, main = &#39;a&#39;:&#39;\x01&#39;:&#39;c&#39;)]</code></pre><p>Any Julia value can be converted to a <code>DataKnot</code> object using the <code>convert()</code> function.</p><pre><code class="language-julia">hello = convert(DataKnot, &quot;Hello World!&quot;)
+#=&gt;
+┼──────────────┼
+│ Hello World! │
+=#</code></pre><p>Scalar values are stored as is.</p><pre><code class="language-julia">shape(hello)
+#-&gt; ValueOf(String)</code></pre><p>The value <code>missing</code> is converted to an empty <code>DataKnot</code>.</p><pre><code class="language-julia">nullknot = convert(DataKnot, missing)
+#=&gt;
+(empty)
+=#
+
+shape(nullknot)
+#-&gt; BlockOf(NoShape(), x0to1)</code></pre><p>A vector value is converted to a block.</p><pre><code class="language-julia">vecknot = convert(DataKnot, &#39;a&#39;:&#39;c&#39;)
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+=#
+
+shape(vecknot)
+#-&gt; BlockOf(Char)</code></pre><p>A <code>Ref</code> object is converted into the referenced value.</p><pre><code class="language-julia">int_ty = convert(DataKnot, Base.broadcastable(Int))
+#=&gt;
+┼───────┼
+│ Int64 │
+=#
+
+shape(int_ty)
+#-&gt; ValueOf(Type{Int64})</code></pre><p><code>Tables.jl</code> interface is used for conversion when it is supported by the given value.</p><pre><code class="language-julia">convert(DataKnot, DataFrame(:name =&gt; [&quot;JEFFERY A&quot;, &quot;NANCY A&quot;],
+                            :position =&gt; [&quot;SERGEANT&quot;, &quot;POLICE OFFICER&quot;],
+                            :salary =&gt; [101442, 80016]))
+#=&gt;
+  │ name       position        salary │
+──┼───────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT        101442 │
+2 │ NANCY A    POLICE OFFICER   80016 │
+=#</code></pre><h3><a class="nav-anchor" id="Rendering-1" href="#Rendering-1">Rendering</a></h3><p>On output, a <code>DataKnot</code> object is rendered as a table.</p><pre><code class="language-julia">emp = convert(DataKnot,
+              [(name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
+               (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016),
+               (name = &quot;JAMES A&quot;, position = &quot;FIRE ENGINEER-EMT&quot;, salary = 103350),
+               (name = &quot;DANIEL A&quot;, position = &quot;FIRE FIGHTER-EMT&quot;, salary = 95484)])
+#=&gt;
+  │ name       position           salary │
+──┼──────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT           101442 │
+2 │ NANCY A    POLICE OFFICER      80016 │
+3 │ JAMES A    FIRE ENGINEER-EMT  103350 │
+4 │ DANIEL A   FIRE FIGHTER-EMT    95484 │
+=#</code></pre><p>If the table columns do not fit the output screen, some table cells could be truncated.</p><pre><code class="language-julia">small = IOContext(stdout, :displaysize =&gt; (24, 35))
+
+show(small, emp)
+#=&gt;
+  │ name       position   salary │
+──┼──────────────────────────────┼
+1 │ JEFFERY A  SERGEANT   101442 │
+2 │ NANCY A    POLICE OF…  80016 │
+3 │ JAMES A    FIRE ENGI… 103350 │
+4 │ DANIEL A   FIRE FIGH…  95484 │
+=#</code></pre><p>If the screen is too small, the whole table needs to be truncated.</p><pre><code class="language-julia">tiny = IOContext(stdout, :displaysize =&gt; (6, 20))
+
+show(tiny, emp)
+#=&gt;
+  │ name      posit…
+──┼────────────────…
+1 │ JEFFERY … SERGE…
+⋮
+4 │ DANIEL A  FIRE …
+=#</code></pre><p>Top-level tuples are serialized as table columns while nested tuples are rendered as comma-separated lists of tuple elements.</p><pre><code class="language-julia">convert(DataKnot, (&quot;FIRE&quot;, [(&quot;JEFFERY A&quot;, (101442, missing)), (&quot;NANCY A&quot;, (80016, missing))]))
+#=&gt;
+│ #A    #B{#A,#B{#A,#B}}                                        │
+┼───────────────────────────────────────────────────────────────┼
+│ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
+=#
+
+convert(DataKnot, (name = &quot;FIRE&quot;, employee = [(name = &quot;JEFFERY A&quot;, compensation = (salary = 101442, rate = missing)),
+                                              (name = &quot;NANCY A&quot;, compensation = (salary = 80016, rate = missing))]))
+#=&gt;
+│ name  employee{name,compensation{salary,rate}}                │
+┼───────────────────────────────────────────────────────────────┼
+│ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
+=#
+
+DataKnot(
+    Any,
+    @VectorTree((name = (1:1)String,
+                 employee = [(name = (1:1)String,
+                              compensation = (1:1)(salary = (0:1)Int,
+                                                   rate = (0:1)Float64))]), [
+        (name = &quot;FIRE&quot;, employee = [(name = &quot;JEFFERY A&quot;, compensation = (salary = 101442, rate = missing)),
+                                    (name = &quot;NANCY A&quot;, compensation = (salary = 80016, rate = missing))])]),)
+#=&gt;
+│ name  employee{name,compensation{salary,rate}}                │
+┼───────────────────────────────────────────────────────────────┼
+│ FIRE  JEFFERY A, (101442, missing); NANCY A, (80016, missing) │
+=#</code></pre><p>Similarly, top-level vectors are represented as table rows while nested vectors are rendered as semicolon-separated lists.</p><pre><code class="language-julia">convert(DataKnot, [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]])
+#=&gt;
+──┼────────────────────┼
+1 │ JEFFERY A; NANCY A │
+2 │ JAMES A; DANIEL A  │
+=#
+
+convert(DataKnot, @VectorTree [String] [[&quot;JEFFERY A&quot;, &quot;NANCY A&quot;], [&quot;JAMES A&quot;, &quot;DANIEL A&quot;]])
+#=&gt;
+──┼────────────────────┼
+1 │ JEFFERY A; NANCY A │
+2 │ JAMES A; DANIEL A  │
+=#</code></pre><p>Integer numbers are right-aligned while decimal numbers are centered around the decimal point.</p><pre><code class="language-julia">convert(DataKnot, [true, false])
+#=&gt;
+──┼───────┼
+1 │  true │
+2 │ false │
+=#
+
+convert(DataKnot, [101442, 80016])
+#=&gt;
+──┼────────┼
+1 │ 101442 │
+2 │  80016 │
+=#
+
+convert(DataKnot, [35.6, 2.65])
+#=&gt;
+──┼───────┼
+1 │ 35.6  │
+2 │  2.65 │
+=#</code></pre><p><code>DataKnot</code> objects provide alternative output modes.  For example, we can visualize the shape of a <code>DataKnot</code> as a tree.</p><pre><code class="language-julia">show(chicago, as=:shape)
+#=&gt;
+1-element DataKnot:
+  #               1:1
+  └╴employee      0:N
+    ├╴name        String
+    ├╴department  String
+    ├╴position    String
+    ├╴salary      Union{Missing, Int64}
+    └╴rate        Union{Missing, Float64}
+=#</code></pre><h3><a class="nav-anchor" id="Exporting-via-Table.jl-Interface-1" href="#Exporting-via-Table.jl-Interface-1">Exporting via Table.jl Interface</a></h3><p>When a knot has a tabular form, it can be exported via <code>Tables.jl</code>.</p><p>This is the case when a <code>DataKnot</code> wraps a vector of named tuples.</p><pre><code class="language-julia">table = convert(DataKnot, [(x=&quot;A&quot;, y=1.0), (x=&quot;B&quot;, y=2.0)])
+
+Tables.istable(table)
+#-&gt; true
+
+Tables.columnaccess(table)
+#-&gt; true
+
+cols = Tables.columns(table)
+
+cols.x
+#-&gt; [&quot;A&quot;, &quot;B&quot;]
+
+cols.y
+#-&gt; [1.0, 2.0]</code></pre><p>A plural set of records will also be treated as a table.</p><pre><code class="language-julia">table = unitknot[Lift(1:3) &gt;&gt; Record(:idx =&gt; It, :val =&gt; &quot;Test&quot;)]
+
+Tables.istable(table)
+#-&gt; true
+
+Tables.columnaccess(table)
+#-&gt; true
+
+cols = Tables.columns(table)
+
+cols.idx
+#-&gt; [1, 2, 3]
+
+cols.val
+#-&gt; [&quot;Test&quot;, &quot;Test&quot;, &quot;Test&quot;]</code></pre><footer><hr/><a class="previous" href="../shapes/"><span class="direction">Previous</span><span class="title">Shapes and Signatures</span></a><a class="next" href="../queries/"><span class="direction">Next</span><span class="title">Query Algebra</span></a></footer></article></body></html>
