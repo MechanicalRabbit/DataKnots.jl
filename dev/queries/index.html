@@ -19,6 +19,7 @@
     Is1to1,
     Is1toN,
     It,
+    Join,
     Keep,
     Label,
     Last,
@@ -188,7 +189,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f279bb76e24e1c6ec4330a7aec9e007dad8b9758/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f279bb76e24e1c6ec4330a7aec9e007dad8b9758/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/f279bb76e24e1c6ec4330a7aec9e007dad8b9758/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c41bddd49d03fae7ece43e19573e67cdf9794514/src/queries.jl#L270-L274">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c41bddd49d03fae7ece43e19573e67cdf9794514/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/c41bddd49d03fae7ece43e19573e67cdf9794514/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -360,7 +361,74 @@ chicago[Q]
 Get(:department) &gt;&gt; Collect(Count(Get(:employee)) &gt;&gt; Label(:size),
                             Lift(nothing) &gt;&gt; Label(:employee))
 =#</code></pre><p>The aggregate primitive <code>Collect</code> is written as <code>collect()</code>.</p><pre><code class="language-julia">@query department.employee.collect()
-#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Then(Collect)</code></pre><h3><a class="nav-anchor" id="Mix-1" href="#Mix-1"><code>Mix</code></a></h3><p>The query <code>Mix(X₁, X₂ … Xₙ)</code> emits records containing all combinations of elements generated by <code>X₁</code>, <code>X₂</code> … <code>Xₙ</code>.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Mix(It.name, It.employee)
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Then(Collect)</code></pre><h3><a class="nav-anchor" id="Join-1" href="#Join-1"><code>Join</code></a></h3><p><code>Join(X)</code>, just like <code>Collect(X)</code>, adds a field to the input record.  As opposed to <code>Collect</code>, <code>Join(X)</code> evaluates its argument against the input source.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Each(It.employee &gt;&gt; Join(:dept_name =&gt; It.name))
+#-&gt; It.department &gt;&gt; Each(It.employee &gt;&gt; Join(:dept_name =&gt; It.name))
+
+chicago[Q]
+#=&gt;
+   │ name       position              salary  rate   dept_name │
+───┼───────────────────────────────────────────────────────────┼
+ 1 │ JEFFERY A  SERGEANT              101442         POLICE    │
+ 2 │ NANCY A    POLICE OFFICER         80016         POLICE    │
+ 3 │ ANTHONY A  POLICE OFFICER         72510         POLICE    │
+ 4 │ ALBA M     POLICE CADET                   9.46  POLICE    │
+ 5 │ JAMES A    FIRE ENGINEER-EMT     103350         FIRE      │
+ 6 │ DANIEL A   FIREFIGHTER-EMT        95484         FIRE      │
+ 7 │ ROBERT K   FIREFIGHTER-EMT       103272         FIRE      │
+ 8 │ LAKENYA A  CROSSING GUARD                17.68  OEMC      │
+ 9 │ DORIS A    CROSSING GUARD                19.38  OEMC      │
+10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392         OEMC      │
+=#</code></pre><p>At the same time, <code>Join(X)</code> uses the target source, which allows us to correlate the joined field with the input data.</p><pre><code class="language-julia">Q = It.department.employee &gt;&gt;
+    Filter(Exists(It.salary)) &gt;&gt;
+    Keep(:the_salary =&gt; It.salary) &gt;&gt;
+    Join(:rank =&gt; Count(It.department.employee &gt;&gt; Filter(It.salary .&gt;= It.the_salary)))
+
+chicago[Q]
+#=&gt;
+  │ name       position              salary  rate  rank │
+──┼─────────────────────────────────────────────────────┼
+1 │ JEFFERY A  SERGEANT              101442           3 │
+2 │ NANCY A    POLICE OFFICER         80016           5 │
+3 │ ANTHONY A  POLICE OFFICER         72510           6 │
+4 │ JAMES A    FIRE ENGINEER-EMT     103350           1 │
+5 │ DANIEL A   FIREFIGHTER-EMT        95484           4 │
+6 │ ROBERT K   FIREFIGHTER-EMT       103272           2 │
+7 │ BRENDA B   TRAFFIC CONTROL AIDE   64392           7 │
+=#</code></pre><p>If the new field has no label, it will have an ordinal label assigned to it.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Keep(:the_size =&gt; Count(It.employee)) &gt;&gt;
+    Join(Count(It.department &gt;&gt; Filter(Count(It.employee) .&gt;= It.the_size)))
+
+chicago[Q]
+#=&gt;
+  │ name    employee{name,position,salary,rate}                            #C │
+──┼───────────────────────────────────────────────────────────────────────────┼
+1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  1 │
+2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
+3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING …  3 │
+=#</code></pre><p>If the record already has a field with the same name, that field is removed and the new field is added.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+    Each(It.employee &gt;&gt;
+         Keep(:the_position =&gt; It.position) &gt;&gt;
+         Join(:position =&gt; It.the_position .* &quot; (&quot; .* It.name .* &quot;)&quot;))
+
+chicago[Q]
+#=&gt;
+   │ name       salary  rate   position                    │
+───┼───────────────────────────────────────────────────────┼
+ 1 │ JEFFERY A  101442         SERGEANT (POLICE)           │
+ 2 │ NANCY A     80016         POLICE OFFICER (POLICE)     │
+ 3 │ ANTHONY A   72510         POLICE OFFICER (POLICE)     │
+ 4 │ ALBA M              9.46  POLICE CADET (POLICE)       │
+ 5 │ JAMES A    103350         FIRE ENGINEER-EMT (FIRE)    │
+ 6 │ DANIEL A    95484         FIREFIGHTER-EMT (FIRE)      │
+ 7 │ ROBERT K   103272         FIREFIGHTER-EMT (FIRE)      │
+ 8 │ LAKENYA A          17.68  CROSSING GUARD (OEMC)       │
+ 9 │ DORIS A            19.38  CROSSING GUARD (OEMC)       │
+10 │ BRENDA B    64392         TRAFFIC CONTROL AIDE (OEMC) │
+=#</code></pre><p>In <code>@query</code> notation, <code>Join(X)</code> is written as <code>join(X)</code>.</p><pre><code class="language-julia">@query department.each(employee.join(dept_name =&gt; name))
+#=&gt;
+Get(:department) &gt;&gt; Each(Get(:employee) &gt;&gt; Join(Get(:name) &gt;&gt;
+                                                Label(:dept_name)))
+=#</code></pre><h3><a class="nav-anchor" id="Mix-1" href="#Mix-1"><code>Mix</code></a></h3><p>The query <code>Mix(X₁, X₂ … Xₙ)</code> emits records containing all combinations of elements generated by <code>X₁</code>, <code>X₂</code> … <code>Xₙ</code>.</p><pre><code class="language-julia">Q = It.department &gt;&gt; Mix(It.name, It.employee)
 #-&gt; It.department &gt;&gt; Mix(It.name, It.employee)
 
 chicago[Q]
