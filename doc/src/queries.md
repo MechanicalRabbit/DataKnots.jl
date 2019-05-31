@@ -656,6 +656,7 @@ The aggregate primitive `Collect` is written as `collect()`.
 
     chicago[Q]
     #=>
+       │ employee                                                  │
        │ name       position              salary  rate   dept_name │
     ───┼───────────────────────────────────────────────────────────┼
      1 │ JEFFERY A  SERGEANT              101442         POLICE    │
@@ -680,6 +681,7 @@ correlate the joined field with the input data.
 
     chicago[Q]
     #=>
+      │ employee                                            │
       │ name       position              salary  rate  rank │
     ──┼─────────────────────────────────────────────────────┼
     1 │ JEFFERY A  SERGEANT              101442           3 │
@@ -699,6 +701,7 @@ If the new field has no label, it will have an ordinal label assigned to it.
 
     chicago[Q]
     #=>
+      │ department                                                                │
       │ name    employee{name,position,salary,rate}                            #C │
     ──┼───────────────────────────────────────────────────────────────────────────┼
     1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  1 │
@@ -716,6 +719,7 @@ the new field is added.
 
     chicago[Q]
     #=>
+       │ employee                                              │
        │ name       salary  rate   position                    │
     ───┼───────────────────────────────────────────────────────┼
      1 │ JEFFERY A  101442         SERGEANT (POLICE)           │

@@ -901,7 +901,7 @@ function assemble_join(src::AbstractShape, src0::AbstractShape, x::Pipeline)
     push!(col_shps, target(x))
     push!(lbls, x_lbl !== nothing ? x_lbl : ordinal_label(length(cols)))
     tgt = TupleOf(lbls, col_shps)
-    lbl = getlabel(tgt, nothing)
+    lbl = getlabel(src, nothing)
     if lbl !== nothing
         tgt = relabel(tgt, lbl)
     end
