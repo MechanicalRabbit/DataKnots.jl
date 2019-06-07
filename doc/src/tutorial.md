@@ -1,4 +1,4 @@
-# Tutorial
+# Embedded Query Interface
 
 DataKnots is an embedded query language designed so that
 accidental programmers can more easily analyze complex data.

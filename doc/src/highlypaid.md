@@ -1,12 +1,10 @@
-# Overview
+# Who is Highly Paid?
 
-DataKnots is a toolkit for representing and querying complex
-structured data. It is designed for data analysts and domain
-experts (e.g. accountants, engineers, clinicians) who need to
-build and share domain-specific queries. This overview introduces
-DataKnots and its query algebra.
+This tutorial is intended for new users of DataKnots. It does not
+give an exhaustive accountof all the features, just the ones you
+are likely to use right away.
 
-## Answering an Inquiry
+## Problem Statement
 
 Let's discuss a particular inquiry: *Which City of Chicago
 employees have salary higher than the average for their

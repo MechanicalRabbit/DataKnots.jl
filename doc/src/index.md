@@ -1,32 +1,60 @@
 # DataKnots.jl
 
-*DataKnots is a Julia library for querying data with
-an extensible, practical and coherent algebra of query
-combinators.*
+DataKnots is a Julia library for representing and querying
+complex structured data. It is designed for data analysts and
+domain experts (e.g. accountants, engineers, researchers) who
+need to build and share domain-specific queries. DataKnots
+also provides an extensible, coherent, and composable
+programmatic interface to assist software developers create
+sophisticated yet custom query interfaces for their users.
 
-At this time, while we welcome feedback and contributions,
-DataKnots is not yet usable for general audiences.
+*At this time, while we welcome feedback and contributions,
+DataKnots is not yet usable for general audiences.*
+
+### Tutorials
+---
+
+To help you get started with DataKnots we open with
+goal-oriented tutorials. They explain all of the basic and
+some of the more advanced features of the system, without
+going into all of the details.
 
 ```@contents
 Pages = [
-    "overview.md",
+    "highlypaid.md",
     "tutorial.md",
+]
+Depth=2
+```
+
+### Reference Manual
+---
+
+These documents provide conceptual topics and reference
+materials for users.
+
+```@contents
+Pages = [
+    "primer.md",
     "reference.md",
 ]
 Depth=2
 ```
 
-The following documents outline conceptual topics
-and implementation details.
+### Implementer's Guide
+---
+
+The following documents include implementation details for
+contributors and for those who are building extensions. These
+documents serve as regression suites in documentation form.
 
 ```@contents
 Pages = [
-    "primer.md",
     "vectors.md",
     "pipelines.md",
     "shapes.md",
     "knots.md",
     "queries.md",
 ]
-Depth=1
+Depth=2
 ```
