@@ -21,8 +21,8 @@ going into all of the details.
 
 ```@contents
 Pages = [
-    "highlypaid.md",
-    "tutorial.md",
+    "overview.md",
+    "highlypaid.md"
 ]
 Depth=2
 ```
@@ -36,6 +36,7 @@ materials for users.
 ```@contents
 Pages = [
     "primer.md",
+    "tutorial.md",
     "reference.md",
 ]
 Depth=2
