@@ -220,15 +220,18 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
         return Compose(translate(mod, args[1]), Record(translate.(Ref(mod), args[2:end])...))
     elseif head === :call && length(args) >= 1
         call = args[1]
+        if call isa QuoteNode
+            call = call.value
+        end
         if call === :(=>) && length(args) == 3 && args[2] isa Symbol
             return Compose(translate(mod, args[3]), Label(args[2]))
         elseif call isa Symbol
             return translate(mod, Val(call), (args[2:end]...,))
-        elseif call isa QuoteNode && call.value isa Symbol
-            return translate(mod, Val(call.value), (args[2:end]...,))
         elseif Meta.isexpr(call, :.) && !isempty(call.args)
             return Compose(translate.(Ref(mod), call.args[1:end-1])...,
                            translate(mod, Expr(:call, call.args[end], args[2:end]...)))
+        elseif call isa Base.Callable
+            return Lift(call(translate.(Ref(mod), args[2:end])...))
         end
     end
     error("invalid query expression: $(repr(ex))")
@@ -251,12 +254,7 @@ translate(mod::Module, @nospecialize(v::Val{N})) where {N} =
 
 function translate(mod::Module, @nospecialize(v::Val{N}), args::Tuple) where {N}
     fn = getfield(mod, N)
-    oty = Core.Compiler.return_type(fn, Tuple{map(arg -> Query, args)...})
-    if oty != Union{} && oty <: Union{AbstractQuery,Pair{Symbol,<:AbstractQuery}}
-        return Lift(fn(translate.(Ref(mod), args)...))
-    else
-        return Lift(fn, translate.(Ref(mod), args))
-    end
+    Lift(fn, translate.(Ref(mod), args))
 end
 
 translate(mod::Module, val) =

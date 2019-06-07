@@ -1149,7 +1149,7 @@ We can use `@query` to define reusable queries and combinators.
                        max=>max($x),
                        count=>count($x)}
 
-    @query chicago stats($salary)
+    @query chicago $stats($salary)
     #=>
     │ min    max     count │
     ┼──────────────────────┼
