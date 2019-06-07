@@ -17,11 +17,12 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Tutorials" => [
-            "highlypaid.md",
-            "tutorial.md"
+            "overview.md",
+            "highlypaid.md"
         ],
         "Reference Manual" => [
             "primer.md",
+            "tutorial.md",
             "reference.md",
         ],
         "Implementer's Guide" => [
