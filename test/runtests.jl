@@ -27,6 +27,9 @@ if VERSION < v"1.2.0-DEV"
         print(io, Symbol(c))
 end
 
+# Set the width to 72 so that MD->PDF via pandoc
+ENV["COLUMNS"] = "72"
+
 package_path(x) = relpath(joinpath(dirname(abspath(PROGRAM_FILE)), "..", x))
 args = !isempty(ARGS) ? ARGS : package_path.(["doc/src", "README.md"])
 exit(!runtests(args))

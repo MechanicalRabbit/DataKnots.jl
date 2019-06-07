@@ -106,10 +106,11 @@ collection.
                        :employee => BlockOf(emp_shp, x1toN))
     #=>
     TupleOf(:name => BlockOf(String, x1to1),
-            :employee => BlockOf(TupleOf(:name => BlockOf(String, x1to1),
-                                         :position => BlockOf(String, x1to1),
-                                         :salary => BlockOf(Int64, x0to1),
-                                         :rate => BlockOf(Float64, x0to1)),
+            :employee => BlockOf(TupleOf(
+                                     :name => BlockOf(String, x1to1),
+                                     :position => BlockOf(String, x1to1),
+                                     :salary => BlockOf(Int64, x0to1),
+                                     :rate => BlockOf(Float64, x0to1)),
                                  x1toN))
     =#
 
@@ -167,7 +168,10 @@ On the other hand, these pipelines could be composed using the *elementwise
 composition* combinator.
 
     dept_employee_rate = compose(dept_employee, emp_rate)
-    #-> chain_of(column(:employee), chain_of(with_elements(column(:rate)), flatten()))
+    #=>
+    chain_of(column(:employee),
+             chain_of(with_elements(column(:rate)), flatten()))
+    =#
 
     dept_employee_rate(depts)
     #-> @VectorTree (0:N) × Float64 [[], [], [17.68, 19.38]]
@@ -176,10 +180,11 @@ composition* combinator.
     #=>
     Signature(TupleOf(:name => BlockOf(String, x1to1),
                       :employee =>
-                          BlockOf(TupleOf(:name => BlockOf(String, x1to1),
-                                          :position => BlockOf(String, x1to1),
-                                          :salary => BlockOf(Int64, x0to1),
-                                          :rate => BlockOf(Float64, x0to1)),
+                          BlockOf(TupleOf(
+                                      :name => BlockOf(String, x1to1),
+                                      :position => BlockOf(String, x1to1),
+                                      :salary => BlockOf(Int64, x0to1),
+                                      :rate => BlockOf(Float64, x0to1)),
                                   x1toN)),
               BlockOf(Float64) |> IsFlow)
     =#
@@ -249,14 +254,16 @@ composition should contain the department data together with a parameter `P`.
 
     signature(dept_employee_round_rate)
     #=>
-    Signature(TupleOf(TupleOf(:name => BlockOf(String, x1to1),
-                              :employee =>
-                                  BlockOf(TupleOf(
-                                              :name => BlockOf(String, x1to1),
-                                              :position => BlockOf(String, x1to1),
-                                              :salary => BlockOf(Int64, x0to1),
-                                              :rate => BlockOf(Float64, x0to1)),
-                                          x1toN)),
+    Signature(TupleOf(TupleOf(
+                          :name => BlockOf(String, x1to1),
+                          :employee =>
+                              BlockOf(
+                                  TupleOf(
+                                      :name => BlockOf(String, x1to1),
+                                      :position => BlockOf(String, x1to1),
+                                      :salary => BlockOf(Int64, x0to1),
+                                      :rate => BlockOf(Float64, x0to1)),
+                                  x1toN)),
                       TupleOf(:P => Float64)) |>
               IsScope,
               BlockOf(Float64) |> IsFlow)

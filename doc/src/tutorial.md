@@ -236,11 +236,11 @@ to an existing record using `Collect`.
     chicago[It.department >>
             Collect(:size => Count(It.employee))]
     #=>
-      │ department                                                                │
-      │ name    employee{name,position,salary}                               size │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 1014…    3 │
-    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT…    2 │
+      │ department                                                        │
+      │ name    employee{name,position,salary}                       size │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEA…    3 │
+    2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIG…    2 │
     =#
 
 If a label is set to `nothing` then that field is excluded.
@@ -604,11 +604,11 @@ records to their positions, we use `Group` combinator:
 
     chicago[It.department.employee >> Group(It.position)]
     #=>
-      │ position         employee{name,position,salary}                           │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-…│
-    2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLICE OFFICE…│
-    3 │ SERGEANT         JEFFERY A, SERGEANT, 101442                              │
+      │ position         employee{name,position,salary}                   │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIRE…│
+    2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLIC…│
+    3 │ SERGEANT         JEFFERY A, SERGEANT, 101442                      │
     =#
 
 The query `Group(It.position)` rearranges the dataset into a new
@@ -1240,11 +1240,11 @@ seen earlier how this could be done with `Group` combinator.
 
     chicago′[It.employee >> Group(It.department)]
     #=>
-      │ department  employee{name,department,position,salary,rate}                │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│
-    2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│
-    3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A, POLICE…│
+      │ department  employee{name,department,position,salary,rate}        │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DA…│
+    2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORI…│
+    3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A…│
     =#
 
 With a some labeling, this hierarchy could be transformed so that
@@ -1262,12 +1262,12 @@ its structure is compatible with our initial `chicago` dataset.
 
     chicago′[Restructure]
     #=>
-      │ department                                                                │
-      │ name    employee{name,position,salary,rate}                               │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFIGHTE…│
-    2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING GUAR…│
-    3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
+      │ department                                                        │
+      │ name    employee{name,position,salary,rate}                       │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FI…│
+    2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSS…│
+    3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFF…│
     =#
 
 Using `Collect` we could save this restructured dataset as a
@@ -1275,9 +1275,9 @@ top-level field, `department`.
 
     chicago″ = chicago′[Restructure >> Collect]
     #=>
-    │ employee{name,department,position,sa… department{name,employee{name,positio…│
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
+    │ employee{name,department,positio… department{name,employee{name,pos…│
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ JEFFERY A, POLICE, SERGEANT, 101… FIRE, [JAMES A, FIRE ENGINEER-EMT…│
     =#
 
 Then, queries that originally worked with our hierarchical

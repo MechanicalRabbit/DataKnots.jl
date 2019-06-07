@@ -344,7 +344,10 @@ the cardinality of the outer block.
     =#
 
     DataKnots.shape(table)
-    #-> BlockOf(TupleOf(:n => BlockOf(Int64, x1to1), :n² => BlockOf(Int64, x1to1)))
+    #=>
+    BlockOf(TupleOf(:n => BlockOf(Int64, x1to1),
+                    :n² => BlockOf(Int64, x1to1)))
+    =#
 
 The combination of blocks, values, labels, and tuples permit
 structured hierararchies to be represented as a `DataKnot`.
@@ -420,7 +423,10 @@ The signature of a `trivial` pipeline has both the source and the
 target being the shape of the knot it was derived from.
 
     DataKnots.signature(unitpipe)
-    #-> Signature(BlockOf(TupleOf(), x1to1), BlockOf(TupleOf(), x1to1) |> IsFlow)
+    #=>
+    Signature(BlockOf(TupleOf(), x1to1),
+              BlockOf(TupleOf(), x1to1) |> IsFlow)
+    =#
 
 We could use this `unitpipe` on itself.
 

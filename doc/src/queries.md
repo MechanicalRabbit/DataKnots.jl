@@ -78,9 +78,9 @@ holds associated employee records.
 
     chicago = DataKnot(Any, chicago_data, :x1to1)
     #=>
-    │ department{name,employee{name,position,salary,rate}}                        │
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 800…│
+    │ department{name,employee{name,position,salary,rate}}                │
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ POLICE, [JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFI…│
     =#
 
 ## Constructing Queries
@@ -278,15 +278,16 @@ predicate pipeline by applying the predicate query to a trivial pipeline.
 
     pc1 = assemble(env, pc0, SalaryOver100K)
     #=>
-    chain_of(wrap(),
-             chain_of(
-                 with_elements(
-                     chain_of(
-                         chain_of(
-                             ⋮
-                             tuple_lift(>)),
-                         adapt_missing())),
-                 flatten()))
+    chain_of(
+        wrap(),
+        chain_of(
+            with_elements(
+                chain_of(
+                    chain_of(
+                        ⋮
+                        tuple_lift(>)),
+                    adapt_missing())),
+            flatten()))
     =#
 
 `Filter(SalaryOver100K)` then combines the pipelines `p2` and `pc1` using the
@@ -316,11 +317,12 @@ expression.
              flatten(),
              with_elements(
                  chain_of(tuple_of(pass(),
-                                   chain_of(tuple_of(column(:salary),
-                                                     chain_of(wrap(),
-                                                              with_elements(
-                                                                  filler(
-                                                                      100000)))),
+                                   chain_of(tuple_of(
+                                                column(:salary),
+                                                chain_of(
+                                                    wrap(),
+                                                    with_elements(
+                                                        filler(100000)))),
                                             tuple_lift(>),
                                             adapt_missing(),
                                             block_any())),
@@ -378,7 +380,8 @@ We can use the function `assemble()` to see the query plan.
 
     p = assemble(chicago, Count(It.department))
     #=>
-    chain_of(with_elements(chain_of(column(:department), block_length(), wrap())),
+    chain_of(with_elements(
+                 chain_of(column(:department), block_length(), wrap())),
              flatten())
     =#
 
@@ -529,21 +532,33 @@ In `@query` notation, `Record(X₁, X₂ … Xₙ)` is written as
 `record(X₁, X₂ … Xₙ)`.
 
     @query department.record(name, size => count(employee))
-    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)) >> Label(:size))
+    #=>
+    Get(:department) >> Record(Get(:name),
+                               Count(Get(:employee)) >> Label(:size))
+    =#
 
 Alternatively, we could use the `{}` brackets.
 
     @query {count(department), max(department.count(employee))}
-    #-> Record(Count(Get(:department)), Max(Get(:department) >> Count(Get(:employee))))
+    #=>
+    Record(Count(Get(:department)),
+           Max(Get(:department) >> Count(Get(:employee))))
+    =#
 
 When `{}` is used in composition, the composition operator `.` could be
 omitted.
 
     @query department.{name, size => count(employee)}
-    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)) >> Label(:size))
+    #=>
+    Get(:department) >> Record(Get(:name),
+                               Count(Get(:employee)) >> Label(:size))
+    =#
 
     @query department{name, size => count(employee)}
-    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)) >> Label(:size))
+    #=>
+    Get(:department) >> Record(Get(:name),
+                               Count(Get(:employee)) >> Label(:size))
+    =#
 
 ### `Collect`
 
@@ -554,12 +569,12 @@ The query `Collect(X)` adds a new field to the input record.
 
     chicago[Q]
     #=>
-      │ department                                                                │
-      │ name    employee{name,position,salary,rate}                          size │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFIC…    4 │
-    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIRE…    3 │
-    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSIN…    3 │
+      │ department                                                        │
+      │ name    employee{name,position,salary,rate}                  size │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLI…    4 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL…    3 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A,…    3 │
     =#
 
 More than one field could be added at the same time.
@@ -570,12 +585,12 @@ More than one field could be added at the same time.
 
     chicago[Q]
     #=>
-      │ department                                                                │
-      │ name    employee{name,position,salary,rate}              size  avg_salary │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, …    4     63492.0 │
-    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DA…    3    100702.0 │
-    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORI…    3     21464.0 │
+      │ department                                                        │
+      │ name    employee{name,position,salary,rate}      size  avg_salary │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; N…    4     63492.0 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, mis…    3    100702.0 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.…    3     21464.0 │
     =#
 
 If the new field has no label, an ordinal label will be assigned to it.
@@ -584,12 +599,12 @@ If the new field has no label, an ordinal label will be assigned to it.
 
     chicago[Q]
     #=>
-      │ department                                                                │
-      │ name    employee{name,position,salary,rate}                            #C │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  4 │
-    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
-    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING …  3 │
+      │ department                                                        │
+      │ name    employee{name,position,salary,rate}                    #C │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE…  4 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A…  3 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…  3 │
     =#
 
 If the record already has a field with the same name, that field is removed and
@@ -628,9 +643,9 @@ To remove a field from a record, replace it with the value `nothing`.
 
     chicago[Q]
     #=>
-    │ department{name,employee{name,positi… employee{name,position,salary,rate}   │
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ POLICE, [JEFFERY A, SERGEANT, 101442… JEFFERY A, SERGEANT, 101442, missing;…│
+    │ department{name,employee{name,pos… employee{name,position,salary,ra…│
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ POLICE, [JEFFERY A, SERGEANT, 101… JEFFERY A, SERGEANT, 101442, mis…│
     =#
 
 In `@query` notation, `Collect(X)` is written as `collect(X)`.
@@ -701,12 +716,12 @@ If the new field has no label, it will have an ordinal label assigned to it.
 
     chicago[Q]
     #=>
-      │ department                                                                │
-      │ name    employee{name,position,salary,rate}                            #C │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER…  1 │
-    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFI…  3 │
-    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING …  3 │
+      │ department                                                        │
+      │ name    employee{name,position,salary,rate}                    #C │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE…  1 │
+    2 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A…  3 │
+    3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…  3 │
     =#
 
 If the record already has a field with the same name, that field is removed and
@@ -1441,7 +1456,8 @@ In `@query` notation, `Keep(X)` and `Given(X, Q)` are written as `keep(X)` and
     end
     #=>
     Get(:department) >> Given(Count(Get(:employee)) >> Label(:size),
-                              Lift(div, (Get(:size), Lift(2))) >> Label(:half),
+                              Lift(div, (Get(:size), Lift(2))) >>
+                              Label(:half),
                               Get(:employee) >> Take(Get(:half)))
     =#
 
@@ -1467,7 +1483,8 @@ Alternatively, the `let` clause is translated to a `Given` expression.
     end
     #=>
     Get(:department) >> Given(Count(Get(:employee)) >> Label(:size),
-                              Lift(div, (Get(:size), Lift(2))) >> Label(:half),
+                              Lift(div, (Get(:size), Lift(2))) >>
+                              Label(:half),
                               Get(:employee) >> Take(Get(:half)))
     =#
 
@@ -1890,10 +1907,10 @@ The `Is1to1` query asserts that the input exists and is singular.
 
     chicago[Q]
     #=>
-    │ department                                                                  │
-    │ name    employee{name,position,salary,rate}                                 │
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 8001…│
+    │ department                                                          │
+    │ name    employee{name,position,salary,rate}                         │
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFIC…│
     =#
 
     shape(chicago[Q])
@@ -2050,15 +2067,15 @@ We use the `Group` combinator to group the input by the given key.
 
     chicago[Q]
     #=>
-      │ position              employee{name,position,salary,rate}                 │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A,…│
-    2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing         │
-    3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; ROBERT K…│
-    4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46                 │
-    5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; ANTHONY A,…│
-    6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing                │
-    7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, missing      │
+      │ position              employee{name,position,salary,rate}         │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ CROSSING GUARD        LAKENYA A, CROSSING GUARD, missing, 17.68; …│
+    2 │ FIRE ENGINEER-EMT     JAMES A, FIRE ENGINEER-EMT, 103350, missing │
+    3 │ FIREFIGHTER-EMT       DANIEL A, FIREFIGHTER-EMT, 95484, missing; …│
+    4 │ POLICE CADET          ALBA M, POLICE CADET, missing, 9.46         │
+    5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; AN…│
+    6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing        │
+    7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, miss…│
     =#
 
 Arbitrary key expressions are supported.

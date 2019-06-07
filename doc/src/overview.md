@@ -226,9 +226,9 @@ subordinate fields within a pair of curly braces.
 
     chicago
     #=>
-    │ employee{name,department,position,salary}                                   │
-    ┼─────────────────────────────────────────────────────────────────────────────┼
-    │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGHTER-EMT,…│
+    │ employee{name,department,position,salary}                           │
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGH…│
     =#
 
 We could contrast this display with the tabular display of the
@@ -286,10 +286,10 @@ its argument. For example, we could `group` employees by
 
     @query chicago employee.group(department)
     #=>
-      │ department  employee{name,department,position,salary}                     │
-    ──┼───────────────────────────────────────────────────────────────────────────┼
-    1 │ FIRE        DANIEL A, FIRE, FIRE FIGHTER-EMT, 95484; JAMES A, FIRE, FIRE …│
-    2 │ POLICE      ANTHONY A, POLICE, POLICE OFFICER, 72510; JEFFERY A, POLICE, …│
+      │ department  employee{name,department,position,salary}             │
+    ──┼───────────────────────────────────────────────────────────────────┼
+    1 │ FIRE        DANIEL A, FIRE, FIRE FIGHTER-EMT, 95484; JAMES A, FIR…│
+    2 │ POLICE      ANTHONY A, POLICE, POLICE OFFICER, 72510; JEFFERY A, …│
     =#
 
 This output is a different hierarchy than the `chicago` knot.
