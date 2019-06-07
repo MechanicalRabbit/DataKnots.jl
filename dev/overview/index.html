@@ -111,9 +111,9 @@ end
     └╴salary      Int64
 =#</code></pre><p>When we <code>show</code> a knot, its hierarchy is projected to a tabular display. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: each <code>employee</code> is delimited by a semi-colon; and attribute values are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate fields within a pair of curly braces.</p><pre><code class="language-julia">chicago
 #=&gt;
-│ employee{name,department,position,salary}                                   │
-┼─────────────────────────────────────────────────────────────────────────────┼
-│ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGHTER-EMT,…│
+│ employee{name,department,position,salary}                           │
+┼─────────────────────────────────────────────────────────────────────┼
+│ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGH…│
 =#</code></pre><p>We could contrast this display with the tabular display of the knot created by the query <code>employee{name, salary}</code>.</p><pre><code class="language-julia">@query chicago employee{name, salary}
 #=&gt;
   │ employee          │
@@ -142,10 +142,10 @@ end
 │     92679.0 │
 =#</code></pre><p>The <code>group</code> combinator introduces a new level in the hierarchy by constructing grouping records for each unique element produced by its argument. For example, we could <code>group</code> employees by <code>department</code>.</p><pre><code class="language-julia">@query chicago employee.group(department)
 #=&gt;
-  │ department  employee{name,department,position,salary}                     │
-──┼───────────────────────────────────────────────────────────────────────────┼
-1 │ FIRE        DANIEL A, FIRE, FIRE FIGHTER-EMT, 95484; JAMES A, FIRE, FIRE …│
-2 │ POLICE      ANTHONY A, POLICE, POLICE OFFICER, 72510; JEFFERY A, POLICE, …│
+  │ department  employee{name,department,position,salary}             │
+──┼───────────────────────────────────────────────────────────────────┼
+1 │ FIRE        DANIEL A, FIRE, FIRE FIGHTER-EMT, 95484; JAMES A, FIR…│
+2 │ POLICE      ANTHONY A, POLICE, POLICE OFFICER, 72510; JEFFERY A, …│
 =#</code></pre><p>This output is a different hierarchy than the <code>chicago</code> knot. Unique <code>department</code> elements are listed with correlated <code>employee</code> elements at the same hierarchical level.</p><pre><code class="language-julia">show(as=:shape, @query chicago employee.group(department))
 #=&gt;
 2-element DataKnot:

@@ -111,11 +111,11 @@ chicago = DataKnot(:department =&gt; department_data)</code></pre><h2><a class="
 =#</code></pre><p>Rather than building a record from scratch, one could add a field to an existing record using <code>Collect</code>.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
         Collect(:size =&gt; Count(It.employee))]
 #=&gt;
-  │ department                                                                │
-  │ name    employee{name,position,salary}                               size │
-──┼───────────────────────────────────────────────────────────────────────────┼
-1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEANT, 1014…    3 │
-2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-EMT…    2 │
+  │ department                                                        │
+  │ name    employee{name,position,salary}                       size │
+──┼───────────────────────────────────────────────────────────────────┼
+1 │ POLICE  ANTHONY A, POLICE OFFICER, 72510; JEFFERY A, SERGEA…    3 │
+2 │ FIRE    DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIG…    2 │
 =#</code></pre><p>If a label is set to <code>nothing</code> then that field is excluded. This would let us restructure a record as we see fit.</p><pre><code class="language-julia">chicago[It.department &gt;&gt;
         Collect(:size =&gt; Count(It.employee),
                 :employee =&gt; nothing)]
@@ -325,11 +325,11 @@ chicago[
 3 │ SERGEANT        │
 =#</code></pre><p>However, <code>Unique</code> is not sufficient because positions are not associated to the respective employees. To associate employee records to their positions, we use <code>Group</code> combinator:</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt; Group(It.position)]
 #=&gt;
-  │ position         employee{name,position,salary}                           │
-──┼───────────────────────────────────────────────────────────────────────────┼
-1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIREFIGHTER-…│
-2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLICE OFFICE…│
-3 │ SERGEANT         JEFFERY A, SERGEANT, 101442                              │
+  │ position         employee{name,position,salary}                   │
+──┼───────────────────────────────────────────────────────────────────┼
+1 │ FIREFIGHTER-EMT  DANIEL A, FIREFIGHTER-EMT, 95484; ROBERT K, FIRE…│
+2 │ POLICE OFFICER   ANTHONY A, POLICE OFFICER, 72510; NANCY A, POLIC…│
+3 │ SERGEANT         JEFFERY A, SERGEANT, 101442                      │
 =#</code></pre><p>The query <code>Group(It.position)</code> rearranges the dataset into a new hierarchy: position <span>$\to$</span> employee. We can use the new arrangement to show employee names for each unique position.</p><pre><code class="language-julia">chicago[It.department.employee &gt;&gt;
         Group(It.position) &gt;&gt;
         Record(It.position, It.employee.name)]
@@ -714,11 +714,11 @@ highly_compensated |&gt; DataFrame
 │ 4   │ ROBERT K  │ FIRE       │ FIREFIGHTER-EMT   │ 103272 │
 =#</code></pre><h2><a class="nav-anchor" id="Restructuring-Imported-Data-1" href="#Restructuring-Imported-Data-1">Restructuring Imported Data</a></h2><p>After importing tabular data, it is sometimes helpful to restructure hierarchically to make queries more convenient. We&#39;ve seen earlier how this could be done with <code>Group</code> combinator.</p><pre><code class="language-julia">chicago′[It.employee &gt;&gt; Group(It.department)]
 #=&gt;
-  │ department  employee{name,department,position,salary,rate}                │
-──┼───────────────────────────────────────────────────────────────────────────┼
-1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, …│
-2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORIS A, OEM…│
-3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A, POLICE…│
+  │ department  employee{name,department,position,salary,rate}        │
+──┼───────────────────────────────────────────────────────────────────┼
+1 │ FIRE        JAMES A, FIRE, FIRE ENGINEER-EMT, 103350, missing; DA…│
+2 │ OEMC        LAKENYA A, OEMC, CROSSING GUARD, missing, 17.68; DORI…│
+3 │ POLICE      JEFFERY A, POLICE, SERGEANT, 101442, missing; NANCY A…│
 =#</code></pre><p>With a some labeling, this hierarchy could be transformed so that its structure is compatible with our initial <code>chicago</code> dataset.</p><pre><code class="language-julia">Restructure =
     :department =&gt;
         It.employee &gt;&gt;
@@ -731,17 +731,17 @@ highly_compensated |&gt; DataFrame
 
 chicago′[Restructure]
 #=&gt;
-  │ department                                                                │
-  │ name    employee{name,position,salary,rate}                               │
-──┼───────────────────────────────────────────────────────────────────────────┼
-1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FIREFIGHTE…│
-2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSSING GUAR…│
-3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFFICER, 80…│
+  │ department                                                        │
+  │ name    employee{name,position,salary,rate}                       │
+──┼───────────────────────────────────────────────────────────────────┼
+1 │ FIRE    JAMES A, FIRE ENGINEER-EMT, 103350, missing; DANIEL A, FI…│
+2 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, CROSS…│
+3 │ POLICE  JEFFERY A, SERGEANT, 101442, missing; NANCY A, POLICE OFF…│
 =#</code></pre><p>Using <code>Collect</code> we could save this restructured dataset as a top-level field, <code>department</code>.</p><pre><code class="language-julia">chicago″ = chicago′[Restructure &gt;&gt; Collect]
 #=&gt;
-│ employee{name,department,position,sa… department{name,employee{name,positio…│
-┼─────────────────────────────────────────────────────────────────────────────┼
-│ JEFFERY A, POLICE, SERGEANT, 101442,… FIRE, [JAMES A, FIRE ENGINEER-EMT, 10…│
+│ employee{name,department,positio… department{name,employee{name,pos…│
+┼─────────────────────────────────────────────────────────────────────┼
+│ JEFFERY A, POLICE, SERGEANT, 101… FIRE, [JAMES A, FIRE ENGINEER-EMT…│
 =#</code></pre><p>Then, queries that originally worked with our hierarchical <code>chicago</code> dataset would now work with this imported and then restructured <code>chicago″</code> data. For example, we could once again compute the average employee salary by department.</p><pre><code class="language-julia">using Statistics: mean
 
 chicago″[

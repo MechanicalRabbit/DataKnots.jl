@@ -100,7 +100,10 @@ unitknot[Lift(1:3) &gt;&gt; Increment]
 =#
 
 DataKnots.shape(table)
-#-&gt; BlockOf(TupleOf(:n =&gt; BlockOf(Int64, x1to1), :n² =&gt; BlockOf(Int64, x1to1)))</code></pre><p>The combination of blocks, values, labels, and tuples permit structured hierararchies to be represented as a <code>DataKnot</code>.</p><h2><a class="nav-anchor" id="Pipeline-Processing-1" href="#Pipeline-Processing-1">Pipeline Processing</a></h2><p>So far we&#39;ve discussed knots, queries and combinators. What we&#39;ve not discussed are pipelines, which transform one knot to another. Normally one doesn&#39;t interact with pipelines unless you are building novel query combinators.</p><p>To start, how does <code>unitknot[Lift(&quot;Hello&quot;)]</code> function?</p><h3><a class="nav-anchor" id="Assembling-Pipelines-1" href="#Assembling-Pipelines-1">Assembling Pipelines</a></h3><p>Before we can assemble a pipeline, we first need the shape of the input source. Since we&#39;re going to be running our query against the <code>unitknot</code>, let&#39;s obtain its shape.</p><pre><code class="language-julia">unitshape = DataKnots.shape(unitknot)
+#=&gt;
+BlockOf(TupleOf(:n =&gt; BlockOf(Int64, x1to1),
+                :n² =&gt; BlockOf(Int64, x1to1)))
+=#</code></pre><p>The combination of blocks, values, labels, and tuples permit structured hierararchies to be represented as a <code>DataKnot</code>.</p><h2><a class="nav-anchor" id="Pipeline-Processing-1" href="#Pipeline-Processing-1">Pipeline Processing</a></h2><p>So far we&#39;ve discussed knots, queries and combinators. What we&#39;ve not discussed are pipelines, which transform one knot to another. Normally one doesn&#39;t interact with pipelines unless you are building novel query combinators.</p><p>To start, how does <code>unitknot[Lift(&quot;Hello&quot;)]</code> function?</p><h3><a class="nav-anchor" id="Assembling-Pipelines-1" href="#Assembling-Pipelines-1">Assembling Pipelines</a></h3><p>Before we can assemble a pipeline, we first need the shape of the input source. Since we&#39;re going to be running our query against the <code>unitknot</code>, let&#39;s obtain its shape.</p><pre><code class="language-julia">unitshape = DataKnots.shape(unitknot)
 #-&gt; BlockOf(TupleOf(), x1to1)</code></pre><p>We could then assemble the pipeline for <code>Lift(&quot;Hello&quot;)</code>.</p><pre><code class="language-julia">hello_pipe = DataKnots.assemble(unitshape, Lift(&quot;Hello&quot;))
 #-&gt; with_elements(filler(&quot;Hello&quot;))</code></pre><p>This pipeline has two phases: it loops though each element of the input block (<code>with_elements</code>); then, for each of those elements, it produces the string value <code>&quot;Hello&quot;</code> (<code>filler</code>).</p><p>Once assembled, we could run the pipeline against the <code>unitknot</code>.</p><pre><code class="language-julia">hello_pipe(unitknot)
 #=&gt;
@@ -113,7 +116,10 @@ DataKnots.target(hello_pipe)
 #-&gt; BlockOf(String, x1to1)</code></pre><p>One needs both the <code>source</code> and the <code>target</code> shapes to define the signature of the pipeline function.</p><pre><code class="language-julia">DataKnots.signature(hello_pipe)
 #-&gt; Signature(BlockOf(TupleOf(), x1to1), BlockOf(String, x1to1))</code></pre><p>Here we see that <code>hello_pipe</code> expects its input source to provide an empty tuple, and that it&#39;ll produce a string.</p><h3><a class="nav-anchor" id="Trivial-Pipelines-1" href="#Trivial-Pipelines-1">Trivial Pipelines</a></h3><p>Internally, any <code>DataKnot</code> can be converted into a <code>Pipeline</code> capable of reproducing itself.</p><pre><code class="language-julia">unitpipe = DataKnots.trivial_pipe(unitknot)
 #-&gt; pass()</code></pre><p>The signature of a <code>trivial</code> pipeline has both the source and the target being the shape of the knot it was derived from.</p><pre><code class="language-julia">DataKnots.signature(unitpipe)
-#-&gt; Signature(BlockOf(TupleOf(), x1to1), BlockOf(TupleOf(), x1to1) |&gt; IsFlow)</code></pre><p>We could use this <code>unitpipe</code> on itself.</p><pre><code class="language-julia">unitpipe(unitknot)
+#=&gt;
+Signature(BlockOf(TupleOf(), x1to1),
+          BlockOf(TupleOf(), x1to1) |&gt; IsFlow)
+=#</code></pre><p>We could use this <code>unitpipe</code> on itself.</p><pre><code class="language-julia">unitpipe(unitknot)
 #=&gt;
 ┼──┼
 │  │
