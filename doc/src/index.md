@@ -11,6 +11,19 @@ sophisticated yet custom query interfaces for their users.
 *At this time, while we welcome feedback and contributions,
 DataKnots is not yet usable for general audiences.*
 
+### Overview
+---
+
+To get a high-level view of what DataKnots is capable of, there is
+an overview.
+
+```@contents
+Pages = [
+    "overview.md",
+]
+Depth=2
+```
+
 ### Tutorials
 ---
 
@@ -21,8 +34,7 @@ going into all of the details.
 
 ```@contents
 Pages = [
-    "highlypaid.md",
-    "tutorial.md",
+    "highlypaid.md"
 ]
 Depth=2
 ```
@@ -36,6 +48,7 @@ materials for users.
 ```@contents
 Pages = [
     "primer.md",
+    "tutorial.md",
     "reference.md",
 ]
 Depth=2
