@@ -8,16 +8,16 @@ DataKnots and its query algebra.
 
 ## Answering an Inquiry
 
-To focus our attention, let's discuss a particular inquiry: *Which
-City of Chicago employees are paid more than the average for their
+Let's discuss a particular inquiry: *Which City of Chicago
+employees have salary higher than the average for their
 department?*
 
-Let's use a tiny subset of public data from the City of Chicago.
-It includes employees and their annual salary.
+We use a tiny selection of public data from the City of Chicago.
+This dataset includes employees and their annual salary.
 
     using CSV
 
-    chicago_csv_data = """
+    employee_csv = """
         name,department,position,salary
         "ANTHONY A","POLICE","POLICE OFFICER",72510
         "DANIEL A","FIRE","FIRE FIGHTER-EMT",95484
@@ -27,12 +27,13 @@ It includes employees and their annual salary.
         "ROBERT K","FIRE","FIRE FIGHTER-EMT",103272
         """ |> IOBuffer |> CSV.File
 
-To query this `chicago_csv_data`, we convert this tabular data to
-a `DataKnot`, or just *knot*, and give it a label `employee`.
+To query this employee data, we convert it to a `DataKnot`, or
+just *knot*. In the `DataKnot` constructor, `employee_csv` is
+provided a label of `employee`.
 
     using DataKnots
 
-    chicago = DataKnot(:employee => chicago_csv_data)
+    chicago = DataKnot(:employee => employee_csv)
 
 Then, to answer this inquiry, we query `chicago` as follows.
 
@@ -54,9 +55,9 @@ Then, to answer this inquiry, we query `chicago` as follows.
     3 │ JEFFERY A  POLICE      SERGEANT           101442 │
     =#
 
-Though this overview we will work towards reconstructing this
+This overview will proceed by incrementally reconstructing this
 query, showing how an analyst could explore data and independently
-arrive at the query above.
+arrive at the answer above.
 
 ## Basic Queries
 
@@ -65,8 +66,7 @@ elements, or *queries*, represent relationships among class
 entities and datatypes. Nouns, such as `employee`, `department`,
 and `salary`, are *query primitives*.
 
-Let's query the `chicago` knot to list `employee` records. The
-`@query` macro provides a convenient notation to do this.
+Let's query the `chicago` knot to list `employee` records.
 
     @query chicago employee
     #=>
@@ -91,9 +91,9 @@ For example, `count` is a combinator.
     │ 6 │
     =#
 
-Query *composition* (`.`) is also a combinator, it applies the
-output of one query as the input to another. The query
-`employee.name` lists all employee names.
+Query *composition* (`.`) is also a combinator, it builds a query
+that applies the output of one query as the input to another. The
+query `employee.name` lists all employee names.
 
     @query chicago employee.name
     #=>
@@ -134,10 +134,26 @@ parallel results.
     6 │ ROBERT K   103272 │
     =#
 
-Within a `@query` macro, constants, such as `100_000` are query
-primitives. Functions, such as `titlecase`, and operators, such as
-greater-than (`>`), are treated as query combinators. We can label
-each expression with the pair syntax (`=>`).
+Within a `@query` macro, constants, such as `100_000` are treated
+as query primitives. These constant queries produce the same
+output regardless of the input they receive.
+
+    @query chicago employee{name, salary, threshold => 100_000}
+    #=>
+      │ employee                     │
+      │ name       salary  threshold │
+    ──┼──────────────────────────────┼
+    1 │ ANTHONY A   72510     100000 │
+    2 │ DANIEL A    95484     100000 │
+    3 │ JAMES A    103350     100000 │
+    4 │ JEFFERY A  101442     100000 │
+    5 │ NANCY A     80016     100000 │
+    6 │ ROBERT K   103272     100000 │
+    =#
+
+Functions, such as `titlecase`, and operators, such as
+greater-than (`>`), are treated as query combinators; that is,
+they are used to build queries from component queries.
 
     @query chicago begin
         employee
@@ -155,8 +171,8 @@ each expression with the pair syntax (`=>`).
     6 │ Robert K          true │
     =#
 
-Combining queries is generative. Since we know that `salary >
-100_000` is a query, so is `filter(salary > 100_000)`.
+Since `salary > 100_000` is a predicate query, we can use the
+`filter` combinator to build the query `filter(salary > 100_000)`.
 
     @query chicago employee.filter(salary > 100_000)
     #=>
@@ -183,56 +199,7 @@ A DataKnot is a container that stores a hierarchy of labeled
 elements, where each element is either a scalar value, such as an
 integer or a string, or a collection of nested elements.
 
-Our `chicago` knot is a hierarchy of three levels: a single
-unlabeled root (shown with a `#`), branch level of `employee`
-elements, and leaf elements `name`, `department`, etc.
-
-```literal
-    1-element DataKnot:
-      #:
-        employee:
-          name: "ANTHONY A"
-          department: "POLICE"
-          position: "POLICE OFFICER"
-          salary: 72510
-        employee:
-          name: "DANIEL A"
-          department: "FIRE"
-          position: "FIRE FIGHTER-EMT"
-          salary: 95484
-        ⋮
-```
-
-The structure of a DataKnot is called its *shape* and can be
-visualized using `show(::DataKnot, as=:shape)`.
-
-    show(as=:shape, chicago)
-    #=>
-    1-element DataKnot:
-      #               1:1
-      └╴employee      0:N
-        ├╴name        String
-        ├╴department  String
-        ├╴position    String
-        └╴salary      Int64
-    =#
-
-When we `show` a knot, its hierarchy is projected to a tabular
-display. For `chicago`, the root element gets its own row with
-`employee` elements packed into a single cell: each `employee` is
-delimited by a semi-colon; and attribute values are separated by a
-comma. For packed cells, such as `employee`, the header shows the
-subordinate fields within a pair of curly braces.
-
-    chicago
-    #=>
-    │ employee{name,department,position,salary}                           │
-    ┼─────────────────────────────────────────────────────────────────────┼
-    │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGH…│
-    =#
-
-We could contrast this display with the tabular display of the
-knot created by the query `employee{name, salary}`.
+Recall the knot produced by the query `employee{name, salary}`.
 
     @query chicago employee{name, salary}
     #=>
@@ -247,8 +214,29 @@ knot created by the query `employee{name, salary}`.
     6 │ ROBERT K   103272 │
     =#
 
-This particular output knot has a 2-level hierarchy, where the top
-level, labeled `employee`, is plural.
+This knot contains 6 composite elements labeled `employee`, each
+employee having elements labeled `name` and `salary`. This element
+hierarchy can be visualized using show(::DataKnot, as=:flow)
+
+```literal
+    show(as=:flow, @query chicago employee{name, salary})
+    #=>
+    6-element DataKnot:
+      employee:
+        name: "ANTHONY A"
+        salary: 72510
+      employee:
+        name: "DANIEL A"
+        salary: 95484
+      ⋮
+    =#
+```
+
+The structure of a DataKnot is called its *shape*. In this case,
+the shape describes a hierarchy with 2 levels: zero or more
+elements with label `employee`, each employee element containing
+exactly one string element labeled `name` and exactly one integer
+element labeled `salary`.
 
     show(as=:shape, @query chicago employee{name, salary})
     #=>
@@ -258,15 +246,85 @@ level, labeled `employee`, is plural.
       └╴salary  1:1 × Int64
     =#
 
-In the next section, we show how these hierarchies can be created
-and collapsed.
+Not all knots have exactly two levels. Recall the query
+`count(employee) which produces a single, unlabeled numeric value.
+
+    @query chicago count(employee)
+    #=>
+    ┼───┼
+    │ 6 │
+    =#
+
+The shape of the knot reflects this structure. Here `#` is used in
+place of the missing label.
+
+    show(as=:shape, @query chicago count(employee))
+    #=>
+    1-element DataKnot:
+      #  1:1 × Int64
+    =#
+
+Our `chicago` knot has a hierarchy of *three* levels: a single
+unlabeled root element, branch level of `employee` elements, and a
+leaf level with `name`, `department`, `position`, and `salary`.
+
+    show(as=:shape, chicago)
+    #=>
+    1-element DataKnot:
+      #               1:1
+      └╴employee      0:N
+        ├╴name        String
+        ├╴department  String
+        ├╴position    String
+        └╴salary      Int64
+    =#
+
+This knot could be shown as a hierarchy of elements. Observe
+that `chicago` has a single, unlabeled root element.
+
+```literal
+    show(as=:flow, chicago)
+    #=>
+    1-element DataKnot:
+      #:
+        employee:
+          name: "ANTHONY A"
+          department: "POLICE"
+          position: "POLICE OFFICER"
+          salary: 72510
+        employee:
+          name: "DANIEL A"
+          department: "FIRE"
+          position: "FIRE FIGHTER-EMT"
+          salary: 95484
+        ⋮
+    =#
+```
+
+When a knot is displayed, its hierarchy is projected to a tabular
+form. For `chicago`, the root element gets its own row with
+`employee` elements packed into a single cell: employees are
+delimited by a semi-colon; and nested attributes are separated by
+a comma. For packed cells, such as `employee`, the header shows
+the subordinate labels within a pair of curly braces.
+
+    chicago
+    #=>
+    │ employee{name,department,position,salary}                           │
+    ┼─────────────────────────────────────────────────────────────────────┼
+    │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGH…│
+    =#
+
+In this section, we have seen how DataKnots sees data as a
+hierarchical flow of labeled elements. In the next section, we
+show how hierarchies can be collapsed and created.
 
 ## Hierarchical Transformations
 
 DataKnots' combinators implement hierarchical transformations.
-Summary combinators, such as `count`, collapse a subtree into a
-single value. For example, we can compute average salary across
-employees with `mean(employee.salary)`.
+Summary combinators, such as `count`, build queries that collapse
+a subtree into a single value. For example, we can compute average
+salary across employees with `mean(employee.salary)`.
 
     using Statistics: mean
 
@@ -279,10 +337,10 @@ employees with `mean(employee.salary)`.
     │     92679.0 │
     =#
 
-The `group` combinator introduces a new level in the hierarchy by
-constructing grouping records for each unique element produced by
-its argument. For example, we could `group` employees by
-`department`.
+The `group` combinator builds queries that introduce a new level
+in the hierarchy by constructing grouping records for each unique
+element produced by its argument. For example, we could `group`
+employees by `department`.
 
     @query chicago employee.group(department)
     #=>
@@ -292,24 +350,48 @@ its argument. For example, we could `group` employees by
     2 │ POLICE      ANTHONY A, POLICE, POLICE OFFICER, 72510; JEFFERY A, …│
     =#
 
-This output is a different hierarchy than the `chicago` knot.
-Unique `department` elements are listed with correlated `employee`
-elements at the same hierarchical level.
+In this tabular layout, grouping records are represented as table
+rows, and the corresponding employees are packed into a single
+cell. To see the knot in an unpacked form, we can display it as an
+element hierarchy.
 
+```literal
     show(as=:shape, @query chicago employee.group(department))
     #=>
     2-element DataKnot:
-      #               0:N
-      ├╴department    1:1 × String
-      └╴employee      1:N
-        ├╴name        String
-        ├╴department  String
-        ├╴position    String
-        └╴salary      Int64
+      #:
+        department: "POLICE"
+        employee:
+          name: "ANTHONY A"
+          department: "POLICE"
+          position: "POLICE OFFICER"
+          salary: 72510
+        employee:
+          name: "JEFFERY A"
+          department: "POLICE"
+          position: "SERGEANT"
+          salary: 201442
+        ⋮
+      #:
+        department: "FIRE"
+        employee:
+          name: "DANIEL A"
+          department: "FIRE"
+          position: "FIRE FIGHTER-EMT"
+          salary: 95484
+        employee:
+          name: "JAMES A"
+          department: "FIRE"
+          position: "FIRE ENGINEER-EMT"
+          salary: 103350
+        ⋮
     =#
+```
 
 Once constructed, grouping records can be used as any other input.
 In this next query, we show salaries of employees by department.
+Since each department in our reduced dataset happens to have 3
+employees, our output has 3 salary entries.
 
     @query chicago begin
         employee
@@ -325,7 +407,7 @@ In this next query, we show salaries of employees by department.
 
 We can use summary operations relative to grouping records. In
 this next example, `mean(employee.salary)` is computed for each
-department, rather than across all employees.
+department.
 
     @query chicago begin
         employee
@@ -349,7 +431,7 @@ We're close to answering our original inquiry. We've built a query
 that filters employees. We've built a query that produces average
 salary by department. We need only connect these queries.
 
-## Contextual Operations
+## Query Context
 
 DataKnots' queries are interpreted contextually, relative to the
 input that they receive. We've seen this earlier: depending where
@@ -358,8 +440,8 @@ average salary over the entire dataset, or averages within each
 department.
 
 For our inquiry, we need to compare each employee's salary with
-the the average salary. However, we cannot evaluate both `salary`
-and `mean_salary` in the same context.
+the average salary. However, we cannot evaluate both `salary` and
+`mean_salary` in the same context.
 
     @query chicago begin
         employee
@@ -367,10 +449,11 @@ and `mean_salary` in the same context.
     end
     #-> ERROR: cannot find "employee" ⋮
 
-To evaluate an expression in one context and then use its value in
-a different context, we could use the `keep` combinator. This next
-query computes `mean_salary` relative to the entire dataset, and
-then displays this value in the context of each employee.
+To evaluate an expression in one context and then make the value
+available in subsequent contexts, we could use the `keep`
+combinator. The next query computes `mean_salary` with respect to
+the entire dataset, and then uses this value in the context of
+each employee.
 
     @query chicago begin
         keep(mean_salary => mean(employee.salary))
@@ -389,9 +472,9 @@ then displays this value in the context of each employee.
     6 │ ROBERT K   103272      92679.0 │
     =#
 
-However, the inquiry asks us to use average salary *by department*.
-This can be done by composing `employee.group(department)` with
-the previous query.
+However, the inquiry asks us to use average salary *by department*
+not across all employees. To adapt the previous query, we need to
+place our `keep` in the context of `employee.group(department)`.
 
     @query chicago begin
         employee
@@ -412,8 +495,9 @@ the previous query.
     6 │ NANCY A     80016      84656.0 │
     =#
 
-We can then answer our initial inquiry, *which employees are
-paid more than the average for their department?*
+We just need to add a `filter` to answer our initial inquiry:
+*which employees have a salary that is higher than the average for
+their department?*
 
     @query chicago begin
         employee
@@ -431,7 +515,5 @@ paid more than the average for their department?*
     3 │ JEFFERY A  POLICE      SERGEANT           101442 │
     =#
 
-In this section, we've completed our query. The remainder of this
-overview will address specific topics, such as aggregation,
-joining data, cardinality, among others.
-
+In this section, we've completed our query. Let's talk more about
+mechanics, how these queries operate.
