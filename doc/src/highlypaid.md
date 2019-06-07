@@ -1,7 +1,7 @@
 # Who is Highly Paid?
 
 This tutorial is intended for new users of DataKnots. It does not
-give an exhaustive accountof all the features, just the ones you
+give an exhaustive account of all the features, just the ones you
 are likely to use right away.
 
 ## Problem Statement

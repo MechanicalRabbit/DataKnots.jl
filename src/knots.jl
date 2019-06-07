@@ -282,7 +282,7 @@ end
 
 function print_shape(io::IO, db::DataKnot)
     summary(io, db)
-    println(":")
+    println(io, ":")
     print_graph(io, shape(db); indent=2)
 end
 
