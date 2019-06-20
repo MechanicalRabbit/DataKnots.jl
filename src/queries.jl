@@ -434,7 +434,7 @@ function cover(src::IsLabeled)
 end
 
 cover(src::IsFlow) =
-    pass() |> designate(src, tgt)
+    pass() |> designate(src, src)
 
 function cover(src::IsScope)
     p = cover(column(src))
