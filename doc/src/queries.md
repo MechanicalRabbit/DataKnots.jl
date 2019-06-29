@@ -421,6 +421,95 @@ Query parameters could be passed as keyword arguments.
     │ 2 │
     =#
 
+The following syntax is recognized by the `@query` macro.
+
+A bare field identifier can be used to extract the value of the given field.
+
+    @query department
+    #-> Get(:department)
+
+A sequence of statements in a `begin`/`end` block becomes a composition
+of queries.
+
+    @query begin
+        department
+        employee
+        salary
+        max()
+    end
+    #-> Get(:department) >> Get(:employee) >> Get(:salary) >> Then(Max)
+
+Expressions separated by `.` are also converted to query composition.
+
+    @query department.employee.salary.max()
+    #-> Get(:department) >> Get(:employee) >> Get(:salary) >> Then(Max)
+
+The `let` clause is converted to the `Given` combinator.
+
+    @query begin
+        department
+        let max_salary => max(employee.salary)
+            employee
+            filter(salary == max_salary)
+        end
+    end
+    #=>
+    Get(:department) >>
+    Given(Max(Get(:employee) >> Get(:salary)) >> Label(:max_salary),
+          Get(:employee) >>
+          Filter(Lift(==, (Get(:salary), Get(:max_salary)))))
+    =#
+
+Curly brackets are converted to the `Record` combinator.
+
+    @query begin
+        department
+        { name, count(employee) }
+    end
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)))
+
+    @query department.{name, count(employee)}
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)))
+
+    @query department{name, count(employee)}
+    #-> Get(:department) >> Record(Get(:name), Count(Get(:employee)))
+
+The `Pair` constructor `=>` can be used for label assignment.
+
+    @query size => count(employee)
+    #-> Count(Get(:employee)) >> Label(:size)
+
+Constants, functions and operators are automatically lifted.
+
+    @query department.titlecase(name)
+    #-> Get(:department) >> Lift(titlecase, (Get(:name),))
+
+    @query employee.filter(salary > 100_000)
+    #-> Get(:employee) >> Filter(Lift(>, (Get(:salary), Lift(100000))))
+
+Logical operators are comparison chains are also supported.
+
+    @query employee.filter(50_000 < salary < 100_000)
+    #=>
+    Get(:employee) >> Filter(Lift(&,
+                                  (Lift(<, (Lift(50000), Get(:salary))),
+                                   Lift(<, (Get(:salary), Lift(100000))))))
+    =#
+
+    @query employee.filter(50_000 < salary && salary < 100_000)
+    #=>
+    Get(:employee) >> Filter(Lift(&,
+                                  (Lift(<, (Lift(50000), Get(:salary))),
+                                   Lift(<, (Get(:salary), Lift(100000))))))
+    =#
+
+    @query employee.filter(salary < 50_000 || salary > 100_000)
+    #=>
+    Get(:employee) >> Filter(Lift(|,
+                                  (Lift(<, (Get(:salary), Lift(50000))),
+                                   Lift(>, (Get(:salary), Lift(100000))))))
+    =#
+
 Queries defined elsewhere could be embedded in a `@query` expression using
 interpolation syntax (`$`).
 

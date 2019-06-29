@@ -233,6 +233,14 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
         elseif call isa Base.Callable
             return Lift(call(translate.(Ref(mod), args[2:end])...))
         end
+    elseif head == :comparison && length(args) == 3
+        return translate(mod, Expr(:call, args[2], args[1], args[3]))
+    elseif head == :comparison && length(args) > 3
+        return translate(mod, Expr(:&&, Expr(:call, args[2], args[1], args[3]), Expr(head, args[3:end]...)))
+    elseif head == :&&
+        return Lift(&, (translate.(Ref(mod), args)...,))
+    elseif head == :||
+        return Lift(|, (translate.(Ref(mod), args)...,))
     end
     error("invalid query expression: $(repr(ex))")
 end

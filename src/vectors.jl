@@ -171,15 +171,6 @@ eltype(tv::TupleVector) =
     end
 end
 
-# Tables.jl export interface.
-
-Tables.istable(tv::TupleVector) = !isempty(tv.lbls)
-
-Tables.columnaccess(::TupleVector) = true
-
-Tables.columns(tv::TupleVector) =
-    NamedTuple{(labels(tv)...,)}(collect.(columns(tv)))
-
 """
     (::TupleVector)[ks::AbstractVector{Int}] :: TupleVector
 
@@ -191,6 +182,15 @@ Returns a new `TupleVector` with a subset of rows specified by indexes `ks`.
     @inbounds tv′ = TupleVector(tv.lbls, idxs′, tv.cols)
     tv′
 end
+
+# Tables.jl export interface.
+
+Tables.istable(tv::TupleVector) = !isempty(tv.lbls)
+
+Tables.columnaccess(::TupleVector) = true
+
+Tables.columns(tv::TupleVector) =
+    NamedTuple{(labels(tv)...,)}(collect.(columns(tv)))
 
 
 #
