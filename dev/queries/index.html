@@ -191,7 +191,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/36c3dbcc986a3c558434f65fcc7cb1f99c8b9638/src/queries.jl#L268-L272">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/36c3dbcc986a3c558434f65fcc7cb1f99c8b9638/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/36c3dbcc986a3c558434f65fcc7cb1f99c8b9638/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2><a class="nav-anchor" id="API-Reference-1" href="#API-Reference-1">API Reference</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/1c6bde913487090621f00fee1afebe0c3d64d46e/src/queries.jl#L276-L280">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span>.</div><div><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-julia">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/1c6bde913487090621f00fee1afebe0c3d64d46e/src/queries.jl#L18-L35">source</a></section><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span>.</div><div><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div></div><a class="source-link" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/1c6bde913487090621f00fee1afebe0c3d64d46e/src/queries.jl#L118-L122">source</a></section><h2><a class="nav-anchor" id="Test-Suite-1" href="#Test-Suite-1">Test Suite</a></h2><h3><a class="nav-anchor" id="Querying-1" href="#Querying-1">Querying</a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -229,6 +229,60 @@ end
 #=&gt;
 ┼───┼
 │ 2 │
+=#</code></pre><p>The following syntax is recognized by the <code>@query</code> macro.</p><p>A bare field identifier can be used to extract the value of the given field.</p><pre><code class="language-julia">@query department
+#-&gt; Get(:department)</code></pre><p>A sequence of statements in a <code>begin</code>/<code>end</code> block becomes a composition of queries.</p><pre><code class="language-julia">@query begin
+    department
+    employee
+    salary
+    max()
+end
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Get(:salary) &gt;&gt; Then(Max)</code></pre><p>Expressions separated by <code>.</code> are also converted to query composition.</p><pre><code class="language-julia">@query department.employee.salary.max()
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Get(:salary) &gt;&gt; Then(Max)</code></pre><p>The <code>let</code> clause is converted to the <code>Given</code> combinator.</p><pre><code class="language-julia">@query begin
+    department
+    let max_salary =&gt; max(employee.salary)
+        employee
+        filter(salary == max_salary)
+    end
+end
+#=&gt;
+Get(:department) &gt;&gt;
+Given(Max(Get(:employee) &gt;&gt; Get(:salary)) &gt;&gt; Label(:max_salary),
+      Get(:employee) &gt;&gt;
+      Filter(Lift(==, (Get(:salary), Get(:max_salary)))))
+=#</code></pre><p>Curly brackets are converted to the <code>Record</code> combinator.</p><pre><code class="language-julia">@query begin
+    department
+    { name, count(employee) }
+end
+#-&gt; Get(:department) &gt;&gt; Record(Get(:name), Count(Get(:employee)))
+
+@query department.{name, count(employee)}
+#-&gt; Get(:department) &gt;&gt; Record(Get(:name), Count(Get(:employee)))
+
+@query department{name, count(employee)}
+#-&gt; Get(:department) &gt;&gt; Record(Get(:name), Count(Get(:employee)))</code></pre><p>The <code>Pair</code> constructor <code>=&gt;</code> can be used for label assignment.</p><pre><code class="language-julia">@query size =&gt; count(employee)
+#-&gt; Count(Get(:employee)) &gt;&gt; Label(:size)</code></pre><p>Constants, functions and operators are automatically lifted.</p><pre><code class="language-julia">@query department.titlecase(name)
+#-&gt; Get(:department) &gt;&gt; Lift(titlecase, (Get(:name),))
+
+@query employee.filter(salary &gt; 100_000)
+#-&gt; Get(:employee) &gt;&gt; Filter(Lift(&gt;, (Get(:salary), Lift(100000))))</code></pre><p>Logical operators are comparison chains are also supported.</p><pre><code class="language-julia">@query employee.filter(50_000 &lt; salary &lt; 100_000)
+#=&gt;
+Get(:employee) &gt;&gt; Filter(Lift(&amp;,
+                              (Lift(&lt;, (Lift(50000), Get(:salary))),
+                               Lift(&lt;, (Get(:salary), Lift(100000))))))
+=#
+
+@query employee.filter(50_000 &lt; salary &amp;&amp; salary &lt; 100_000)
+#=&gt;
+Get(:employee) &gt;&gt; Filter(Lift(&amp;,
+                              (Lift(&lt;, (Lift(50000), Get(:salary))),
+                               Lift(&lt;, (Get(:salary), Lift(100000))))))
+=#
+
+@query employee.filter(salary &lt; 50_000 || salary &gt; 100_000)
+#=&gt;
+Get(:employee) &gt;&gt; Filter(Lift(|,
+                              (Lift(&lt;, (Get(:salary), Lift(50000))),
+                               Lift(&gt;, (Get(:salary), Lift(100000))))))
 =#</code></pre><p>Queries defined elsewhere could be embedded in a <code>@query</code> expression using interpolation syntax (<code>$</code>).</p><pre><code class="language-julia">Size = @query count(employee)
 #-&gt; Count(Get(:employee))
 
