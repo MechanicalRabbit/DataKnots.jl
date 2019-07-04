@@ -760,9 +760,13 @@ function assemble_collect(p, x)
     x = relabel(x, nothing)
     cols = Pipeline[]
     lbls = Symbol[]
+    x_pos = width(dom)+1
     for i in 1:width(dom)
         lbl = label(dom, i)
-        lbl != x_lbl || continue
+        if lbl == x_lbl
+            x_pos = i
+            continue
+        end
         col = lookup(src, i)
         push!(cols, col)
         if lbl == ordinal_label(i)
@@ -771,8 +775,8 @@ function assemble_collect(p, x)
         push!(lbls, lbl)
     end
     if !fits(target(x), BlockOf(Nothing, x1to1))
-        push!(cols, x)
-        push!(lbls, x_lbl !== nothing ? x_lbl : ordinal_label(length(cols)))
+        splice!(cols, x_pos:x_pos-1, Ref(x))
+        splice!(lbls, x_pos:x_pos-1, Ref(x_lbl !== nothing ? x_lbl : ordinal_label(length(cols))))
     end
     tgt = TupleOf(lbls, target.(cols))
     lbl = getlabel(p, nothing)
@@ -892,9 +896,13 @@ function assemble_join(src::AbstractShape, src0::AbstractShape, x::Pipeline)
     cols = Pipeline[]
     col_shps = AbstractShape[]
     lbls = Symbol[]
+    x_pos = width(dom)+1
     for i in 1:width(dom)
         lbl = label(dom, i)
-        lbl != x_lbl || continue
+        if lbl == x_lbl
+            x_pos = i
+            continue
+        end
         col = lookup(src, i)
         push!(cols, chain_of(column(1), col))
         push!(col_shps, target(col))
@@ -903,9 +911,9 @@ function assemble_join(src::AbstractShape, src0::AbstractShape, x::Pipeline)
         end
         push!(lbls, lbl)
     end
-    push!(cols, chain_of(column(2), x))
-    push!(col_shps, target(x))
-    push!(lbls, x_lbl !== nothing ? x_lbl : ordinal_label(length(cols)))
+    splice!(cols, x_pos:x_pos-1, Ref(chain_of(column(2), x)))
+    splice!(col_shps, x_pos:x_pos-1, Ref(target(x)))
+    splice!(lbls, x_pos:x_pos-1, Ref(x_lbl !== nothing ? x_lbl : ordinal_label(length(cols))))
     tgt = TupleOf(lbls, col_shps)
     lbl = getlabel(src, nothing)
     if lbl !== nothing

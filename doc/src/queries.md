@@ -696,19 +696,20 @@ If the new field has no label, an ordinal label will be assigned to it.
     3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…  3 │
     =#
 
-If the record already has a field with the same name, that field is removed and
-the new field is added.
+If the record already has a field with the same name, that field is replaced
+with the new field.
 
-    Q = It.department >> Collect(:employee => It.employee.name)
+    Q = It.department >> Collect(:employee => It.employee.name >> titlecase.(It),
+                                 :name => It.name >> titlecase.(It))
 
     chicago[Q]
     #=>
       │ department                                    │
       │ name    employee                              │
     ──┼───────────────────────────────────────────────┼
-    1 │ POLICE  JEFFERY A; NANCY A; ANTHONY A; ALBA M │
-    2 │ FIRE    JAMES A; DANIEL A; ROBERT K           │
-    3 │ OEMC    LAKENYA A; DORIS A; BRENDA B          │
+    1 │ Police  Jeffery A; Nancy A; Anthony A; Alba M │
+    2 │ Fire    James A; Daniel A; Robert K           │
+    3 │ Oemc    Lakenya A; Doris A; Brenda B          │
     =#
 
 To remove a field from a record, replace it with the value `nothing`.
@@ -813,8 +814,8 @@ If the new field has no label, it will have an ordinal label assigned to it.
     3 │ OEMC    LAKENYA A, CROSSING GUARD, missing, 17.68; DORIS A, C…  3 │
     =#
 
-If the record already has a field with the same name, that field is removed and
-the new field is added.
+If the record already has a field with the same name, that field is replaced
+with the new field.
 
     Q = It.department >>
         Each(It.employee >>
@@ -824,18 +825,18 @@ the new field is added.
     chicago[Q]
     #=>
        │ employee                                              │
-       │ name       salary  rate   position                    │
+       │ name       position                     salary  rate  │
     ───┼───────────────────────────────────────────────────────┼
-     1 │ JEFFERY A  101442         SERGEANT (POLICE)           │
-     2 │ NANCY A     80016         POLICE OFFICER (POLICE)     │
-     3 │ ANTHONY A   72510         POLICE OFFICER (POLICE)     │
-     4 │ ALBA M              9.46  POLICE CADET (POLICE)       │
-     5 │ JAMES A    103350         FIRE ENGINEER-EMT (FIRE)    │
-     6 │ DANIEL A    95484         FIREFIGHTER-EMT (FIRE)      │
-     7 │ ROBERT K   103272         FIREFIGHTER-EMT (FIRE)      │
-     8 │ LAKENYA A          17.68  CROSSING GUARD (OEMC)       │
-     9 │ DORIS A            19.38  CROSSING GUARD (OEMC)       │
-    10 │ BRENDA B    64392         TRAFFIC CONTROL AIDE (OEMC) │
+     1 │ JEFFERY A  SERGEANT (POLICE)            101442        │
+     2 │ NANCY A    POLICE OFFICER (POLICE)       80016        │
+     3 │ ANTHONY A  POLICE OFFICER (POLICE)       72510        │
+     4 │ ALBA M     POLICE CADET (POLICE)                 9.46 │
+     5 │ JAMES A    FIRE ENGINEER-EMT (FIRE)     103350        │
+     6 │ DANIEL A   FIREFIGHTER-EMT (FIRE)        95484        │
+     7 │ ROBERT K   FIREFIGHTER-EMT (FIRE)       103272        │
+     8 │ LAKENYA A  CROSSING GUARD (OEMC)                17.68 │
+     9 │ DORIS A    CROSSING GUARD (OEMC)                19.38 │
+    10 │ BRENDA B   TRAFFIC CONTROL AIDE (OEMC)   64392        │
     =#
 
 In `@query` notation, `Join(X)` is written as `join(X)`.
