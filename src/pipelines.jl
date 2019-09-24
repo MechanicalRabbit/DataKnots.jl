@@ -1210,8 +1210,17 @@ end
 # Optimizing a pipeline expression.
 #
 
-function simplify(p::Pipeline)
-    ps = simplify_chain(p)
+function unlink(p)
+    if p.op == pass()
+        return Pipeline[]
+    elseif p.op == chain_of
+        return collect(Pipeline, p.args[1])
+    else
+        return Pipeline[p]
+    end
+end
+
+function relink(ps)
     if isempty(ps)
         return pass()
     elseif length(ps) == 1
@@ -1221,83 +1230,82 @@ function simplify(p::Pipeline)
     end
 end
 
-simplify(ps::Vector{Pipeline}) =
-    simplify.(ps)
+function simplify(p::Pipeline)
+    if p.op == chain_of
+        chain = Pipeline[]
+        simplify_chain!(chain, p)
+        return relink(chain)
+    end
+    args = collect(Any, simplify.(p.args))
+    # with_column(N, pass()) => pass()
+    if p.op == with_column && args[2].op == pass
+        return pass()
+    end
+    # with_elements(pass()) => pass()
+    if p.op == with_elements && args[1].op == pass
+        return pass()
+    end
+    Pipeline(p.op, args=args)
+end
+
+simplify(p::Vector{Pipeline}) =
+    simplify.(p)
 
 simplify(other) = other
 
-function simplify_chain(p::Pipeline)
+function simplify_chain!(chain, p)
     if p.op == pass
-        return Pipeline[]
-    elseif p.op == with_column && p.args[2].op == pass
-        return Pipeline[]
-    elseif p.op == with_elements && p.args[1].op == pass
-        return Pipeline[]
     elseif p.op == chain_of
-        return simplify_block(vcat(simplify_chain.(p.args[1])...))
-    else
-        return [Pipeline(p.op, simplify.(p.args)...)]
-    end
-end
-
-function simplify_block(ps)
-    simplified = true
-    while simplified
-        simplified = false
-        ps′ = Pipeline[]
-        k = 1
-        while k <= length(ps)
-            if ps[k].op == with_column && ps[k].args[2].op == pass
-                simplified = true
-                k += 1
-            elseif ps[k].op == with_elements && ps[k].args[1].op == pass
-                simplified = true
-                k += 1
-            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == wrap && ps[k+1].op == flatten
-                simplified = true
-                k += 2
-            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == chain_of &&
-                   length(ps[k].args[1].args[1]) == 2 && ps[k].args[1].args[1][2].op == wrap && ps[k+1].op == flatten
-                simplified = true
-                push!(ps′, with_elements(ps[k].args[1].args[1][1]))
-                k += 2
-            elseif k <= length(ps)-2 && ps[k].op == wrap && ps[k+1].op == with_elements && ps[k+2].op == flatten
-                simplified = true
-                p = ps[k+1].args[1]
-                if p.op == pass
-                elseif p.op == chain_of
-                    append!(ps′, p.args[1])
-                else
-                    push!(ps′, p)
-                end
-                k += 3
-            elseif k <= length(ps)-2 && ps[k].op == with_elements && ps[k+1].op == flatten && ps[k+2].op == with_elements
-                simplified = true
-                p = with_elements(simplify(chain_of(ps[k].args[1], ps[k+2])))
-                push!(ps′, p)
-                push!(ps′, ps[k+1])
-                k += 3
-            elseif k <= length(ps)-1 && ps[k].op == tuple_of && ps[k+1].op == column && ps[k+1].args[1] isa Int
-                simplified = true
-                p = ps[k].args[2][ps[k+1].args[1]]
-                if p.op == pass
-                elseif p.op == chain_of
-                    append!(ps′, p.args[1])
-                else
-                    push!(ps′, p)
-                end
-                k += 2
-            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k+1].op == with_elements
-                simplified = true
-                p = with_elements(simplify(chain_of(ps[k].args[1], ps[k+1].args[1])))
-                push!(ps′, p)
-                k += 2
+        for q in p.args[1]
+            if q.op == chain_of
+                simplify_chain!(chain, q)
             else
-                push!(ps′, ps[k])
-                k += 1
+                simplify_chain!(chain, simplify(q))
             end
         end
-        ps = ps′
+    # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
+    elseif p.op == with_elements && length(chain) >= 1 && chain[end].op == wrap
+        pop!(chain)
+        simplify_chain!(chain, p.args[1])
+        simplify_chain!(chain, wrap())
+    # chain_of(wrap(), flatten()) => pass()
+    elseif p.op == flatten && length(chain) >= 1 && chain[end].op == wrap
+        pop!(chain)
+    # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
+    elseif p.op == flatten && length(chain) >= 1 && chain[end].op == with_elements
+        qs = unlink(chain[end].args[1])
+        if length(qs) >= 1 && qs[end].op == wrap
+            pop!(chain)
+            pop!(qs)
+            if !isempty(qs)
+                push!(chain, with_elements(relink(qs)))
+            end
+        else
+            push!(chain, p)
+        end
+    # chain_of(wrap(), lift(f)) => lift(f)
+    elseif p.op == lift
+        while length(chain) >= 1 && chain[end].op == wrap
+            pop!(chain)
+        end
+        push!(chain, p)
+    # chain_of(tuple_of(chain_of(p, wrap()), ...), tuple_lift(f)) => chain_of(tuple_of(p, ...), tuple_lift(f))
+    elseif p.op == tuple_lift && chain[end].op == tuple_of
+        lbls, cols = chain[end].args
+        cols′ = Pipeline[]
+        for col in cols
+            qs = unlink(col)
+            while length(qs) >= 1 && qs[end].op == wrap
+                pop!(qs)
+            end
+            push!(cols′, relink(qs))
+        end
+        pop!(chain)
+        push!(chain, tuple_of(lbls, cols′))
+        push!(chain, p)
+    else
+        push!(chain, p)
     end
-    ps
+    nothing
 end
+
