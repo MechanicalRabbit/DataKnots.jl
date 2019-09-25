@@ -1317,6 +1317,14 @@ function simplify_chain!(chain, p)
         else
             push!(chain, p)
         end
+        # chain_of(tuple_of(p1, ..., pn), column(k)) => pk
+    elseif p.op == column && length(chain) >= 1 && chain[end].op == tuple_of
+        k = p.args[1]
+        qs = unlink(chain[end].args[2][k])
+        pop!(chain)
+        for q in qs
+            simplify_chain!(chain, q)
+        end
     else
         push!(chain, p)
     end
