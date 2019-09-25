@@ -1290,7 +1290,7 @@ function simplify_chain!(chain, p)
         end
         push!(chain, p)
     # chain_of(tuple_of(chain_of(p, wrap()), ...), tuple_lift(f)) => chain_of(tuple_of(p, ...), tuple_lift(f))
-    elseif p.op == tuple_lift && chain[end].op == tuple_of
+    elseif p.op == tuple_lift && length(chain) >= 1 && chain[end].op == tuple_of
         lbls, cols = chain[end].args
         cols′ = Pipeline[]
         for col in cols
@@ -1303,6 +1303,20 @@ function simplify_chain!(chain, p)
         pop!(chain)
         push!(chain, tuple_of(lbls, cols′))
         push!(chain, p)
+    # chain_of(with_column(N, chain_of(p, wrap())), distribute(N)) => chain_of(with_column(N, p), wrap())
+    elseif p.op == distribute && length(chain) >= 1 && chain[end].op == with_column && p.args[1] == chain[end].args[1]
+        N = p.args[1]
+        qs = unlink(chain[end].args[2])
+        if length(qs) >= 1 && qs[end].op == wrap
+            pop!(chain)
+            pop!(qs)
+            if !isempty(qs)
+                push!(chain, with_column(N, relink(qs)))
+            end
+            push!(chain, wrap())
+        else
+            push!(chain, p)
+        end
     else
         push!(chain, p)
     end
