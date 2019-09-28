@@ -88,6 +88,14 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
         pop!(chain)
         simplify_and_push!(memo, chain, p.args[1])
         simplify_and_push!(memo, chain, memo(wrap()))
+    # chain_of(with_elements(p), with_elements(q)) => with_elements(chain_of(p, q))
+    elseif p.op == with_elements && length(chain) >= 1 && chain[end].op == with_elements
+        qs = unchain(chain[end].args[1])
+        pop!(chain)
+        for q in unchain(p.args[1])
+            simplify_and_push!(memo, qs, q)
+        end
+        push!(chain, memo(with_elements(memo(qs))))
     # chain_of(wrap(), flatten()) => pass()
     elseif p.op == flatten && length(chain) >= 1 && chain[end].op == wrap
         pop!(chain)
