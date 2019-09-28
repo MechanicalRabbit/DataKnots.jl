@@ -122,7 +122,12 @@ function tile_expr(ex::Expr; precedence=0)
                 else
                     ("", "")
                 end
-            if length(arg_lts) == 2
+            if length(arg_lts) == 1
+                literal(par[1]) *
+                literal(sep) *
+                arg_lts[1] *
+                literal(par[2])
+            elseif length(arg_lts) == 2
                 literal(par[1]) *
                 pair_layout(arg_lts..., sep=sep, tab=0) *
                 literal(par[2])
