@@ -143,11 +143,21 @@ function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
     return DataKnot(scp_shp, scp_cell)
 end
 
-assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
-    assemble(shape(pack(db, params)), F)
+assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]; rewrite=rewrite_all) =
+    assemble(shape(pack(db, params)), F; rewrite=rewrite)
 
-assemble(src::AbstractShape, F::AbstractQuery) =
-    optimize(uncover(assemble(nothing, cover(src), F)))
+function assemble(src::AbstractShape, F::AbstractQuery; rewrite=rewrite_all)
+    p = uncover(assemble(nothing, cover(src), F))
+    if rewrite isa Vector
+        for pass in rewrite
+            p = pass(p)
+        end
+        p
+    elseif rewrite !== nothing
+        p = rewrite(p)
+    end
+    p
+end
 
 assemble(::Nothing, p::Pipeline, F) =
     assemble(Environment(), p, F)

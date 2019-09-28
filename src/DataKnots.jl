@@ -44,6 +44,7 @@ include("vectors.jl")
 include("shapes.jl")
 include("knots.jl")
 include("pipelines.jl")
+include("rewrites.jl")
 include("queries.jl")
 
 end

@@ -40,7 +40,7 @@ We will need the following definitions.
         Unique,
         assemble,
         elements,
-        optimize,
+        rewrite_all,
         shape,
         trivial_pipe,
         target_pipe,
@@ -309,7 +309,7 @@ pipeline primitive `sieve_by()`.
 The resulting pipeline could be compacted by simplifying the pipeline
 expression.
 
-    p = optimize(uncover(p3))
+    p = rewrite_all(uncover(p3))
     #=>
     chain_of(with_elements(column(:department)),
              flatten(),
