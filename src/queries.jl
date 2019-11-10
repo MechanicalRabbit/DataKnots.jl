@@ -777,7 +777,7 @@ function assemble_collect(p, x)
             x_pos = i
             continue
         end
-        col = lookup(src, i)
+        col = lookup(src, lbl)
         push!(cols, col)
         if lbl == ordinal_label(i)
             lbl = ordinal_label(length(cols))
@@ -913,7 +913,7 @@ function assemble_join(src::AbstractShape, src0::AbstractShape, x::Pipeline)
             x_pos = i
             continue
         end
-        col = lookup(src, i)
+        col = lookup(src, lbl)
         push!(cols, chain_of(column(1), col))
         push!(col_shps, target(col))
         if lbl == ordinal_label(i)
@@ -1406,7 +1406,7 @@ function assemble_keep(p::Pipeline, q::Pipeline)
     push!(lbls′, name)
     push!(cols′, tgt)
     ctx′ = TupleOf(lbls′, cols′)
-    qs = Pipeline[chain_of(column(2), column(j)) for j in perm]
+    qs = Pipeline[chain_of(column(2), column(label(ctx, j))) for j in perm]
     push!(qs, q)
     tgt = BlockOf(TupleOf(src isa IsScope ? column(src) : src, ctx′) |> IsScope,
                   x1to1) |> IsFlow

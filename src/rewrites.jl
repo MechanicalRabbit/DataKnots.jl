@@ -38,7 +38,7 @@ function unchain(p)
 end
 
 function rewrite_all(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_simplify(p, memo=memo)
+    rewrite_unused(rewrite_simplify(p, memo=memo), memo=memo)
 end
 
 
@@ -157,5 +157,186 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
         push!(chain, p)
     end
     nothing
+end
+
+
+#
+# Dead code elimination.
+#
+
+abstract type AbstractSeen end
+
+quoteof(seen::AbstractSeen) =
+    quoteof_auto(seen)
+
+show(io::IO, seen::AbstractSeen) =
+    print_expr(io, quoteof(seen))
+
+struct SeenEverything <: AbstractSeen end
+
+struct SeenNothing <: AbstractSeen end
+
+struct SeenTuple <: AbstractSeen
+    cols::Dict{Int,AbstractSeen}
+end
+
+struct SeenNamedTuple <: AbstractSeen
+    cols::Dict{Symbol,AbstractSeen}
+end
+
+struct SeenBlock <: AbstractSeen
+    elt::AbstractSeen
+end
+
+function seen_union(seen1::AbstractSeen, seen2::AbstractSeen)
+    @assert seen1 isa Union{SeenEverything, SeenNothing} || seen2 isa Union{SeenEverything, SeenNothing}
+    if seen1 isa SeenEverything || seen2 isa SeenNothing
+        return seen1
+    end
+    if seen1 isa SeenNothing || seen2 isa SeenEverything
+        return seen2
+    end
+end
+
+function seen_union(seen1::SeenTuple, seen2::SeenTuple)
+    cols′ = Dict{Int, AbstractSeen}()
+    for (lbl, col_seen1) in seen1.cols
+        if lbl in keys(seen2.cols)
+            col_seen2 = seen2.cols[lbl]
+            cols′[lbl] = seen_union(col_seen1, col_seen2)
+        else
+            cols′[lbl] = col_seen1
+        end
+    end
+    for (lbl, col_seen2) in seen2.cols
+        if !(lbl in keys(seen1.cols))
+            cols′[lbl] = col_seen2
+        end
+    end
+    SeenTuple(cols′)
+end
+
+function seen_union(seen1::SeenNamedTuple, seen2::SeenNamedTuple)
+    cols′ = Dict{Symbol, AbstractSeen}()
+    for (lbl, col_seen1) in seen1.cols
+        if lbl in keys(seen2.cols)
+            col_seen2 = seen2.cols[lbl]
+            cols′[lbl] = seen_union(col_seen1, col_seen2)
+        else
+            cols′[lbl] = col_seen1
+        end
+    end
+    for (lbl, col_seen2) in seen2.cols
+        if !(lbl in keys(seen1.cols))
+            cols′[lbl] = col_seen2
+        end
+    end
+    SeenNamedTuple(cols′)
+end
+
+function seen_union(seen1::SeenBlock, seen2::SeenBlock)
+    elt′ = seen_union(seen1.elt, seen2.elt)
+    elt′ isa SeenEverything ? elt′ : SeenBlock(elt′)
+end
+
+function rewrite_unused(p::Pipeline; memo=RewriteMemo())::Pipeline
+    seen = SeenEverything()
+    seen′ = rewrite_unused(memo, p, seen)
+    p
+end
+
+function rewrite_unused(memo::RewriteMemo, p::Pipeline, seen::AbstractSeen)
+    if seen isa SeenNothing
+        seen′ = seen
+    elseif p.op == filler
+        seen′ = SeenNothing()
+    elseif p.op == null_filler || p.op == block_filler
+        @assert seen isa Union{SeenBlock, SeenEverything}
+        seen′ = SeenNothing()
+    elseif p.op == pass
+        seen′ = seen
+    elseif p.op == chain_of
+        seen′ = seen
+        for q in reverse(p.args[1])
+            seen′ = rewrite_unused(memo, q, seen′)
+        end
+    elseif p.op == tuple_of
+        lbls, qs = p.args
+        @assert seen isa Union{SeenTuple, SeenNamedTuple, SeenEverything}
+        @assert (seen isa SeenTuple) <= isempty(lbls) && (seen isa SeenNamedTuple) <= !isempty(lbls)
+        seen′ = SeenNothing()
+        for k = 1:length(qs)
+            lbl = seen isa SeenNamedTuple ? lbls[k] : k
+            if seen isa Union{SeenTuple, SeenNamedTuple}
+                if !(lbl in keys(seen.cols))
+                    continue
+                end
+                col_seen = seen.cols[lbl]
+            else
+                col_seen = seen
+            end
+            col_seen′ = rewrite_unused(memo, qs[k], col_seen)
+            seen′ = seen_union(seen′, col_seen′)
+        end
+    elseif p.op == with_elements
+        @assert seen isa Union{SeenBlock, SeenEverything}
+        elt_seen = seen isa SeenBlock ? seen.elt : seen
+        elt_seen′ = rewrite_unused(memo, p.args[1], elt_seen)
+        seen′ = elt_seen′ isa SeenEverything ? elt_seen′ : SeenBlock(elt_seen′)
+    elseif p.op == with_column
+        k = p.args[1]
+        @assert seen isa Union{SeenTuple, SeenEverything}
+        if seen isa SeenTuple
+            col_seen = get(seen.cols, k, SeenNothing())
+            col_seen′ = rewrite_unused(memo, p.args[2], col_seen)
+            cols′ = copy(seen.cols)
+            cols′[k] = col_seen′
+            seen′ = SeenTuple(cols′)
+        else
+            seen′ = seen
+        end
+    elseif p.op == wrap
+        @assert seen isa Union{SeenBlock, SeenEverything}
+        seen′ = seen isa SeenBlock ? seen.elt : seen
+    elseif p.op == flatten
+        @assert seen isa Union{SeenBlock, SeenEverything}
+        seen′ = seen isa SeenBlock ? SeenBlock(seen) : seen
+    elseif p.op == distribute
+        k = p.args[1]
+        @assert seen isa Union{SeenBlock, SeenEverything}
+        if seen isa SeenBlock
+            @assert seen.elt isa Union{SeenTuple, SeenEverything, SeenNothing}
+            if seen.elt isa SeenTuple
+                if get(seen.elt.cols, k, nothing) isa SeenEverything
+                    seen′ = seen.elt
+                else
+                    cols′ = copy(seen.elt.cols)
+                    cols′[k] = SeenBlock(get(seen.elt.cols, k, SeenNothing()))
+                    seen′ = SeenTuple(cols′)
+                end
+            elseif seen.elt isa SeenNothing
+                seen′ = SeenTuple(Dict(k => SeenBlock(seen.elt)))
+            else
+                seen′ = seen.elt
+            end
+        else
+            seen′ = seen
+        end
+    elseif p.op == column
+        lbl = p.args[1]
+        seen′ = lbl isa Symbol ? SeenNamedTuple(Dict(lbl => seen)) : SeenTuple(Dict(lbl => seen))
+    elseif p.op == sieve_by
+        @assert seen isa Union{SeenBlock, SeenEverything}
+        seen′ = seen isa SeenBlock ? SeenTuple(Dict(1 => seen.elt, 2 => SeenEverything())) : seen
+    elseif p.op == block_length
+        seen′ = SeenBlock(SeenNothing())
+    else
+        seen′ = SeenEverything()
+    end
+    #println("~" ^ 60)
+    #println(p)
+    #println(seen′)
+    #println(seen)
+    seen′
 end
 
