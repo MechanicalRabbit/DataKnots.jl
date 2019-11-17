@@ -1197,3 +1197,89 @@ function _partition(offs, sep)
     return (offs_outer, offs_inner)
 end
 
+
+#
+# Pipeline matching.
+#
+
+macro match_pipeline(ex)
+    return esc(_match_pipeline(ex))
+end
+
+function _match_pipeline(@nospecialize ex)
+    if Meta.isexpr(ex, :call, 3) && ex.args[1] == :~
+        val = gensym()
+        p = ex.args[2]
+        pat = ex.args[3]
+        cs = Expr[]
+        as = Expr[]
+        _match_pipeline!(val, pat, cs, as)
+        c = foldl((l, r) -> :($l && $r), cs)
+        quote
+            local $val = $p
+            if $c
+                $(as...)
+                true
+            else
+                false
+            end
+        end
+    elseif ex isa Expr
+        Expr(ex.head, _match_pipeline.(ex.args)...)
+    else
+        ex
+    end
+end
+
+function _match_pipeline!(val, pat, cs, as)
+    if pat === :_
+        return
+    elseif pat isa Symbol
+        push!(as, :(local $pat = $val))
+        return
+    elseif Meta.isexpr(pat, :(::), 2)
+        ty = pat.args[2]
+        pat = pat.args[1]
+        push!(cs, :($val isa $ty))
+        _match_pipeline!(val, pat, cs, as)
+        return
+    elseif Meta.isexpr(pat, :call) && length(pat.args) >= 1 && pat.args[1] isa Symbol
+        fn = pat.args[1]
+        args = pat.args[2:end]
+        push!(cs, :($val isa $DataKnots.Pipeline))
+        push!(cs, :($val.op === $DataKnots.$fn))
+        _match_pipeline!(:($val.args), args, cs, as)
+        return
+    elseif Meta.isexpr(pat, :vect)
+        push!(cs, :($val isa Vector{$DataKnots.Pipeline}))
+        _match_pipeline!(val, pat.args, cs, as)
+        return
+    end
+    error("expected a pipeline pattern; got $(repr(pat))")
+end
+
+function _match_pipeline!(val, pats::Vector{Any}, cs, as)
+    minlen = 0
+    varlen = false
+    for pat in pats
+        if Meta.isexpr(pat, :..., 1)
+            !varlen || error("duplicate vararg pattern in $(repr(:([$pat])))")
+            varlen = true
+        else
+            minlen += 1
+        end
+    end
+    push!(cs, !varlen ? :(length($val) == $minlen) : :(length($val) >= $minlen))
+    nearend = false
+    for (k, pat) in enumerate(pats)
+        if Meta.isexpr(pat, :..., 1)
+            pat = pat.args[1]
+            k = Expr(:call, :(:), k, Expr(:call, :-, :end, minlen-k+1))
+            nearend = true
+        elseif nearend
+            k = Expr(:call, :-, :end, minlen-k+1)
+        end
+        _match_pipeline!(:($val[$k]), pat, cs, as)
+    end
+end
+

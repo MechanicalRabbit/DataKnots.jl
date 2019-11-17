@@ -28,7 +28,7 @@ function (memo::RewriteMemo)(ps::Vector{Pipeline})
 end
 
 function unchain(p)
-    if p.op == pass()
+    if p.op == pass
         return Pipeline[]
     elseif p.op == chain_of
         return collect(Pipeline, p.args[1])
@@ -58,11 +58,11 @@ function rewrite_simplify(memo::RewriteMemo, p::Pipeline)
     end
     args = collect(Any, rewrite_simplify.(Ref(memo), p.args))
     # with_column(N, pass()) => pass()
-    if p.op == with_column && args[2].op == pass
+    if @match_pipeline p ~ with_column(_, pass())
         return memo(pass())
     end
     # with_elements(pass()) => pass()
-    if p.op == with_elements && args[1].op == pass
+    if @match_pipeline p ~ with_elements(pass())
         return memo(pass())
     end
     memo(Pipeline(p.op, args=args))
@@ -74,35 +74,36 @@ rewrite_simplify(memo::RewriteMemo, p::Vector{Pipeline}) =
 rewrite_simplify(memo::RewriteMemo, other) = other
 
 function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipeline)
-    if p.op == pass
-    elseif p.op == chain_of
-        for q in p.args[1]
-            if q.op == chain_of
+    top = !isempty(chain) ? chain[end] : memo(pass())
+    @match_pipeline if (p ~ pass())
+    elseif (p ~ chain_of(qs))
+        for q in qs
+            if (q ~ chain_of(_))
                 simplify_and_push!(memo, chain, q)
             else
                 simplify_and_push!(memo, chain, rewrite_simplify(memo, q))
             end
         end
     # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
-    elseif p.op == with_elements && length(chain) >= 1 && chain[end].op == wrap
+    elseif (p ~ with_elements(q)) && (top ~ wrap())
         pop!(chain)
-        simplify_and_push!(memo, chain, p.args[1])
+        simplify_and_push!(memo, chain, q)
         simplify_and_push!(memo, chain, memo(wrap()))
     # chain_of(with_elements(p), with_elements(q)) => with_elements(chain_of(p, q))
-    elseif p.op == with_elements && length(chain) >= 1 && chain[end].op == with_elements
-        qs = unchain(chain[end].args[1])
+    elseif (p ~ with_elements(q2)) && (top ~ with_elements(q1))
+        qs = unchain(q1)
         pop!(chain)
-        for q in unchain(p.args[1])
+        for q in unchain(q2)
             simplify_and_push!(memo, qs, q)
         end
         push!(chain, memo(with_elements(memo(qs))))
     # chain_of(wrap(), flatten()) => pass()
-    elseif p.op == flatten && length(chain) >= 1 && chain[end].op == wrap
+    elseif (p ~ flatten()) && (top ~ wrap())
         pop!(chain)
     # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
-    elseif p.op == flatten && length(chain) >= 1 && chain[end].op == with_elements
-        qs = unchain(chain[end].args[1])
-        if length(qs) >= 1 && qs[end].op == wrap
+    elseif (p ~ flatten()) && (top ~ with_elements(q))
+        qs = unchain(q)
+        if (qs ~ [_..., wrap()])
             pop!(chain)
             pop!(qs)
             if !isempty(qs)
@@ -112,18 +113,17 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
             push!(chain, p)
         end
     # chain_of(wrap(), lift(f)) => lift(f)
-    elseif p.op == lift
-        while length(chain) >= 1 && chain[end].op == wrap
+    elseif (p ~ lift(_))
+        while (chain ~ [_..., wrap()])
             pop!(chain)
         end
         push!(chain, p)
     # chain_of(tuple_of(chain_of(p, wrap()), ...), tuple_lift(f)) => chain_of(tuple_of(p, ...), tuple_lift(f))
-    elseif p.op == tuple_lift && length(chain) >= 1 && chain[end].op == tuple_of
-        lbls, cols = chain[end].args
+    elseif (p ~ tuple_lift(_)) && (top ~ tuple_of(lbls, cols))
         cols′ = Pipeline[]
         for col in cols
             qs = unchain(col)
-            while length(qs) >= 1 && qs[end].op == wrap
+            while (qs ~ [_..., wrap()])
                 pop!(qs)
             end
             push!(cols′, memo(qs))
@@ -132,10 +132,9 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
         push!(chain, memo(tuple_of(lbls, cols′)))
         push!(chain, p)
     # chain_of(with_column(k, chain_of(p, wrap())), distribute(k)) => chain_of(with_column(k, p), wrap())
-    elseif p.op == distribute && length(chain) >= 1 && chain[end].op == with_column && p.args[1] == chain[end].args[1]
-        k = p.args[1]
-        qs = unchain(chain[end].args[2])
-        if length(qs) >= 1 && qs[end].op == wrap
+    elseif (p ~ distribute(k)) && (top ~ with_column(j, q)) && k == j
+        qs = unchain(q)
+        if (qs ~ [_..., wrap()])
             pop!(chain)
             pop!(qs)
             if !isempty(qs)
@@ -146,13 +145,20 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
             push!(chain, p)
         end
     # chain_of(tuple_of(p1, ..., pn), column(k)) => pk
-    elseif p.op == column && p.args[1] isa Number && length(chain) >= 1 && chain[end].op == tuple_of
-        k = p.args[1]
-        qs = unchain(chain[end].args[2][k])
+    elseif (p ~ column(k::Number)) && (top ~ tuple_of(_, qs))
+        qs = unchain(qs[k])
         pop!(chain)
         for q in qs
             simplify_and_push!(memo, chain, q)
         end
+    # chain_of(tuple_of(..., pk, ...), with_column(k, q)) => tuple_of(..., chain_of(pk, q), ...)
+    elseif (p ~ with_column(k::Number, q)) && (top ~ tuple_of(lbls, cols))
+        pop!(chain)
+        qs = unchain(cols[k])
+        simplify_and_push!(memo, qs, q)
+        cols′ = copy(cols)
+        cols′[k] = memo(qs)
+        push!(chain, memo(tuple_of(lbls, cols′)))
     else
         push!(chain, p)
     end
