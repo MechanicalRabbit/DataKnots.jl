@@ -38,7 +38,7 @@ function unchain(p)
 end
 
 function rewrite_all(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_unused(rewrite_simplify(p, memo=memo), memo=memo)
+    rewrite_simplify(p, memo=memo)
 end
 
 
@@ -84,42 +84,63 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
                 simplify_and_push!(memo, chain, rewrite_simplify(memo, q))
             end
         end
-    # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
-    elseif (p ~ with_elements(q)) && (top ~ wrap())
-        pop!(chain)
-        simplify_and_push!(memo, chain, q)
-        simplify_and_push!(memo, chain, memo(wrap()))
-    # chain_of(with_elements(p), with_elements(q)) => with_elements(chain_of(p, q))
-    elseif (p ~ with_elements(q2)) && (top ~ with_elements(q1))
-        qs = unchain(q1)
-        pop!(chain)
-        for q in unchain(q2)
-            simplify_and_push!(memo, qs, q)
-        end
-        push!(chain, memo(with_elements(memo(qs))))
-    # chain_of(wrap(), flatten()) => pass()
-    elseif (p ~ flatten()) && (top ~ wrap())
-        pop!(chain)
-    # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
-    elseif (p ~ flatten()) && (top ~ with_elements(q))
-        qs = unchain(q)
-        if (qs ~ [_..., wrap()])
-            pop!(chain)
-            pop!(qs)
-            if !isempty(qs)
-                push!(chain, memo(with_elements(memo(qs))))
+    elseif (p ~ tuple_of(lbls, cols))
+        head = nothing
+        for col in cols
+            if (col ~ chain_of([q, _...]))
+                col = q
             end
-        else
+            if (col ~ filler(_)) || (col ~ block_filler(_, _)) || (col ~ null_filler())
+            elseif (col ~ column(k)) && (head === nothing || head === col)
+                head = col
+            else
+                head = missing
+                break
+            end
+        end
+        if head === missing
             push!(chain, p)
+        elseif head === nothing
+            empty!(chain)
+            push!(chain, p)
+        else
+            cols′ = Pipeline[]
+            for col in cols
+                if col === head
+                    col = memo(pass())
+                elseif (col ~ chain_of([q, qs...]))
+                    if q === head
+                        col = memo(qs)
+                    end
+                end
+                push!(cols′, col)
+            end
+            simplify_and_push!(memo, chain, head)
+            simplify_and_push!(memo, chain, memo(tuple_of(lbls, cols′)))
         end
-    # chain_of(wrap(), lift(f)) => lift(f)
-    elseif (p ~ lift(_))
-        while (chain ~ [_..., wrap()])
-            pop!(chain)
-        end
+    # chain_of(p, filler(val)) => filler(val)
+    elseif (p ~ filler(_)) || (p ~ block_filler(_, _)) || (p ~ null_filler())
+        empty!(chain)
         push!(chain, p)
+    # chain_of(tuple_of(p1, ..., pn), column(k)) => pk
+    elseif (top ~ tuple_of(lbls, cols)) && (p ~ column(lbl))
+        k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) : lbl
+        qs = unchain(cols[k])
+        pop!(chain)
+        for q in qs
+            simplify_and_push!(memo, chain, q)
+        end
+    # chain_of(tuple_of(..., pk, ...), with_column(k, q)) => tuple_of(..., chain_of(pk, q), ...)
+    elseif (top ~ tuple_of(lbls, cols)) && (p ~ with_column(lbl, q))
+        k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) : lbl
+        pop!(chain)
+        qs = unchain(cols[k])
+        simplify_and_push!(memo, qs, q)
+        cols′ = copy(cols)
+        cols′[k] = memo(qs)
+        simplify_and_push!(memo, chain, memo(tuple_of(lbls, cols′)))
     # chain_of(tuple_of(chain_of(p, wrap()), ...), tuple_lift(f)) => chain_of(tuple_of(p, ...), tuple_lift(f))
-    elseif (p ~ tuple_lift(_)) && (top ~ tuple_of(lbls, cols))
+    elseif (top ~ tuple_of(lbls, cols)) && (p ~ tuple_lift(_))
         cols′ = Pipeline[]
         for col in cols
             qs = unchain(col)
@@ -131,218 +152,73 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
         pop!(chain)
         push!(chain, memo(tuple_of(lbls, cols′)))
         push!(chain, p)
-    # chain_of(with_column(k, chain_of(p, wrap())), distribute(k)) => chain_of(with_column(k, p), wrap())
-    elseif (p ~ distribute(k)) && (top ~ with_column(j, q)) && k == j
-        qs = unchain(q)
-        if (qs ~ [_..., wrap()])
-            pop!(chain)
-            pop!(qs)
-            if !isempty(qs)
-                push!(chain, memo(with_column(k, memo(qs))))
-            end
-            push!(chain, memo(wrap()))
-        else
-            push!(chain, p)
-        end
-    # chain_of(tuple_of(p1, ..., pn), column(k)) => pk
-    elseif (p ~ column(k::Number)) && (top ~ tuple_of(_, qs))
-        qs = unchain(qs[k])
+    # chain_of(with_column(k, wrap()), distribute(k)) => wrap()
+    elseif (top ~ with_column(j, wrap())) && (p ~ distribute(k)) && j == k
         pop!(chain)
+        simplify_and_push!(memo, chain, memo(wrap()))
+    # chain_of(with_column(k, chain_of(p, wrap())), distribute(k)) => chain_of(with_column(k, p), wrap())
+    elseif (top ~ with_column(j, chain_of([qs..., wrap()]))) && (p ~ distribute(k)) && j == k
+        pop!(chain)
+        push!(chain, memo(with_column(k, memo(qs))))
+        push!(chain, memo(wrap()))
+    # chain_of(wrap(), flatten()) => pass()
+    elseif (top ~ wrap()) && (p ~ flatten())
+        pop!(chain)
+    # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
+    elseif (top ~ wrap()) && (p ~ with_elements(q))
+        pop!(chain)
+        qs = unchain(q)
         for q in qs
             simplify_and_push!(memo, chain, q)
         end
-    # chain_of(tuple_of(..., pk, ...), with_column(k, q)) => tuple_of(..., chain_of(pk, q), ...)
-    elseif (p ~ with_column(k::Number, q)) && (top ~ tuple_of(lbls, cols))
+        simplify_and_push!(memo, chain, top)
+    # chain_of(wrap(), lift(f)) => lift(f)
+    elseif (top ~ wrap()) && (p ~ lift(_))
         pop!(chain)
-        qs = unchain(cols[k])
-        simplify_and_push!(memo, qs, q)
-        cols′ = copy(cols)
-        cols′[k] = memo(qs)
-        push!(chain, memo(tuple_of(lbls, cols′)))
+        simplify_and_push!(memo, chain, p)
+    # chain_of(with_elements(p), with_elements(q)) => with_elements(chain_of(p, q))
+    elseif (top ~ with_elements(q1)) && (p ~ with_elements(q2))
+        pop!(chain)
+        qs = unchain(q1)
+        for q in unchain(q2)
+            simplify_and_push!(memo, qs, q)
+        end
+        push!(chain, memo(with_elements(memo(qs))))
+    # chain_of(with_elements(wrap()), flatten()) => pass()
+    elseif (top ~ with_elements(wrap())) && (p ~ flatten())
+        pop!(chain)
+    # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
+    elseif (top ~ with_elements(chain_of([qs..., wrap()]))) && (p ~ flatten())
+        pop!(chain)
+        push!(chain, memo(with_elements(memo(qs))))
+    # chain_of(flatten(), with_elements(column(k))) => chain_of(with_elements(with_elements(column(k))), flatten())
+    elseif (top ~ flatten()) && (p ~ with_elements(column(k)))
+        pop!(chain)
+        simplify_and_push!(memo, chain, memo(with_elements(p)))
+        simplify_and_push!(memo, chain, top)
+   # chain_of(flatten(), with_elements(chain_of(column(k), p))) => chain_of(with_elements(with_elements(column(k))), flatten(), with_elements(p))
+    elseif (top ~ flatten()) && (p ~ with_elements(chain_of([column(k), qs...])))
+        pop!(chain)
+        simplify_and_push!(memo, chain, memo(with_elements(memo(with_elements(memo(column(k)))))))
+        simplify_and_push!(memo, chain, top)
+        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
+    # chain_of(distribute(k), with_elements(column(k))) => column(k)
+    elseif (top ~ distribute(j)) && (p ~ with_elements(column(k))) && j == k
+        pop!(chain)
+        simplify_and_push!(memo, chain, memo(column(k)))
+    # chain_of(distribute(k), with_elements(chain_of(column(k), p))) => chain_of(column(k), with_elements(p))
+    elseif (top ~ distribute(j)) && (p ~ with_elements(chain_of([column(k), qs...]))) && j == k
+        pop!(chain)
+        simplify_and_push!(memo, chain, memo(column(k)))
+        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
+    # chain_of(sieve_by(), with_elements(column(k))) => chain_of(with_column(1, column(k)), sieve_by())
+    elseif (top ~ sieve_by()) && (p ~ with_elements(column(k)))
+        pop!(chain)
+        simplify_and_push!(memo, chain, memo(with_column(1, memo(column(k)))))
+        simplify_and_push!(memo, chain, top)
     else
         push!(chain, p)
     end
     nothing
-end
-
-
-#
-# Dead code elimination.
-#
-
-abstract type AbstractSeen end
-
-quoteof(seen::AbstractSeen) =
-    quoteof_auto(seen)
-
-show(io::IO, seen::AbstractSeen) =
-    print_expr(io, quoteof(seen))
-
-struct SeenEverything <: AbstractSeen end
-
-struct SeenNothing <: AbstractSeen end
-
-struct SeenTuple <: AbstractSeen
-    cols::Dict{Int,AbstractSeen}
-end
-
-struct SeenNamedTuple <: AbstractSeen
-    cols::Dict{Symbol,AbstractSeen}
-end
-
-struct SeenBlock <: AbstractSeen
-    elt::AbstractSeen
-end
-
-function seen_union(seen1::AbstractSeen, seen2::AbstractSeen)
-    @assert seen1 isa Union{SeenEverything, SeenNothing} || seen2 isa Union{SeenEverything, SeenNothing}
-    if seen1 isa SeenEverything || seen2 isa SeenNothing
-        return seen1
-    end
-    if seen1 isa SeenNothing || seen2 isa SeenEverything
-        return seen2
-    end
-end
-
-function seen_union(seen1::SeenTuple, seen2::SeenTuple)
-    cols′ = Dict{Int, AbstractSeen}()
-    for (lbl, col_seen1) in seen1.cols
-        if lbl in keys(seen2.cols)
-            col_seen2 = seen2.cols[lbl]
-            cols′[lbl] = seen_union(col_seen1, col_seen2)
-        else
-            cols′[lbl] = col_seen1
-        end
-    end
-    for (lbl, col_seen2) in seen2.cols
-        if !(lbl in keys(seen1.cols))
-            cols′[lbl] = col_seen2
-        end
-    end
-    SeenTuple(cols′)
-end
-
-function seen_union(seen1::SeenNamedTuple, seen2::SeenNamedTuple)
-    cols′ = Dict{Symbol, AbstractSeen}()
-    for (lbl, col_seen1) in seen1.cols
-        if lbl in keys(seen2.cols)
-            col_seen2 = seen2.cols[lbl]
-            cols′[lbl] = seen_union(col_seen1, col_seen2)
-        else
-            cols′[lbl] = col_seen1
-        end
-    end
-    for (lbl, col_seen2) in seen2.cols
-        if !(lbl in keys(seen1.cols))
-            cols′[lbl] = col_seen2
-        end
-    end
-    SeenNamedTuple(cols′)
-end
-
-function seen_union(seen1::SeenBlock, seen2::SeenBlock)
-    elt′ = seen_union(seen1.elt, seen2.elt)
-    elt′ isa SeenEverything ? elt′ : SeenBlock(elt′)
-end
-
-function rewrite_unused(p::Pipeline; memo=RewriteMemo())::Pipeline
-    seen = SeenEverything()
-    seen′ = rewrite_unused(memo, p, seen)
-    p
-end
-
-function rewrite_unused(memo::RewriteMemo, p::Pipeline, seen::AbstractSeen)
-    if seen isa SeenNothing
-        seen′ = seen
-    elseif p.op == filler
-        seen′ = SeenNothing()
-    elseif p.op == null_filler || p.op == block_filler
-        @assert seen isa Union{SeenBlock, SeenEverything}
-        seen′ = SeenNothing()
-    elseif p.op == pass
-        seen′ = seen
-    elseif p.op == chain_of
-        seen′ = seen
-        for q in reverse(p.args[1])
-            seen′ = rewrite_unused(memo, q, seen′)
-        end
-    elseif p.op == tuple_of
-        lbls, qs = p.args
-        @assert seen isa Union{SeenTuple, SeenNamedTuple, SeenEverything}
-        @assert (seen isa SeenTuple) <= isempty(lbls) && (seen isa SeenNamedTuple) <= !isempty(lbls)
-        seen′ = SeenNothing()
-        for k = 1:length(qs)
-            lbl = seen isa SeenNamedTuple ? lbls[k] : k
-            if seen isa Union{SeenTuple, SeenNamedTuple}
-                if !(lbl in keys(seen.cols))
-                    continue
-                end
-                col_seen = seen.cols[lbl]
-            else
-                col_seen = seen
-            end
-            col_seen′ = rewrite_unused(memo, qs[k], col_seen)
-            seen′ = seen_union(seen′, col_seen′)
-        end
-    elseif p.op == with_elements
-        @assert seen isa Union{SeenBlock, SeenEverything}
-        elt_seen = seen isa SeenBlock ? seen.elt : seen
-        elt_seen′ = rewrite_unused(memo, p.args[1], elt_seen)
-        seen′ = elt_seen′ isa SeenEverything ? elt_seen′ : SeenBlock(elt_seen′)
-    elseif p.op == with_column
-        k = p.args[1]
-        @assert seen isa Union{SeenTuple, SeenEverything}
-        if seen isa SeenTuple
-            col_seen = get(seen.cols, k, SeenNothing())
-            col_seen′ = rewrite_unused(memo, p.args[2], col_seen)
-            cols′ = copy(seen.cols)
-            cols′[k] = col_seen′
-            seen′ = SeenTuple(cols′)
-        else
-            seen′ = seen
-        end
-    elseif p.op == wrap
-        @assert seen isa Union{SeenBlock, SeenEverything}
-        seen′ = seen isa SeenBlock ? seen.elt : seen
-    elseif p.op == flatten
-        @assert seen isa Union{SeenBlock, SeenEverything}
-        seen′ = seen isa SeenBlock ? SeenBlock(seen) : seen
-    elseif p.op == distribute
-        k = p.args[1]
-        @assert seen isa Union{SeenBlock, SeenEverything}
-        if seen isa SeenBlock
-            @assert seen.elt isa Union{SeenTuple, SeenEverything, SeenNothing}
-            if seen.elt isa SeenTuple
-                if get(seen.elt.cols, k, nothing) isa SeenEverything
-                    seen′ = seen.elt
-                else
-                    cols′ = copy(seen.elt.cols)
-                    cols′[k] = SeenBlock(get(seen.elt.cols, k, SeenNothing()))
-                    seen′ = SeenTuple(cols′)
-                end
-            elseif seen.elt isa SeenNothing
-                seen′ = SeenTuple(Dict(k => SeenBlock(seen.elt)))
-            else
-                seen′ = seen.elt
-            end
-        else
-            seen′ = seen
-        end
-    elseif p.op == column
-        lbl = p.args[1]
-        seen′ = lbl isa Symbol ? SeenNamedTuple(Dict(lbl => seen)) : SeenTuple(Dict(lbl => seen))
-    elseif p.op == sieve_by
-        @assert seen isa Union{SeenBlock, SeenEverything}
-        seen′ = seen isa SeenBlock ? SeenTuple(Dict(1 => seen.elt, 2 => SeenEverything())) : seen
-    elseif p.op == block_length
-        seen′ = SeenBlock(SeenNothing())
-    else
-        seen′ = SeenEverything()
-    end
-    #println("~" ^ 60)
-    #println(p)
-    #println(seen′)
-    #println(seen)
-    seen′
 end
 
