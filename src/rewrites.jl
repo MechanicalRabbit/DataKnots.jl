@@ -38,7 +38,12 @@ function unchain(p)
 end
 
 function rewrite_all(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_simplify(p, memo=memo)
+    rewrite_common(rewrite_simplify(p, memo=memo), memo=memo)
+end
+
+@inline function rewrite_with(f, memo, p)
+    args = collect(Any, f.(Ref(memo), p.args))
+    memo(Pipeline(p.op, args=args))
 end
 
 
@@ -51,25 +56,24 @@ function rewrite_simplify(p::Pipeline; memo=RewriteMemo())::Pipeline
 end
 
 function rewrite_simplify(memo::RewriteMemo, p::Pipeline)
-    if p.op == chain_of
+    @match_pipeline if (p ~ chain_of(_))
         chain = Pipeline[]
         simplify_and_push!(memo, chain, p)
         return memo(chain)
     end
-    args = collect(Any, rewrite_simplify.(Ref(memo), p.args))
+    p′ = rewrite_with(rewrite_simplify, memo, p)
     # with_column(N, pass()) => pass()
-    if @match_pipeline p ~ with_column(_, pass())
-        return memo(pass())
-    end
+    @match_pipeline if (p′ ~ with_column(_, pass()))
+        p′ =  memo(pass())
     # with_elements(pass()) => pass()
-    if @match_pipeline p ~ with_elements(pass())
-        return memo(pass())
+    elseif (p′ ~ with_elements(pass()))
+        p′ = memo(pass())
     end
-    memo(Pipeline(p.op, args=args))
+    p′
 end
 
-rewrite_simplify(memo::RewriteMemo, p::Vector{Pipeline}) =
-    rewrite_simplify.(Ref(memo), p)
+rewrite_simplify(memo::RewriteMemo, ps::Vector{Pipeline}) =
+    rewrite_simplify.(Ref(memo), ps)
 
 rewrite_simplify(memo::RewriteMemo, other) = other
 
@@ -183,14 +187,14 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
         for q in unchain(q2)
             simplify_and_push!(memo, qs, q)
         end
-        push!(chain, memo(with_elements(memo(qs))))
+        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
     # chain_of(with_elements(wrap()), flatten()) => pass()
     elseif (top ~ with_elements(wrap())) && (p ~ flatten())
         pop!(chain)
     # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
     elseif (top ~ with_elements(chain_of([qs..., wrap()]))) && (p ~ flatten())
         pop!(chain)
-        push!(chain, memo(with_elements(memo(qs))))
+        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
     # chain_of(flatten(), with_elements(column(k))) => chain_of(with_elements(with_elements(column(k))), flatten())
     elseif (top ~ flatten()) && (p ~ with_elements(column(k)))
         pop!(chain)
@@ -220,5 +224,164 @@ function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipel
         push!(chain, p)
     end
     nothing
+end
+
+
+#
+# Common subexpression elimination.
+#
+
+function rewrite_common(p::Pipeline; memo=RewriteMemo())::Pipeline
+    rewrite_common(memo, p) |> designate(p.sig)
+end
+
+function rewrite_common(memo::RewriteMemo, p::Pipeline)
+    @match_pipeline if (p ~ tuple_of(_, _))
+        chain = Pipeline[]
+        l, r = pull_common(memo, p)
+        append!(chain, unchain(rewrite_common(memo, l)))
+        push!(chain, rewrite_with(rewrite_common, memo, r))
+        memo(chain)
+    else
+        rewrite_with(rewrite_common, memo, p)
+    end
+end
+
+rewrite_common(memo::RewriteMemo, ps::Vector{Pipeline}) =
+    rewrite_common.(Ref(memo), ps)
+
+rewrite_common(memo::RewriteMemo, other) = other
+
+function pull_common(memo::RewriteMemo, p::Pipeline)
+    @match_pipeline if (p ~ tuple_of(lbls, cols)) && length(cols) > 1
+        i = memo(pass())
+        deps = Dict{Pipeline,Vector{Pipeline}}(i => Pipeline[], p => cols)
+        seen = Set{Pipeline}()
+        dups = Set{Pipeline}()
+        for col in cols
+            parts = Pipeline[i]
+            collect_parts!(memo, parts, deps, i, col)
+            for q in parts
+                if q in seen
+                    push!(dups, q)
+                end
+            end
+            for q in parts
+                push!(seen, q)
+            end
+        end
+        if length(dups) > 1
+            seen = Set{Pipeline}()
+            basis = Pipeline[]
+            stack = Pipeline[p]
+            while !isempty(stack)
+                q = pop!(stack)
+                for dep in deps[q]
+                    if !(dep in seen)
+                        if dep in dups
+                            push!(basis, dep)
+                        else
+                            push!(stack, dep)
+                        end
+                        push!(seen, dep)
+                    end
+                end
+            end
+            #=
+            println("!"^50)
+            println(p)
+            println("-"^50)
+            for q in basis
+                println(q)
+            end
+            println("!"^50)
+            =#
+        end
+        return (memo(pass()), p)
+    else
+        return (memo(pass()), p)
+    end
+end
+
+function collect_parts!(memo, parts, deps, i, p)
+    @match_pipeline if (p ~ pass())
+        o = i
+    elseif (p ~ chain_of(qs))
+        o = i
+        for q in qs
+            o = collect_parts!(memo, parts, deps, o, q)
+        end
+    elseif (p ~ tuple_of(lbls, cols))
+        os = Pipeline[]
+        for col in cols
+            push!(os, collect_parts!(memo, parts, deps, i, col))
+        end
+        chain = unchain(i)
+        push!(chain, p)
+        o = memo(chain)
+        push!(parts, o)
+        get!(deps, o, os)
+    elseif (p ~ with_elements(q))
+        q_i = memo(pass())
+        q_parts = Pipeline[]
+        collect_parts!(memo, q_parts, deps, q_i, q)
+        o = i
+        for r in q_parts
+            chain = unchain(i)
+            push!(chain, memo(with_elements(r)))
+            o = memo(chain)
+            push!(parts, o)
+            get!(deps, o) do
+                o_deps = Pipeline[]
+                for dep in deps[r]
+                    if dep != q_i
+                        chain = unchain(i)
+                        push!(chain, memo(with_elements(dep)))
+                        push!(o_deps, memo(chain))
+                    end
+                end
+                if isempty(o_deps)
+                    push!(o_deps, i)
+                end
+                o_deps
+            end
+        end
+    elseif (p ~ with_column(lbl, q))
+        q_i = memo(pass())
+        q_parts = Pipeline[]
+        collect_parts!(memo, q_parts, deps, q_i, q)
+        o = i
+        for r in q_parts
+            chain = unchain(i)
+            push!(chain, memo(with_column(lbl, r)))
+            o = memo(chain)
+            push!(parts, o)
+            get!(deps, o) do
+                o_deps = Pipeline[]
+                for dep in deps[r]
+                    if dep != q_i
+                        chain = unchain(i)
+                        push!(chain, memo(with_column(lbl, dep)))
+                        push!(o_deps, memo(chain))
+                    end
+                end
+                if isempty(o_deps)
+                    push!(o_deps, i)
+                end
+                o_deps
+            end
+        end
+    else
+        chain = unchain(i)
+        push!(chain, p)
+        o = memo(chain)
+        push!(parts, o)
+        if (p ~ filler(_)) || (p ~ block_filler(_, _)) || (p ~ null_filler())
+            get!(deps, o, Pipeline[])
+        else
+            get!(deps, o, Pipeline[i])
+        end
+    end
+    o
 end
 
