@@ -147,9 +147,6 @@ convert(::Type{DataKnot}, db::DataKnot) = db
 convert(::Type{DataKnot}, ref::Base.RefValue{T}) where {T} =
     DataKnot(ValueOf(T), T[ref.x])
 
-convert(::Type{DataKnot}, elts::AbstractVector) =
-    DataKnot(Any, elts, x0toN)
-
 convert(::Type{DataKnot}, ::Missing) =
     DataKnot(Any, Union{}[], x0to1)
 
@@ -159,6 +156,8 @@ convert(::Type{DataKnot}, elt::Union{Tuple, NamedTuple}) =
 convert(::Type{DataKnot}, elt) =
     if Tables.istable(elt)
         fromtable(elt)
+    elseif elt isa AbstractVector
+        DataKnot(Any, elt, x0toN)
     else
         DataKnot(Any, [elt])
     end
