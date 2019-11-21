@@ -1,8 +1,5 @@
 #!/usr/bin/env julia
 
-using Pkg
-haskey(Pkg.installed(), "NarrativeTest") || Pkg.clone("https://github.com/rbt-lang/NarrativeTest.jl")
-
 using DataKnots
 using NarrativeTest
 
@@ -27,7 +24,7 @@ if VERSION < v"1.2.0-DEV"
         print(io, Symbol(c))
 end
 
-# Set the width to 72 so that MD->PDF via pandoc
+# Set the width to 72 so that MD->PDF via pandoc fits the page.
 ENV["COLUMNS"] = "72"
 
 package_path(x) = relpath(joinpath(dirname(abspath(PROGRAM_FILE)), "..", x))
