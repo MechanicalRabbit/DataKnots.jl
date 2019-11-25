@@ -2,6 +2,137 @@
 # Optimizing pipelines.
 #
 
+import Base:
+    convert,
+    getindex,
+    merge,
+    size
+
+
+#
+# Mutable representation of the pipeline tree.
+#
+
+mutable struct Chain{T}
+    h::Union{T,Nothing}
+    t::Union{T,Nothing}
+end
+
+mutable struct PipelineNode
+    op
+    args::Vector{Any}
+    i::Union{PipelineNode,Nothing}
+    o::Union{PipelineNode,Nothing}
+    p::Union{PipelineNode,Nothing}
+    n::Int
+    c::Union{Chain{PipelineNode},Nothing}
+    cs::Union{Vector{Chain{PipelineNode}},Nothing}
+
+    PipelineNode(op, args::Vector{Any}=Any[]) =
+        new(op, args, nothing, nothing, nothing, 0, nothing, nothing)
+end
+
+const PipelineChain = Chain{PipelineNode}
+
+@inline size(p::PipelineNode) = length(p.cs)
+
+@inline getindex(p::PipelineNode) = p.c
+
+@inline getindex(p::PipelineNode, k::Number) = p.cs[k]
+
+function convert(::Type{Pipeline}, p::PipelineNode)::Pipeline
+    args = copy(p.args)
+    if p.c !== nothing
+        push!(args, convert(Pipeline, p.c))
+    end
+    if p.cs !== nothing
+        push!(args, Pipeline[convert(Pipeline, c) for c in p.cs])
+    end
+    Pipeline(p.op, args=args)
+end
+
+function convert(::Type{Pipeline}, c::PipelineChain)::Pipeline
+    if c.h === c.t === nothing
+        pass()
+    elseif c.h === c.t
+        convert(Pipeline, c.h)
+    else
+        chain = Pipeline[convert(Pipeline, c.h)]
+        p = c.h
+        while p !== c.t
+            p = p.o
+            @assert p !== nothing
+            push!(chain, convert(Pipeline, p))
+        end
+        chain_of(chain)
+    end
+end
+
+function convert(::Type{PipelineChain}, p::Pipeline)::PipelineChain
+    if p.op === pass && isempty(p.args)
+        PipelineChain(nothing, nothing)
+    elseif p.op === chain_of && length(p.args) == 1 && p.args[1] isa Vector{Pipeline}
+        c = PipelineChain(nothing, nothing)
+        for q in p.args[1]
+            c′ = convert(PipelineChain, q)
+            if c.h === c.t === nothing
+                c = c′
+            elseif !(c′.h === c′.t === nothing)
+                c.t.o = c′.h
+                c′.h.i = c.t
+                c = PipelineChain(c.h, c′.t)
+            end
+        end
+        c
+    else
+        args = copy(p.args)
+        cs = nothing
+        if !isempty(args) && args[end] isa Vector{Pipeline}
+            qs = pop!(args)
+            cs = PipelineChain[convert(PipelineChain, q) for q in qs]
+        end
+        c = nothing
+        if !isempty(args) && args[end] isa Pipeline
+            q = pop!(args)
+            c = convert(PipelineChain, q)
+        end
+        p = PipelineNode(p.op, args)
+        if c !== nothing
+            if c.h !== nothing
+                c.h.p = p
+            end
+            if c.t !== nothing
+                c.t.p = p
+            end
+            p.c = c
+        end
+        if cs !== nothing
+            for (n, c) in enumerate(cs)
+                if c.h !== nothing
+                    c.h.p = p
+                    c.h.n = n
+                end
+                if c.t !== nothing
+                    c.t.p = p
+                    c.h.n = n
+                end
+            end
+            p.cs = cs
+        end
+        PipelineChain(p, p)
+    end
+end
+
+function rewrite_chain(p)
+    c = convert(PipelineChain, p)
+    convert(Pipeline, c) |> designate(p.sig)
+end
+
+
+#
+# Hash consing for pipelines.
+#
+
 struct RewriteMemo
     op_map::Dict{Any,Dict{Vector{Any},Pipeline}}
 
@@ -38,7 +169,7 @@ function unchain(p)
 end
 
 function rewrite_all(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_common(rewrite_simplify(p, memo=memo), memo=memo)
+    rewrite_common(rewrite_simplify(rewrite_chain(p), memo=memo), memo=memo)
 end
 
 @inline function rewrite_with(f, memo, p)
