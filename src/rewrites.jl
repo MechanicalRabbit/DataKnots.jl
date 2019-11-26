@@ -14,53 +14,57 @@ import Base:
 #
 
 mutable struct Chain{T}
-    h::Union{T,Nothing}
-    t::Union{T,Nothing}
+    up::Union{T,Nothing}
+    up_idx::Int
+    down_head::Union{T,Nothing}
+    down_tail::Union{T,Nothing}
+
+    Chain{T}() where {T} =
+        new(nothing, 0, nothing, nothing)
 end
 
 mutable struct PipelineNode
     op
     args::Vector{Any}
-    i::Union{PipelineNode,Nothing}
-    o::Union{PipelineNode,Nothing}
-    p::Union{PipelineNode,Nothing}
-    n::Int
-    c::Union{Chain{PipelineNode},Nothing}
-    cs::Union{Vector{Chain{PipelineNode}},Nothing}
+    left::Union{PipelineNode,Nothing}
+    right::Union{PipelineNode,Nothing}
+    up::Union{Chain{PipelineNode},Nothing}
+    down::Union{Chain{PipelineNode},Nothing}
+    down_many::Union{Vector{Chain{PipelineNode}},Nothing}
 
     PipelineNode(op, args::Vector{Any}=Any[]) =
-        new(op, args, nothing, nothing, nothing, 0, nothing, nothing)
+        new(op, args, nothing, nothing, nothing, nothing, nothing)
 end
 
 const PipelineChain = Chain{PipelineNode}
 
-@inline size(p::PipelineNode) = length(p.cs)
+@inline size(p::PipelineNode) = size(p.down_many)
 
-@inline getindex(p::PipelineNode) = p.c
+@inline getindex(p::PipelineNode) = p.down
 
-@inline getindex(p::PipelineNode, k::Number) = p.cs[k]
+@inline getindex(p::PipelineNode, k::Number) = p.down_many[k]
 
 function convert(::Type{Pipeline}, p::PipelineNode)::Pipeline
     args = copy(p.args)
-    if p.c !== nothing
-        push!(args, convert(Pipeline, p.c))
+    if p.down !== nothing
+        push!(args, convert(Pipeline, p.down))
     end
-    if p.cs !== nothing
-        push!(args, Pipeline[convert(Pipeline, c) for c in p.cs])
+    if p.down_many !== nothing
+        push!(args, Pipeline[convert(Pipeline, c) for c in p.down_many])
     end
     Pipeline(p.op, args=args)
 end
 
 function convert(::Type{Pipeline}, c::PipelineChain)::Pipeline
-    if c.h === c.t === nothing
+    if c.down_head === c.down_tail === nothing
         pass()
-    elseif c.h === c.t
-        convert(Pipeline, c.h)
+    elseif c.down_head === c.down_tail
+        convert(Pipeline, c.down_head)
     else
-        chain = Pipeline[convert(Pipeline, c.h)]
-        p = c.h
-        while p !== c.t
-            p = p.o
+        chain = Pipeline[convert(Pipeline, c.down_head)]
+        p = c.down_head
+        while p !== c.down_tail
+            p = p.right
             @assert p !== nothing
             push!(chain, convert(Pipeline, p))
         end
@@ -70,62 +74,59 @@ end
 
 function convert(::Type{PipelineChain}, p::Pipeline)::PipelineChain
     if p.op === pass && isempty(p.args)
-        PipelineChain(nothing, nothing)
+        PipelineChain()
     elseif p.op === chain_of && length(p.args) == 1 && p.args[1] isa Vector{Pipeline}
-        c = PipelineChain(nothing, nothing)
+        c = PipelineChain()
         for q in p.args[1]
             c′ = convert(PipelineChain, q)
-            if c.h === c.t === nothing
+            if c.down_head === c.down_tail === nothing
                 c = c′
-            elseif !(c′.h === c′.t === nothing)
-                c.t.o = c′.h
-                c′.h.i = c.t
-                c = PipelineChain(c.h, c′.t)
+            elseif !(c′.down_head === c′.down_tail === nothing)
+                c.down_tail.up = nothing
+                c.down_tail.right = c′.down_head
+                c′.down_head.up = nothing
+                c′.down_head.left = c.down_tail
+                c.down_head.up = c
+                c′.down_tail.up = c
+                c.down_tail = c′.down_tail
             end
         end
         c
     else
         args = copy(p.args)
-        cs = nothing
+        down_many = nothing
         if !isempty(args) && args[end] isa Vector{Pipeline}
             qs = pop!(args)
-            cs = PipelineChain[convert(PipelineChain, q) for q in qs]
+            down_many = PipelineChain[convert(PipelineChain, q) for q in qs]
         end
-        c = nothing
+        down = nothing
         if !isempty(args) && args[end] isa Pipeline
             q = pop!(args)
-            c = convert(PipelineChain, q)
+            down = convert(PipelineChain, q)
         end
         p = PipelineNode(p.op, args)
-        if c !== nothing
-            if c.h !== nothing
-                c.h.p = p
-            end
-            if c.t !== nothing
-                c.t.p = p
-            end
-            p.c = c
+        if down !== nothing
+            down.up = p
+            p.down = down
         end
-        if cs !== nothing
-            for (n, c) in enumerate(cs)
-                if c.h !== nothing
-                    c.h.p = p
-                    c.h.n = n
-                end
-                if c.t !== nothing
-                    c.t.p = p
-                    c.h.n = n
-                end
+        if down_many !== nothing
+            for (n, c) in enumerate(down_many)
+                c.up = p
+                c.up_idx = n
             end
-            p.cs = cs
+            p.down_many = down_many
         end
-        PipelineChain(p, p)
+        c = PipelineChain()
+        p.up = c
+        c.down_head = c.down_tail = p
+        c
     end
 end
 
 function rewrite_chain(p)
     c = convert(PipelineChain, p)
-    convert(Pipeline, c) |> designate(p.sig)
+    p′ = convert(Pipeline, c) |> designate(p.sig)
+    p′
 end
 
 
