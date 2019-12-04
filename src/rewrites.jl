@@ -3,9 +3,13 @@
 #
 
 import Base:
+    append!,
     convert,
+    delete!,
     getindex,
+    isempty,
     merge,
+    prepend!,
     size
 
 
@@ -22,6 +26,9 @@ mutable struct Chain{T}
     Chain{T}() where {T} =
         new(nothing, 0, nothing, nothing)
 end
+
+isempty(c::Chain{T}) where {T} =
+    c.down_head === c.down_tail === nothing
 
 mutable struct PipelineNode
     op
@@ -43,6 +50,111 @@ const PipelineChain = Chain{PipelineNode}
 @inline getindex(p::PipelineNode) = p.down
 
 @inline getindex(p::PipelineNode, k::Number) = p.down_many[k]
+
+function delete!(p::PipelineNode)
+    l = p.left
+    r = p.right
+    u = p.up
+    if l !== nothing
+        @assert l.right === p
+        if r === nothing
+            @assert l.left !== nothing || l.up === u
+            l.up = u
+        end
+        l.right = r
+    end
+    if r !== nothing
+        @assert r.left === p
+        if l === nothing
+            @assert r.right !== nothing || r.up === u
+            r.up = u
+        end
+        r.left = l
+    end
+    if u !== nothing
+        @assert l === nothing || r === nothing
+        if l === nothing
+            @assert u.down_head === p
+            u.down_head = r
+        end
+        if r === nothing
+            @assert u.down_tail === p
+            u.down_tail = l
+        end
+    end
+    p.left = p.right = p.up = nothing
+end
+
+function append!(c::PipelineChain, p::PipelineNode)
+    t = c.down_tail
+    if t !== nothing
+        @assert t.right === nothing && t.up === c
+        t.right = p
+        if t.left !== nothing
+            t.up = nothing
+        end
+    end
+    @assert p.left === p.right === p.up === nothing
+    p.left = t
+    p.up = c
+    if c.down_head === nothing
+        c.down_head = p
+    end
+    c.down_tail = p
+end
+
+function append!(l::PipelineNode, p::PipelineNode)
+    r = l.right
+    u = l.up
+    l.right = p
+    if l.left !== nothing
+        l.up = nothing
+    end
+    if r !== nothing
+        @assert r.left === l
+        r.left = p
+    else
+        @assert u === nothing || u.down_tail === l
+        if u !== nothing
+            u.down_tail = p
+        end
+    end
+    @assert p.left === p.right === p.up === nothing
+    p.left = l
+    p.right = r
+    if r === nothing
+        p.up = u
+    end
+end
+
+function prepend!(r::PipelineNode, p::PipelineNode)
+    l = r.left
+    u = r.up
+    r.left = p
+    if r.right !== nothing
+        r.up = nothing
+    end
+    if l !== nothing
+        @assert l.right === r
+        l.right = p
+    else
+        @assert u === nothing || u.down_head === r
+        if u !== nothing
+            u.down_head = p
+        end
+    end
+    @assert p.left === p.right === p.up === nothing
+    p.left = l
+    p.right = r
+    if l === nothing
+        p.up = u
+    end
+end
+
+
+#
+# Conversion between mutable and immutable representations.
+#
 
 function convert(::Type{Pipeline}, p::PipelineNode)::Pipeline
     args = copy(p.args)
@@ -123,66 +235,53 @@ function convert(::Type{PipelineChain}, p::Pipeline)::PipelineChain
     end
 end
 
-function rewrite_chain(p)
+
+#
+# Representation.
+#
+
+quoteof(p::Union{PipelineNode, PipelineChain}) =
+    quoteof(convert(Pipeline, p))
+
+show(io::IO, p::Union{PipelineNode, PipelineChain}) =
+    print_expr(io, quoteof(p))
+
+
+#
+# Multi-pass pipeline optimizer.
+#
+
+function rewrite_all(p::Pipeline)::Pipeline
+    sig = signature(p)
     c = convert(PipelineChain, p)
-    p′ = convert(Pipeline, c) |> designate(p.sig)
+    rewrite_all!(c, sig)
+    p′ = convert(Pipeline, c) |> designate(sig)
     p′
 end
 
-
-#
-# Hash consing for pipelines.
-#
-
-struct RewriteMemo
-    op_map::Dict{Any,Dict{Vector{Any},Pipeline}}
-
-    RewriteMemo() = new(Dict{Any,Dict{Vector{Any},Pipeline}}())
+function rewrite_all!(c::PipelineChain, sig::Signature)
+    rewrite_simplify!(c)
+    rewrite_dead!(c)
 end
 
-function (memo::RewriteMemo)(p::Pipeline)
-    args_map = get!(memo.op_map, p.op) do
-        Dict{Vector{Any},Pipeline}()
+function rewrite_with!(f!, p::PipelineNode)
+    if p.down !== nothing
+        f!(p.down)
     end
-    get!(args_map, p.args) do
-        p
-    end
-end
-
-function (memo::RewriteMemo)(ps::Vector{Pipeline})
-    if isempty(ps)
-        memo(pass())
-    elseif length(ps) == 1
-        memo(ps[1])
-    else
-        memo(chain_of(ps))
-    end
-end
-
-function unchain(p)
-    if p.op === pass
-        return Pipeline[]
-    elseif p.op === chain_of
-        return collect(Pipeline, p.args[1])
-    else
-        return Pipeline[p]
-    end
-end
-
-function rewrite_all(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_common(rewrite_simplify(rewrite_chain(p), memo=memo), memo=memo)
-end
-
-@inline function rewrite_with(f, memo, p)
-    @match_pipeline if (p ~ chain_of(qs))
-        chain = Pipeline[]
-        for q in qs
-            append!(chain, unchain(f(memo, q)))
+    if p.down_many !== nothing
+        for c in p.down_many
+            f!(c)
         end
-        return memo(chain)
     end
-    args = Any[f(memo, arg) for arg in p.args]
-    memo(Pipeline(p.op, args=args))
+end
+
+function rewrite_with!(f!, c::PipelineChain)
+    p = c.down_head
+    while p !== nothing
+        p′ = p.right
+        f!(p)
+        p = p′
+    end
 end
 
 
@@ -190,362 +289,339 @@ end
 # Local simplification.
 #
 
-function rewrite_simplify(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_simplify(memo, p) |> designate(p.sig)
-end
-
-function rewrite_simplify(memo::RewriteMemo, p::Pipeline)
-    @match_pipeline if (p ~ chain_of(_))
-        chain = Pipeline[]
-        simplify_and_push!(memo, chain, p)
-        return memo(chain)
-    end
-    p′ = rewrite_with(rewrite_simplify, memo, p)
-    # with_column(N, pass()) => pass()
-    @match_pipeline if (p′ ~ with_column(_, pass()))
-        p′ =  memo(pass())
-    # with_elements(pass()) => pass()
-    elseif (p′ ~ with_elements(pass()))
-        p′ = memo(pass())
-    end
+function rewrite_simplify(p::Pipeline)::Pipeline
+    sig = signature(p)
+    c = convert(PipelineChain, p)
+    rewrite_simplify!(c)
+    p′ = convert(Pipeline, c) |> designate(sig)
     p′
 end
 
-rewrite_simplify(memo::RewriteMemo, ps::Vector{Pipeline}) =
-    Pipeline[rewrite_simplify(memo, p) for p in ps]
+function rewrite_simplify!(c::PipelineChain)
+    rewrite_with!(rewrite_simplify!, c)
+end
 
-rewrite_simplify(memo::RewriteMemo, @nospecialize other) = other
+function rewrite_simplify!(p::PipelineNode)
+    rewrite_with!(rewrite_simplify!, p)
+    simplify!(p)
+end
 
-function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipeline)
-    top = !isempty(chain) ? chain[end] : memo(pass())
-    @match_pipeline if (p ~ pass())
-    elseif (p ~ chain_of(qs))
-        for q in qs
-            if (q ~ chain_of(_))
-                simplify_and_push!(memo, chain, q)
-            else
-                simplify_and_push!(memo, chain, rewrite_simplify(memo, q))
-            end
-        end
-    elseif (p ~ tuple_of(lbls, cols))
-        head = nothing
-        for col in cols
-            if (col ~ chain_of([q, _...]))
-                col = q
-            end
-            if (col ~ filler(_)) || (col ~ block_filler(_, _)) || (col ~ null_filler())
-            elseif (col ~ column(k)) && (head === nothing || head === col)
-                head = col
-            else
-                head = missing
-                break
-            end
-        end
-        if head === missing
-            push!(chain, p)
-        elseif head === nothing
-            empty!(chain)
-            push!(chain, p)
-        else
-            cols′ = Pipeline[]
-            for col in cols
-                if col === head
-                    col = memo(pass())
-                elseif (col ~ chain_of([q, qs...]))
-                    if q === head
-                        col = memo(qs)
-                    end
-                end
-                push!(cols′, col)
-            end
-            simplify_and_push!(memo, chain, head)
-            simplify_and_push!(memo, chain, memo(tuple_of(lbls, cols′)))
-        end
+function simplify!(p::PipelineNode)
+    l = p.left
+    # with_elements(pass()) => pass()
+    if p.op === with_elements && p.down !== nothing && isempty(p.down)
+        delete!(p)
+    # with_column(k, pass()) => pass()
+    elseif p.op === with_column && p.down !== nothing && isempty(p.down)
+        delete!(p)
     # chain_of(p, filler(val)) => filler(val)
-    elseif (p ~ filler(_)) || (p ~ block_filler(_, _)) || (p ~ null_filler())
-        empty!(chain)
-        push!(chain, p)
-    # chain_of(tuple_of(p1, ..., pn), column(k)) => pk
-    elseif (top ~ tuple_of(lbls, cols)) && (p ~ column(lbl))
-        k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) : lbl
-        qs = unchain(cols[k])
-        pop!(chain)
-        for q in qs
-            simplify_and_push!(memo, chain, q)
+    elseif p.op === filler || p.op === block_filler || p.op === null_filler
+        while p.left !== nothing
+            delete!(p.left)
         end
-    # chain_of(tuple_of(..., pk, ...), with_column(k, q)) => tuple_of(..., chain_of(pk, q), ...)
-    elseif (top ~ tuple_of(lbls, cols)) && (p ~ with_column(lbl, q))
-        k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) : lbl
-        pop!(chain)
-        qs = unchain(cols[k])
-        simplify_and_push!(memo, qs, q)
-        cols′ = copy(cols)
-        cols′[k] = memo(qs)
-        simplify_and_push!(memo, chain, memo(tuple_of(lbls, cols′)))
-    # chain_of(tuple_of(chain_of(p, wrap()), ...), tuple_lift(f)) => chain_of(tuple_of(p, ...), tuple_lift(f))
-    elseif (top ~ tuple_of(lbls, cols)) && (p ~ tuple_lift(_))
-        cols′ = Pipeline[]
-        for col in cols
-            qs = unchain(col)
-            while (qs ~ [_..., wrap()])
-                pop!(qs)
+    elseif l !== nothing
+        # chain_of(tuple_of(p1, ..., pn), column(k)) => pk
+        if l.op === tuple_of && p.op === column
+            @assert length(l.args) == 1 && l.args[1] isa Vector{Symbol} && l.down_many !== nothing
+            @assert length(p.args) == 1 && p.args[1] isa Union{Int,Symbol}
+            lbls = l.args[1]::Vector{Symbol}
+            lbl = p.args[1]::Union{Int,Symbol}
+            k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) : lbl
+            @assert 1 <= k <= length(l.down_many)
+            c = l.down_many[k]
+            while !isempty(c)
+                q = c.down_head
+                delete!(q)
+                prepend!(l, q)
+                simplify!(q)
             end
-            push!(cols′, memo(qs))
+            delete!(l)
+            delete!(p)
+        # chain_of(tuple_of(..., pk, ...), with_column(k, q)) => tuple_of(..., chain_of(pk, q), ...)
+        elseif l.op === tuple_of && p.op === with_column
+            @assert length(l.args) == 1 && l.args[1] isa Vector{Symbol} && l.down_many !== nothing
+            @assert length(p.args) == 1 && p.args[1] isa Union{Int,Symbol} && p.down !== nothing
+            lbls = l.args[1]::Vector{Symbol}
+            lbl = p.args[1]::Union{Int,Symbol}
+            k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) : lbl
+            @assert 1 <= k <= length(l.down_many)
+            c = l.down_many[k]
+            c′ = p.down
+            while !isempty(c′)
+                q = c′.down_head
+                delete!(q)
+                append!(c, q)
+                simplify!(q)
+            end
+            delete!(p)
+        # chain_of(tuple_of(chain_of(p, wrap()), ...), tuple_lift(f)) => chain_of(tuple_of(p, ...), tuple_lift(f))
+        elseif l.op === tuple_of && p.op === tuple_lift
+            @assert length(l.args) == 1 && l.down_many !== nothing
+            for c in l.down_many
+                if c.down_tail !== nothing && c.down_tail.op === wrap
+                    delete!(c.down_tail)
+                end
+            end
+        # chain_of(with_column(k, chain_of(p, wrap())), distribute(k)) => chain_of(with_column(k, p), wrap())
+        elseif l.op === with_column && l.down !== nothing && !isempty(l.down) && l.down.down_tail.op === wrap &&
+               p.op === distribute && length(l.args) == 1 && length(p.args) == 1 && l.args[1] == p.args[1]
+            q = l.down.down_tail
+            delete!(q)
+            if isempty(l.down)
+                delete!(l)
+            end
+            append!(p, q)
+            delete!(p)
+        # chain_of(wrap(), flatten()) => pass()
+        elseif l.op === wrap && p.op === flatten
+            delete!(l)
+            delete!(p)
+        # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
+        elseif l.op === wrap && p.op === with_elements
+            c = p.down
+            @assert c !== nothing
+            while !isempty(c)
+                q = c.down_head
+                delete!(q)
+                prepend!(l, q)
+                simplify!(q)
+            end
+            delete!(p)
+            simplify!(l)
+        # chain_of(wrap(), lift(f)) => lift(f)
+        elseif l.op === wrap && p.op === lift
+            delete!(l)
+        # chain_of(with_elements(p), with_elements(q)) => with_elements(chain_of(p, q))
+        elseif l.op === with_elements && p.op === with_elements
+            @assert l.down !== nothing && p.down !== nothing
+            while !isempty(p.down)
+                q = p.down.down_head
+                delete!(q)
+                append!(l.down, q)
+                simplify!(q)
+            end
+            delete!(p)
+        # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
+        elseif l.op === with_elements && l.down !== nothing && !isempty(l.down) && l.down.down_tail.op === wrap && p.op === flatten
+            delete!(l.down.down_tail)
+            if isempty(l.down)
+                delete!(l)
+            end
+            delete!(p)
         end
-        pop!(chain)
-        push!(chain, memo(tuple_of(lbls, cols′)))
-        push!(chain, p)
-    # chain_of(with_column(k, wrap()), distribute(k)) => wrap()
-    elseif (top ~ with_column(j, wrap())) && (p ~ distribute(k)) && j == k
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(wrap()))
-    # chain_of(with_column(k, chain_of(p, wrap())), distribute(k)) => chain_of(with_column(k, p), wrap())
-    elseif (top ~ with_column(j, chain_of([qs..., wrap()]))) && (p ~ distribute(k)) && j == k
-        pop!(chain)
-        push!(chain, memo(with_column(k, memo(qs))))
-        push!(chain, memo(wrap()))
-    # chain_of(wrap(), flatten()) => pass()
-    elseif (top ~ wrap()) && (p ~ flatten())
-        pop!(chain)
-    # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
-    elseif (top ~ wrap()) && (p ~ with_elements(q))
-        pop!(chain)
-        qs = unchain(q)
-        for q in qs
-            simplify_and_push!(memo, chain, q)
-        end
-        simplify_and_push!(memo, chain, top)
-    # chain_of(wrap(), lift(f)) => lift(f)
-    elseif (top ~ wrap()) && (p ~ lift(_))
-        pop!(chain)
-        simplify_and_push!(memo, chain, p)
-    # chain_of(with_elements(p), with_elements(q)) => with_elements(chain_of(p, q))
-    elseif (top ~ with_elements(q1)) && (p ~ with_elements(q2))
-        pop!(chain)
-        qs = unchain(q1)
-        for q in unchain(q2)
-            simplify_and_push!(memo, qs, q)
-        end
-        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
-    # chain_of(with_elements(wrap()), flatten()) => pass()
-    elseif (top ~ with_elements(wrap())) && (p ~ flatten())
-        pop!(chain)
-    # chain_of(with_elements(chain_of(p, wrap())), flatten()) => with_elements(p)
-    elseif (top ~ with_elements(chain_of([qs..., wrap()]))) && (p ~ flatten())
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
-    # chain_of(flatten(), with_elements(column(k))) => chain_of(with_elements(with_elements(column(k))), flatten())
-    elseif (top ~ flatten()) && (p ~ with_elements(column(k)))
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(with_elements(p)))
-        simplify_and_push!(memo, chain, top)
-   # chain_of(flatten(), with_elements(chain_of(column(k), p))) => chain_of(with_elements(with_elements(column(k))), flatten(), with_elements(p))
-    elseif (top ~ flatten()) && (p ~ with_elements(chain_of([column(k), qs...])))
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(with_elements(memo(with_elements(memo(column(k)))))))
-        simplify_and_push!(memo, chain, top)
-        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
-    # chain_of(distribute(k), with_elements(column(k))) => column(k)
-    elseif (top ~ distribute(j)) && (p ~ with_elements(column(k))) && j == k
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(column(k)))
-    # chain_of(distribute(k), with_elements(chain_of(column(k), p))) => chain_of(column(k), with_elements(p))
-    elseif (top ~ distribute(j)) && (p ~ with_elements(chain_of([column(k), qs...]))) && j == k
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(column(k)))
-        simplify_and_push!(memo, chain, memo(with_elements(memo(qs))))
-    # chain_of(sieve_by(), with_elements(column(k))) => chain_of(with_column(1, column(k)), sieve_by())
-    elseif (top ~ sieve_by()) && (p ~ with_elements(column(k)))
-        pop!(chain)
-        simplify_and_push!(memo, chain, memo(with_column(1, memo(column(k)))))
-        simplify_and_push!(memo, chain, top)
-    else
-        push!(chain, p)
     end
-    nothing
 end
 
 
 #
-# Common subexpression elimination.
+# Dead wire elimination.
 #
 
-function rewrite_common(p::Pipeline; memo=RewriteMemo())::Pipeline
-    rewrite_common(memo, p) |> designate(p.sig)
-end
-
-function rewrite_common(memo::RewriteMemo, p::Pipeline)
-    @match_pipeline if (p ~ tuple_of(_, _))
-        chain = Pipeline[]
-        l, r = pull_common(memo, p)
-        append!(chain, unchain(rewrite_common(memo, l)))
-        push!(chain, rewrite_with(rewrite_common, memo, r))
-        memo(chain)
-    else
-        rewrite_with(rewrite_common, memo, p)
-    end
-end
-
-rewrite_common(memo::RewriteMemo, ps::Vector{Pipeline}) =
-    Pipeline[rewrite_common(memo, p) for p in ps]
-
-rewrite_common(memo::RewriteMemo, @nospecialize other) = other
-
-function pull_common(memo::RewriteMemo, p::Pipeline)
-    l = memo(pass())
-    r = p
-    @match_pipeline if (p ~ tuple_of(lbls, cols)) && length(cols) > 1
-        i = l
-        deps = Dict{Pipeline,Vector{Pipeline}}(i => Pipeline[], p => cols)
-        seen = Set{Pipeline}()
-        dups = Set{Pipeline}()
-        for col in cols
-            parts = Pipeline[i]
-            collect_parts!(memo, parts, deps, i, col)
-            for q in parts
-                if q in seen
-                    push!(dups, q)
-                end
-            end
-            for q in parts
-                push!(seen, q)
-            end
-        end
-        if length(dups) > 1
-            seen = Set{Pipeline}()
-            basis = Pipeline[]
-            stack = Pipeline[p]
-            while !isempty(stack)
-                q = pop!(stack)
-                for dep in deps[q]
-                    if !(dep in seen)
-                        if dep in dups
-                            push!(basis, dep)
-                        else
-                            push!(stack, dep)
-                        end
-                        push!(seen, dep)
-                    end
-                end
-            end
-            w = length(basis)
-            if w > 1
-                basis = Pipeline[q for q in basis if !(q ~ column(_))]
-                if length(basis) < w && !(i in basis)
-                    push!(basis, i)
-                end
-            end
-            if !(basis ~ [pass()])
-                repl = Dict{Pipeline,Pipeline}()
-                if length(basis) == 1
-                    l = basis[1]
-                    repl[basis[1]] = i
-                else
-                    l_cols = Pipeline[]
-                    for (k, b) in enumerate(basis)
-                        push!(l_cols, b)
-                        repl[b] = memo(column(k))
-                    end
-                    l = tuple_of(Symbol[], l_cols)
-                end
-                r = replace_parts(memo, repl, i, p)
-                @assert r !== nothing p
+function rewrite_dead!(c::PipelineChain)
+    v = Dict{PipelineNode,Signature}()
+    visibility!(v, c, AnyShape())
+    for (p, sig) in v
+        if target(sig) isa NoShape
+            c = p.up
+            delete!(p)
+            while c !== nothing && isempty(c) && c.up !== nothing && (c.up.op === with_elements || c.up.op == with_column)
+                p = c.up
+                c = p.up
+                delete!(p)
             end
         end
     end
-    (l, r)
 end
 
-function collect_parts!(memo, parts, deps, i, p)
-    @match_pipeline if (p ~ pass())
-        o = i
-    elseif (p ~ chain_of(qs))
-        o = i
-        for q in qs
-            o = collect_parts!(memo, parts, deps, o, q)
+function visibility!(v::Dict{PipelineNode,Signature}, c::PipelineChain, tgt::AbstractShape)
+    p = c.down_tail
+    while p !== nothing
+        src = visibility!(v, p, tgt)
+        v[p] = Signature(src, tgt)
+        tgt = src
+        p = p.left
+    end
+    tgt
+end
+
+function visibility!(v::Dict{PipelineNode,Signature}, p::PipelineNode, tgt::AbstractShape)
+    if tgt isa NoShape
+        src = tgt
+    elseif p.op === filler
+        src = NoShape()
+    elseif p.op === null_filler || p.op === block_filler
+        @assert tgt isa Union{BlockOf, AnyShape}
+        src = NoShape()
+    elseif p.op === tuple_of
+        @assert length(p.args) == 1 && p.args[1] isa Vector{Symbol}
+        @assert p.down_many !== nothing
+        @assert tgt isa Union{TupleOf, AnyShape}
+        lbls = p.args[1]
+        src = NoShape()
+        for (k, c) in enumerate(p.down_many)
+            if tgt isa TupleOf
+                tgt_lbls = labels(tgt)
+                tgt_cols = columns(tgt)
+                if !isempty(lbls)
+                    lbl = lbls[k]
+                    k = findfirst(isequal(lbl), tgt_lbls)
+                end
+                col_tgt = k !== nothing && 1 <= k <= length(tgt_cols) ? tgt_cols[k] : NoShape()
+            else
+                col_tgt = tgt
+            end
+            col_src = visibility!(v, c, col_tgt)
+            src = visibility_union(src, col_src)
         end
-    elseif (p ~ tuple_of(lbls, cols))
-        os = Pipeline[]
-        for col in cols
-            push!(os, collect_parts!(memo, parts, deps, i, col))
-        end
-        chain = unchain(i)
-        push!(chain, p)
-        o = memo(chain)
-        push!(parts, o)
-        get!(deps, o, os)
-    elseif (p ~ with_elements(chain_of(qs)))
-        chain = unchain(i)
-        qs′ = Pipeline[]
-        for q in qs
-            push!(qs′, q)
-            chain′ = copy(chain)
-            push!(chain′, memo(with_elements(memo(copy(qs′)))))
-            o = memo(chain′)
-            get!(deps, o, Pipeline[i])
-            i = o
-        end
-    else
-        chain = unchain(i)
-        push!(chain, p)
-        o = memo(chain)
-        push!(parts, o)
-        if (p ~ filler(_)) || (p ~ block_filler(_, _)) || (p ~ null_filler())
-            get!(deps, o, Pipeline[])
+    elseif p.op === with_elements
+        @assert tgt isa Union{BlockOf, AnyShape}
+        @assert p.down !== nothing
+        elt_tgt = tgt isa BlockOf ? elements(tgt) : tgt
+        elt_src = visibility!(v, p.down, elt_tgt)
+        src = elt_src isa AnyShape ? elt_src : BlockOf(elt_src)
+    elseif p.op === with_column
+        @assert length(p.args) == 1 && p.args[1] isa Union{Symbol, Number}
+        @assert tgt isa Union{TupleOf, AnyShape}
+        @assert p.down !== nothing
+        lbl = p.args[1]
+        if tgt isa TupleOf
+            lbls = labels(tgt)
+            cols = columns(tgt)
+            k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) :
+                1 <= lbl <= length(cols) ? lbl : nothing
+            col_tgt = k !== nothing ? cols[k] : NoShape()
+            col_src = visibility!(v, p.down, col_tgt)
+            if k !== nothing
+                cols = copy(cols)
+                cols[k] = col_src
+            end
+            src = TupleOf(lbls, cols)
         else
-            get!(deps, o, Pipeline[i])
+            src = tgt
         end
+    elseif p.op === wrap
+        @assert tgt isa Union{BlockOf, AnyShape}
+        src = tgt isa BlockOf ? elements(tgt) : tgt
+    elseif p.op === flatten
+        @assert tgt isa Union{BlockOf, AnyShape}
+        src = tgt isa BlockOf ? BlockOf(tgt) : tgt
+    elseif p.op === distribute
+        @assert length(p.args) == 1 && p.args[1] isa Union{Symbol, Number}
+        @assert tgt isa Union{BlockOf, AnyShape}
+        if tgt isa BlockOf
+            lbl = p.args[1]
+            elt_tgt = elements(tgt)
+            @assert elt_tgt isa Union{TupleOf, NoShape, AnyShape}
+            if elt_tgt isa TupleOf
+                lbls = labels(elt_tgt)
+                cols = columns(elt_tgt)
+                k = lbl isa Symbol ? findfirst(isequal(lbl), lbls) :
+                    1 <= lbl <= length(cols) ? lbl : nothing
+                col_tgt = k !== nothing ? cols[k] : NoShape()
+                col_src = BlockOf(col_tgt)
+                if k !== nothing
+                    cols = copy(cols)
+                    cols[k] = col_src
+                elseif lbl isa Symbol
+                    k = searchsortedfirst(lbls, lbl)
+                    lbls = copy(lbls)
+                    insert!(lbls, k, lbl)
+                    cols = copy(cols)
+                    insert!(cols, k, col_src)
+                else
+                    cols = copy(cols)
+                    while length(cols) < lbl - 1
+                        push!(cols, NoShape())
+                    end
+                    push!(cols, col_src)
+                end
+                src = TupleOf(lbls, cols)
+            elseif elt_tgt isa NoShape
+                if lbl isa Symbol
+                    src = TupleOf(lbl => BlockOf(elt_tgt))
+                else
+                    cols = AbstractShape[]
+                    for k = 1:lbl-1
+                        push!(cols, NoShape())
+                    end
+                    push!(cols, tgt)
+                    src = TupleOf(cols)
+                end
+            else
+                src = elt_tgt
+            end
+        else
+            src = tgt
+        end
+    elseif p.op === column
+        @assert length(p.args) == 1 && p.args[1] isa Union{Symbol, Number}
+        lbl = p.args[1]
+        if lbl isa Symbol
+            src = TupleOf(lbl => tgt)
+        else
+            cols = AbstractShape[]
+            for k = 1:lbl-1
+                push!(cols, NoShape())
+            end
+            push!(cols, tgt)
+            src = TupleOf(cols)
+        end
+    elseif p.op === sieve_by
+        @assert tgt isa Union{BlockOf, AnyShape}
+        src = tgt isa BlockOf ? TupleOf(elements(tgt), AnyShape()) : tgt
+    elseif p.op === block_length
+        src = BlockOf(NoShape())
+    else
+        src = AnyShape()
     end
-    o
+    src
 end
 
-function replace_parts(memo, repl, i, p)
-    o = memo(vcat(unchain(i), unchain(p)))
-    if o in keys(repl)
-        return repl[o]
+function visibility_union(shp1::AbstractShape, shp2::AbstractShape)
+    @assert shp1 isa Union{NoShape, AnyShape} || shp2 isa Union{NoShape, AnyShape}
+    if shp1 isa AnyShape || shp2 isa NoShape
+        return shp1
+    elseif shp1 isa NoShape || shp2 isa AnyShape
+        return shp2
     end
-    @match_pipeline if (p ~ chain_of(qs))
-        chain′ = unchain(i)
-        append!(chain′, qs)
-        for k in reverse(eachindex(qs))
-            pop!(chain′)
-            i′ = memo(copy(chain′))
-            o′ = replace_parts(memo, repl, i′, qs[k])
-            if o′ !== nothing
-                chain = unchain(o′)
-                append!(chain, qs[k+1:end])
-                return memo(chain)
+end
+
+function visibility_union(shp1::BlockOf, shp2::BlockOf)
+    elt_shp = visibility_union(elements(shp1), elements(shp2))
+    elt_shp isa AnyShape ? elt_shp : BlockOf(elt_shp)
+end
+
+function visibility_union(shp1::TupleOf, shp2::TupleOf)
+    lbls1 = labels(shp1)
+    cols1 = columns(shp1)
+    lbls2 = labels(shp2)
+    cols2 = columns(shp2)
+    lbls = Symbol[]
+    cols = AbstractShape[]
+    k1 = k2 = 1
+    while k1 <= length(cols1) || k2 <= length(cols2)
+        if k1 <= length(lbls1) && k2 <= length(lbls2) && lbls1[k1] < lbls2[k2] || k2 > length(cols2)
+            if k1 <= length(lbls1)
+                push!(lbls, lbls1[k1])
             end
-        end
-    elseif (p ~ tuple_of(lbls, cols))
-        cols′ = Pipeline[]
-        for col in cols
-            o = replace_parts(memo, repl, i, col)
-            if o !== nothing
-                push!(cols′, o)
+            push!(cols, cols1[k1])
+            k1 += 1
+        elseif k1 <= length(lbls1) && k2 <= length(lbls2) && lbls1[k1] > lbls2[k2] || k1 > length(cols1)
+            if k2 <= length(lbls2)
+                push!(lbls, lbls2[k2])
             end
-        end
-        if length(cols′) == length(cols)
-            return tuple_of(lbls, cols′)
-        end
-    elseif (p ~ with_elements(chain_of(qs)))
-        for k in lastindex(qs)-1:-1:firstindex(qs)+1
-            chain′ = unchain(i)
-            push!(chain′, memo(with_elements(memo(qs[1:k-1]))))
-            i′ = memo(chain′)
-            if i′ in keys(repl)
-                o′ = repl[i′]
-                chain = unchain(o′)
-                push!(chain, memo(with_elements(memo(qs[k+1:end]))))
-                return memo(chain)
+            push!(cols, cols2[k2])
+            k2 += 1
+        else
+            col_shp = visibility_union(cols1[k1], cols2[k2])
+            if k1 <= length(lbls1) && k2 <= length(lbls2)
+                push!(lbls, lbls1[k1])
             end
+            push!(cols, col_shp)
+            k1 += 1
+            k2 += 1
         end
-    elseif (p ~ filler(_)) || (p ~ block_filler(_, _)) || (p ~ null_filler())
-        return p
     end
-    if i in keys(repl)
-        return memo(vcat(unchain(repl[i]), unchain(p)))
-    end
-    nothing
+    TupleOf(lbls, cols)
 end
 

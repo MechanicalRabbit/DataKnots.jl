@@ -312,14 +312,13 @@ expression.
 
     p = rewrite_all(uncover(p3))
     #=>
-    chain_of(with_elements(chain_of(column(:department),
-                                    with_elements(column(:employee)))),
+    chain_of(with_elements(column(:department)),
              flatten(),
+             with_elements(column(:employee)),
              flatten(),
              with_elements(chain_of(tuple_of(pass(),
-                                             chain_of(column(:salary),
-                                                      tuple_of(
-                                                          pass(),
+                                             chain_of(tuple_of(
+                                                          column(:salary),
                                                           filler(100000)),
                                                       tuple_lift(>),
                                                       adapt_missing(),
