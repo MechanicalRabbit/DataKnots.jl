@@ -14,7 +14,10 @@ using PrettyPrinting:
 print_expr(io::IO, ex) =
     pprint(io, tile_expr(ex))
 
-quoteof(obj) =
+quoteof_auto(@nospecialize(obj)) =
+    Expr(:call, nameof(typeof(obj)), (quoteof(getfield(obj, i)) for i = 1:nfields(obj))...)
+
+quoteof(@nospecialize(obj)) =
     obj
 
 quoteof_inner(obj) =
@@ -93,6 +96,9 @@ quoteof(v::Vector) =
 quoteof(p::Pair) =
     Expr(:call, :(=>), quoteof(p.first), quoteof(p.second))
 
+quoteof(d::Dict) =
+    Expr(:call, :Dict, quoteof.(collect(d))...)
+
 tile_expr(obj; precedence=0) =
     tile(obj)
 
@@ -132,7 +138,12 @@ function tile_expr(ex::Expr; precedence=0)
                 else
                     ("", "")
                 end
-            if length(arg_lts) == 2
+            if length(arg_lts) == 1
+                literal(par[1]) *
+                literal(sep) *
+                arg_lts[1] *
+                literal(par[2])
+            elseif length(arg_lts) == 2
                 literal(par[1]) *
                 pair_layout(arg_lts..., sep=sep, tab=0) *
                 literal(par[2])

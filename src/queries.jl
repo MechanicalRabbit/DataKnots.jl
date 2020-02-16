@@ -143,11 +143,21 @@ function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
     return DataKnot(scp_shp, scp_cell)
 end
 
-assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]) =
-    assemble(shape(pack(db, params)), F)
+assemble(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[]; rewrite=rewrite_all) =
+    assemble(shape(pack(db, params)), F; rewrite=rewrite)
 
-assemble(src::AbstractShape, F::AbstractQuery) =
-    optimize(uncover(assemble(nothing, cover(src), F)))
+function assemble(src::AbstractShape, F::AbstractQuery; rewrite=rewrite_all)
+    p = uncover(assemble(nothing, cover(src), F))
+    if rewrite isa Vector
+        for pass in rewrite
+            p = pass(p)
+        end
+        p
+    elseif rewrite !== nothing
+        p = rewrite(p)
+    end
+    p
+end
 
 assemble(::Nothing, p::Pipeline, F) =
     assemble(Environment(), p, F)
@@ -767,7 +777,7 @@ function assemble_collect(p, x)
             x_pos = i
             continue
         end
-        col = lookup(src, i)
+        col = lookup(src, lbl)
         push!(cols, col)
         if lbl == ordinal_label(i)
             lbl = ordinal_label(length(cols))
@@ -903,7 +913,7 @@ function assemble_join(src::AbstractShape, src0::AbstractShape, x::Pipeline)
             x_pos = i
             continue
         end
-        col = lookup(src, i)
+        col = lookup(src, lbl)
         push!(cols, chain_of(column(1), col))
         push!(col_shps, target(col))
         if lbl == ordinal_label(i)
@@ -1396,7 +1406,7 @@ function assemble_keep(p::Pipeline, q::Pipeline)
     push!(lbls′, name)
     push!(cols′, tgt)
     ctx′ = TupleOf(lbls′, cols′)
-    qs = Pipeline[chain_of(column(2), column(j)) for j in perm]
+    qs = Pipeline[chain_of(column(2), column(label(ctx, j))) for j in perm]
     push!(qs, q)
     tgt = BlockOf(TupleOf(src isa IsScope ? column(src) : src, ctx′) |> IsScope,
                   x1to1) |> IsFlow

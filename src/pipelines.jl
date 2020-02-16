@@ -102,14 +102,6 @@ quoteof(p::Pipeline) =
 show(io::IO, p::Pipeline) =
     print_expr(io, quoteof(p))
 
-"""
-    optimize(::Pipeline) :: Pipeline
-
-Rewrites the pipeline to make it (hopefully) faster.
-"""
-optimize(p::Pipeline) =
-    simplify(p) |> designate(p.sig)
-
 
 #
 # Vectorizing scalar functions.
@@ -1207,97 +1199,87 @@ end
 
 
 #
-# Optimizing a pipeline expression.
+# Pipeline matching.
 #
 
-function simplify(p::Pipeline)
-    ps = simplify_chain(p)
-    if isempty(ps)
-        return pass()
-    elseif length(ps) == 1
-        return ps[1]
-    else
-        return chain_of(ps)
-    end
+macro match_pipeline(ex)
+    return esc(_match_pipeline(ex))
 end
 
-simplify(ps::Vector{Pipeline}) =
-    simplify.(ps)
-
-simplify(other) = other
-
-function simplify_chain(p::Pipeline)
-    if p.op == pass
-        return Pipeline[]
-    elseif p.op == with_column && p.args[2].op == pass
-        return Pipeline[]
-    elseif p.op == with_elements && p.args[1].op == pass
-        return Pipeline[]
-    elseif p.op == chain_of
-        return simplify_block(vcat(simplify_chain.(p.args[1])...))
-    else
-        return [Pipeline(p.op, simplify.(p.args)...)]
-    end
-end
-
-function simplify_block(ps)
-    simplified = true
-    while simplified
-        simplified = false
-        ps′ = Pipeline[]
-        k = 1
-        while k <= length(ps)
-            if ps[k].op == with_column && ps[k].args[2].op == pass
-                simplified = true
-                k += 1
-            elseif ps[k].op == with_elements && ps[k].args[1].op == pass
-                simplified = true
-                k += 1
-            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == wrap && ps[k+1].op == flatten
-                simplified = true
-                k += 2
-            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k].args[1].op == chain_of &&
-                   length(ps[k].args[1].args[1]) == 2 && ps[k].args[1].args[1][2].op == wrap && ps[k+1].op == flatten
-                simplified = true
-                push!(ps′, with_elements(ps[k].args[1].args[1][1]))
-                k += 2
-            elseif k <= length(ps)-2 && ps[k].op == wrap && ps[k+1].op == with_elements && ps[k+2].op == flatten
-                simplified = true
-                p = ps[k+1].args[1]
-                if p.op == pass
-                elseif p.op == chain_of
-                    append!(ps′, p.args[1])
-                else
-                    push!(ps′, p)
-                end
-                k += 3
-            elseif k <= length(ps)-2 && ps[k].op == with_elements && ps[k+1].op == flatten && ps[k+2].op == with_elements
-                simplified = true
-                p = with_elements(simplify(chain_of(ps[k].args[1], ps[k+2])))
-                push!(ps′, p)
-                push!(ps′, ps[k+1])
-                k += 3
-            elseif k <= length(ps)-1 && ps[k].op == tuple_of && ps[k+1].op == column && ps[k+1].args[1] isa Int
-                simplified = true
-                p = ps[k].args[2][ps[k+1].args[1]]
-                if p.op == pass
-                elseif p.op == chain_of
-                    append!(ps′, p.args[1])
-                else
-                    push!(ps′, p)
-                end
-                k += 2
-            elseif k <= length(ps)-1 && ps[k].op == with_elements && ps[k+1].op == with_elements
-                simplified = true
-                p = with_elements(simplify(chain_of(ps[k].args[1], ps[k+1].args[1])))
-                push!(ps′, p)
-                k += 2
+function _match_pipeline(@nospecialize ex)
+    if Meta.isexpr(ex, :call, 3) && ex.args[1] == :~
+        val = gensym()
+        p = ex.args[2]
+        pat = ex.args[3]
+        cs = Expr[]
+        as = Expr[]
+        _match_pipeline!(val, pat, cs, as)
+        c = foldl((l, r) -> :($l && $r), cs)
+        quote
+            local $val = $p
+            if $c
+                $(as...)
+                true
             else
-                push!(ps′, ps[k])
-                k += 1
+                false
             end
         end
-        ps = ps′
+    elseif ex isa Expr
+        Expr(ex.head, _match_pipeline.(ex.args)...)
+    else
+        ex
     end
-    ps
 end
+
+function _match_pipeline!(val, pat, cs, as)
+    if pat === :_
+        return
+    elseif pat isa Symbol
+        push!(as, :(local $pat = $val))
+        return
+    elseif Meta.isexpr(pat, :(::), 2)
+        ty = pat.args[2]
+        pat = pat.args[1]
+        push!(cs, :($val isa $ty))
+        _match_pipeline!(val, pat, cs, as)
+        return
+    elseif Meta.isexpr(pat, :call) && length(pat.args) >= 1 && pat.args[1] isa Symbol
+        fn = pat.args[1]
+        args = pat.args[2:end]
+        push!(cs, :($val isa $DataKnots.Pipeline))
+        push!(cs, :($val.op === $DataKnots.$fn))
+        _match_pipeline!(:($val.args), args, cs, as)
+        return
+    elseif Meta.isexpr(pat, :vect)
+        push!(cs, :($val isa Vector{$DataKnots.Pipeline}))
+        _match_pipeline!(val, pat.args, cs, as)
+        return
+    end
+    error("expected a pipeline pattern; got $(repr(pat))")
+end
+
+function _match_pipeline!(val, pats::Vector{Any}, cs, as)
+    minlen = 0
+    varlen = false
+    for pat in pats
+        if Meta.isexpr(pat, :..., 1)
+            !varlen || error("duplicate vararg pattern in $(repr(:([$pat])))")
+            varlen = true
+        else
+            minlen += 1
+        end
+    end
+    push!(cs, !varlen ? :(length($val) == $minlen) : :(length($val) >= $minlen))
+    nearend = false
+    for (k, pat) in enumerate(pats)
+        if Meta.isexpr(pat, :..., 1)
+            pat = pat.args[1]
+            k = Expr(:call, :(:), k, Expr(:call, :-, :end, minlen-k+1))
+            nearend = true
+        elseif nearend
+            k = Expr(:call, :-, :end, minlen-k+1)
+        end
+        _match_pipeline!(:($val[$k]), pat, cs, as)
+    end
+end
+
