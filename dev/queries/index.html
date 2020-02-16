@@ -36,7 +36,7 @@
     Unique,
     assemble,
     elements,
-    optimize,
+    rewrite_all,
     shape,
     trivial_pipe,
     target_pipe,
@@ -164,24 +164,21 @@ chain_of(
                 ⋮
                 sieve_by())),
         flatten()))
-=#</code></pre><p>The resulting pipeline could be compacted by simplifying the pipeline expression.</p><pre><code class="language-julia">p = optimize(uncover(p3))
+=#</code></pre><p>The resulting pipeline could be compacted by simplifying the pipeline expression.</p><pre><code class="language-julia">p = rewrite_all(uncover(p3))
 #=&gt;
 chain_of(with_elements(chain_of(column(:department),
                                 with_elements(column(:employee)))),
          flatten(),
          flatten(),
-         with_elements(
-             chain_of(tuple_of(pass(),
-                               chain_of(tuple_of(
-                                            column(:salary),
-                                            chain_of(
-                                                wrap(),
-                                                with_elements(
-                                                    filler(100000)))),
-                                        tuple_lift(&gt;),
-                                        adapt_missing(),
-                                        block_any())),
-                      sieve_by())),
+         with_elements(chain_of(tuple_of(pass(),
+                                         chain_of(column(:salary),
+                                                  tuple_of(
+                                                      pass(),
+                                                      filler(100000)),
+                                                  tuple_lift(&gt;),
+                                                  adapt_missing(),
+                                                  block_any())),
+                                sieve_by())),
          flatten())
 =#</code></pre><p>Applying this pipeline to the input data gives us the output of the query.</p><pre><code class="language-julia">p(chicago)
 #=&gt;
@@ -191,7 +188,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2 id="API-Reference-1"><a class="docs-heading-anchor" href="#API-Reference-1">API Reference</a><a class="docs-heading-anchor-permalink" href="#API-Reference-1" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/49cfa7eed0759f7f08ffd886388072809cd819c0/src/queries.jl#L276-L280">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-none">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/49cfa7eed0759f7f08ffd886388072809cd819c0/src/queries.jl#L18-L35">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/49cfa7eed0759f7f08ffd886388072809cd819c0/src/queries.jl#L118-L122">source</a></section></article><h2 id="Test-Suite-1"><a class="docs-heading-anchor" href="#Test-Suite-1">Test Suite</a><a class="docs-heading-anchor-permalink" href="#Test-Suite-1" title="Permalink"></a></h2><h3 id="Querying-1"><a class="docs-heading-anchor" href="#Querying-1">Querying</a><a class="docs-heading-anchor-permalink" href="#Querying-1" title="Permalink"></a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2 id="API-Reference-1"><a class="docs-heading-anchor" href="#API-Reference-1">API Reference</a><a class="docs-heading-anchor-permalink" href="#API-Reference-1" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/8d7a181fcf0f6bda1fd30cac63aeaec74242277b/src/queries.jl#L286-L290">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-none">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/8d7a181fcf0f6bda1fd30cac63aeaec74242277b/src/queries.jl#L18-L35">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/8d7a181fcf0f6bda1fd30cac63aeaec74242277b/src/queries.jl#L118-L122">source</a></section></article><h2 id="Test-Suite-1"><a class="docs-heading-anchor" href="#Test-Suite-1">Test Suite</a><a class="docs-heading-anchor-permalink" href="#Test-Suite-1" title="Permalink"></a></h2><h3 id="Querying-1"><a class="docs-heading-anchor" href="#Querying-1">Querying</a><a class="docs-heading-anchor-permalink" href="#Querying-1" title="Permalink"></a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -207,9 +204,7 @@ chicago[Q, AMT=100000, SZ=1]
 │ 2 │
 =#</code></pre><p>We can use the function <code>assemble()</code> to see the query plan.</p><pre><code class="language-julia">p = assemble(chicago, Count(It.department))
 #=&gt;
-chain_of(with_elements(
-             chain_of(column(:department), block_length(), wrap())),
-         flatten())
+with_elements(chain_of(column(:department), block_length()))
 =#
 
 p(chicago)
@@ -1541,4 +1536,4 @@ end
 Get(:department) &gt;&gt;
 Group(Count(Get(:employee)) &gt;&gt; Label(:size)) &gt;&gt;
 Record(Get(:size), Count(Get(:department)) &gt;&gt; Label(:count))
-=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../knots/">« Data Knots</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 16 February 2020 02:15">Sunday 16 February 2020</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../knots/">« Data Knots</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 16 February 2020 04:19">Sunday 16 February 2020</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
