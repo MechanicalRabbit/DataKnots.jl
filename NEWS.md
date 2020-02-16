@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.10.0
+
+- Added dead code elimination and common subexpression optimization.
+
 ## v0.9.0
 
 - Added `Join` combinator.
