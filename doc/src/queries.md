@@ -524,7 +524,7 @@ interpolation syntax (`$`).
 Queries can be composed sequentially using the `>>` combinator.
 
     Q = Lift(3) >> (It .+ 4) >> (It .* 6)
-    #-> Lift(3) >> (It .+ 4) >> It .* 6
+    #-> Lift(3) >> (It .+ 4) >> (It .* 6)
 
     chicago[Q]
     #=>
@@ -535,7 +535,7 @@ Queries can be composed sequentially using the `>>` combinator.
 The `It` query primitive is the identity with respect to `>>`.
 
     Q = It >> Q >> It
-    #-> It >> Lift(3) >> (It .+ 4) >> It .* 6 >> It
+    #-> It >> Lift(3) >> (It .+ 4) >> (It .* 6) >> It
 
     chicago[Q]
     #=>
@@ -1152,7 +1152,7 @@ queries.
 
     Q = It.department >>
         (1 .* (It.employee >> Count))
-    #-> It.department >> 1 .* (It.employee >> Count)
+    #-> It.department >> (1 .* It.employee >> Count)
 
     chicago[Q]
     #=>

@@ -24,6 +24,11 @@ if VERSION < v"1.2.0-DEV"
         print(io, Symbol(c))
 end
 
+# Remove type prefix for Vector{Symbol}.
+if VERSION < v"1.4.0-DEV"
+    Base.typeinfo_prefix(::IO, ::Vector{Symbol}) = ""
+end
+
 # Set the width to 72 so that MD->PDF via pandoc fits the page.
 ENV["COLUMNS"] = "72"
 

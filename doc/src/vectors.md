@@ -327,7 +327,7 @@ An error is reported in case of duplicate labels or columns of different height.
 We can access individual components of the vector.
 
     labels(tv)
-    #-> Symbol[:name, :salary]
+    #-> [:name, :salary]
 
     width(tv)
     #-> 2

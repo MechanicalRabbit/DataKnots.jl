@@ -340,7 +340,7 @@ For a `TupleVector`, the column shapes and their labels are described with
     =#
 
     labels(emp_shp)
-    #-> Symbol[:name, :position, :salary, :rate]
+    #-> [:name, :position, :salary, :rate]
 
     label(emp_shp, 4)
     #-> :rate

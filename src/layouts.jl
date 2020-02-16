@@ -110,6 +110,16 @@ function tile_expr(ex::Expr; precedence=0)
         end
         args = _flatten(func, ex.args[2:end])
         precedence′ = Base.operator_precedence(func)
+        # Workaround for incorrect precedence table in pre-1.4 (https://github.com/JuliaLang/julia/pull/32963).
+        if VERSION < v"1.4.0-DEV"
+            precedence′ =
+                precedence′ == 4 ? 5 :
+                precedence′ == 5 ? 6 :
+                precedence′ == 6 ? 4 :
+                precedence′ == 12 ? 14 :
+                precedence′ == 13 ? 12 :
+                precedence′ == 14 ? 13 : precedence′
+        end
         arg_lts = Layout[tile_expr(arg, precedence=precedence′) for arg in args]
         if func == :(=>) && length(arg_lts) == 2
             key_lt, val_lt = arg_lts
