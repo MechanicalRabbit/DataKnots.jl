@@ -16,7 +16,7 @@ DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 
 [compat]
 julia = "1"               # [1.0.0, 2.0.0)
-Tables = "0.2.0"          # [0.2.0, 0.3.0)
+Tables = "1.0.1"          # [1.0.1, 2.0.0)
 PrettyPrinting = "0.2.0"  # [0.2.0, 0.3.0)
 
 [targets]
