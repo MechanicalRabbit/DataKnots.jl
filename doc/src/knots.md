@@ -115,7 +115,7 @@ This knot could then be queried and exported to a `DataFrame`.
     #=>
     6×3 DataFrames.DataFrame
     │ Row │ name      │ department │ salary  │
-    │     │ String    │ String     │ Int64⍰  │
+    │     │ String    │ String     │ Int64?  │
     ├─────┼───────────┼────────────┼─────────┤
     │ 1   │ JEFFERY A │ POLICE     │ 101442  │
     │ 2   │ NANCY A   │ POLICE     │ 80016   │

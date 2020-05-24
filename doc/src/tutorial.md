@@ -1224,7 +1224,7 @@ We can then export this data.
     #=>
     4×4 DataFrames.DataFrame
     │ Row │ name      │ department │ position          │ salary │
-    │     │ String    │ String     │ String            │ Int64⍰ │
+    │     │ String    │ String     │ String            │ Int64? │
     ├─────┼───────────┼────────────┼───────────────────┼────────┤
     │ 1   │ JEFFERY A │ POLICE     │ SERGEANT          │ 101442 │
     │ 2   │ JAMES A   │ FIRE       │ FIRE ENGINEER-EMT │ 103350 │
