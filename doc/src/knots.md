@@ -184,7 +184,7 @@ its cardinality.
     =#
 
     cell(abc)
-    #-> @VectorTree (1:N) × Char ['a':'\x01':'c']
+    #-> @VectorTree (1:N) × Char ['a':1:'c']
 
     shape(abc)
     #-> BlockOf(Char, x1toN)
@@ -212,7 +212,7 @@ with the given fields.
     =#
 
     cell(recknot)
-    #-> @VectorTree (1:1) × (hello = String, main = (0:N) × Char) [(hello = "Hello World!", main = 'a':'\x01':'c')]
+    #-> @VectorTree (1:1) × (hello = String, main = (0:N) × Char) [(hello = "Hello World!", main = 'a':1:'c')]
 
 Any Julia value can be converted to a `DataKnot` object using the `convert()`
 function.

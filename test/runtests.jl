@@ -29,6 +29,12 @@ if VERSION < v"1.4.0-DEV"
     Base.typeinfo_prefix(::IO, ::Vector{Symbol}) = ""
 end
 
+# Fix output of character ranges.
+if VERSION < v"1.5.0-DEV"
+    Base.step(r::StepRangeLen) = r.step
+    Base.step(r::StepRangeLen{T}) where {T<:AbstractFloat} = T(r.step)
+end
+
 # Set the width to 72 so that MD->PDF via pandoc fits the page.
 ENV["COLUMNS"] = "72"
 
