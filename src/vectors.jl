@@ -488,17 +488,29 @@ summary_layout(v::AbstractVector) =
                 tile_expr(Expr(:call, :×, length(v), syntaxof(shapeof(v)))),
                 sep=" of ")
 
+if VERSION < v"1.5.0-DEV"
 Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
     if get(io, :typeinfo, nothing) === nothing
         "@VectorTree $(syntaxof(shapeof(cv))) "
     else
         ""
     end
+else
+Base.typeinfo_prefix(io::IO, cv::Union{TupleVector,BlockVector}) =
+    if get(io, :typeinfo, nothing) === nothing
+        "@VectorTree $(syntaxof(shapeof(cv))) ", false
+    else
+        "", false
+    end
+end
 
 show_vectortree(io::IO, v::AbstractVector) =
     Base.show_vector(io, v)
 
 function display_vectortree(io::IO, v::AbstractVector)
+    if get(io, :compact, false)
+        return show_vectortree(io, v)
+    end
     summary(io, v)
     !isempty(v) || return
     println(io, ":")
