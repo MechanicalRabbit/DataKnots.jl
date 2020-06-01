@@ -1019,11 +1019,14 @@ we need to generate 3 random characters.
 
     using Random: seed!, rand
     seed!(1)
+
+    #? VERSION < v"1.5.0-DEV"
     rand('a':'z')
     #-> 'o'
 
 We could try to make the following query.
 
+    #? VERSION < v"1.5.0-DEV"
     unitknot[Lift(1:3) >> rand('a':'z')]
     #=>
     ──┼───┼
@@ -1042,6 +1045,7 @@ For broadcasting to generate a query, we need at least one
 argument to be a query. If we don't have a query argument, we
 could make one using `Lift`.
 
+    #? VERSION < v"1.5.0-DEV"
     unitknot[Lift(1:3) >> rand.(Lift('a':'z'))]
     #=>
     ──┼───┼

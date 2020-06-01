@@ -3,8 +3,10 @@
 using DataKnots
 using NarrativeTest
 
+subs = NarrativeTest.common_subs()
+
 # Ignore the difference in the output of `print(Int)` between 32-bit and 64-bit platforms.
-push!(NarrativeTest.EXPECTMAP, r"Int64" => s"Int(32|64)")
+push!(subs, r"Int64" => s"Int(32|64)")
 
 # Normalize printing of `Vector{Bool}`.
 Base.show(io::IO, b::Bool) = print(io, get(io, :typeinfo, Any) === Bool ? (b ? "1" : "0") : (b ? "true" : "false"))
@@ -39,5 +41,5 @@ end
 ENV["COLUMNS"] = "72"
 
 package_path(x) = relpath(joinpath(dirname(abspath(PROGRAM_FILE)), "..", x))
-args = !isempty(ARGS) ? ARGS : package_path.(["doc/src", "README.md"])
-exit(!runtests(args))
+default = package_path.(["doc/src", "README.md"])
+runtests(; default=default, subs=subs)
