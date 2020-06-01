@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Queries for Data Analysts · DataKnots.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">DataKnots.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Queries for Data Analysts</a><ul class="internal"><li><a class="tocitem" href="#Data-Navigation-1"><span>Data Navigation</span></a></li><li><a class="tocitem" href="#Counting-and-Context-1"><span>Counting &amp; Context</span></a></li><li><a class="tocitem" href="#Records-and-Filters-1"><span>Records &amp; Filters</span></a></li><li><a class="tocitem" href="#Aggregate-Queries-1"><span>Aggregate Queries</span></a></li><li><a class="tocitem" href="#Paging-Data-1"><span>Paging Data</span></a></li><li><a class="tocitem" href="#Grouping-Data-1"><span>Grouping Data</span></a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../highlypaid/">Who is Highly Paid?</a></li></ul></li><li><span class="tocitem">Reference Manual</span><ul><li><a class="tocitem" href="../primer/">Thinking in Queries</a></li><li><a class="tocitem" href="../tutorial/">Embedded Query Interface</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul></li><li><span class="tocitem">Implementer&#39;s Guide</span><ul><li><a class="tocitem" href="../vectors/">Column Store</a></li><li><a class="tocitem" href="../pipelines/">Pipeline Algebra</a></li><li><a class="tocitem" href="../shapes/">Shapes and Signatures</a></li><li><a class="tocitem" href="../knots/">Data Knots</a></li><li><a class="tocitem" href="../queries/">Query Algebra</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Queries for Data Analysts</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Queries for Data Analysts</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/rbt-lang/DataKnots.jl/blob/master/doc/src/overview.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Queries-for-Data-Analysts-1"><a class="docs-heading-anchor" href="#Queries-for-Data-Analysts-1">Queries for Data Analysts</a><a class="docs-heading-anchor-permalink" href="#Queries-for-Data-Analysts-1" title="Permalink"></a></h1><p>DataKnots is a toolkit for representing and querying complex structured data. It is designed for data analysts and domain experts (e.g. accountants, engineers, researchers) who need to build and share domain-specific queries. </p><p>This overview shows how typical query operations can be performed upon a simplified in-memory dataset using DataKnot&#39;s macro syntax.</p><h2 id="Data-Navigation-1"><a class="docs-heading-anchor" href="#Data-Navigation-1">Data Navigation</a><a class="docs-heading-anchor-permalink" href="#Data-Navigation-1" title="Permalink"></a></h2><p>Consider a tiny cross-section of public data from Chicago, represented as nested <code>Vector</code> and <code>NamedTuple</code> objects.</p><pre><code class="language-julia">department_data = [
+  (name = &quot;POLICE&quot;,
+   employee = [
+    (name = &quot;ANTHONY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 72510),
+    (name = &quot;JEFFERY A&quot;, position = &quot;SERGEANT&quot;, salary = 101442),
+    (name = &quot;NANCY A&quot;, position = &quot;POLICE OFFICER&quot;, salary = 80016)]),
+  (name = &quot;FIRE&quot;,
+   employee = [
+    (name = &quot;DANIEL A&quot;, position = &quot;FIREFIGHTER-EMT&quot;, salary = 95484),
+    (name = &quot;ROBERT K&quot;, position = &quot;FIREFIGHTER-EMT&quot;, salary = 103272)])]</code></pre><p>This hierarchical dataset contains a list of departments, with each department containing associated employees.</p><p>To query this dataset, we convert it into a <code>DataKnot</code>, or <em>knot</em>.</p><pre><code class="language-julia">using DataKnots
+
+chicago = DataKnot(:department =&gt; department_data)</code></pre><p>Let&#39;s say we want to return the list of department names. We query the <code>chicago</code> knot with <code>department.name</code>.</p><pre><code class="language-julia">@query chicago department.name
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+=#</code></pre><p>The dotted notation lets one navigate a hierarchical dataset. Let&#39;s continue our dataset exploration by listing employee names.</p><pre><code class="language-julia">@query chicago department.employee.name
+#=&gt;
+  │ name      │
+──┼───────────┼
+1 │ ANTHONY A │
+2 │ JEFFERY A │
+3 │ NANCY A   │
+4 │ DANIEL A  │
+5 │ ROBERT K  │
+=#</code></pre><p>We could write the query above, without the period delimiter, as a multi-line macro block.</p><pre><code class="language-julia">@query chicago begin
+    department
+    employee
+    name
+end</code></pre><p>Navigation context matters. For example, <code>employee</code> tuples are not directly accessible from the root of the knot. When a field label, such as <code>employee</code>, can&#39;t be found, an appropriate error message is displayed.</p><pre><code class="language-julia">@query chicago employee
+#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>Instead, <code>employee</code> tuples can be queried by navigating through <code>department</code> tuples. When tuples are returned, they are displayed as a table.</p><pre><code class="language-julia">@query chicago department.employee
+#=&gt;
+  │ employee                           │
+  │ name       position         salary │
+──┼────────────────────────────────────┼
+1 │ ANTHONY A  POLICE OFFICER    72510 │
+2 │ JEFFERY A  SERGEANT         101442 │
+3 │ NANCY A    POLICE OFFICER    80016 │
+4 │ DANIEL A   FIREFIGHTER-EMT   95484 │
+5 │ ROBERT K   FIREFIGHTER-EMT  103272 │
+=#</code></pre><h2 id="Counting-and-Context-1"><a class="docs-heading-anchor" href="#Counting-and-Context-1">Counting &amp; Context</a><a class="docs-heading-anchor-permalink" href="#Counting-and-Context-1" title="Permalink"></a></h2><p>To count the number of departments in this <code>chicago</code> dataset we write the query <code>count(department)</code>. Observe that the argument provided to <code>count()</code>, <code>department</code>, is itself a query.</p><pre><code class="language-julia">@query chicago count(department)
+#=&gt;
+┼───┼
+│ 2 │
+=#</code></pre><p>We could also count the total number of employees across all departments.</p><pre><code class="language-julia">@query chicago count(department.employee)
+#=&gt;
+┼───┼
+│ 5 │
+=#</code></pre><p>What if we wanted to count employees by department? Using query composition (<code>.</code>), we can perform <code>count</code> in a nested context.</p><pre><code class="language-julia">@query chicago department.count(employee)
+#=&gt;
+──┼───┼
+1 │ 3 │
+2 │ 2 │
+=#</code></pre><p>In this output, we see that one department has <code>3</code> employees, while the other has <code>2</code>.</p><h2 id="Records-and-Filters-1"><a class="docs-heading-anchor" href="#Records-and-Filters-1">Records &amp; Filters</a><a class="docs-heading-anchor-permalink" href="#Records-and-Filters-1" title="Permalink"></a></h2><p>Let&#39;s improve the previous query by including each department&#39;s name alongside employee counts. This can be done by constructing a record using paired curly brackets <code>{}</code>.</p><pre><code class="language-julia">@query chicago department{name, count(employee)}
+#=&gt;
+  │ department │
+  │ name    #B │
+──┼────────────┼
+1 │ POLICE   3 │
+2 │ FIRE     2 │
+=#</code></pre><p>To label a record field we use the <code>Pair</code> syntax, (<code>=&gt;</code>).</p><pre><code class="language-julia">@query chicago department{name, size =&gt; count(employee)}
+#=&gt;
+  │ department   │
+  │ name    size │
+──┼──────────────┼
+1 │ POLICE     3 │
+2 │ FIRE       2 │
+=#</code></pre><p>Additionally, we could list the employee names associated with each of these departments.</p><pre><code class="language-julia">@query chicago begin
+   department
+   { name,
+     size =&gt; count(employee),
+     employee_names =&gt; employee.name }
+end
+#=&gt;
+  │ department                                  │
+  │ name    size  employee_names                │
+──┼─────────────────────────────────────────────┼
+1 │ POLICE     3  ANTHONY A; JEFFERY A; NANCY A │
+2 │ FIRE       2  DANIEL A; ROBERT K            │
+=#</code></pre><p>In this display <code>employee_names</code> is a plural value. Hence the output cell for each department is delimited by a semi-colon.</p><p>We can extend the previous query to show only departments with more than <code>2</code> employees.</p><pre><code class="language-julia">@query chicago begin
+   department
+   { name,
+     size =&gt; count(employee),
+     employee_names =&gt; employee.name }
+   filter(size &gt; 2)
+end
+#=&gt;
+  │ department                                  │
+  │ name    size  employee_names                │
+──┼─────────────────────────────────────────────┼
+1 │ POLICE     3  ANTHONY A; JEFFERY A; NANCY A │
+=#</code></pre><p>The argument to <code>filter</code> can be any query expression that is valid for the current context.</p><pre><code class="language-julia">@query chicago begin
+    department
+    filter(count(employee) &lt; 3)
+    { name,
+      employee_names =&gt; employee.name }
+end
+#=&gt;
+  │ department               │
+  │ name  employee_names     │
+──┼──────────────────────────┼
+1 │ FIRE  DANIEL A; ROBERT K │
+=#</code></pre><p>With these queries we&#39;ve seen how to navigate, count, record and filter. These operations form the base of our query language.</p><h2 id="Aggregate-Queries-1"><a class="docs-heading-anchor" href="#Aggregate-Queries-1">Aggregate Queries</a><a class="docs-heading-anchor-permalink" href="#Aggregate-Queries-1" title="Permalink"></a></h2><p>So far we&#39;ve only seen <em>elementwise</em> queries which emit an output for each of its input elements. Informally, we can see this with the query <code>department.count(employee)</code>.</p><pre><code class="language-julia">@query chicago department.count(employee)
+#=&gt;
+──┼───┼
+1 │ 3 │
+2 │ 2 │
+=#</code></pre><p>In this case, the query <code>count(employee)</code> input has two elements, one for each department. It it emits output elements for each, representing the number of employees for the given department.</p><p>Without arguments, <code>count()</code> counts the number of input elements it receives. These <em>aggregate</em> queries produce an output relative to their input as a whole.</p><pre><code class="language-julia">@query chicago department.employee.count()
+#=&gt;
+┼───┼
+│ 5 │
+=#</code></pre><p>We may wish to count employees by department. Contrary to expectation, adding parentheses will not change the result.</p><pre><code class="language-julia">@query chicago department.(employee.count())
+#=&gt;
+┼───┼
+│ 5 │
+=#</code></pre><p>To count employees in <em>each</em> department, we use <code>each()</code>, which evaluates its argument elementwise.</p><pre><code class="language-julia">@query chicago department.each(employee.count())
+#=&gt;
+──┼───┼
+1 │ 3 │
+2 │ 2 │
+=#</code></pre><p>Equivalently, we could use <code>count(employee)</code>.</p><pre><code class="language-julia">@query chicago department.count(employee)
+#=&gt;
+──┼───┼
+1 │ 3 │
+2 │ 2 │
+=#</code></pre><p>Which variant of <code>count</code> to use depends upon what is notationally convenient: is the count of the input elements requested? or is a count of something relative to each input needed?</p><h2 id="Paging-Data-1"><a class="docs-heading-anchor" href="#Paging-Data-1">Paging Data</a><a class="docs-heading-anchor-permalink" href="#Paging-Data-1" title="Permalink"></a></h2><p>Sometimes query results can be quite large. In this case it&#39;s helpful to <code>take</code> or <code>drop</code> items from the input. Let&#39;s return only the first two of the employees.</p><pre><code class="language-julia">@query chicago department.employee.take(2)
+#=&gt;
+  │ employee                          │
+  │ name       position        salary │
+──┼───────────────────────────────────┼
+1 │ ANTHONY A  POLICE OFFICER   72510 │
+2 │ JEFFERY A  SERGEANT        101442 │
+=#</code></pre><p>A negative index counts records from the end of the input. So, to return all the records but the last two, we write:</p><pre><code class="language-julia">@query chicago department.employee.take(-2)
+#=&gt;
+  │ employee                          │
+  │ name       position        salary │
+──┼───────────────────────────────────┼
+1 │ ANTHONY A  POLICE OFFICER   72510 │
+2 │ JEFFERY A  SERGEANT        101442 │
+3 │ NANCY A    POLICE OFFICER   80016 │
+=#</code></pre><p>To skip the first two records, returning the rest, we use <code>drop</code>.</p><pre><code class="language-julia">@query chicago department.employee.drop(2)
+#=&gt;
+  │ employee                          │
+  │ name      position         salary │
+──┼───────────────────────────────────┼
+1 │ NANCY A   POLICE OFFICER    80016 │
+2 │ DANIEL A  FIREFIGHTER-EMT   95484 │
+3 │ ROBERT K  FIREFIGHTER-EMT  103272 │
+=#</code></pre><p>To return the 1st half of the employees in the database, we could use <code>take</code> with an argument that computes how many to take.</p><pre><code class="language-julia">@query chicago begin
+    department.employee
+    take(count(department.employee) ÷ 2)
+end
+#=&gt;
+  │ employee                          │
+  │ name       position        salary │
+──┼───────────────────────────────────┼
+1 │ ANTHONY A  POLICE OFFICER   72510 │
+2 │ JEFFERY A  SERGEANT        101442 │
+=#</code></pre><p>Unlike <code>filter</code>, <code>take</code> and <code>drop</code> are aggregates because the output they generate depend not just upon each input element, but also upon the position of that element with respect to the entire input collection.</p><h2 id="Grouping-Data-1"><a class="docs-heading-anchor" href="#Grouping-Data-1">Grouping Data</a><a class="docs-heading-anchor-permalink" href="#Grouping-Data-1" title="Permalink"></a></h2><p>So far, we&#39;ve navigated and counted data by exploiting its hierarchical organization. But what if we want a query that isn&#39;t supported by the existing hierarchy? For example, how could we calculate the number of employees for each <em>position</em>?</p><p>A list of distinct positions could be obtained using <code>unique</code>.</p><pre><code class="language-julia">@query chicago department.employee.position.unique()
+#=&gt;
+  │ position        │
+──┼─────────────────┼
+1 │ FIREFIGHTER-EMT │
+2 │ POLICE OFFICER  │
+3 │ SERGEANT        │
+=#</code></pre><p>However, <code>unique</code> is not sufficient because positions are not associated to the respective employees. To associate employee records to their positions, we use <code>group</code>.</p><pre><code class="language-julia">@query chicago begin
+     department
+     employee
+     group(position)
+     { position, employee.name }
+end
+#=&gt;
+  │ position         name               │
+──┼─────────────────────────────────────┼
+1 │ FIREFIGHTER-EMT  DANIEL A; ROBERT K │
+2 │ POLICE OFFICER   ANTHONY A; NANCY A │
+3 │ SERGEANT         JEFFERY A          │
+=#</code></pre><p>The complement of each group is often plural, and in this case, elements of from the complement are separated by the semi-colon. We could see this by counting employees in each position.</p><pre><code class="language-julia">@query chicago begin
+     department
+     employee
+     group(position)
+     { position, count =&gt; count(employee) }
+end
+#=&gt;
+  │ position         count │
+──┼────────────────────────┼
+1 │ FIREFIGHTER-EMT      2 │
+2 │ POLICE OFFICER       2 │
+3 │ SERGEANT             1 │
+=#</code></pre><p>Here, <code>group</code> and <code>unique</code> are also aggregate. In particular, the output they produce is quite distinct from their input. Generally, it&#39;s the flexibility of aggregate queries like <code>group(position)</code> that provide the operational power of this query language.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../highlypaid/">Who is Highly Paid? »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 1 June 2020 05:02">Monday 1 June 2020</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
