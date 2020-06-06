@@ -1377,6 +1377,10 @@ function lookup(ity::Type{<:Tuple}, name::Symbol)
     lift(getindex, j) |> designate(ity, oty)
 end
 
+function lookup(ity::Type{<:AbstractDict}, name::Symbol)
+    oty = Union{valtype(ity), Missing}
+    lift(get, string(name), missing) |> designate(ity, oty |> IsLabeled(name))
+end
 
 #
 # Specifying context parameters.

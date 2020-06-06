@@ -1388,6 +1388,30 @@ Regular and named tuples also support attribute lookup.
     (1:1) × Tuple{String,String,Int64}
     =#
 
+When applied to a dictionary, `Get(name)` extracts a value corresponding to a
+string key.  If the dictionary does not contain the given key, `missing` is
+returned.
+
+    Q = Lift(Dict("name" => "JEFFERY A", "position" => "SERGEANT")) >>
+        It.position
+
+    chicago[Q]
+    #=>
+    │ position │
+    ┼──────────┼
+    │ SERGEANT │
+    =#
+
+    Q = Lift(Dict("name" => "JEFFERY A", "position" => "SERGEANT")) >>
+        It.ssn
+
+    chicago[Q]
+    #=>
+    │ ssn │
+    ┼─────┼
+    (empty)
+    =#
+
 In `@query` notation, `Get(:name)` is written as `name`.
 
     @query department.name
