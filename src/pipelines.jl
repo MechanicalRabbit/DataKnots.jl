@@ -339,6 +339,33 @@ end
     end
 end
 
+"""
+    assert_type(T::Type, lbl) :: Pipeline
+
+This pipeline asserts the types of the elements of the input vector.
+"""
+assert_type(T::Type, lbl::Union{Symbol,Nothing}) =
+    Pipeline(assert_type, T, lbl)
+
+assert_type(T::Type) =
+    Pipeline(assert_type, T)
+
+function assert_type(rt::Runtime, input::AbstractVector, T, lbl=nothing)
+    if eltype(input) <: T
+        return input
+    end
+    if isempty(input)
+        return T[]
+    end
+    output = Vector{T}(undef, length(input))
+    @inbounds for i in eachindex(input)
+        val = input[i]
+        val isa T || error(lbl !== nothing ? "\"$lbl\"" : "", "[$i]: expected a value of type $T; got $(typeof(val))")
+        output[i] = val
+    end
+    output
+end
+
 
 #
 # Identity and composition.

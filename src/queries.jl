@@ -1377,9 +1377,13 @@ function lookup(ity::Type{<:Tuple}, name::Symbol)
     lift(getindex, j) |> designate(ity, oty)
 end
 
-function lookup(ity::Type{<:AbstractDict}, name::Symbol)
-    oty = Union{valtype(ity), Missing}
+function lookup(ity::Type{<:AbstractDict{K,V}}, name::Symbol) where {K, V}
+    oty = Union{V, Missing}
     lift(get, string(name), missing) |> designate(ity, oty |> IsLabeled(name))
+end
+
+function lookup(ity::Type{<:AbstractDict}, name::Symbol)
+    lift(get, string(name), missing) |> designate(ity, Any |> IsLabeled(name))
 end
 
 #
@@ -2271,6 +2275,28 @@ end
 
 translate(mod::Module, ::Val{:group}, args::Tuple) =
     Group(translate.(Ref(mod), args)...)
+
+
+#
+# Type assertion.
+#
+
+function assemble_is(p::Pipeline, T::Type)
+    q = uncover(target_pipe(p))
+    src = source(q)
+    tgt = ValueOf(T)
+    q = chain_of(q, assert_type(T, getlabel(src, nothing))) |> designate(src, tgt)
+    q = cover(q)
+    compose(p, q)
+end
+
+Is(T::Type) = Query(Is, T)
+
+Is(env::Environment, p::Pipeline, T) =
+    assemble_is(p, T)
+
+translate(mod::Module, ::Val{:is}, (arg,)::Tuple{Any}) =
+    Is(Core.eval(mod, arg))
 
 
 #

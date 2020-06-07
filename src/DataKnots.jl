@@ -17,6 +17,7 @@ export
     Get,
     Given,
     Group,
+    Is,
     Is0to1,
     Is0toN,
     Is1to1,
