@@ -2287,6 +2287,7 @@ function assemble_is(p::Pipeline, T::Type)
     tgt = ValueOf(T)
     q = chain_of(q, assert_type(T, getlabel(src, nothing))) |> designate(src, tgt)
     q = cover(q)
+    q = relabel(q, getlabel(p, nothing))
     compose(p, q)
 end
 
