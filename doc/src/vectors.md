@@ -364,7 +364,7 @@ we can convert a `TupleVector` instance to a `DataFrame`.
 
     tv |> DataFrame |> display
     #=>
-    3×2 DataFrames.DataFrame
+    3×2 DataFrame
     │ Row │ name      │ salary │
     │     │ String    │ Int64  │
     ├─────┼───────────┼────────┤

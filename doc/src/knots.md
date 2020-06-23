@@ -113,7 +113,7 @@ This knot could then be queried and exported to a `DataFrame`.
             Record(It.name, It.department, It.salary)
            ] |> DataFrame
     #=>
-    6×3 DataFrames.DataFrame
+    6×3 DataFrame
     │ Row │ name      │ department │ salary  │
     │     │ String    │ String     │ Int64?  │
     ├─────┼───────────┼────────────┼─────────┤
