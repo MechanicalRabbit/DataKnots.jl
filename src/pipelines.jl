@@ -289,6 +289,9 @@ adapt_vector() = Pipeline(adapt_vector)
 
 function adapt_vector(rt::Runtime, input::AbstractVector)
     @assert eltype(input) <: AbstractVector
+    if eltype(input) === Union{}
+        return BlockVector(fill(1, length(input)+1), Union{}[], x0toN)
+    end
     sz = 0
     for v in input
         sz += length(v)
