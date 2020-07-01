@@ -1222,7 +1222,7 @@ We can then export this data.
 
     highly_compensated |> DataFrame
     #=>
-    4×4 DataFrames.DataFrame
+    4×4 DataFrame
     │ Row │ name      │ department │ position          │ salary │
     │     │ String    │ String     │ String            │ Int64? │
     ├─────┼───────────┼────────────┼───────────────────┼────────┤
