@@ -37,6 +37,11 @@ if VERSION < v"1.5.0-DEV"
     Base.step(r::StepRangeLen{T}) where {T<:AbstractFloat} = T(r.step)
 end
 
+# Normalize printing of vector types.
+if VERSION < v"1.6.0-DEV"
+    Base.show_datatype(io::IO, x::Type{Vector{T}}) where {T} = print(io, "Vector{$T}")
+end
+
 # Set the width to 72 so that MD->PDF via pandoc fits the page.
 ENV["COLUMNS"] = "72"
 

@@ -201,8 +201,8 @@ function _reconstruct(f::Function)
         if Meta.isexpr(line, :call)
             ex = _reconstruct(line, ssa, info.slotnames)
             push!(ssa, ex)
-        elseif Meta.isexpr(line, :return, 1)
-            body = _reconstruct(line.args[1], ssa, info.slotnames)
+        elseif _isreturn(line)
+            body = _reconstruct(_returnval(line), ssa, info.slotnames)
             if body === nothing
                 return
             end
@@ -213,6 +213,14 @@ function _reconstruct(f::Function)
         end
     end
     return
+end
+
+@static if VERSION < v"1.6.0-DEV"
+    _isreturn(@nospecialize(line)) = Meta.isexpr(line, :return, 1)
+    _returnval(line::Expr) = line.args[1]
+else
+    _isreturn(@nospecialize(line)) = line isa Core.ReturnNode
+    _returnval(line::Core.ReturnNode) = line.val
 end
 
 function _reconstruct(ex, ssa, slots)
