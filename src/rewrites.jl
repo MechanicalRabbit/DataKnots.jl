@@ -80,9 +80,9 @@ function rewrite_simplify(memo::RewriteMemo, p::Pipeline)
 end
 
 rewrite_simplify(memo::RewriteMemo, ps::Vector{Pipeline}) =
-    rewrite_simplify.(Ref(memo), ps)
+    Pipeline[rewrite_simplify(memo, p) for p in ps]
 
-rewrite_simplify(memo::RewriteMemo, other) = other
+rewrite_simplify(memo::RewriteMemo, @nospecialize other) = other
 
 function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipeline)
     top = !isempty(chain) ? chain[end] : memo(pass())
@@ -255,9 +255,9 @@ function rewrite_common(memo::RewriteMemo, p::Pipeline)
 end
 
 rewrite_common(memo::RewriteMemo, ps::Vector{Pipeline}) =
-    rewrite_common.(Ref(memo), ps)
+    Pipeline[rewrite_common(memo, p) for p in ps]
 
-rewrite_common(memo::RewriteMemo, other) = other
+rewrite_common(memo::RewriteMemo, @nospecialize other) = other
 
 function pull_common(memo::RewriteMemo, p::Pipeline)
     l = memo(pass())
