@@ -87,12 +87,12 @@ function (p::Pipeline)(input::DataKnot)
     DataKnot(target(p), p(cell(input)))
 end
 
-function (p::Pipeline)(input::AbstractVector)
+function (p::Pipeline)(@nospecialize input::AbstractVector)::AbstractVector
     rt = Runtime()
     output = p(rt, input)
 end
 
-function (p::Pipeline)(rt::Runtime, input::AbstractVector)
+function (p::Pipeline)(rt::Runtime, @nospecialize input::AbstractVector)::AbstractVector
     p.op(rt, input, p.args...)
 end
 
@@ -353,7 +353,7 @@ This pipeline returns its input unchanged.
 """
 pass() = Pipeline(pass)
 
-pass(rt::Runtime, input::AbstractVector) =
+pass(rt::Runtime, @nospecialize input::AbstractVector) =
     input
 
 """
@@ -382,7 +382,7 @@ quoteof(::typeof(chain_of), args::Vector{Any}) =
         Expr(:call, chain_of, Any[quoteof(arg) for arg in args]...)
     end
 
-function chain_of(rt::Runtime, input::AbstractVector, ps)
+function chain_of(rt::Runtime, @nospecialize(input::AbstractVector), ps)
     output = input
     for p in ps
         output = p(rt, output)
@@ -420,7 +420,7 @@ quoteof(::typeof(tuple_of), args::Vector{Any}) =
         Expr(:call, tuple_of, Any[quoteof(arg) for arg in args]...)
     end
 
-function tuple_of(rt::Runtime, input::AbstractVector, lbls, ps)
+function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls, ps)
     len = length(input)
     cols = AbstractVector[p(rt, input) for p in ps]
     TupleVector(lbls, len, cols)
