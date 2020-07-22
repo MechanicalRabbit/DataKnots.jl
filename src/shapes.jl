@@ -129,23 +129,23 @@ TupleOf(cols::Vector{<:AbstractShape}) =
     TupleOf(Symbol[], cols)
 
 TupleOf(cols::Union{AbstractShape,Type}...) =
-    TupleOf(Symbol[], collect(AbstractShape, cols))
+    TupleOf(Symbol[], AbstractShape[col for col in cols])
 
 TupleOf(lcols::Pair{<:Union{Symbol,AbstractString},<:Union{AbstractShape,Type}}...) =
-    TupleOf(collect(Symbol.(first.(lcols))), collect(AbstractShape, last.(lcols)))
+    TupleOf(Symbol[first(lcol) for lcol in lcols], AbstractShape[last(lcol) for lcol in lcols])
 
 quoteof(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:call, nameof(TupleOf), quoteof_inner.(shp.cols)...)
+        Expr(:call, nameof(TupleOf), Any[quoteof_inner(col) for col in shp.cols]...)
     else
-        Expr(:call, nameof(TupleOf), quoteof_inner.(shp.lbls .=> shp.cols)...)
+        Expr(:call, nameof(TupleOf), Any[quoteof_inner(lbl => col) for (lbl, col) in zip(shp.lbls, shp.cols)]...)
     end
 
 syntaxof(shp::TupleOf) =
     if isempty(shp.lbls)
-        Expr(:tuple, syntaxof.(shp.cols)...)
+        Expr(:tuple, Any[syntaxof(col) for col in shp.cols]...)
     else
-        Expr(:tuple, syntaxof.(shp.lbls .=> shp.cols)...)
+        Expr(:tuple, Any[syntaxof(lbl => col) for (lbl, col) in zip(shp.lbls, shp.cols)]...)
     end
 
 labels(shp::TupleOf) = shp.lbls
@@ -185,7 +185,7 @@ function replace_column(shp::TupleOf, j::Int, f)
 end
 
 function eltype(shp::TupleOf)
-    t = Tuple{eltype.(shp.cols)...}
+    t = Tuple{Any[eltype(col) for col in shp.cols]...}
     if isempty(shp.lbls)
         t
     else
@@ -368,7 +368,7 @@ fits(shp1::ValueOf, shp2::ValueOf) =
 
 fits(shp1::TupleOf, shp2::TupleOf) =
     length(shp1.cols) == length(shp2.cols) &&
-    all(fits.(shp1.cols, shp2.cols)) &&
+    all(Bool[fits(col1, col2) for (col1, col2) in zip(shp1.cols, shp2.cols)]) &&
     (isempty(shp2.lbls) || shp1.lbls == shp2.lbls)
 
 fits(shp1::BlockOf, shp2::BlockOf) =
@@ -402,7 +402,7 @@ shapeof(v::AbstractVector) =
     ValueOf(eltype(v))
 
 shapeof(tv::TupleVector) =
-    TupleOf(labels(tv), shapeof.(columns(tv)))
+    TupleOf(labels(tv), AbstractShape[shapeof(col) for col in columns(tv)])
 
 shapeof(bv::BlockVector) =
     BlockOf(shapeof(elements(bv)), cardinality(bv))
