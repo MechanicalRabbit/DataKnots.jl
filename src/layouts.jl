@@ -15,7 +15,7 @@ print_expr(io::IO, ex) =
     pprint(io, tile_expr(ex))
 
 quoteof_auto(@nospecialize(obj)) =
-    Expr(:call, nameof(typeof(obj)), (quoteof(getfield(obj, i)) for i = 1:nfields(obj))...)
+    Expr(:call, nameof(typeof(obj)), Any[quoteof(getfield(obj, i)) for i = 1:nfields(obj)]...)
 
 quoteof(@nospecialize(obj)) =
     obj
@@ -41,13 +41,13 @@ function quoteof(f::Function)
 end
 
 quoteof(f::Union{Function,Type}, args::Vector{Any}) =
-    Expr(:call, nameof(f), quoteof.(args)...)
+    Expr(:call, nameof(f), Any[quoteof(arg) for arg in args]...)
 
 quoteof(::typeof(broadcast), args::Vector{Any}) =
     if length(args) >= 1 && args[1] isa Function
         quoteof(broadcast, args[1], args[2:end])
     else
-        Expr(:call, nameof(broadcast), quoteof.(args)...)
+        Expr(:call, nameof(broadcast), Any[quoteof(arg) for arg in args]...)
     end
 
 function quoteof(::typeof(broadcast), f::Function, args::Vector{Any})
@@ -57,7 +57,7 @@ function quoteof(::typeof(broadcast), f::Function, args::Vector{Any})
             if Meta.isexpr(ex.args[1], :tuple)
                 ex.args[1].args
             else
-                [ex.args[1]]
+                Any[ex.args[1]]
             end
         repl = Dict(zip(names, args))
         return _broadcast(ex.args[2], repl)
@@ -75,7 +75,7 @@ function _broadcast(ex, repl)
             ex = repl[ex]
         end
     elseif ex isa Expr
-        ex = Expr(ex.head, (_broadcast(arg, repl) for arg in ex.args)...)
+        ex = Expr(ex.head, Any[_broadcast(arg, repl) for arg in ex.args]...)
         if ex.head == :call && length(ex.args) >= 1 && ex.args[1] isa Symbol
             func = ex.args[1]
             ex =
@@ -91,13 +91,13 @@ function _broadcast(ex, repl)
 end
 
 quoteof(v::Vector) =
-    Expr(:vect, quoteof.(v)...)
+    Expr(:vect, Any[quoteof(el) for el in v]...)
 
 quoteof(p::Pair) =
     Expr(:call, :(=>), quoteof(p.first), quoteof(p.second))
 
 quoteof(d::Dict) =
-    Expr(:call, :Dict, quoteof.(collect(d))...)
+    Expr(:call, :Dict, Any[quoteof(p) for p in d]...)
 
 tile_expr(obj; precedence=0) =
     tile(obj)
@@ -235,7 +235,7 @@ function _reconstruct(ex, ssa, slots)
     elseif ex isa GlobalRef
         ex = ex.name
     elseif ex isa Expr
-        ex = Expr(ex.head, (_reconstruct(arg, ssa, slots) for arg in ex.args)...)
+        ex = Expr(ex.head, Any[_reconstruct(arg, ssa, slots) for arg in ex.args]...)
     end
     return ex
 end

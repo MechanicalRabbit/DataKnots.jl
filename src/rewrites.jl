@@ -28,9 +28,9 @@ function (memo::RewriteMemo)(ps::Vector{Pipeline})
 end
 
 function unchain(p)
-    if p.op == pass
+    if p.op === pass
         return Pipeline[]
-    elseif p.op == chain_of
+    elseif p.op === chain_of
         return collect(Pipeline, p.args[1])
     else
         return Pipeline[p]
@@ -49,7 +49,7 @@ end
         end
         return memo(chain)
     end
-    args = collect(Any, f.(Ref(memo), p.args))
+    args = Any[f(memo, arg) for arg in p.args]
     memo(Pipeline(p.op, args=args))
 end
 
