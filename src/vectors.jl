@@ -446,16 +446,15 @@ BlockCursor(pos, l, r, bv::BlockVector{CARD,O,E}) where {CARD,T,O<:AbstractVecto
 @inline cursor(bv::BlockVector) =
     BlockCursor(bv)
 
-@inline function cursor(bv::BlockVector, pos::Int)
+@inline cursor(bv::BlockVector, pos::Int) =
     BlockCursor(pos, bv)
-end
 
-@inline function iterate(cr::BlockCursor, ::Nothing=nothing)
+@inline function next!(cr::BlockCursor)
     cr.pos += 1
     cr.l = cr.r
-    cr.pos < length(cr.offs) || return nothing
-    @inbounds cr.r = cr.offs[cr.pos+1]
-    (cr, nothing)
+    cr.pos < length(cr.offs) || return false
+    cr.r = cr.offs[cr.pos+1]
+    true
 end
 
 # Vector interface for cursor.

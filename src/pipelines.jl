@@ -177,20 +177,22 @@ function block_lift(rt::Runtime, input::AbstractVector, f, default)
 end
 
 function _block_lift(f, input)
-    I = Tuple{typeof(cursor(input))}
+    cr = cursor(input)
+    I = Tuple{typeof(cr)}
     O = Core.Compiler.return_type(f, I)
     output = Vector{O}(undef, length(input))
-    @inbounds for cr in cursor(input)
+    @inbounds while next!(cr)
         output[cr.pos] = f(cr)
     end
     output
 end
 
 function _block_lift(f, default, input)
-    I = Tuple{typeof(cursor(input))}
+    cr = cursor(input)
+    I = Tuple{typeof(cr)}
     O = Union{Core.Compiler.return_type(f, I), typeof(default)}
     output = Vector{O}(undef, length(input))
-    @inbounds for cr in cursor(input)
+    @inbounds while next!(cr)
         output[cr.pos] = !isempty(cr) ? f(cr) : default
     end
     output
