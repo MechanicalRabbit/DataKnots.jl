@@ -257,12 +257,12 @@ with `ValueOf` to become the block's shape. Hence, a block of
 The shape of `numbers` this is a block of `ValueOf(Vector)`.
 
     DataKnots.shape(numbers)
-    #-> BlockOf(Array{Int64,1})
+    #-> BlockOf(Vector{Int64})
 
 Once could also construct this shape directly.
 
     DataKnots.BlockOf(DataKnots.ValueOf(Vector{Int64}))
-    #-> BlockOf(Array{Int64,1})
+    #-> BlockOf(Vector{Int64})
 
 Some queries may produce empty output, that is, a single block
 that happens to not have any values in it.
@@ -868,7 +868,7 @@ such as addition (`+`) have a lower precedence.
 This expectation mismatch could lead a user to write:
 
     unitknot[Lift(1:3) >> It .+ It]
-    #-> ERROR: cannot apply + to Tuple{Array{Int64,1},Tuple{}}⋮
+    #-> ERROR: cannot apply + to Tuple{Vector{Int64},Tuple{}}⋮
 
 To fix this query, we add parentheses.
 
@@ -989,7 +989,7 @@ The value of this knot is actually a `Vector`, even if it may be
 shown in a convenient way.
 
     DataKnots.shape(single)
-    #-> BlockOf(Array{String,1}, x1to1)
+    #-> BlockOf(Vector{String}, x1to1)
 
 This value can be retrieved using `get`.
 

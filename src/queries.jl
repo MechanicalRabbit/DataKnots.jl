@@ -42,7 +42,7 @@ struct Query <: AbstractQuery
 end
 
 Query(op, args...) =
-    Query(op; args=collect(Any, args))
+    Query(op; args=Any[args...])
 
 quoteof(F::Query) =
     quoteof(F.op, F.args)
@@ -124,7 +124,7 @@ getindex(db::DataKnot, F; kws...) =
     query(db, Each(F); kws...)
 
 query(db, F; kws...) =
-    query(convert(DataKnot, db), Lift(F), sort(collect(Pair{Symbol,DataKnot}, kws), by=first))
+    query(convert(DataKnot, db), Lift(F), sort(Pair{Symbol,DataKnot}[kws...], by=first))
 
 function query(db::DataKnot, F::AbstractQuery, params::Vector{Pair{Symbol,DataKnot}}=Pair{Symbol,DataKnot}[])
     db = pack(db, params)
@@ -135,9 +135,9 @@ end
 
 function pack(db::DataKnot, params::Vector{Pair{Symbol,DataKnot}})
     !isempty(params) || return db
-    ctx_lbls = first.(params)
-    ctx_cols = collect(AbstractVector, cell.(last.(params)))
-    ctx_shps = collect(AbstractShape, shape.(last.(params)))
+    ctx_lbls = Symbol[first(param) for param in params]
+    ctx_cols = AbstractVector[cell(last(param)) for param in params]
+    ctx_shps = AbstractShape[shape(last(param)) for param in params]
     scp_cell = TupleVector(1, AbstractVector[cell(db), TupleVector(ctx_lbls, 1, ctx_cols)])
     scp_shp = TupleOf(shape(db), TupleOf(ctx_lbls, ctx_shps)) |> IsScope
     return DataKnot(scp_shp, scp_cell)
@@ -214,20 +214,23 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
     head = ex.head
     args = ex.args
     if head === :block
-        return Compose(translate.(Ref(mod), filter(arg -> !(arg isa LineNumberNode), args))...)
+        return Compose(Any[translate(mod, arg) for arg in args if !(arg isa LineNumberNode)]...)
     elseif head === :. && length(args) == 2 && Meta.isexpr(args[2], :tuple, 1)
         return Compose(translate(mod, args[1]), translate(mod, args[2].args[1]))
     elseif head === :.
-        return Compose(translate.(Ref(mod), args)...)
+        return Compose(Any[translate(mod, arg) for arg in args]...)
     elseif head === :let && length(args) == 2
-        return Given(translate.(Ref(mod), Meta.isexpr(args[1], :block) ? args[1].args : (args[1],))...,
-                     translate(mod, args[2]))
+        if Meta.isexpr(args[1], :block)
+            return Given(Any[translate(mod, arg) for arg in args[1].args]..., translate(mod, args[2]))
+        else
+            return Given(translate(mod, args[1]), translate(mod, args[2]))
+        end
     elseif head === :braces
-        return Record(translate.(Ref(mod), args)...)
+        return Record(Any[translate(mod, arg) for arg in args]...)
     elseif head === :quote && length(args) == 1 && Meta.isexpr(args[1], :braces)
-        return Record(translate.(Ref(mod), args[1].args)...)
+        return Record(Any[translate(mod, arg) for arg in  args[1].args]...)
     elseif head === :curly && length(args) >= 1
-        return Compose(translate(mod, args[1]), Record(translate.(Ref(mod), args[2:end])...))
+        return Compose(translate(mod, args[1]), Record(Any[translate(mod, arg) for arg in args[2:end]]...))
     elseif head === :call && length(args) >= 1
         call = args[1]
         if call isa QuoteNode
@@ -238,19 +241,19 @@ function translate(mod::Module, ex::Expr)::AbstractQuery
         elseif call isa Symbol
             return translate(mod, Val(call), (args[2:end]...,))
         elseif Meta.isexpr(call, :.) && !isempty(call.args)
-            return Compose(translate.(Ref(mod), call.args[1:end-1])...,
+            return Compose(Any[translate(mod, arg) for arg in  call.args[1:end-1]]...,
                            translate(mod, Expr(:call, call.args[end], args[2:end]...)))
         elseif call isa Base.Callable
-            return Lift(call(translate.(Ref(mod), args[2:end])...))
+            return Lift(call(Any[translate(mod, arg) for arg in args[2:end]]...))
         end
     elseif head == :comparison && length(args) == 3
         return translate(mod, Expr(:call, args[2], args[1], args[3]))
     elseif head == :comparison && length(args) > 3
         return translate(mod, Expr(:&&, Expr(:call, args[2], args[1], args[3]), Expr(head, args[3:end]...)))
     elseif head == :&&
-        return Lift(&, (translate.(Ref(mod), args)...,))
+        return Lift(&, (Any[translate(mod, arg) for arg in args]...,))
     elseif head == :||
-        return Lift(|, (translate.(Ref(mod), args)...,))
+        return Lift(|, (Any[translate(mod, arg) for arg in args]...,))
     end
     error("invalid query expression: $(repr(ex))")
 end
@@ -272,7 +275,7 @@ translate(mod::Module, @nospecialize(v::Val{N})) where {N} =
 
 function translate(mod::Module, @nospecialize(v::Val{N}), args::Tuple) where {N}
     fn = getfield(mod, N)
-    Lift(fn, translate.(Ref(mod), args))
+    Lift(fn, (Any[translate(mod, arg) for arg in args]...,))
 end
 
 translate(mod::Module, val) =
@@ -590,7 +593,7 @@ function assemble_record(p::Pipeline, xs::Vector{Pipeline})
         push!(cols, x)
     end
     src = elements(target(p))
-    tgt = TupleOf(lbls, target.(cols))
+    tgt = TupleOf(lbls, AbstractShape[target(col) for col in cols])
     lbl = getlabel(p, nothing)
     if lbl !== nothing
         tgt = relabel(tgt, lbl)
@@ -630,12 +633,13 @@ Record(Xs...) =
     Query(Record, Xs...)
 
 function Record(env::Environment, p::Pipeline, Xs...)
-    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
+    p0 = target_pipe(p)
+    xs = Pipeline[assemble(env, p0, convert(AbstractQuery, X)) for X in Xs]
     assemble_record(p, xs)
 end
 
 translate(mod::Module, ::Val{:record}, args::Tuple) =
-    Record(translate.(Ref(mod), args)...)
+    Record(Any[translate(mod, arg) for arg in args]...)
 
 
 #
@@ -668,7 +672,7 @@ function assemble_mix(p::Pipeline, xs::Vector{Pipeline})
         push!(cols, x)
     end
     src = elements(target(p))
-    tgt = BlockOf(TupleOf(lbls, elements.(target.(cols))), card)
+    tgt = BlockOf(TupleOf(lbls, AbstractShape[elements(target(col)) for col in cols]), card)
     lbl = getlabel(p, nothing)
     if lbl !== nothing
         tgt = relabel(tgt, lbl)
@@ -703,12 +707,13 @@ Mix(Xs...) =
     Query(Mix, Xs...)
 
 function Mix(env::Environment, p::Pipeline, Xs...)
-    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
+    p0 = target_pipe(p)
+    xs = Pipeline[assemble(env, p0, convert(AbstractQuery, X)) for X in Xs]
     assemble_mix(p, xs)
 end
 
 translate(mod::Module, ::Val{:mix}, args::Tuple) =
-    Mix(translate.(Ref(mod), args)...)
+    Mix(Any[translate(mod, arg) for arg in args]...)
 
 
 #
@@ -750,13 +755,13 @@ as_record(::Type) =
     nothing
 
 function as_record(ity::Type{<:NamedTuple})
-    lbls = collect(Symbol, ity.parameters[1])
-    cols = collect(AbstractShape, ity.parameters[2].parameters)
+    lbls = Symbol[ity.parameters[1]...]
+    cols = AbstractShape[ity.parameters[2].parameters...]
     adapt_tuple() |> designate(ity, TupleOf(lbls, cols))
 end
 
 function as_record(ity::Type{<:Tuple})
-    cols = collect(AbstractShape, ity.parameters)
+    cols = AbstractShape[ity.parameters...]
     adapt_tuple() |> designate(ity, TupleOf(cols))
 end
 
@@ -788,7 +793,7 @@ function assemble_collect(p, x)
         splice!(cols, x_pos:x_pos-1, Ref(x))
         splice!(lbls, x_pos:x_pos-1, Ref(x_lbl !== nothing ? x_lbl : ordinal_label(length(cols))))
     end
-    tgt = TupleOf(lbls, target.(cols))
+    tgt = TupleOf(lbls, AbstractShape[target(col) for col in cols])
     lbl = getlabel(p, nothing)
     if lbl !== nothing
         tgt = relabel(tgt, lbl)
@@ -857,7 +862,7 @@ function Collect(env::Environment, p::Pipeline, X)
 end
 
 translate(mod::Module, ::Val{:collect}, args::Tuple) =
-    Collect(translate.(Ref(mod), args)...)
+    Collect(Any[translate(mod, arg) for arg in args]...)
 
 translate(mod::Module, ::Val{:collect}, ::Tuple{}) =
     Then(Collect)
@@ -962,8 +967,8 @@ translate(mod::Module, ::Val{:join}, (arg,)::Tuple{Any}) =
 #
 
 function assemble_lift(p::Pipeline, f, xs::Vector{Pipeline})
-    cols = uncover.(xs)
-    ity = Tuple{eltype.(target.(cols))...}
+    cols = Pipeline[uncover(x) for x in xs]
+    ity = Tuple{Any[eltype(target(col)) for col in cols]...}
     oty = Core.Compiler.return_type(f, ity)
     oty != Union{} || error("cannot apply $f to $ity")
     src = elements(target(p))
@@ -1084,7 +1089,8 @@ Lift(env::Environment, p::Pipeline, elts::AbstractVector, card::Union{Cardinalit
     Lift(env, p, DataKnot(Any, elts, card))
 
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
-    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
+    p0 = target_pipe(p)
+    xs = Pipeline[assemble(env, p0, convert(AbstractQuery, X)) for X in Xs]
     assemble_lift(p, f, xs)
 end
 
@@ -1114,7 +1120,7 @@ Base.copy(bc::Broadcast.Broadcasted{QueryStyle}) =
     BroadcastLift(bc)
 
 BroadcastLift(bc::Broadcast.Broadcasted{QueryStyle}) =
-    BroadcastLift(bc.f, (BroadcastLift.(bc.args)...,))
+    BroadcastLift(bc.f, (Any[BroadcastLift(arg) for arg in bc.args]...,))
 
 BroadcastLift(val) = val
 
@@ -1124,7 +1130,7 @@ BroadcastLift(env::Environment, p::Pipeline, args...) =
     Lift(env, p, args...)
 
 quoteof(::typeof(BroadcastLift), args::Vector{Any}) =
-    quoteof(broadcast, Any[args[1], quoteof.(args[2])...])
+    quoteof(broadcast, Any[args[1], Any[quoteof(arg) for arg in args[2]]...])
 
 Lift(bc::Broadcast.Broadcasted{QueryStyle}) =
     BroadcastLift(bc)
@@ -1263,7 +1269,7 @@ quoteof(::typeof(Tag), name::Symbol, X) =
     name
 
 quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
-    Expr(:call, name, quoteof.(args)...)
+    Expr(:call, name, Any[quoteof(arg) for arg in args]...)
 
 
 #
@@ -1458,7 +1464,7 @@ function Keep(env::Environment, p::Pipeline, P)
 end
 
 translate(mod::Module, ::Val{:keep}, args::Tuple{Any,Vararg{Any}}) =
-    Keep(translate.(Ref(mod), args)...)
+    Keep(Any[translate(mod, arg) for arg in args]...)
 
 
 #
@@ -1496,7 +1502,7 @@ end
 const Let = Given
 
 translate(mod::Module, ::Val{:given}, args::Tuple{Any,Vararg{Any}}) =
-    Given(translate.(Ref(mod), args)...)
+    Given(Any[translate(mod, arg) for arg in args]...)
 
 
 #
@@ -2050,7 +2056,7 @@ translate(mod::Module, ::Val{:last}, ::Tuple{}) =
     Then(Last)
 
 translate(mod::Module, ::Val{:nth}, args::Tuple{Any,Any}) =
-    Nth(translate.(Ref(mod), args)...)
+    Nth(Any[translate(mod, arg) for arg in args]...)
 
 translate(mod::Module, ::Val{:nth}, (arg,)::Tuple{Any}) =
     Nth(translate(mod, arg))
@@ -2231,7 +2237,7 @@ function assemble_group(p::Pipeline, xs::Vector{Pipeline})
     end
     push!(lbls, lbl)
     src = elements(target(p))
-    tgt = TupleOf(target(p0), TupleOf(target.(ks)))
+    tgt = TupleOf(target(p0), TupleOf(AbstractShape[target(k) for k in ks]))
     q = tuple_of(p0, tuple_of(Symbol[], ks)) |> designate(src, tgt)
     r = uncover(compose(p, cover(q)))
     cols = Pipeline[]
@@ -2244,7 +2250,7 @@ function assemble_group(p::Pipeline, xs::Vector{Pipeline})
                                                       BlockOf(elements(target(p0)), card))
     push!(cols, col)
     src = source(r)
-    tgt = replace_elements(target(r), TupleOf(lbls, target.(cols)))
+    tgt = replace_elements(target(r), TupleOf(lbls, AbstractShape[target(col) for col in cols]))
     chain_of(
         r,
         group_by(),
@@ -2269,12 +2275,13 @@ Group(Xs...) =
     Query(Group, Xs...)
 
 function Group(env::Environment, p::Pipeline, Xs...)
-    xs = assemble.(Ref(env), Ref(target_pipe(p)), collect(AbstractQuery, Xs))
+    p0 = target_pipe(p)
+    xs = Pipeline[assemble(env, p0, convert(AbstractQuery, X)) for X in Xs]
     assemble_group(p, xs)
 end
 
 translate(mod::Module, ::Val{:group}, args::Tuple) =
-    Group(translate.(Ref(mod), args)...)
+    Group(Any[translate(mod, arg) for arg in args]...)
 
 
 #

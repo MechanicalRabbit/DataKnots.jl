@@ -73,10 +73,10 @@ end
 
 function TupleVector(lcol1::Pair{<:Union{Symbol,AbstractString},<:AbstractVector},
                      more::Pair{<:Union{Symbol,AbstractString},<:AbstractVector}...)
-    len = length(lcol1.second)
-    lcols = (lcol1, more...)
-    lbls = collect(Symbol, Symbol.(first.(lcols)))
-    cols = collect(AbstractVector, last.(lcols))
+    len = length(last(lcol1))
+    lcols = Any[lcol1, more...]
+    lbls = Symbol[Symbol(first(lcol)) for lcol in lcols]
+    cols = AbstractVector[last(lcol) for lcol in lcols]
     TupleVector(lbls, len, cols)
 end
 
@@ -155,15 +155,15 @@ IndexStyle(::Type{<:TupleVector}) = IndexLinear()
 
 eltype(tv::TupleVector) =
     if !isempty(tv.lbls)
-        NamedTuple{(tv.lbls...,),Tuple{eltype.(tv.cols)...}}
+        NamedTuple{(tv.lbls...,),Tuple{Any[eltype(col) for col in tv.cols]...}}
     else
-        Tuple{eltype.(tv.cols)...}
+        Tuple{Any[eltype(col) for col in tv.cols]...}
     end
 
 @inline function getindex(tv::TupleVector, k::Int)
     @boundscheck checkbounds(tv, k)
     @inbounds k′ = tv.idxs[k]
-    @inbounds t = getindex.((tv.cols...,), k′)
+    @inbounds t = tuple(Any[col[k′] for col in tv.cols]...)
     if !isempty(tv.lbls)
         NamedTuple{(tv.lbls...,)}(t)
     else
@@ -190,7 +190,7 @@ Tables.istable(tv::TupleVector) = !isempty(tv.lbls)
 Tables.columnaccess(::TupleVector) = true
 
 Tables.columns(tv::TupleVector) =
-    NamedTuple{(labels(tv)...,)}(collect.(columns(tv)))
+    NamedTuple{(labels(tv)...,)}(Any[collect(col) for col in columns(tv)])
 
 
 #
@@ -446,16 +446,15 @@ BlockCursor(pos, l, r, bv::BlockVector{CARD,O,E}) where {CARD,T,O<:AbstractVecto
 @inline cursor(bv::BlockVector) =
     BlockCursor(bv)
 
-@inline function cursor(bv::BlockVector, pos::Int)
+@inline cursor(bv::BlockVector, pos::Int) =
     BlockCursor(pos, bv)
-end
 
-@inline function iterate(cr::BlockCursor, ::Nothing=nothing)
+@inline function next!(cr::BlockCursor)
     cr.pos += 1
     cr.l = cr.r
-    cr.pos < length(cr.offs) || return nothing
-    @inbounds cr.r = cr.offs[cr.pos+1]
-    (cr, nothing)
+    cr.pos < length(cr.offs) || return false
+    cr.r = cr.offs[cr.pos+1]
+    true
 end
 
 # Vector interface for cursor.
@@ -675,7 +674,7 @@ _reconstruct(mk::MakeTupleVector) =
     Expr(:call, TupleVector,
                 mk.lbls,
                 mk.len,
-                Expr(:ref, AbstractVector, _reconstruct.(mk.col_mks)...))
+                Expr(:ref, AbstractVector, Any[_reconstruct(col_mk) for col_mk in mk.col_mks]...))
 
 _reconstruct(mk::MakeBlockVector) =
     Expr(:call, Expr(:curly, BlockVector, mk.card),

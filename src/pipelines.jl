@@ -47,7 +47,7 @@ struct Pipeline
 end
 
 Pipeline(op, args...) =
-    Pipeline(op, args=collect(Any, args))
+    Pipeline(op, args=Any[args...])
 
 """
     designate(::Pipeline, ::Signature) :: Pipeline
@@ -87,12 +87,12 @@ function (p::Pipeline)(input::DataKnot)
     DataKnot(target(p), p(cell(input)))
 end
 
-function (p::Pipeline)(input::AbstractVector)
+function (p::Pipeline)(@nospecialize input::AbstractVector)::AbstractVector
     rt = Runtime()
     output = p(rt, input)
 end
 
-function (p::Pipeline)(rt::Runtime, input::AbstractVector)
+function (p::Pipeline)(rt::Runtime, @nospecialize input::AbstractVector)::AbstractVector
     p.op(rt, input, p.args...)
 end
 
@@ -141,7 +141,7 @@ end
 @generated function _tuple_lift(f, len::Int, cols::AbstractVector...)
     D = length(cols)
     return quote
-        I = Tuple{eltype.(cols)...}
+        I = Tuple{Any[eltype(col) for col in cols]...}
         O = Core.Compiler.return_type(f, I)
         output = Vector{O}(undef, len)
         @inbounds for k = 1:len
@@ -177,20 +177,22 @@ function block_lift(rt::Runtime, input::AbstractVector, f, default)
 end
 
 function _block_lift(f, input)
-    I = Tuple{typeof(cursor(input))}
+    cr = cursor(input)
+    I = Tuple{typeof(cr)}
     O = Core.Compiler.return_type(f, I)
     output = Vector{O}(undef, length(input))
-    @inbounds for cr in cursor(input)
+    @inbounds while next!(cr)
         output[cr.pos] = f(cr)
     end
     output
 end
 
 function _block_lift(f, default, input)
-    I = Tuple{typeof(cursor(input))}
+    cr = cursor(input)
+    I = Tuple{typeof(cr)}
     O = Union{Core.Compiler.return_type(f, I), typeof(default)}
     output = Vector{O}(undef, length(input))
-    @inbounds for cr in cursor(input)
+    @inbounds while next!(cr)
         output[cr.pos] = !isempty(cr) ? f(cr) : default
     end
     output
@@ -381,7 +383,7 @@ This pipeline returns its input unchanged.
 """
 pass() = Pipeline(pass)
 
-pass(rt::Runtime, input::AbstractVector) =
+pass(rt::Runtime, @nospecialize input::AbstractVector) =
     input
 
 """
@@ -405,12 +407,12 @@ chain_of(ps::Vector) =
 
 quoteof(::typeof(chain_of), args::Vector{Any}) =
     if length(args) == 1 && args[1] isa Vector
-        Expr(:call, chain_of, quoteof.(args[1])...)
+        Expr(:call, chain_of, Any[quoteof(arg) for arg in args[1]]...)
     else
-        Expr(:call, chain_of, quoteof.(args)...)
+        Expr(:call, chain_of, Any[quoteof(arg) for arg in args]...)
     end
 
-function chain_of(rt::Runtime, input::AbstractVector, ps)
+function chain_of(rt::Runtime, @nospecialize(input::AbstractVector), ps)
     output = input
     for p in ps
         output = p(rt, output)
@@ -433,22 +435,22 @@ tuple_of(ps...) =
     tuple_of(Symbol[], collect(ps))
 
 tuple_of(lps::Pair{Symbol}...) =
-    tuple_of(collect(Symbol, first.(lps)), collect(last.(lps)))
+    tuple_of(Symbol[first(lp) for lp in lps], Pipeline[last(lp) for lp in lps])
 
 tuple_of(lbls::Vector{Symbol}, ps::Vector) = Pipeline(tuple_of, lbls, ps)
 
 quoteof(::typeof(tuple_of), args::Vector{Any}) =
     if length(args) == 2 && args[1] isa Vector{Symbol} && args[2] isa Vector
         if isempty(args[1])
-            Expr(:call, tuple_of, quoteof.(args[2])...)
+            Expr(:call, tuple_of, Any[quoteof(p) for p in args[2]]...)
         else
-            Expr(:call, tuple_of, quoteof.(args[1] .=> args[2])...)
+            Expr(:call, tuple_of, Any[quoteof(l => p) for (l, p) in zip(args[1], args[2])]...)
         end
     else
-        Expr(:call, tuple_of, quoteof.(args)...)
+        Expr(:call, tuple_of, Any[quoteof(arg) for arg in args]...)
     end
 
-function tuple_of(rt::Runtime, input::AbstractVector, lbls, ps)
+function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls, ps)
     len = length(input)
     cols = AbstractVector[p(rt, input) for p in ps]
     TupleVector(lbls, len, cols)
@@ -594,14 +596,17 @@ with tuple elements.
 distribute_all() = Pipeline(distribute_all)
 
 function distribute_all(rt::Runtime, input::AbstractVector)
-    @assert input isa TupleVector && all(col isa BlockVector for col in columns(input))
+    @assert input isa TupleVector && all(Bool[col isa BlockVector for col in columns(input)])
     cols = columns(input)
     _distribute_all(labels(input), length(input), cols...)
 end
 
 @generated function _distribute_all(lbls::Vector{Symbol}, len::Int, cols::BlockVector...)
     D = length(cols)
-    CARD = |(x1to1, cardinality.(cols)...)
+    CARD = x1to1
+    for col in cols
+        CARD |= cardinality(col)
+    end
     return quote
         @nextract $D offs (d -> offsets(cols[d]))
         @nextract $D elts (d -> elements(cols[d]))
@@ -1255,7 +1260,7 @@ function _match_pipeline(@nospecialize ex)
             end
         end
     elseif ex isa Expr
-        Expr(ex.head, _match_pipeline.(ex.args)...)
+        Expr(ex.head, Any[_match_pipeline(arg) for arg in ex.args]...)
     else
         ex
     end

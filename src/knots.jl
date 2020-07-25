@@ -135,10 +135,10 @@ DataKnot() =
     DataKnot(Any, TupleVector(1), x1to1)
 
 function DataKnot(ps::Pair{Symbol}...)
-    lbls = collect(first.(ps))
-    cols = collect(convert.(DataKnot, last.(ps)))
-    vals = collect(AbstractVector, cell.(cols))
-    shp = BlockOf(TupleOf(lbls, shape.(cols)), x1to1)
+    lbls = Symbol[first(p) for p in ps]
+    cols = DataKnot[convert(DataKnot, last(p)) for p in ps]
+    vals = AbstractVector[cell(col) for col in cols]
+    shp = BlockOf(TupleOf(lbls, AbstractShape[shape(col) for col in cols]), x1to1)
     return DataKnot(shp, BlockVector(:, TupleVector(lbls, 1, vals)))
 end
 
@@ -769,7 +769,7 @@ function write!(c::TableCanvas, x::Int, y::Int, text::String, cut::Int=0)
 end
 
 lines!(c::TableCanvas) =
-    String.(take!.(c.bufs))
+    String[String(take!(buf)) for buf in c.bufs]
 
 function table_draw(l::TableLayout, maxx::Int)
     maxy = size(l.cells, 1) > 0 ? size(l.cells, 1) + (l.tear_row > 0) + l.empty + 1 : 1
