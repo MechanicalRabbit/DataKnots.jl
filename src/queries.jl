@@ -2294,6 +2294,11 @@ function assemble_is(p::Pipeline, T::Type)
     compose(p, q)
 end
 
+"""
+    Is(T::Type) :: Query
+
+This query asserts that the input has the type `T`.
+"""
 Is(T::Type) = Query(Is, T)
 
 Is(env::Environment, p::Pipeline, T) =

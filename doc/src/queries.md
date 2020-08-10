@@ -18,6 +18,7 @@ We will need the following definitions.
         Get,
         Given,
         Group,
+        Is,
         Is0to1,
         Is0toN,
         Is1to1,
@@ -2004,6 +2005,40 @@ In `@query` notation, we write `take(N)` and `drop(N)`.
 
     @query department.employee.drop(3)
     #-> Get(:department) >> Get(:employee) >> Drop(Lift(3))
+
+### `Is`
+
+The query `Is(T)` asserts that the input has the type `T`.
+
+    Q = It.department.name >> Is(String)
+    #-> It.department.name >> Is(String)
+
+    chicago[Q]
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    3 │ OEMC   │
+    =#
+
+When the check fails, an error is reported.
+
+    Q = It.department.name >> Is(Int)
+
+    chicago[Q]
+    #-> ERROR: "name"[1]: expected a value of type Int64; got String
+
+In `@query` notation, this operation is written as `is(T)`.
+
+    @query chicago department.name.is(String)
+    #=>
+      │ name   │
+    ──┼────────┼
+    1 │ POLICE │
+    2 │ FIRE   │
+    3 │ OEMC   │
+    =#
 
 ### `Is0to1`, `Is0toN`, `Is1to1`, `Is1toN`
 
