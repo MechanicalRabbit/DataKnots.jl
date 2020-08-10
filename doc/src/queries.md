@@ -1388,9 +1388,9 @@ Regular and named tuples also support attribute lookup.
     (1:1) × Tuple{String,String,Int64}
     =#
 
-When applied to a dictionary, `Get(name)` extracts a value corresponding to a
-string key.  If the dictionary does not contain the given key, `missing` is
-returned.
+When applied to a dictionary with string keys, `Get(name)` extracts the value
+corresponding to `name`.  If the dictionary does not contain the given key,
+`missing` is returned.
 
     Q = Lift(Dict("name" => "JEFFERY A", "position" => "SERGEANT")) >>
         It.position

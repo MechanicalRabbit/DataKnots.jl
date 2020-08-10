@@ -1383,13 +1383,9 @@ function lookup(ity::Type{<:Tuple}, name::Symbol)
     lift(getindex, j) |> designate(ity, oty)
 end
 
-function lookup(ity::Type{<:AbstractDict{K,V}}, name::Symbol) where {K, V}
+function lookup(ity::Type{<:AbstractDict{K,V}}, name::Symbol) where {K <: AbstractString, V}
     oty = Union{V, Missing}
     lift(get, string(name), missing) |> designate(ity, oty |> IsLabeled(name))
-end
-
-function lookup(ity::Type{<:AbstractDict}, name::Symbol)
-    lift(get, string(name), missing) |> designate(ity, Any |> IsLabeled(name))
 end
 
 #
