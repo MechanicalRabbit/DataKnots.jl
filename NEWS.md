@@ -1,10 +1,13 @@
 # Release Notes
 
+## v0.10.1
+
+- Lookup in string dictionaries.
+- Added `Is` combinator.
+
 ## v0.10.0
 
 - Added dead code elimination and common subexpression optimization.
-- Lookup in string dictionaries.
-- Added `Is` combinator.
 
 ## v0.9.0
 
