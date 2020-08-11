@@ -3,6 +3,8 @@
 ## v0.10.0
 
 - Added dead code elimination and common subexpression optimization.
+- Lookup in string dictionaries.
+- Added `Is` combinator.
 
 ## v0.9.0
 
