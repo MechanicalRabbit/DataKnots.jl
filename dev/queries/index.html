@@ -14,6 +14,7 @@
     Get,
     Given,
     Group,
+    Is,
     Is0to1,
     Is0toN,
     Is1to1,
@@ -188,7 +189,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/38381aa0852eeaad334be848d26791ad8b79c300/src/queries.jl#L289-L293">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-none">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/38381aa0852eeaad334be848d26791ad8b79c300/src/queries.jl#L18-L35">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/38381aa0852eeaad334be848d26791ad8b79c300/src/queries.jl#L118-L122">source</a></section></article><h2 id="Test-Suite"><a class="docs-heading-anchor" href="#Test-Suite">Test Suite</a><a id="Test-Suite-1"></a><a class="docs-heading-anchor-permalink" href="#Test-Suite" title="Permalink"></a></h2><h3 id="Querying"><a class="docs-heading-anchor" href="#Querying">Querying</a><a id="Querying-1"></a><a class="docs-heading-anchor-permalink" href="#Querying" title="Permalink"></a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
+=#</code></pre><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Environment()</code></pre><p>Query compilation state.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/adcb4e2395d3cfc127e2bc327c55e184c75e653a/src/queries.jl#L289-L293">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="language-none">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/adcb4e2395d3cfc127e2bc327c55e184c75e653a/src/queries.jl#L18-L35">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot,Any}" href="#Base.getindex-Tuple{DataKnot,Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/rbt-lang/DataKnots.jl/blob/adcb4e2395d3cfc127e2bc327c55e184c75e653a/src/queries.jl#L118-L122">source</a></section></article><h2 id="Test-Suite"><a class="docs-heading-anchor" href="#Test-Suite">Test Suite</a><a id="Test-Suite-1"></a><a class="docs-heading-anchor-permalink" href="#Test-Suite" title="Permalink"></a></h2><h3 id="Querying"><a class="docs-heading-anchor" href="#Querying">Querying</a><a id="Querying-1"></a><a class="docs-heading-anchor-permalink" href="#Querying" title="Permalink"></a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -894,6 +895,24 @@ chicago[Q]
 #=&gt;
 ERROR: cannot find &quot;Z&quot; at
 (1:1) × Tuple{String,String,Int64}
+=#</code></pre><p>When applied to a dictionary with string keys, <code>Get(name)</code> extracts the value corresponding to <code>name</code>.  If the dictionary does not contain the given key, <code>missing</code> is returned.</p><pre><code class="language-julia">Q = Lift(Dict(&quot;name&quot; =&gt; &quot;JEFFERY A&quot;, &quot;position&quot; =&gt; &quot;SERGEANT&quot;)) &gt;&gt;
+    It.position
+
+chicago[Q]
+#=&gt;
+│ position │
+┼──────────┼
+│ SERGEANT │
+=#
+
+Q = Lift(Dict(&quot;name&quot; =&gt; &quot;JEFFERY A&quot;, &quot;position&quot; =&gt; &quot;SERGEANT&quot;)) &gt;&gt;
+    It.ssn
+
+chicago[Q]
+#=&gt;
+│ ssn │
+┼─────┼
+(empty)
 =#</code></pre><p>In <code>@query</code> notation, <code>Get(:name)</code> is written as <code>name</code>.</p><pre><code class="language-julia">@query department.name
 #-&gt; Get(:department) &gt;&gt; Get(:name)</code></pre><h3 id="Keep-and-Given"><a class="docs-heading-anchor" href="#Keep-and-Given"><code>Keep</code> and <code>Given</code></a><a id="Keep-and-Given-1"></a><a class="docs-heading-anchor-permalink" href="#Keep-and-Given" title="Permalink"></a></h3><p>We use the combinator <code>Keep()</code> to assign a value to a context parameter.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Keep(:dept_name =&gt; It.name) &gt;&gt;
@@ -1359,7 +1378,27 @@ chicago[Q]
 #-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Take(Lift(3))
 
 @query department.employee.drop(3)
-#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Drop(Lift(3))</code></pre><h3 id="Is0to1,-Is0toN,-Is1to1,-Is1toN"><a class="docs-heading-anchor" href="#Is0to1,-Is0toN,-Is1to1,-Is1toN"><code>Is0to1</code>, <code>Is0toN</code>, <code>Is1to1</code>, <code>Is1toN</code></a><a id="Is0to1,-Is0toN,-Is1to1,-Is1toN-1"></a><a class="docs-heading-anchor-permalink" href="#Is0to1,-Is0toN,-Is1to1,-Is1toN" title="Permalink"></a></h3><p>The <code>Is1to1</code> query asserts that the input exists and is singular.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Drop(Lift(3))</code></pre><h3 id="Is"><a class="docs-heading-anchor" href="#Is"><code>Is</code></a><a id="Is-1"></a><a class="docs-heading-anchor-permalink" href="#Is" title="Permalink"></a></h3><p>The query <code>Is(T)</code> asserts that the input has the type <code>T</code>.</p><pre><code class="language-julia">Q = It.department.name &gt;&gt; Is(String)
+#-&gt; It.department.name &gt;&gt; Is(String)
+
+chicago[Q]
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+3 │ OEMC   │
+=#</code></pre><p>When the check fails, an error is reported.</p><pre><code class="language-julia">Q = It.department.name &gt;&gt; Is(Int)
+
+chicago[Q]
+#-&gt; ERROR: &quot;name&quot;[1]: expected a value of type Int64; got String</code></pre><p>In <code>@query</code> notation, this operation is written as <code>is(T)</code>.</p><pre><code class="language-julia">@query chicago department.name.is(String)
+#=&gt;
+  │ name   │
+──┼────────┼
+1 │ POLICE │
+2 │ FIRE   │
+3 │ OEMC   │
+=#</code></pre><h3 id="Is0to1,-Is0toN,-Is1to1,-Is1toN"><a class="docs-heading-anchor" href="#Is0to1,-Is0toN,-Is1to1,-Is1toN"><code>Is0to1</code>, <code>Is0toN</code>, <code>Is1to1</code>, <code>Is1toN</code></a><a id="Is0to1,-Is0toN,-Is1to1,-Is1toN-1"></a><a class="docs-heading-anchor-permalink" href="#Is0to1,-Is0toN,-Is1to1,-Is1toN" title="Permalink"></a></h3><p>The <code>Is1to1</code> query asserts that the input exists and is singular.</p><pre><code class="language-julia">Q = It.department &gt;&gt;
     Take(1) &gt;&gt;
     Is1to1
 #-&gt; It.department &gt;&gt; Take(1) &gt;&gt; Is1to1
@@ -1536,4 +1575,4 @@ end
 Get(:department) &gt;&gt;
 Group(Count(Get(:employee)) &gt;&gt; Label(:size)) &gt;&gt;
 Record(Get(:size), Count(Get(:department)) &gt;&gt; Label(:count))
-=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../knots/">« Data Knots</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 25 July 2020 00:33">Saturday 25 July 2020</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../knots/">« Data Knots</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 11 August 2020 00:34">Tuesday 11 August 2020</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
