@@ -435,19 +435,6 @@ cover(src::AbstractShape) =
 cover(src::BlockOf) =
     pass() |> designate(src, src |> IsFlow)
 
-function cover(src::ValueOf)
-    ty = eltype(src)
-    if ty <: AbstractVector
-        ty′ = eltype(ty)
-        adapt_vector() |> designate(src, BlockOf(ty′, x0toN) |> IsFlow)
-    elseif Missing <: ty
-        ty′ = Base.nonmissingtype(ty)
-        adapt_missing() |> designate(src, BlockOf(ty′, x0to1) |> IsFlow)
-    else
-        wrap() |> designate(src, BlockOf(src, x1to1) |> IsFlow)
-    end
-end
-
 function cover(src::IsLabeled)
     p = cover(subject(src))
     tgt = replace_elements(target(p), IsLabeled(label(src)))
@@ -1091,12 +1078,12 @@ Lift(env::Environment, p::Pipeline, elts::AbstractVector, card::Union{Cardinalit
 function Lift(env::Environment, p::Pipeline, f, Xs::Tuple)
     p0 = target_pipe(p)
     xs = Pipeline[assemble(env, p0, convert(AbstractQuery, X)) for X in Xs]
-    assemble_lift(p, f, xs)
+    Adapt(env, assemble_lift(p, f, xs))
 end
 
 function Lift(env::Environment, p::Pipeline, db::DataKnot)
     q = cover(cell(db), Signature(elements(target(p)), shape(db)))
-    compose(p, q)
+    Adapt(env, compose(p, q))
 end
 
 # Broadcasting.
@@ -1313,7 +1300,7 @@ function Get(env::Environment, p::Pipeline, name)
     q = lookup(tgt, name)
     q !== nothing || error("cannot find \"$name\" at\n$(syntaxof(tgt))")
     q = cover(q)
-    compose(p, q)
+    Adapt(env, compose(p, q))
 end
 
 lookup(::AbstractShape, ::Any) = nothing
@@ -1386,6 +1373,52 @@ end
 function lookup(ity::Type{<:AbstractDict{K,V}}, name::Symbol) where {K <: AbstractString, V}
     oty = Union{V, Missing}
     lift(get, string(name), missing) |> designate(ity, oty |> IsLabeled(name))
+end
+
+#
+# Adapt Julia types.
+#
+
+Adapt() =
+    Query(Adapt)
+
+function Adapt(env::Environment, p::Pipeline)
+    q = adapt(p)
+    q !== nothing || return p
+    q = cover(q)
+    q = relabel(q, getlabel(p, nothing))
+    compose(p, q)
+end
+
+adapt(p::Pipeline) =
+    adapt(target(p))
+
+adapt(::AbstractShape) = nothing
+
+function adapt(src::ValueOf)
+    ty = eltype(src)
+    if ty <: AbstractVector
+        ty′ = eltype(ty)
+        adapt_vector() |> designate(src, BlockOf(ty′, x0toN))
+    elseif Missing <: ty
+        ty′ = Base.nonmissingtype(ty)
+        adapt_missing() |> designate(src, BlockOf(ty′, x0to1))
+    else
+        return nothing
+    end
+end
+
+adapt(src::IsLabeled) =
+    adapt(subject(src))
+
+adapt(src::IsFlow) =
+    adapt(elements(src))
+
+function adapt(src::IsScope)
+    q = adapt(column(src))
+    q !== nothing ?
+        chain_of(column(1), q) |> designate(src, target(q)) :
+        nothing
 end
 
 #
