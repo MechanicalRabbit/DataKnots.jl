@@ -307,7 +307,6 @@ function assemble(env::Environment, p::Pipeline, nav::Navigation)::Pipeline
     p
 end
 
-
 #
 # Adapters.
 #
@@ -1263,6 +1262,14 @@ quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
 # Attributes and parameters.
 #
 
+struct Deferred
+end
+
+const deferred = Deferred()
+
+isfound(p) =
+    p !== nothing && p !== deferred
+
 """
     Get(lbl::Symbol) :: Query
 
@@ -1298,7 +1305,8 @@ Get(name) =
 function Get(env::Environment, p::Pipeline, name)
     tgt = target(p)
     q = lookup(tgt, name)
-    q !== nothing || error("cannot find \"$name\" at\n$(syntaxof(tgt))")
+    q === nothing && error("cannot find \"$name\" at\n$(syntaxof(tgt))")
+    q === deferred && error("cannot statically determine if \"$name\" exists")
     q = cover(q)
     Adapt(env, compose(p, q))
 end
@@ -1313,17 +1321,17 @@ lookup(src::IsFlow, name::Any) =
 
 function lookup(src::IsScope, name::Any)
     q = lookup(column(src), name)
-    q !== nothing ?
+    isfound(q) ?
         chain_of(column(1), q) |> designate(src, target(q)) :
-        nothing
+        q
 end
 
 function lookup(src::IsScope, name::Symbol)
     q = lookup(context(src), name)
-    q === nothing || return chain_of(column(2), q) |> designate(src, target(q))
+    isfound(q) && return chain_of(column(2), q) |> designate(src, target(q))
     q = lookup(column(src), name)
-    q === nothing || return chain_of(column(1), q) |> designate(src, target(q))
-    nothing
+    isfound(q) && return chain_of(column(1), q) |> designate(src, target(q))
+    q
 end
 
 function lookup(lbls::Vector{Symbol}, name::Symbol)
@@ -1375,6 +1383,9 @@ function lookup(ity::Type{<:AbstractDict{K,V}}, name::Symbol) where {K <: Abstra
     lift(get, string(name), missing) |> designate(ity, oty |> IsLabeled(name))
 end
 
+lookup(::AnyShape, ::Any) =
+    deferred
+
 #
 # Adapt Julia types.
 #
@@ -1384,7 +1395,8 @@ Adapt() =
 
 function Adapt(env::Environment, p::Pipeline)
     q = adapt(p)
-    q !== nothing || return p
+    q === nothing && return p
+    q === deferred && error("cannot statically determine if adaptation is needed")
     q = cover(q)
     q = relabel(q, getlabel(p, nothing))
     compose(p, q)
@@ -1395,19 +1407,6 @@ adapt(p::Pipeline) =
 
 adapt(::AbstractShape) = nothing
 
-function adapt(src::ValueOf)
-    ty = eltype(src)
-    if ty <: AbstractVector
-        ty′ = eltype(ty)
-        adapt_vector() |> designate(src, BlockOf(ty′, x0toN))
-    elseif Missing <: ty
-        ty′ = Base.nonmissingtype(ty)
-        adapt_missing() |> designate(src, BlockOf(ty′, x0to1))
-    else
-        return nothing
-    end
-end
-
 adapt(src::IsLabeled) =
     adapt(subject(src))
 
@@ -1416,10 +1415,28 @@ adapt(src::IsFlow) =
 
 function adapt(src::IsScope)
     q = adapt(column(src))
-    q !== nothing ?
+    isfound(q) ?
         chain_of(column(1), q) |> designate(src, target(q)) :
-        nothing
+        q
 end
+
+adapt(src::ValueOf) =
+    adapt(src.ty)
+
+adapt(::Type) = nothing
+
+function adapt(ity::Type{<:AbstractVector})
+    ty′ = eltype(ity)
+    adapt_vector() |> designate(ValueOf(ity), BlockOf(ty′, x0toN))
+end
+
+function adapt(ity::Type{Union{Missing,T}}) where {T}
+    ty′ = Base.nonmissingtype(ity)
+    adapt_missing() |> designate(ValueOf(ity), BlockOf(ty′, x0to1))
+end
+
+adapt(::AnyShape) =
+    deferred
 
 #
 # Specifying context parameters.
