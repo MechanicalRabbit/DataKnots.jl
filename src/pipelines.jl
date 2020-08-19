@@ -1234,6 +1234,20 @@ end
 
 
 #
+# Deferred assembly.
+#
+
+defer_assemble(env, p, F) =
+    Pipeline(defer_assemble, env, p, F)
+
+function defer_assemble(rt::Runtime, @nospecialize(input::AbstractVector), env, p, F)
+    output = p(rt, input)
+    q = resume_assemble(env, p, F, input, output)
+    q(rt, input)
+end
+
+
+#
 # Pipeline matching.
 #
 

@@ -49,6 +49,10 @@ end
         end
         return memo(chain)
     end
+    @match_pipeline if (p ~ defer_assemble(env, q, F))
+        q′ = f(memo, q) |> designate(signature(q))
+        return memo(defer_assemble(env, q′, F))
+    end
     args = Any[f(memo, arg) for arg in p.args]
     memo(Pipeline(p.op, args=args))
 end

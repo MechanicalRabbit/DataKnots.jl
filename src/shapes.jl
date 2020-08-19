@@ -316,6 +316,28 @@ cardinality(shp::IsFlow) =
 """
     sub |> IsScope
 
+struct IsLabeled <: Annotation
+    sub::AbstractShape
+    lbl::Symbol
+end
+
+IsLabeled(sub::Union{AbstractShape,Type}, lbl::Union{Symbol,AbstractString}) =
+    IsLabeled(convert(AbstractShape, sub), Symbol(lbl))
+
+IsLabeled(lbl::Union{Symbol,AbstractString}) =
+    sub -> IsLabeled(sub, lbl)
+
+quoteof(shp::IsLabeled) =
+    Expr(:call, nameof(|>), quoteof_inner(shp.sub), Expr(:call, nameof(IsLabeled), labelquote(shp.lbl)))
+
+subject(shp::IsLabeled) = shp.sub
+
+replace_subject(shp::IsLabeled, f) =
+    IsLabeled(f isa AbstractShape ? f : f(shp.sub), shp.lbl)
+
+label(shp::IsLabeled) =
+    shp.lbl
+
 The annotated `TupleVector` holds the scoping context.
 """
 
@@ -339,6 +361,21 @@ replace_column(shp::IsScope, f) =
 
 context(shp::IsScope) =
     column(shp.sub, 2)
+
+struct IsDeferred <: Annotation
+    sub::AnyShape
+end
+
+IsDeferred(sub::Union{AbstractShape,Type}) =
+    IsDeferred(convert(AbstractShape, sub))
+
+quoteof(shp::IsDeferred) =
+    Expr(:call, nameof(|>), quoteof_inner(shp.sub), nameof(IsDeferred))
+
+subject(shp::IsDeferred) = shp.sub
+
+replace_subject(shp::IsDeferred, f) =
+    IsDeferred(f isa AbstractShape ? f : f(shp.sub))
 
 
 #
@@ -392,6 +429,72 @@ fits(shp1::IsScope, shp2::IsScope) =
 
 fits(shp1::IsScope, shp2::AbstractShape) =
     fits(shp1.sub, shp2)
+
+fits_both(c1::Cardinality, c2::Cardinality) =
+    c1 & c2
+
+fits_both(::AbstractShape, ::AbstractShape) =
+    NoShape()
+
+fits_both(shp1::DataShape, ::AnyShape) =
+    shp1
+
+fits_both(::AnyShape, shp2::DataShape) =
+    shp2
+
+fits_both(shp1::NoShape, ::DataShape) =
+    shp1
+
+fits_both(::DataShape, shp2::NoShape) =
+    shp2
+
+fits_both(shp1::NoShape, ::AnyShape) =
+    shp1
+
+fits_both(::AnyShape, shp2::NoShape) =
+    shp2
+
+fits_both(shp1::ValueOf, shp2::ValueOf) =
+    ValueOf(typeintersect(shp1.ty, shp2.ty))
+
+fits_both(shp1::TupleOf, shp2::TupleOf) =
+    length(shp1.cols) == length(shp2.cols) &&
+    (isempty(shp1.lbls) || isempty(shp2.lbls) || shp1.lbls == shp2.lbls) ?
+        TupleOf(!isempty(shp1.lbls) ? shp1.lbls : shp2.lbls,
+                AbstractShape[fits_both(col1, col2) for (col1, col2) in zip(shp1.cols, shp2.cols)]) :
+        NoShape()
+
+fits_both(shp1::BlockOf, shp2::BlockOf) =
+    BlockOf(fits_both(shp1.elts, shp2.elts), fits_both(shp1.card, shp2.card))
+
+fits_both(shp1::IsLabeled, shp2::IsLabeled) =
+    shp1.lbl == shp2.lbl ?
+        IsLabeled(fits_both(shp1.sub, shp2.sub), shp1.lbl) :
+        NoShape()
+
+fits_both(shp1::IsLabeled, shp2::DataShape) =
+    IsLabeled(fits_both(shp1.sub, shp2), shp1.lbl)
+
+fits_both(shp1::DataShape, shp2::IsLabeled) =
+    IsLabeled(fits_both(shp1, shp2.sub), shp2.lbl)
+
+fits_both(shp1::IsFlow, shp2::IsFlow) =
+    IsFlow(fits_both(shp1.sub, shp2.sub))
+
+fits_both(shp1::IsFlow, shp2::DataShape) =
+    IsFlow(fits_both(shp1.sub, shp2))
+
+fits_both(shp1::DataShape, shp2::IsFlow) =
+    IsFlow(fits_both(shp1, shp2.sub))
+
+fits_both(shp1::IsScope, shp2::IsScope) =
+    IsScope(fits_both(shp1.sub, shp2.sub))
+
+fits_both(shp1::IsScope, shp2::DataShape) =
+    IsScope(fits_both(shp1.sub, shp2))
+
+fits_both(shp1::DataShape, shp2::IsScope) =
+    IsScope(fits_both(shp1, shp2.sub))
 
 
 #

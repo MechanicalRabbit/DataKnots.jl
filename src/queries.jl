@@ -1259,7 +1259,7 @@ quoteof(::typeof(Tag), name::Symbol, args::Tuple, X) =
 
 
 #
-# Attributes and parameters.
+# Deferred assembly.
 #
 
 struct Deferred
@@ -1269,6 +1269,16 @@ const deferred = Deferred()
 
 isfound(p) =
     p !== nothing && p !== deferred
+
+function resume_assemble(env::Environment, p::Pipeline, F, @nospecialize(input::AbstractVector), @nospecialize(output::AbstractVector))
+    tgt = fits_both(target(p), shapeof(output))
+    p′ = p |> designate(source(p), tgt)
+    assemble(env, p′, F)
+end
+
+#
+# Attributes and parameters.
+#
 
 """
     Get(lbl::Symbol) :: Query
@@ -1306,7 +1316,7 @@ function Get(env::Environment, p::Pipeline, name)
     tgt = target(p)
     q = lookup(tgt, name)
     q === nothing && error("cannot find \"$name\" at\n$(syntaxof(tgt))")
-    q === deferred && error("cannot statically determine if \"$name\" exists")
+    q === deferred && return defer_assemble(env, p, Get(name)) |> designate(source(p), AnyShape() |> IsDeferred)
     q = cover(q)
     Adapt(env, compose(p, q))
 end
@@ -1386,6 +1396,9 @@ end
 lookup(::AnyShape, ::Any) =
     deferred
 
+lookup(::IsDeferred, ::Any) =
+    deferred
+
 #
 # Adapt Julia types.
 #
@@ -1396,7 +1409,7 @@ Adapt() =
 function Adapt(env::Environment, p::Pipeline)
     q = adapt(p)
     q === nothing && return p
-    q === deferred && error("cannot statically determine if adaptation is needed")
+    q === deferred && return defer_assemble(env, p, Adapt()) |> designate(source(p), AnyShape() |> IsDeferred)
     q = cover(q)
     q = relabel(q, getlabel(p, nothing))
     compose(p, q)
@@ -1436,6 +1449,9 @@ function adapt(ity::Type{Union{Missing,T}}) where {T}
 end
 
 adapt(::AnyShape) =
+    deferred
+
+adapt(::IsDeferred) =
     deferred
 
 #
