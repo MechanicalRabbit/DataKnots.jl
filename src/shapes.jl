@@ -316,28 +316,6 @@ cardinality(shp::IsFlow) =
 """
     sub |> IsScope
 
-struct IsLabeled <: Annotation
-    sub::AbstractShape
-    lbl::Symbol
-end
-
-IsLabeled(sub::Union{AbstractShape,Type}, lbl::Union{Symbol,AbstractString}) =
-    IsLabeled(convert(AbstractShape, sub), Symbol(lbl))
-
-IsLabeled(lbl::Union{Symbol,AbstractString}) =
-    sub -> IsLabeled(sub, lbl)
-
-quoteof(shp::IsLabeled) =
-    Expr(:call, nameof(|>), quoteof_inner(shp.sub), Expr(:call, nameof(IsLabeled), labelquote(shp.lbl)))
-
-subject(shp::IsLabeled) = shp.sub
-
-replace_subject(shp::IsLabeled, f) =
-    IsLabeled(f isa AbstractShape ? f : f(shp.sub), shp.lbl)
-
-label(shp::IsLabeled) =
-    shp.lbl
-
 The annotated `TupleVector` holds the scoping context.
 """
 
