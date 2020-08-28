@@ -1,8 +1,8 @@
 # DataKnots' Internals Walk-Though
 
 This document is a walk-though of the DataKnots' backend for those that
-wish to help with implementation or write extensions. It's meant to
-complement existing internals documentation.
+wish to better understand its operation or write extensions. It's meant
+to complement existing internals documentation.
 
     using DataKnots:
         @VectorTree,
@@ -428,3 +428,46 @@ That said, once this is converted back to a row-oriented result using
 
 Hence, from the perspective outside of `DataKnots` pipeline, these two
 forms of the knot are for all intents and purposes identicial.
+
+### `chain_of` and `with_elements`
+
+A primary value of DataKnots is the automatic handling of plural values.
+This bookkeeping is performed during the translation of queries into
+pipelines. We've seen how `BlockVector` uses a vectorized format,
+tracking its block cardinality. We've also seen how `wrap()` converts
+single values into this vectorized form.
+
+    knot = convert(DataKnot, "Hello World");
+
+    assemble(knot.shp, It)
+    #-> wrap()
+
+To operate on elements of each block, e.g. *elementwise* operation, the
+`with_elements()` pipeline component is used. Logically, you could think
+of the `It` query as applying the pipeline identity, `pass()` to each
+element of every block. We can see this with the unoptimized assembly.
+
+    p = assemble(knot.shp, It, rewrite=nothing)
+    #-> chain_of(wrap(), with_elements(pass()))
+
+This pipeline operates sequentially via `chain_of()`. The first thing it
+does is `wrap()` the singular result into a `BlockVector` as seen above.
+The next pipeline component, `with_elements(pass())` applies the
+identity pipeline to each element of the block.
+
+    p(knot)
+    #=>
+    ┼─────────────┼
+    │ Hello World │
+    =#
+
+Of course, `with_elements(pass())` is effectively a noop, and then, a
+`chain_of(wrap())` can be simplified to `wrap()`. Hence, after pipeline
+rewrites are applied, we get the optimized form.
+
+    p = assemble(knot.shp, It)
+    #-> wrap()
+
+The principle value of DataKnots' queries are working on block
+vectors transparently. In our implementation, this is done with the
+`with_elements` pipeline component.
