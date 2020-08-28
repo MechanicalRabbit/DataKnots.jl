@@ -35,6 +35,7 @@ makedocs(
             "shapes.md",
             "knots.md",
             "queries.md",
+            "internals.md",
         ],
     ],
     modules = [DataKnots])

@@ -1,18 +1,22 @@
-# DataKnots' Internals
+# DataKnots' Internals Walk-Though
 
 This document is a walk-though of the DataKnots' backend for those that
-wish to help with implementation or write extensions. This document will
-necessarily go into current implementation details that may change.
+wish to help with implementation or write extensions. It's meant to
+complement existing internals documentation.
 
-    using DataKnots: 
+    using DataKnots:
         @VectorTree,
         assemble,
         chain_of,
         flatten,
+        lift,
+        block_lift,
+        shape,
+        signature,
         unitknot,
         with_elements
 
-## What is a DataKnot?
+## DataKnots: In-Memory Storage
 
 The input and output of a query are `DataKnot`s. The `convert` function
 can be used to convert a Julia structure into a DataKnot.
@@ -25,7 +29,7 @@ can be used to convert a Julia structure into a DataKnot.
 
 Internally, DataKnots have a shape (`shp`) and data (`cell`). The shape
 of this dataknot is `ValueOf(String)`. The data is a vector with a
-single string value, `"Hello World"`. 
+single string value, `"Hello World"`.
 
     dump(db)
     #=>
@@ -70,7 +74,7 @@ The other array, `offs` contains the offsets needed to partition `etls`
 into blocks. The `length(offs)` is the number of blocks plus one. Each
 indice gives the offset in `elts` where the subordinate vector starts,
 with the subsequent indice telling where the next vector starts. Hence,
-the first (and only) block can be extracted as follows. 
+the first (and only) block can be extracted as follows.
 
     begin N=1; db.cell.elts[db.cell.offs[N]:db.cell.offs[N+1]-1] end
     #-> ["Hello", "World"]
@@ -271,5 +275,156 @@ some of the columns need to be reindexed.
     =#
 
 This optimization speeds reindexing because `col[idx1][idx2]` is the
-same as `col[idx1[idx2]]`. Hence, `tv[idx1][idx2]` goes from
-`O(2*length(columns))` to `O(length(columns)+1)`.
+same as `col[idx1[idx2]]`, from 2\*number of columns to the number of
+columns + 1 operations.
+
+### Shape of a Knot
+
+Each knot is also associated with a *shape* which defines the structure
+of the knot. It's a parallel hierarchy to the data `cell`. There is
+`BlockOf`, which represents blocks, `TupleOf`, which represents tuples,
+and `ValueOf`, which represent a native Julia data type.
+
+    knot = DataKnot(Any, @VectorTree (1:N)*(x=String, y=Real) [
+                     [("A", 3.0), ("B", 5.0), ("C", 7.0)]])
+    #=>
+      │ x  y   │
+    ──┼────────┼
+    1 │ A  3.0 │
+    2 │ B  5.0 │
+    3 │ C  7.0 │
+    =#
+
+The shape of a knot is stored within it's `shp` attribute. The shape
+reflects the hierarchical structure of the knot, including cardinality
+for block vectors.
+
+    knot.shp
+    #-> BlockOf(TupleOf(:x => String, :y => Real), x1toN)
+
+Note we can have a block of tuples, a tuple of blocks, we can have a
+block of values, etc. Here is a more complicated example.
+
+    knot = unitknot[Lift(1:3) >> Record(:x=>It, :stats =>
+                                    Record(:x² => It.*It,
+                                           :upto=> Lift(n->1:n, (It,))))]
+    #=>
+      │ x  stats{x²,upto} │
+    ──┼───────────────────┼
+    1 │ 1  1, [1]         │
+    2 │ 2  4, [1; 2]      │
+    3 │ 3  9, [1; 2; 3]   │
+    =#
+
+    knot.shp
+    #=>
+    BlockOf(TupleOf(:x => BlockOf(Int64, x1to1),
+                    :stats => BlockOf(TupleOf(:x² => BlockOf(Int64, x1to1),
+                                              :upto => BlockOf(Int64)),
+                                      x1to1)))
+    =#
+
+## Pipelines: Data Transformations
+
+Queries aren't directly executed on their input data, instead they are
+assembled into a program, or pipeline, which operates on the input. To
+see this, let's start with a trivial query, `It`, upon the `unitknot`.
+
+    unitknot[It]
+    #=>
+    ┼──┼
+    │  │
+    =#
+
+How does this work?  We can `assemble()` the query against the shape of
+the input knot. This gives us the pipeline `pass()`, which simply
+returns the input it was given.
+
+    p = assemble(unitknot.shp, It)
+    #-> pass()
+
+By inspecting the pipeline's signature, we can see it takes a block
+containing a single empty tuple, and produces a block containing a
+single empty tuple.
+
+    signature(p)
+    #-> Signature(BlockOf(TupleOf(), x1to1), BlockOf(TupleOf(), x1to1))
+
+Since the `unitknot` matches the pipeline's input shape, we can run the
+pipeline using `p(unitknot)`. The `pass` pipeline simply reproduces the
+`unitknot`, a block having exactly one tuple with zero columns.
+
+    p(unitknot)
+    #=>
+    ┼──┼
+    │  │
+    =#
+
+    shape(unitknot)
+    #-> BlockOf(TupleOf(), x1to1)
+
+In general, the output of any query is always a `BlockVector, even if it
+is only a singleton. The choice of a `TupleVector` having zero columns
+for our `unitknot` distinguishes it from Julia's `missing` or `nothing`.
+
+### `wrap()`
+
+The pipeline component, `wrap()`, takes a value and converts it into
+data flow, represented as a singular `BlockVector`. First recall the
+direct conversion of a string value into a `DataKnot`.
+
+    knot = convert(DataKnot, "Hello World");
+
+    dump(knot)
+    #=>
+    DataKnot
+      shp: DataKnots.ValueOf
+        ty: String <: AbstractString
+      cell: Array{String}((1,))
+        1: String "Hello World"
+    =#
+
+The shape of this knot is a `ValueOf(String)`.
+
+    shape(knot)
+    #-> ValueOf(String)
+
+Any query, when applied to an input shape that is not a `BlockVector`,
+first uses `wrap()` to convert the input to be a `BlockVector`. Hence,
+for this particular case, `It` performs this conversion, and then does
+nothing with it.
+
+    p = assemble(knot.shp, It)
+    #-> wrap()
+
+    dump(p(knot))
+    #=>
+    DataKnot
+      shp: DataKnots.BlockOf
+        elts: DataKnots.ValueOf
+          ty: String <: AbstractString
+        card: DataKnots.Cardinality DataKnots.x1to1
+      cell: DataKnots.BlockVector{DataKnots.x1to1,…}
+        offs: Base.OneTo{Int64}
+          stop: Int64 2
+        elts: Array{String}((1,))
+          1: String "Hello World"
+    =#
+
+Or, more succinctly, we could verify the shape changes to a block of
+strings, where each block has exactly one element.
+
+    shape(p(knot))
+    #-> BlockOf(String, x1to1)
+
+That said, once this is converted back to a row-oriented result using
+`get()`, they both return a single string value.
+
+    get(knot)
+    #-> "Hello World"
+
+    get(p(knot))
+    #-> "Hello World"
+
+Hence, from the perspective outside of `DataKnots` pipeline, these two
+forms of the knot are for all intents and purposes identicial.
