@@ -103,8 +103,8 @@ its input elementwise.
     r(chain_of(wrap(), lift(uppercase)))
     #-> lift(uppercase)
 
-    r(chain_of(tuple_of(wrap(), X()), Y()))
-    #->chain_of(tuple_of(pass(), X(), Y()))
+    r(chain_of(tuple_of(wrap(), X()), tuple_lift(+)))
+    #->chain_of(tuple_of(pass(), X()), tuple_lift(+))
 
     r(chain_of(tuple_of(chain_of(X(), wrap()), Y()), tuple_lift(+)))
     #-> chain_of(tuple_of(X(), Y()), tuple_lift(+))
