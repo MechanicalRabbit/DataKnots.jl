@@ -163,3 +163,11 @@ A few more re-arangements given `chain_of` and `with_elements`.
     r(tuple_of(X(), X()))
     #-> chain_of(X(), tuple_of(pass(), pass()))
 
+    r(tuple_of(X(), tuple_of(X(), Y(), Z())))
+    #=>
+    chain_of(tuple_of(X(), pass()),
+             tuple_of(column(1),
+                      tuple_of(column(1),
+                               chain_of(column(2), Y()),
+                               chain_of(column(2), Z()))))
+    =#
