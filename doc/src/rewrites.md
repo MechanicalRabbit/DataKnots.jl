@@ -2,6 +2,8 @@
 
 This is a regression test for the query rewrite system.
 
+    using DataKnots
+
     using DataKnots:
         @VectorTree,
         Pipeline,

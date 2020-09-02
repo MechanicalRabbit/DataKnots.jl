@@ -4,6 +4,8 @@ This document is a walk-though of the DataKnots' backend for those that
 wish to better understand its operation or write extensions. It's meant
 to complement existing internals documentation.
 
+    using DataKnots
+
     using DataKnots:
         @VectorTree,
         assemble,
@@ -222,7 +224,7 @@ mapping `1=>1, 2=>3`, leaving the underlying column vectors unchanged.
     #=>
     DataKnots.BlockVector{DataKnots.x0toN,…}
       offs: Array{Int64}((2,)) [1, 3]
-      elts: DataKnots.TupleVector{Array{Int64,1}}
+      elts: DataKnots.TupleVector{Vector{Int64}}
         lbls: Array{Symbol}((2,))
           1: Symbol x
           2: Symbol y
