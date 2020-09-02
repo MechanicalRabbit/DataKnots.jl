@@ -49,7 +49,7 @@ use the function `fn` for this purpose.
 
     fn() = nothing
 
-## Pipeline Simplifications
+## Local Simplification
 
 There are lots of combinations with `pass()` and other constructs that
 end up being equivalent to `pass()`. We use `N` to signify any integer,
@@ -158,7 +158,8 @@ A few more re-arangements given `chain_of` and `with_elements`.
     N=2; r(chain_of(sieve_by(), with_elements(column(N))))
     #-> chain_of(with_column(1, column(2)), sieve_by())
 
-## Common SubExpression Elimination
+## Common Sub-Expression Elimination
 
     r(tuple_of(X(), X()))
     #-> chain_of(X(), tuple_of(pass(), pass()))
+
