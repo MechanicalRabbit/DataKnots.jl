@@ -4,4 +4,4 @@
 *.swp
 *.bak
 Makefile
-src/edit.jl
+edit.jl

@@ -17,6 +17,7 @@ This is a regression test for the query rewrite system.
         filler,
         flatten,
         lift,
+        linearize,
         null_filler,
         pass,
         rewrite_all,
