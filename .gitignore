@@ -3,3 +3,5 @@
 *.jl.mem
 *.swp
 *.bak
+Makefile
+src/edit.jl

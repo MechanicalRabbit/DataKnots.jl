@@ -372,8 +372,8 @@ the `unitknot`, let's obtain its shape.
 
 We could then assemble the pipeline for `Lift("Hello")`.
 
-    hello_pipe = DataKnots.assemble(unitshape, Lift("Hello"))
-    #-> with_elements(filler("Hello"))
+    hello_pipe = DataKnots.assemble(unitshape, Lift("Hello"));
+    #! with_elements(filler("Hello"))
 
 This pipeline has two phases: it loops though each element of the
 input block (`with_elements`); then, for each of those elements,

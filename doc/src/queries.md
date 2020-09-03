@@ -310,8 +310,8 @@ pipeline primitive `sieve_by()`.
 The resulting pipeline could be compacted by simplifying the pipeline
 expression.
 
-    p = rewrite_all(uncover(p3))
-    #=>
+    p = rewrite_all(uncover(p3));
+    #=!
     chain_of(with_elements(chain_of(column(:department),
                                     with_elements(column(:employee)))),
              flatten(),
@@ -376,8 +376,8 @@ Any parameters to the query should be be passed as keyword arguments.
 
 We can use the function `assemble()` to see the query plan.
 
-    p = assemble(chicago, Count(It.department))
-    #=>
+    p = assemble(chicago, Count(It.department));
+    #=!
     with_elements(chain_of(column(:department), block_length()))
     =#
 
