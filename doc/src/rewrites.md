@@ -51,7 +51,7 @@ use the function `fn` for this purpose.
 
     fn() = nothing
 
-## Local Simplification
+## Simplifications
 
 There are lots of combinations with `pass()` and other constructs that
 end up being equivalent to `pass()`. We use `N` to signify any integer,
@@ -72,24 +72,6 @@ but fix it on a particular value for purposes of the test.
     N=2; r(chain_of(pass(), with_column(N, with_elements(pass()))))
     #-> pass()
 
-A pipeline chain that ends with a `filler` can ignore previous entries.
-Here we use `X()` to represent any pipeline.
-
-    r(chain_of(X(), null_filler()))
-    #-> null_filler()
-
-    r(chain_of(X(), filler("A")))
-    #-> filler("A")
-
-    r(chain_of(X(), block_filler([], x0toN)))
-    #-> block_filler([], x0toN)
-
-A `tuple_of` constructed followed by a `column` can be simplified to
-just the column that was chosen.
-
-    N=2; r(chain_of(tuple_of(X(), Y(), Z()), column(N)))
-    #-> Y()
-
 Chained column operations can be moved inside the specified column
 within the tuple constructor.
 
@@ -100,6 +82,19 @@ A `chain_of` sequential `with_elements` can be distributed.
 
     r(chain_of(with_elements(X()), with_elements(Y())))
     #-> with_elements(chain_of(X(), Y()))
+
+There are other cases where nesting levels could be reduced, but
+these are not yet implemetned.
+
+    r(chain_of(X(), tuple_of(Y(), pass())))
+    #-> chain_of(X(), tuple_of(Y(), pass()))
+    #!! tuple_of(Y(), X())
+
+    N=2; r(chain_of(with_column(N, X()), with_column(N, Y())))
+    #-> chain_of(with_column(2, X()), with_column(2, Y()))
+    #!! with_column(N, chain_of(X(), Y()))
+
+## Flatten & Wrap Specific Optimizations
 
 In all cases, `flatten()` will undo a `wrap`.
 
@@ -120,22 +115,10 @@ be optimized if subsequent operations, such as `lift()` and
     #-> lift(fn)
 
     r(chain_of(tuple_of(wrap(), X()), tuple_lift(fn)))
-    #->chain_of(tuple_of(pass(), X()), tuple_lift(fn))
+    #-> chain_of(tuple_of(pass(), X()), tuple_lift(fn))
 
     r(chain_of(tuple_of(chain_of(X(), wrap()), Y()), tuple_lift(fn)))
     #-> chain_of(tuple_of(X(), Y()), tuple_lift(fn))
-
-    N=2; r(chain_of(with_column(N, wrap()), distribute(N)))
-    #-> wrap()
-
-The `distribute` pipeline constructor transforms a tuple vector with a
-column of blocks to a block vector with tuple elements.
-
-    N=2; r(chain_of(with_column(N, wrap()), distribute(N)))
-    #-> wrap()
-
-    N=2; r(chain_of(with_column(N, chain_of(X(), wrap())), distribute(N)))
-    #-> chain_of(with_column(2, X()), wrap())
 
 We can move `flatten` to as late in the process as possible.
 
@@ -149,6 +132,17 @@ We can move `flatten` to as late in the process as possible.
              with_elements(X()))
     =#
 
+## Distribute Optimizations
+
+The `distribute` pipeline constructor transforms a tuple vector with a
+column of blocks to a block vector with tuple elements.
+
+    N=2; r(chain_of(with_column(N, wrap()), distribute(N)))
+    #-> wrap()
+
+    N=2; r(chain_of(with_column(N, chain_of(X(), wrap())), distribute(N)))
+    #-> chain_of(with_column(2, X()), wrap())
+
 A few more re-arangements given `chain_of` and `with_elements`.
 
     N=2; r(chain_of(distribute(N), with_elements(column(N))))
@@ -159,6 +153,32 @@ A few more re-arangements given `chain_of` and `with_elements`.
 
     N=2; r(chain_of(sieve_by(), with_elements(column(N))))
     #-> chain_of(with_column(1, column(2)), sieve_by())
+
+## Dead-Wire Elimination
+
+A pipeline chain that ends with a `filler` can ignore previous entries.
+Here we use `X()` to represent any pipeline.
+
+    r(chain_of(X(), null_filler()))
+    #-> null_filler()
+
+    r(chain_of(X(), filler("A")))
+    #-> filler("A")
+
+    r(chain_of(X(), block_filler([], x0toN)))
+    #-> block_filler([], x0toN)
+
+A `tuple_of` constructed followed by a `column` can be simplified to
+just the column that was chosen.
+
+    N=2; r(chain_of(tuple_of(X(), Y(), Z()), column(N)))
+    #-> Y()
+
+Transitively, if a tuple only consists of fillers, then, prior
+chain can be pruned.
+
+    r(chain_of(X(), tuple_of(filler("A"), filler("B"))))
+    #-> tuple_of(filler("A"), filler("B"))
 
 ## Common Sub-Expression Elimination
 
