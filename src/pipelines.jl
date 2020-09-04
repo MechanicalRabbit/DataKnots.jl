@@ -439,6 +439,10 @@ tuple_of(lps::Pair{Symbol}...) =
 
 tuple_of(lbls::Vector{Symbol}, ps::Vector) = Pipeline(tuple_of, lbls, ps)
 
+tuple_of(lbls::Vector{Symbol}, width::Int) = Pipeline(tuple_of, lbls, width)
+
+tuple_of(width::Int) = tuple_of(Symbol[], width)
+
 quoteof(::typeof(tuple_of), args::Vector{Any}) =
     if length(args) == 2 && args[1] isa Vector{Symbol} && args[2] isa Vector
         if isempty(args[1])
@@ -453,6 +457,12 @@ quoteof(::typeof(tuple_of), args::Vector{Any}) =
 function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls, ps)
     len = length(input)
     cols = AbstractVector[p(rt, input) for p in ps]
+    TupleVector(lbls, len, cols)
+end
+
+function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls::Vector{Symbol}, width::Int)
+    len = length(input)
+    cols = AbstractVector[input for k in 1:width]
     TupleVector(lbls, len, cols)
 end
 
