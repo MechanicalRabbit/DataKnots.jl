@@ -454,13 +454,13 @@ quoteof(::typeof(tuple_of), args::Vector{Any}) =
         Expr(:call, tuple_of, Any[quoteof(arg) for arg in args]...)
     end
 
-function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls, ps::Vector)
+function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls::Vector{Symbol}, ps::Vector{Pipeline})
     len = length(input)
     cols = AbstractVector[p(rt, input) for p in ps]
     TupleVector(lbls, len, cols)
 end
 
-function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls, width::Int)
+function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls::Vector{Symbol}, width::Int)
     len = length(input)
     cols = AbstractVector[input for k in 1:width]
     TupleVector(lbls, len, cols)

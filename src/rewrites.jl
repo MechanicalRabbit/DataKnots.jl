@@ -10,7 +10,11 @@ function linearize(p::Pipeline)::Vector{Pipeline}
         for r in linearize(q)
             push!(retval, with_elements(r))
         end
-    elseif (p ~ tuple_of(lbls, cols::Vector))
+    elseif (p ~ with_column(lbl, q))
+        for r in linearize(q)
+            push!(retval, with_column(lbl, r))
+        end
+    elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
         push!(retval, tuple_of(lbls, length(cols)))
         for (idx, q) in enumerate(cols)
             for r in linearize(q)
