@@ -38,7 +38,7 @@ function linearize(p::Pipeline)::Vector{Pipeline}
          end
          if p.op == tuple_of
              push!(retval, contextualize(path,
-                    tuple_of(p.args[1], fill(pass(), length(p.args[2])))))
+                    tuple_of(p.args[1], length(p.args[2]))))
              for idx in reverse(1:length(p.args[2]))
                   this_pipeline = p.args[2][idx]
                   this_path = push!(copy(path), Some(idx))
