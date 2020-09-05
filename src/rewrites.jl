@@ -450,10 +450,9 @@ function delinearize!(vp::Vector{Pipeline})::Pipeline
     chain = Vector{Pipeline}()
     while length(vp) > 0
         @match_pipeline if (vp[1] ~ with_elements(arg))
-            push!(chain, delinearize_elements!(vp))
+            push!(chain, delinearize_block!(vp))
         elseif (vp[1] ~ tuple_of(lbls, width::Int))
-            popfirst!(vp)
-            push!(chain, delinearize_columns!(vp, lbls, width))
+            push!(chain, delinearize_tuple!(vp, lbls, width))
         else
             push!(chain, popfirst!(vp))
         end
@@ -461,27 +460,25 @@ function delinearize!(vp::Vector{Pipeline})::Pipeline
     return chain_of(chain...)
 end
 
-function delinearize_elements!(vp::Vector{Pipeline})::Pipeline
+function delinearize_block!(vp::Vector{Pipeline})::Pipeline
     chain = Vector{Pipeline}()
-    while length(vp) > 0 && vp[1].op == with_elements
-        push!(chain, popfirst!(vp).args[1])
+    @match_pipeline while (vp ~ [with_elements(p), _...])
+        popfirst!(vp)
+        push!(chain, p)
     end
     return with_elements(delinearize!(chain))
 end
 
-function delinearize_columns!(vp::Vector{Pipeline}, lbls, width)::Pipeline
+function delinearize_tuple!(vp::Vector{Pipeline}, lbls, width)::Pipeline
+    popfirst!(vp) # drop the `tuple_of`
     slots = [Pipeline[] for x in 1:width]
-    while length(vp) > 0 && vp[1].op == with_column
-        idx = vp[1].args[1]
+    @match_pipeline while (vp ~ [with_column(idx, p), _...])
+        popfirst!(vp)
         if !isa(idx, Int)
             idx = findfirst(==(idx), lbls)
-            if isnothing(idx)
-                # found a column that depends upon the shape of the
-                # input; stop delinearizing
-                break
-            end
+            @assert !isnothing(idx)
         end
-        push!(slots[idx], popfirst!(vp).args[2])
+        push!(slots[idx], p)
     end
     return tuple_of(lbls, [delinearize!(cv) for cv in slots])
 end
