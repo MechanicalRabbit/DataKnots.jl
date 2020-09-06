@@ -7,7 +7,7 @@ function simplify(vp::Vector{Pipeline})::Vector{Pipeline}
     return vp
 end
 
-function linearize(p::Pipeline, path::Vector{Int}=Int[])::Vector{Pipeline}
+function linearize(p::Pipeline, path::NestedPath=tuple())::Vector{Pipeline}
     retval = Pipeline[]
     @match_pipeline if (p ~ pass())
         nothing
@@ -16,19 +16,13 @@ function linearize(p::Pipeline, path::Vector{Int}=Int[])::Vector{Pipeline}
             append!(retval, linearize(q, path))
         end
     elseif (p ~ with_elements(q))
-        for r in linearize(q, push!(copy(path), 0) )
-            push!(retval, r)
-        end
+        append!(retval, linearize(q, (path..., 0)))
     elseif (p ~ with_column(lbl::Int, q))
-        for r in linearize(q, push!(copy(path), lbl))
-            push!(retval, r)
-        end
+        append!(retval, linearize(q, (path..., lbl)))
     elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
         push!(retval, with_nested(path, tuple_of(lbls, length(cols))))
         for (idx, q) in enumerate(cols)
-            for r in linearize(q, push!(copy(path), idx))
-                push!(retval, r)
-            end
+            append!(retval, linearize(q, (path..., idx)))
         end
     else
         push!(retval, with_nested(path, p))
