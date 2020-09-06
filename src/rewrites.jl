@@ -417,6 +417,10 @@ function replace_parts(memo, repl, i, p)
     nothing
 end
 
+function rewrite_linearize(p::Pipeline; memo=RewriteMemo())::Pipeline
+    chain_of(linearize(p)) |> designate(signature(p))
+end
+
 function linearize(p::Pipeline)::Vector{Pipeline}
     retval = Pipeline[]
     @match_pipeline if (p ~ pass())
