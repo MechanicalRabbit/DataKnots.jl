@@ -1,6 +1,5 @@
 function rewrite_all(p::Pipeline)::Pipeline
-    #return delinearize!(simplify(linearize(p))) |> designate(signature(p))
-    return chain_of(linearize(p)...) |> designate(signature(p))
+    return delinearize!(linearize(p)) |> designate(signature(p))
 end
 
 function simplify(vp::Vector{Pipeline})::Vector{Pipeline}
@@ -30,48 +29,75 @@ function linearize(p::Pipeline, path::NestedPath=tuple())::Vector{Pipeline}
     return retval
 end
 
-function delinearize!(vp::Vector{Pipeline})::Pipeline
+function delinearize!(vp::Vector{Pipeline}, base::NestedPath=tuple())::Pipeline
+    depth = length(base)
     chain = Pipeline[]
     while length(vp) > 0
-        @match_pipeline if (vp[1] ~ with_elements(arg))
-            push!(chain, delinearize_block!(vp))
-        elseif (vp[1] ~ with_nested(path, p))
-           #for idx in reverse(path)
-           #    if idx == 0
-           #        p = with_elements(p)
-           #    else
-           #        p = with_column(idx, p)
-           #    end
-           #end
-            push!(chain, popfirst!(vp))
-        elseif (vp[1] ~ tuple_of(lbls, width::Int))
-            push!(chain, delinearize_tuple!(vp, lbls, width))
-        else
-            push!(chain, popfirst!(vp))
+        @match_pipeline if (vp ~ [with_nested(path, p), _...])
+            if path == base
+                @match_pipeline if (p ~ tuple_of(lbls, width::Int))
+                    push!(chain, delinearize_tuple!(vp, base, lbls, width))
+                    continue
+                end
+                popfirst!(vp)
+                push!(chain, p)
+                continue
+            end
+            if base == path[1:length(base)]
+                idx = path[depth+1]
+                push!(chain, delinearize!(vp, base, idx))
+                continue
+            end
+            break
         end
+        push!(chain, popfirst!(vp))
     end
     return chain_of(chain...)
 end
 
-function delinearize_block!(vp::Vector{Pipeline})::Pipeline
-    chain = Vector{Pipeline}()
-    @match_pipeline while (vp ~ [with_elements(p), _...])
-        popfirst!(vp)
-        push!(chain, p)
+function delinearize!(vp::Vector{Pipeline}, base::NestedPath, idx::Int)::Pipeline
+    base = (base..., idx)
+    depth = length(base)
+    chain = Pipeline[]
+    @match_pipeline while (vp ~ [with_nested(path, p), _...])
+        if length(path) >= depth && base == path[1:depth]
+            push!(chain, popfirst!(vp))
+            continue
+        end
+        break
     end
-    return with_elements(delinearize!(chain))
+    if 0 == idx
+        return with_elements(delinearize!(chain, base))
+    end
+    return with_column(idx, delinearize!(chain, base))
 end
 
-function delinearize_tuple!(vp::Vector{Pipeline}, lbls, width)::Pipeline
+function delinearize_tuple!(vp::Vector{Pipeline}, base, lbls, width)::Pipeline
     popfirst!(vp) # drop the `tuple_of`
+    depth = length(base)
     slots = [Pipeline[] for x in 1:width]
-    @match_pipeline while (vp ~ [with_column(idx, p), _...])
-        popfirst!(vp)
-        if !isa(idx, Int)
-            idx = findfirst(==(idx), lbls)
-            @assert !isnothing(idx)
+    @match_pipeline while (vp ~ [with_nested(path, p), _...])
+        if base == path[1:depth]
+            if length(path) > depth
+                idx = path[depth+1]
+                if idx > 0
+                    push!(slots[idx], popfirst!(vp))
+                    continue
+                end
+            elseif length(path) == depth
+                if (p ~ with_column(idx, q))
+                    popfirst!(vp)
+                    if !isa(idx, Int)
+                         idx = findfirst(==(idx), lbls)
+                         @assert !isnothing(idx)
+                    end
+                    push!(slots[idx], q)
+                    continue
+                end
+            end
         end
-        push!(slots[idx], p)
+        break
     end
-    return tuple_of(lbls, [delinearize!(cv) for cv in slots])
+    return tuple_of(lbls, [delinearize!(cv, (base..., idx))
+                              for (cv, idx) in zip(slots, 1:width)])
 end
