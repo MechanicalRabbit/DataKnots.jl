@@ -45,7 +45,11 @@ function delinearize!(vp::Vector{Pipeline}, base::NestedPath=tuple())::Pipeline
             end
             if base == path[1:length(base)]
                 idx = path[depth+1]
-                push!(chain, delinearize!(vp, base, idx))
+                if idx == 0
+                    push!(chain, delinearize_elements!(vp, base))
+                else
+                    push!(chain, delinearize_column!(vp, base, idx))
+                end
                 continue
             end
             break
@@ -55,8 +59,8 @@ function delinearize!(vp::Vector{Pipeline}, base::NestedPath=tuple())::Pipeline
     return chain_of(chain...)
 end
 
-function delinearize!(vp::Vector{Pipeline}, base::NestedPath, idx::Int)::Pipeline
-    base = (base..., idx)
+function delinearize_elements!(vp::Vector{Pipeline}, base)::Pipeline
+    base = (base..., 0)
     depth = length(base)
     chain = Pipeline[]
     @match_pipeline while (vp ~ [with_nested(path, p), _...])
@@ -66,8 +70,19 @@ function delinearize!(vp::Vector{Pipeline}, base::NestedPath, idx::Int)::Pipelin
         end
         break
     end
-    if 0 == idx
-        return with_elements(delinearize!(chain, base))
+    return with_elements(delinearize!(chain, base))
+end
+
+function delinearize_column!(vp::Vector{Pipeline}, base, idx)::Pipeline
+    base = (base..., idx)
+    depth = length(base)
+    chain = Pipeline[]
+    @match_pipeline while (vp ~ [with_nested(path, p), _...])
+        if length(path) >= depth && base == path[1:depth]
+            push!(chain, popfirst!(vp))
+            continue
+        end
+        break
     end
     return with_column(idx, delinearize!(chain, base))
 end
@@ -85,12 +100,8 @@ function delinearize_tuple!(vp::Vector{Pipeline}, base, lbls, width)::Pipeline
                     continue
                 end
             elseif length(path) == depth
-                if (p ~ with_column(idx, q))
+                @match_pipeline if (p ~ with_column(idx::Int, q))
                     popfirst!(vp)
-                    if !isa(idx, Int)
-                         idx = findfirst(==(idx), lbls)
-                         @assert !isnothing(idx)
-                    end
                     push!(slots[idx], q)
                     continue
                 end
