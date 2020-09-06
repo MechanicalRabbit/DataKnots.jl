@@ -495,6 +495,27 @@ function with_column(rt::Runtime, input::AbstractVector, lbl, p)
     TupleVector(labels(input), length(input), cols′)
 end
 
+"""
+    with_nested(path::Vector{Int}, p::Pipeline) :: Pipeline
+
+This pipeline applies `with_elements` and `with_column` successively.
+If a given path segment is `0` then `with_elements` is applied, else
+`with_column(n)` is applied. Hence `with_nested([0,1], p)` is equivalent
+to `with_elements(with_column(1, p))`.
+"""
+
+with_nested(path::Vector{Int}, p) = Pipeline(with_nested, path, p)
+
+function with_nested(rt::Runtime, input::AbstractVector, path, p)
+    for idx in reverse(path)
+        if idx == 0
+            p = with_elements(p)
+        else
+            p = with_column(idx, p)
+        end
+    end
+    return p(rt, input)
+end
 
 #
 # Operations on block vectors.
