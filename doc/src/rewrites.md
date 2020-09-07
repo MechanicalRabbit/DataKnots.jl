@@ -24,6 +24,7 @@ This is a regression test for the query rewrite system.
         rewrite_all,
         shape,
         sieve_by,
+        simplify!,
         signature,
         tuple_lift,
         tuple_of,
@@ -69,7 +70,10 @@ but fix it on a particular value for purposes of the test.
     #-> pass()
 
     r(chain_of(wrap(), flatten()))
-    #!-> pass
+    #-> pass
+
+    r(chain_of(wrap(), with_elements(A())))
+    #-> chain_of(A(), wrap())
 
 ## Natural Transformations
 

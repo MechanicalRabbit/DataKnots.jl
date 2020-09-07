@@ -1,17 +1,55 @@
 function rewrite_all(p::Pipeline)::Pipeline
-    #vnp = linearize(p)
-    #return chain_of(with_nested.(vnp)...) |> designate(signature(p))
-    return delinearize!(with_nested.(linearize(p))) |> designate(signature(p))
+    vpn = linearize(p)
+    #vpn = simplify!(vpn)
+    return chain_of(with_nested.(vpn)...) |> designate(signature(p))
+    #return delinearize!(with_nested.(vpn)) |> designate(signature(p))
 end
 
-mutable struct NestedPipe
+struct NestedPipe
+    op::Function
     path::Vector{Int}
     pipe::Pipeline
 
-    NestedPipe(path, pipe) = new(path, pipe)
+    NestedPipe(path, pipe) = new(pipe.op, path, pipe)
 end
 
 with_nested(np::NestedPipe) = with_nested(np.path, np.pipe)
+
+isprefixed(path::Vector{Int}, prefix::Vector{Int})::Bool =
+    length(path) >= length(prefix) && path[1:length(prefix)] == path
+
+function simplify!(vpn::Vector{NestedPipe})
+    idx = 1
+    while length(vpn) >= idx + 1
+        pn = vpn[idx]
+        nn = vpn[idx+1]
+        pd = length(pn.path)
+        nd = length(nn.path)
+        if nd == pd
+            if pn.op ==wrap && nn.op == flatten
+                # chain_of(wrap(), flatten()) => pass()
+                popat!(vpn, idx)
+                popat!(vpn, idx)
+                continue
+            end
+        elseif nd > pd
+            if pn.op == wrap && nn.path[pd+1] == 0 && nn.path[1:pd] == pn.path
+                # chain_of(wrap(), with_elements(p)) =>
+                # chain_of(p, wrap())
+                popat!(nn.path, pd+1)
+                (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+                idx += 1
+                continue
+            end
+        elseif nd < pd
+        # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
+        #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
+            nothing
+        end
+        idx += 1
+    end
+    return vpn
+end
 
 function linearize(p::Pipeline, path::Vector{Int}=Int[])::Vector{NestedPipe}
     retval = NestedPipe[]
