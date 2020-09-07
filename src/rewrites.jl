@@ -1,13 +1,20 @@
 function rewrite_all(p::Pipeline)::Pipeline
-    return delinearize!(linearize(p)) |> designate(signature(p))
+    #vnp = linearize(p)
+    #return chain_of(with_nested.(vnp)...) |> designate(signature(p))
+    return delinearize!(with_nested.(linearize(p))) |> designate(signature(p))
 end
 
-function simplify(vp::Vector{Pipeline})::Vector{Pipeline}
-    return vp
+mutable struct NestedPipe
+    path::Vector{Int}
+    pipe::Pipeline
+
+    NestedPipe(path, pipe) = new(path, pipe)
 end
 
-function linearize(p::Pipeline, path::NestedPath=tuple())::Vector{Pipeline}
-    retval = Pipeline[]
+with_nested(np::NestedPipe) = with_nested(np.path, np.pipe)
+
+function linearize(p::Pipeline, path::Vector{Int}=Int[])::Vector{NestedPipe}
+    retval = NestedPipe[]
     @match_pipeline if (p ~ pass())
         nothing
     elseif (p ~ chain_of(qs))
@@ -15,21 +22,21 @@ function linearize(p::Pipeline, path::NestedPath=tuple())::Vector{Pipeline}
             append!(retval, linearize(q, path))
         end
     elseif (p ~ with_elements(q))
-        append!(retval, linearize(q, (path..., 0)))
+        append!(retval, linearize(q, [path..., 0]))
     elseif (p ~ with_column(lbl::Int, q))
-        append!(retval, linearize(q, (path..., lbl)))
+        append!(retval, linearize(q, [path..., lbl]))
     elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
-        push!(retval, with_nested(path, tuple_of(lbls, length(cols))))
+        push!(retval, NestedPipe(path, tuple_of(lbls, length(cols))))
         for (idx, q) in enumerate(cols)
-            append!(retval, linearize(q, (path..., idx)))
+            append!(retval, linearize(q, [path..., idx]))
         end
     else
-        push!(retval, with_nested(path, p))
+        push!(retval, NestedPipe(path, p))
     end
     return retval
 end
 
-function delinearize!(vp::Vector{Pipeline}, base::NestedPath=tuple())::Pipeline
+function delinearize!(vp::Vector{Pipeline}, base::Vector{Int}=Int[])::Pipeline
     depth = length(base)
     chain = Pipeline[]
     while length(vp) > 0
@@ -60,7 +67,7 @@ function delinearize!(vp::Vector{Pipeline}, base::NestedPath=tuple())::Pipeline
 end
 
 function delinearize_elements!(vp::Vector{Pipeline}, base)::Pipeline
-    base = (base..., 0)
+    base = [base..., 0]
     depth = length(base)
     chain = Pipeline[]
     @match_pipeline while (vp ~ [with_nested(path, p), _...])
@@ -74,7 +81,7 @@ function delinearize_elements!(vp::Vector{Pipeline}, base)::Pipeline
 end
 
 function delinearize_column!(vp::Vector{Pipeline}, base, idx)::Pipeline
-    base = (base..., idx)
+    base = [base..., idx]
     depth = length(base)
     chain = Pipeline[]
     @match_pipeline while (vp ~ [with_nested(path, p), _...])
@@ -109,6 +116,6 @@ function delinearize_tuple!(vp::Vector{Pipeline}, base, lbls, width)::Pipeline
         end
         break
     end
-    return tuple_of(lbls, [delinearize!(cv, (base..., idx))
+    return tuple_of(lbls, [delinearize!(cv, [base..., idx])
                               for (cv, idx) in zip(slots, 1:width)])
 end

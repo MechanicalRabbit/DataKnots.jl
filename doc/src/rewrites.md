@@ -25,7 +25,6 @@ This is a regression test for the query rewrite system.
         shape,
         sieve_by,
         signature,
-        simplify,
         tuple_lift,
         tuple_of,
         unitknot,
@@ -87,5 +86,8 @@ transformation, such as `distribute(1)` between them?
          with_elements(with_column(1, flatten())),
          with_elements(with_column(1, E())))
 
+With a simple query we can have a farily complex tree.
+
+    q = assemble(convert(DataKnot,10), @query keep(x => 0.5).(it * x))
 
 

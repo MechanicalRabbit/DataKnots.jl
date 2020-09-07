@@ -38,7 +38,7 @@ The result of `op` must be the output vector, which should be of the same
 length as the input vector.
 """
 struct Pipeline
-    op
+    op::Function
     args::Vector{Any}
     sig::Signature
 
@@ -496,17 +496,15 @@ function with_column(rt::Runtime, input::AbstractVector, lbl, p)
 end
 
 """
-    with_nested(path::NTuple{N, Int}, p::Pipeline) :: Pipeline
+    with_nested(path::Vector{Int}, p::Pipeline) :: Pipeline
 
 This pipeline applies `with_elements` and `with_column` successively.
 If a given path segment is `0` then `with_elements` is applied, else
-`with_column(n)` is applied. Hence `with_nested((0,1), p)` is equivalent
+`with_column(n)` is applied. Hence `with_nested([0,1], p)` is equivalent
 to `with_elements(with_column(1, p))`.
 """
 
-NestedPath = NTuple{N, Int} where {N}
-
-with_nested(path::NestedPath, p) = Pipeline(with_nested, path, p)
+with_nested(path::Vector{Int}, p::Pipeline) = Pipeline(with_nested, path, p)
 
 function with_nested(rt::Runtime, input::AbstractVector, path, p)
     for idx in reverse(path)
