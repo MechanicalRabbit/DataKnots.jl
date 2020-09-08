@@ -93,14 +93,33 @@ but fix it on a particular value for purposes of the test.
     r(chain_of(A(), block_filler("A")))
     #-> block_filler("A", x0toN)
 
-    r(chain_of(with_column(1, with_elements(wrap())), distribute(1)))
-    #-> chain_of(distribute(1), with_elements(with_column(1, wrap())))
+    r(chain_of(with_column(3, with_elements(wrap())), distribute(3)))
+    #-> chain_of(distribute(3), with_elements(with_column(3, wrap())))
+
+    r(chain_of(with_column(3, chain_of(A(), wrap())), distribute(3)))
+    #!!-> chain_of(with_column(3, A(), wrap())
 
     r(chain_of(with_elements(wrap()), flatten()))
     #-> pass()
 
     r(chain_of(with_column(1, wrap()), distribute(1)))
     #-> wrap()
+
+    r(chain_of(distribute(3), with_elements(column(3))))
+    #-> column(3)
+
+    r(chain_of(tuple_of(A(), B(), C()), column(2)))
+    #-> B()
+
+    r(chain_of(tuple_of(2), with_column(1, A()), with_column(2, B()),
+               with_column(3, C()), column(2)))
+    #-> B()
+
+    chain_of(tuple_of(chain_of(A(), wrap()), B()), tuple_lift(fn))
+    #!!-> chain_of(tuple_of(A(), B()), tuple_lift(fn)
+
+    r(chain_of(sieve_by(), with_elements(column(3))))
+    #!!-> chain_of(with_column(1, column(3)), sieve_by())
 
 ## Consequences
 
@@ -116,8 +135,19 @@ combinations that come for free.
     r(with_elements(chain_of(pass(), pass())))
     #-> pass()
 
+    r(chain_of(distribute(3), with_elements(chain_of(column(3), A()))))
+    #-> chain_of(column(3), with_elements(A()))
+
     r(chain_of(A(), B(), C(), filler("A")))
     #-> filler("A")
+
+    r(chain_of(tuple_of(chain_of(A(), B()), chain_of(C(), D()), E()), column(2)))
+    #-> chain_of(C(), D())
+
+    r(chain_of(tuple_of(5), with_column(1, A()), with_column(3, B()),
+               with_column(2, C()), with_column(3, D()),
+               with_column(2, E()), column(2)))
+    #-> chain_of(C(), E())
 
 ## Wrap Pushdown Cases
 

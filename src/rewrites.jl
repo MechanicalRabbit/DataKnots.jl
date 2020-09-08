@@ -21,6 +21,8 @@ function simplify!(vpn::Vector{NestedPipe})
     next = vpn[idx+1]
     len_this = length(this.path)
     len_next = length(next.path)
+#    println("Eval #", idx, "=>", this.path, "/", this.pipe, " .. ",
+#                                 next.path, "/", next.pipe, "")
     if len_this == len_next && this.path == next.path
       if this.pipe.op == wrap
         # chain_of(wrap(), flatten()) => pass()
@@ -35,6 +37,13 @@ function simplify!(vpn::Vector{NestedPipe})
             popat!(vpn, idx)
             continue
         end
+      end
+      # chain_of(tuple_of(n), column(k)) => pass()
+      if this.pipe.op == tuple_of && next.pipe.op == column
+          @assert isa(this.pipe.args[2], Int)
+          popat!(vpn, idx)
+          popat!(vpn, idx)
+          continue
       end
       # chain_of(p, filler(val)) => filler(val)
       if next.pipe.op in (filler, block_filler, null_filler)
@@ -52,6 +61,13 @@ function simplify!(vpn::Vector{NestedPipe})
           idx += 1
           continue
       end
+      # chain_of(distribute(k), with_elements(column(k))) => column(k)
+      if this.pipe.op == distribute && next.path[len_this+1] == 0 &&
+            next.pipe.op == column && next.pipe.args[1] == this.pipe.args[1]
+         popat!(next.path, len_this+1)
+         popat!(vpn, idx)
+         continue
+      end
     elseif len_this > len_next && next.path == this.path[1:len_next]
       if this.pipe.op == wrap
         if this.path[end] == 0
@@ -65,7 +81,7 @@ function simplify!(vpn::Vector{NestedPipe})
           # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
           #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
           if next.pipe.op == distribute && len_next + 2 == len_this &&
-                                       this.path[end-1] == next.pipe.args[1]
+                this.path[end-1] == next.pipe.args[1]
               (this.path[end-1], this.path[end]) = (0, next.pipe.args[1])
               (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
               idx += 1
@@ -74,11 +90,25 @@ function simplify!(vpn::Vector{NestedPipe})
         else
           # chain_of(with_column(n, wrap()), distribute(n)) => wrap()
           if next.pipe.op == distribute && len_next + 1 == len_this &&
-                                       this.path[end] == next.pipe.args[1]
+                this.path[end] == next.pipe.args[1]
               popat!(vpn, idx + 1)
               pop!(this.path)
               continue
           end
+        end
+      # chain_of(with_column(k, p()), column(n)) =>
+      #     chain_of(column(n), p()) when n == k, else column(n)
+      elseif next.pipe.op == column
+        offset = this.path[len_next+1]
+        if offset == next.pipe.args[1]
+            popat!(this.path, len_next+1)
+            (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+            idx = idx - 1
+            continue
+        elseif offset > 0
+            popat!(vpn, idx)
+            idx = idx - 1
+            continue
         end
       end
     end
