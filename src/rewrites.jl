@@ -15,45 +15,71 @@ with_nested(np::NestedPipe) = with_nested(np.path, np.pipe)
 
 function simplify!(vpn::Vector{NestedPipe})
   idx = 1
+
   while length(vpn) >= idx + 1
     this = vpn[idx]
     next = vpn[idx+1]
     len_this = length(this.path)
     len_next = length(next.path)
     if len_this == len_next && this.path == next.path
-      # chain_of(wrap(), flatten()) => pass()
-      if this.pipe.op == wrap && next.pipe.op == flatten
-          popat!(vpn, idx)
-          popat!(vpn, idx)
-          idx = 1
-          continue
+      if this.pipe.op == wrap
+        # chain_of(wrap(), flatten()) => pass()
+        if next.pipe.op == flatten
+            popat!(vpn, idx)
+            popat!(vpn, idx)
+            idx = 1
+            continue
+        end
+        # chain_of(wrap(), lift(f)) => lift(f)
+        if next.pipe.op == lift
+            popat!(vpn, idx)
+            continue
+        end
+      end
       # chain_of(p, filler(val)) => filler(val)
-      elseif next.pipe.op in (filler, block_filler, null_filler)
+      if next.pipe.op in (filler, block_filler, null_filler)
           popat!(vpn, idx)
           if idx > 1
               idx = idx - 1
           end
           continue
       end
-    elseif len_next > len_this
+    elseif len_next > len_this && this.path == next.path[1:len_this]
       # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
-      if this.pipe.op == wrap && next.path[len_this+1] == 0 &&
-                                 next.path[1:len_this] == this.path
+      if this.pipe.op == wrap && next.path[len_this+1] == 0
           popat!(next.path, len_this+1)
           (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
           idx += 1
           continue
       end
-    elseif len_next < len_this
-      # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
-      #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
-      if this.pipe.op == wrap && next.pipe.op == distribute &&
-         len_next + 2 == len_this && this.path[end] == 0 &&
-                                     this.path[end-1] == next.pipe.args[1]
-          (this.path[end-1], this.path[end]) = (0, next.pipe.args[1])
-          (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
-          idx += 1
-          continue
+    elseif len_this > len_next && next.path == this.path[1:len_next]
+      if this.pipe.op == wrap
+        if this.path[end] == 0
+          # chain_of(with_elements(wrap()), flatten()) => pass()
+          if next.pipe.op == flatten && len_next + 1 == len_this
+              popat!(vpn, idx)
+              popat!(vpn, idx)
+              idx = 1
+              continue
+          end
+          # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
+          #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
+          if next.pipe.op == distribute && len_next + 2 == len_this &&
+                                       this.path[end-1] == next.pipe.args[1]
+              (this.path[end-1], this.path[end]) = (0, next.pipe.args[1])
+              (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+              idx += 1
+              continue
+          end
+        else
+          # chain_of(with_column(n, wrap()), distribute(n)) => wrap()
+          if next.pipe.op == distribute && len_next + 1 == len_this &&
+                                       this.path[end] == next.pipe.args[1]
+              popat!(vpn, idx + 1)
+              pop!(this.path)
+              continue
+          end
+        end
       end
     end
     idx += 1

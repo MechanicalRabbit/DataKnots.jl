@@ -69,16 +69,22 @@ but fix it on a particular value for purposes of the test.
     r(chain_of(pass()))
     #-> pass()
 
+    r(with_column(1, pass()))
+    #-> pass()
+
+    r(with_elements(pass()))
+    #-> pass()
+
     r(chain_of(wrap(), flatten()))
     #-> pass()
 
     r(chain_of(wrap(), with_elements(A())))
     #-> chain_of(A(), wrap())
 
-    r(chain_of(A(), filler("A")))
-    #-> filler("A")
+    r(chain_of(wrap(), lift(fn)))
+    #-> lift(fn)
 
-    r(chain_of(A(), B(), C(), filler("A")))
+    r(chain_of(A(), filler("A")))
     #-> filler("A")
 
     r(chain_of(A(), null_filler()))
@@ -89,6 +95,29 @@ but fix it on a particular value for purposes of the test.
 
     r(chain_of(with_column(1, with_elements(wrap())), distribute(1)))
     #-> chain_of(distribute(1), with_elements(with_column(1, wrap())))
+
+    r(chain_of(with_elements(wrap()), flatten()))
+    #-> pass()
+
+    r(chain_of(with_column(1, wrap()), distribute(1)))
+    #-> wrap()
+
+## Consequences
+
+With the previous simplification rules, there are many combinations
+combinations that come for free.
+
+    r(chain_of(pass(), pass()))
+    #-> pass()
+
+    r(with_elements(pass()))
+    #-> pass()
+
+    r(with_elements(chain_of(pass(), pass())))
+    #-> pass()
+
+    r(chain_of(A(), B(), C(), filler("A")))
+    #-> filler("A")
 
 ## Wrap Pushdown Cases
 
