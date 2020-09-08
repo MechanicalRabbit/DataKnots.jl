@@ -1,16 +1,14 @@
 function rewrite_all(p::Pipeline)::Pipeline
     vpn = linearize(p)
-    #vpn = simplify!(vpn)
-    return chain_of(with_nested.(vpn)...) |> designate(signature(p))
-    #return delinearize!(with_nested.(vpn)) |> designate(signature(p))
+    vpn = simplify!(vpn)
+    return delinearize!(with_nested.(vpn)) |> designate(signature(p))
 end
 
 struct NestedPipe
-    op::Function
     path::Vector{Int}
     pipe::Pipeline
 
-    NestedPipe(path, pipe) = new(pipe.op, path, pipe)
+    NestedPipe(path, pipe) = new(path, pipe)
 end
 
 with_nested(np::NestedPipe) = with_nested(np.path, np.pipe)
@@ -26,25 +24,24 @@ function simplify!(vpn::Vector{NestedPipe})
         pd = length(pn.path)
         nd = length(nn.path)
         if nd == pd
-            if pn.op ==wrap && nn.op == flatten
-                # chain_of(wrap(), flatten()) => pass()
+            # chain_of(wrap(), flatten()) => pass()
+            if pn.pipe.op == wrap && nn.pipe.op == flatten
                 popat!(vpn, idx)
                 popat!(vpn, idx)
                 continue
             end
         elseif nd > pd
-            if pn.op == wrap && nn.path[pd+1] == 0 && nn.path[1:pd] == pn.path
-                # chain_of(wrap(), with_elements(p)) =>
-                # chain_of(p, wrap())
-                popat!(nn.path, pd+1)
-                (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
-                idx += 1
-                continue
-            end
+           # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
+           if pn.pipe.op == wrap && nn.path[pd+1] == 0 &&
+                                    nn.path[1:pd] == pn.path
+               popat!(nn.path, pd+1)
+               (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+               idx += 1
+               continue
+           end
         elseif nd < pd
         # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
         #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
-            nothing
         end
         idx += 1
     end
@@ -57,7 +54,7 @@ function linearize(p::Pipeline, path::Vector{Int}=Int[])::Vector{NestedPipe}
         nothing
     elseif (p ~ chain_of(qs))
         for q in qs
-            append!(retval, linearize(q, path))
+            append!(retval, linearize(q, copy(path)))
         end
     elseif (p ~ with_elements(q))
         append!(retval, linearize(q, [path..., 0]))

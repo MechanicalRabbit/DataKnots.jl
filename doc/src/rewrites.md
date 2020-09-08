@@ -70,7 +70,7 @@ but fix it on a particular value for purposes of the test.
     #-> pass()
 
     r(chain_of(wrap(), flatten()))
-    #-> pass
+    #-> pass()
 
     r(chain_of(wrap(), with_elements(A())))
     #-> chain_of(A(), wrap())
