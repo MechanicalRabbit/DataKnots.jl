@@ -13,9 +13,6 @@ end
 
 with_nested(np::NestedPipe) = with_nested(np.path, np.pipe)
 
-isprefixed(path::Vector{Int}, prefix::Vector{Int})::Bool =
-    length(path) >= length(prefix) && path[1:length(prefix)] == path
-
 function simplify!(vpn::Vector{NestedPipe})
   idx = 1
   while length(vpn) >= idx + 1
@@ -23,12 +20,19 @@ function simplify!(vpn::Vector{NestedPipe})
     next = vpn[idx+1]
     len_this = length(this.path)
     len_next = length(next.path)
-    if len_this == len_next
+    if len_this == len_next && this.path == next.path
       # chain_of(wrap(), flatten()) => pass()
       if this.pipe.op == wrap && next.pipe.op == flatten
           popat!(vpn, idx)
           popat!(vpn, idx)
           idx = 1
+          continue
+      # chain_of(p, filler(val)) => filler(val)
+      elseif next.pipe.op in (filler, block_filler, null_filler)
+          popat!(vpn, idx)
+          if idx > 1
+              idx = idx - 1
+          end
           continue
       end
     elseif len_next > len_this

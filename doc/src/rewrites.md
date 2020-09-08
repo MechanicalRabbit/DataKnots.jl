@@ -75,20 +75,40 @@ but fix it on a particular value for purposes of the test.
     r(chain_of(wrap(), with_elements(A())))
     #-> chain_of(A(), wrap())
 
-## Natural Transformations
+    r(chain_of(A(), filler("A")))
+    #-> filler("A")
 
-Locally, we know that `chain_of(wrap(), flatten())` reduces to `pass()`,
-however, what if `wrap()` is separated from `flatten()` with a natural
-transformation, such as `distribute(1)` between them?
+    r(chain_of(A(), B(), C(), filler("A")))
+    #-> filler("A")
+
+    r(chain_of(A(), null_filler()))
+    #-> null_filler()
+
+    r(chain_of(A(), block_filler("A")))
+    #-> block_filler("A", x0toN)
+
+    r(chain_of(with_column(1, with_elements(wrap())), distribute(1)))
+    #-> chain_of(distribute(1), with_elements(with_column(1, wrap())))
+
+## Wrap Pushdown Cases
+
+In this next pipeline, we can see how the 1st `wrap()` is pushed down
+and cancels a `flatten()`.
 
     p = chain_of(
          with_column(1, A()),
          with_column(1, with_elements(wrap())),
          distribute(1),
-         with_elements(with_column(1, with_elements(with_elements(C())))),
-         with_elements(with_column(1, with_elements(D()))),
+         with_elements(with_column(1, with_elements(B()))),
          with_elements(with_column(1, flatten())),
-         with_elements(with_column(1, E())))
+         with_elements(with_column(1, C())))
+
+    r(p)
+    #=>
+    chain_of(with_column(1, A()),
+             distribute(1),
+             with_elements(with_column(1, chain_of(B(), C()))))
+    =#
 
 With a simple query we can have a farily complex tree.
 
