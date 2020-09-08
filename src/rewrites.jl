@@ -17,35 +17,44 @@ isprefixed(path::Vector{Int}, prefix::Vector{Int})::Bool =
     length(path) >= length(prefix) && path[1:length(prefix)] == path
 
 function simplify!(vpn::Vector{NestedPipe})
-    idx = 1
-    while length(vpn) >= idx + 1
-        pn = vpn[idx]
-        nn = vpn[idx+1]
-        pd = length(pn.path)
-        nd = length(nn.path)
-        if nd == pd
-            # chain_of(wrap(), flatten()) => pass()
-            if pn.pipe.op == wrap && nn.pipe.op == flatten
-                popat!(vpn, idx)
-                popat!(vpn, idx)
-                continue
-            end
-        elseif nd > pd
-           # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
-           if pn.pipe.op == wrap && nn.path[pd+1] == 0 &&
-                                    nn.path[1:pd] == pn.path
-               popat!(nn.path, pd+1)
-               (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
-               idx += 1
-               continue
-           end
-        elseif nd < pd
-        # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
-        #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
-        end
-        idx += 1
+  idx = 1
+  while length(vpn) >= idx + 1
+    this = vpn[idx]
+    next = vpn[idx+1]
+    len_this = length(this.path)
+    len_next = length(next.path)
+    if len_this == len_next
+      # chain_of(wrap(), flatten()) => pass()
+      if this.pipe.op == wrap && next.pipe.op == flatten
+          popat!(vpn, idx)
+          popat!(vpn, idx)
+          idx = 1
+          continue
+      end
+    elseif len_next > len_this
+      # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
+      if this.pipe.op == wrap && next.path[len_this+1] == 0 &&
+                                 next.path[1:len_this] == this.path
+          popat!(next.path, len_this+1)
+          (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+          idx += 1
+          continue
+      end
+    elseif len_next < len_this
+      # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
+      #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
+      if this.pipe.op == wrap && next.pipe.op == distribute &&
+         len_next + 2 == len_this && this.path[end] == 0 &&
+                                     this.path[end-1] == next.pipe.args[1]
+          (this.path[end-1], this.path[end]) = (0, next.pipe.args[1])
+          (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+          idx += 1
+          continue
+      end
     end
-    return vpn
+    idx += 1
+  end
+  return vpn
 end
 
 function linearize(p::Pipeline, path::Vector{Int}=Int[])::Vector{NestedPipe}
