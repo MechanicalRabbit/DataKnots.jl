@@ -270,3 +270,73 @@ function delinearize_tuple!(vp::Vector{Pipeline}, base, lbls, width)::Pipeline
     return tuple_of(lbls, [delinearize!(cv, [base..., idx])
                               for (cv, idx) in zip(slots, 1:width)])
 end
+
+function simplify_wrap!(vpn::Vector{NestedPipe}, start::Int)::Bool
+    @assert vpn[start].pipe.op == wrap
+    idx = start
+    this = vpn[start]
+    while idx < length(vpn)
+      next = vpn[idx + 1]
+      this_len = length(this.path)
+      next_len = length(next.path)
+      if next_len == this_len
+        if this.path == next.path
+          # chain_of(wrap(), flatten()) => pass()
+          if next.pipe.op == flatten
+              popat!(vpn, idx)
+              popat!(vpn, idx)
+              return true
+          end
+          # chain_of(wrap(), lift(f)) => lift(f)
+          if next.pipe.op == lift
+              popat!(vpn, idx)
+              return true
+          end
+        end
+      elseif next_len > this_len && this.path == next.path[1:this_len]
+        # chain_of(wrap(), with_elements(p)) => chain_of(p, wrap())
+        if next.path[this_len+1] == 0
+            popat!(next.path, this_len+1)
+            (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+            idx += 1
+            continue
+        end
+      elseif this_len > next_len && next.path == this.path[1:next_len]
+        # with_elements(wrap())
+        if 0 == this.path[end]
+          # chain_of(with_elements(wrap()), flatten()) => pass()
+          if next.pipe.op == flatten && next_len + 1 == this_len
+              popat!(vpn, idx)
+              popat!(vpn, idx)
+              return true
+          end
+          # chain_of(with_column(n, with_elements(wrap()))), distribute(n)) =>
+          #   chain_of(distribute(n), with_elements(with_column(n, wrap())))
+          if next.pipe.op == distribute && next_len + 2 == this_len &&
+                this.path[end-1] == next.pipe.args[1]
+              (this.path[end-1], this.path[end]) = (0, next.pipe.args[1])
+              (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+              idx += 1
+              continue
+          end
+        # with_column(n, wrap())
+        else
+          # chain_of(with_column(n, wrap()), distribute(n)) => wrap()
+          if next.pipe.op == distribute && next_len + 1 == this_len &&
+                this.path[end] == next.pipe.args[1]
+              popat!(vpn, idx + 1)
+              pop!(this.path)
+              continue
+          end
+        end
+      end
+      if next.pipe.op == wrap
+         if simplify_wrap!(vpn, idx + 1)
+            continue
+         end
+      end
+      break
+    end
+    return idx > start ? true : false
+end
+

@@ -111,7 +111,7 @@ but fix it on a particular value for purposes of the test.
     r(chain_of(tuple_of(A(), B(), C()), column(2)))
     #-> B()
 
-    r(chain_of(tuple_of(2), with_column(1, A()), with_column(2, B()),
+    r(chain_of(tuple_of(3), with_column(1, A()), with_column(2, B()),
                with_column(3, C()), column(2)))
     #-> B()
 
@@ -120,6 +120,7 @@ but fix it on a particular value for purposes of the test.
 
     r(chain_of(sieve_by(), with_elements(column(3))))
     #-> chain_of(with_column(1, column(3)), sieve_by())
+
 
 ## Consequences
 
@@ -181,5 +182,10 @@ and cancels a `flatten()`.
 With a simple query we can have a farily complex tree.
 
     q = assemble(convert(DataKnot,10), @query keep(x => 0.5).(it * x))
+    #!-> chain_of(tuple_of(pass(), filler(0.5)), tuple_lift(*), wrap())
 
 
+
+## Notes
+
+Regarding distribute(), if it's plural, it's better to apply distribute() later, if it's optional, it's better to apply distribute() early.
