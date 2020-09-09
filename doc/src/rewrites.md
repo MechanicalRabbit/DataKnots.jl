@@ -97,7 +97,7 @@ but fix it on a particular value for purposes of the test.
     #-> chain_of(distribute(3), with_elements(with_column(3, wrap())))
 
     r(chain_of(with_column(3, chain_of(A(), wrap())), distribute(3)))
-    #!!-> chain_of(with_column(3, A(), wrap())
+    #-> chain_of(with_column(3, A()), wrap())
 
     r(chain_of(with_elements(wrap()), flatten()))
     #-> pass()
@@ -115,11 +115,11 @@ but fix it on a particular value for purposes of the test.
                with_column(3, C()), column(2)))
     #-> B()
 
-    chain_of(tuple_of(chain_of(A(), wrap()), B()), tuple_lift(fn))
-    #!!-> chain_of(tuple_of(A(), B()), tuple_lift(fn)
+    r(chain_of(tuple_of(chain_of(A(), wrap()), B()), tuple_lift(fn)))
+    #-> chain_of(tuple_of(A(), B()), tuple_lift(fn))
 
     r(chain_of(sieve_by(), with_elements(column(3))))
-    #!!-> chain_of(with_column(1, column(3)), sieve_by())
+    #-> chain_of(with_column(1, column(3)), sieve_by())
 
 ## Consequences
 
@@ -131,6 +131,15 @@ combinations that come for free.
 
     r(with_elements(pass()))
     #-> pass()
+
+    r(chain_of(wrap(), wrap(), lift(fn)))
+    #-> lift(fn)
+
+    r(chain_of(tuple_of(chain_of(A(), wrap(), wrap()), B()), tuple_lift(fn)))
+    #-> chain_of(tuple_of(A(), B()), tuple_lift(fn))
+
+    r(chain_of(tuple_of(chain_of(A(), wrap(), B()), C()), tuple_lift(fn)))
+    #-> chain_of(tuple_of(chain_of(A(), wrap(), B()), C()), tuple_lift(fn))
 
     r(with_elements(chain_of(pass(), pass())))
     #-> pass()

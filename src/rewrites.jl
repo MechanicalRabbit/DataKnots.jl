@@ -35,6 +35,9 @@ function simplify!(vpn::Vector{NestedPipe})
         # chain_of(wrap(), lift(f)) => lift(f)
         if next.pipe.op == lift
             popat!(vpn, idx)
+            if idx > 1
+                idx = idx - 1
+            end
             continue
         end
       end
@@ -67,6 +70,14 @@ function simplify!(vpn::Vector{NestedPipe})
          popat!(next.path, len_this+1)
          popat!(vpn, idx)
          continue
+      end
+      # chain_of(sieve_by(), with_elements(column(n))) =>
+      #     chain_of(with_column(1, column(n)), sieve_by())
+      if this.pipe.op == sieve_by && next.pipe.op == column &&
+            len_next == len_this + 1 && next.path[len_this+1] == 0
+          next.path[len_this+1] = 1
+          (vpn[idx], vpn[idx+1]) = (vpn[idx+1], vpn[idx])
+          continue
       end
     elseif len_this > len_next && next.path == this.path[1:len_next]
       if this.pipe.op == wrap
@@ -111,6 +122,42 @@ function simplify!(vpn::Vector{NestedPipe})
             continue
         end
       end
+    end
+    # chain_of(tuple_of(chain_of(A(), wrap()), B()), tuple_lift(fn)) =>
+    #   chain_of(tuple_of(A(), B()), tuple_lift(fn)
+    if next.pipe.op == tuple_lift
+        # so, the approach here is to lock on `tuple_lift` and then
+        # scan backwards, removing qualifying wraps
+        wraps_found = 0
+        cols_encountered = Int[]
+        scan_idx = idx
+        while scan_idx > 0
+            scan = vpn[scan_idx]
+            if length(scan.path) < len_next + 1
+                scan_idx = 0
+                break
+            end
+            colno = scan.path[len_next+1]
+            if colno == 0
+                scan_idx = 0
+                break
+            end
+            if colno in cols_encountered
+                scan_idx = scan_idx - 1
+                continue
+            end
+            if scan.pipe.op == wrap
+                popat!(vpn, scan_idx)
+                wraps_found += 1
+                continue
+            end
+            push!(cols_encountered, colno)
+            scan_idx = scan_idx - 1
+        end
+        if wraps_found > 0
+           idx -= wraps_found
+           continue
+        end
     end
     idx += 1
   end
