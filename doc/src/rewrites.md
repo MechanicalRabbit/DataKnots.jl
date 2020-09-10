@@ -58,7 +58,9 @@ represent arbitrary pipelines.
 Sometimes there's a Julia function which can also be arbitrary, we'll
 use the function `fn` for this purpose.
 
-    fn() = nothing
+    function fn end
+
+    function gn end
 
 ## Simplifications
 
@@ -93,6 +95,9 @@ but fix it on a particular value for purposes of the test.
     r(chain_of(A(), block_filler("A")))
     #-> block_filler("A", x0toN)
 
+    r(chain_of(tuple_of(A(), B()), filler("A")))
+    #!-> filler("A")
+
     r(chain_of(with_column(3, with_elements(wrap())), distribute(3)))
     #-> chain_of(distribute(3), with_elements(with_column(3, wrap())))
 
@@ -120,7 +125,6 @@ but fix it on a particular value for purposes of the test.
 
     r(chain_of(sieve_by(), with_elements(column(3))))
     #-> chain_of(with_column(1, column(3)), sieve_by())
-
 
 ## Consequences
 
@@ -159,6 +163,15 @@ combinations that come for free.
                with_column(2, E()), column(2)))
     #-> chain_of(C(), E())
 
+    r(chain_of(A(), wrap(), tuple_of(lift(fn), lift(gn))))
+    #!-> chain_of(A(), tuple_of(lift(fn), lift(gn)))
+
+    r(chain_of(A(), wrap(), tuple_of(lift(fn), pass)))
+    #!-> chain_of(A(), wrap(), tuple_of(lift(fn), pass))
+
+    r(chain_of(wrap(), wrap(), wrap(), with_elements(flatten())))
+    #!-> chain_of(wrap(), wrap())
+
 ## Wrap Pushdown Cases
 
 In this next pipeline, we can see how the 1st `wrap()` is pushed down
@@ -184,8 +197,8 @@ With a simple query we can have a farily complex tree.
     q = assemble(convert(DataKnot,10), @query keep(x => 0.5).(it * x))
     #!-> chain_of(tuple_of(pass(), filler(0.5)), tuple_lift(*), wrap())
 
-
-
 ## Notes
 
-Regarding distribute(), if it's plural, it's better to apply distribute() later, if it's optional, it's better to apply distribute() early.
+1. Regarding distribute(), if it's plural, it's better to apply
+distribute() later, if it's optional, it's better to apply distribute()
+early.
