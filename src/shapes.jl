@@ -176,6 +176,12 @@ column(shp::TupleOf, j::Int) = shp.cols[j]
 column(shp::TupleOf, lbl::Symbol) =
     column(shp, findfirst(isequal(lbl), shp.lbls))
 
+locate(shp::TupleOf, j::Int) =
+    1 <= j <= length(shp.cols) ? j : nothing
+
+locate(shp::TupleOf, lbl::Symbol) =
+    findfirst(isequal(lbl), shp.lbls)
+
 function replace_column(shp::TupleOf, j::Int, f)
     col = shp.cols[j]
     col′ = f isa AbstractShape ? f : f(col)
