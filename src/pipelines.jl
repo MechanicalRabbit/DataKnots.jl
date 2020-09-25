@@ -93,17 +93,18 @@ function (p::Pipeline)(@nospecialize input::AbstractVector)::AbstractVector
     output
 end
 
-function (p::Pipeline)(@nospecialize input::AbstractShape)::AbstractShape
+function (p::Pipeline)(@nospecialize src::AbstractShape)::Signature
     rt = Runtime()
-    p(rt, input)
+    p(rt, src)
 end
 
 function (p::Pipeline)(rt::Runtime, @nospecialize input::AbstractVector)::AbstractVector
     p.op(rt, input, p.args...)
 end
 
-function (p::Pipeline)(rt::Runtime, @nospecialize input::AbstractShape)::AbstractShape
-    p.op(rt, input, p.args...)
+function (p::Pipeline)(rt::Runtime, @nospecialize src::AbstractShape)::Signature
+    sig = p.op(rt, src, p.args...)
+    sig
 end
 
 quoteof(p::Pipeline) =
@@ -134,16 +135,11 @@ lift(rt::Runtime, input::AbstractVector, f) =
 lift(rt::Runtime, input::AbstractVector, f, args) =
     f.(input, Ref.(args)...)
 
-function lift(rt::Runtime, @nospecialize(input::AbstractShape), f)
-    ity = Tuple{eltype(input)}
+function lift(rt::Runtime, @nospecialize(src::AbstractShape), f, args=())
+    ity = Tuple{eltype(src), Any[typeof(arg) for arg in args]...}
     oty = Core.Compiler.return_type(f, ity)
-    ValueOf(oty)
-end
-
-function lift(rt::Runtime, @nospecialize(input::AbstractShape), f, args)
-    ity = Tuple{eltype(input), Any[typeof(arg) for arg in args]...}
-    oty = Core.Compiler.return_type(f, ity)
-    ValueOf(oty)
+    tgt = ValueOf(oty)
+    Signature(src, tgt)
 end
 
 """
@@ -173,11 +169,12 @@ end
     end
 end
 
-function tuple_lift(rt::Runtime, input::AbstractShape, f)
-    @assert input isa TupleOf
-    ity = Tuple{Any[eltype(col) for col in columns(input)]...}
+function tuple_lift(rt::Runtime, src::AbstractShape, f)
+    @assert src isa TupleOf
+    ity = Tuple{Any[eltype(col) for col in columns(src)]...}
     oty = Core.Compiler.return_type(f, ity)
-    ValueOf(oty)
+    tgt = ValueOf(oty)
+    Signature(src, tgt)
 end
 
 """
@@ -227,18 +224,20 @@ function _block_lift(f, default, input)
     output
 end
 
-function block_lift(rt::Runtime, input::AbstractShape, f)
-    @assert input isa BlockOf
-    ity = Tuple{eltype(input)}
+function block_lift(rt::Runtime, src::AbstractShape, f)
+    @assert src isa BlockOf
+    ity = Tuple{eltype(src)}
     oty = Core.Compiler.return_type(f, ity)
-    ValueOf(oty)
+    tgt = ValueOf(oty)
+    Signature(src, tgt)
 end
 
-function block_lift(rt::Runtime, input::AbstractShape, f, default)
-    @assert input isa BlockOf
-    ity = Tuple{eltype(input)}
+function block_lift(rt::Runtime, src::AbstractShape, f, default)
+    @assert src isa BlockOf
+    ity = Tuple{eltype(src)}
     oty = Union{Core.Compiler.return_type(f, ity), typeof(default)}
-    ValueOf(oty)
+    tgt = ValueOf(oty)
+    Signature(src, tgt)
 end
 
 """
@@ -252,7 +251,7 @@ filler(rt::Runtime, input::AbstractVector, val) =
     fill(val, length(input))
 
 filler(rt::Runtime, @nospecialize(::AbstractShape), val) =
-    ValueOf(typeof(val))
+    Signature(Passthrough(), ValueOf(typeof(val)))
 
 """
     null_filler() :: Pipeline
@@ -265,7 +264,7 @@ null_filler(rt::Runtime, input::AbstractVector) =
     BlockVector(fill(1, length(input)+1), Union{}[], x0to1)
 
 null_filler(rt::Runtime, @nospecialize ::AbstractShape) =
-    BlockOf(NoShape(), x0to1)
+    Signature(Passthrough(), BlockOf(NoShape(), x0to1))
 
 """
     block_filler(block::AbstractVector, card::Cardinality) :: Pipeline
@@ -291,7 +290,7 @@ function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector,
 end
 
 block_filler(rt::Runtime, @nospecialize(::AbstractShape), block::AbstractVector, card::Cardinality) =
-    BlockOf(shapeof(block), card)
+    Signature(Passthrough(), BlockOf(shapeof(block), card))
 
 
 #
@@ -334,8 +333,8 @@ function adapt_missing(rt::Runtime, input::AbstractVector)
     return BlockVector(offs, elts, x0to1)
 end
 
-adapt_missing(rt::Runtime, @nospecialize input::AbstractShape) =
-    BlockOf(Base.nonmissingtype(eltype(input)), x0to1)
+adapt_missing(rt::Runtime, @nospecialize src::AbstractShape) =
+    Signature(src, BlockOf(Base.nonmissingtype(eltype(src)), x0to1))
 
 """
     adapt_vector() :: Pipeline
@@ -366,13 +365,14 @@ function adapt_vector(rt::Runtime, input::AbstractVector)
     return BlockVector(offs, elts, x0toN)
 end
 
-function adapt_vector(rt::Runtime, @nospecialize input::AbstractShape)
-    ity = eltype(input)
+function adapt_vector(rt::Runtime, @nospecialize src::AbstractShape)
+    ity = eltype(src)
     if ity === Union{}
         return BlockOf(NoShape(), x0toN)
     end
     @assert ity <: AbstractVector
-    BlockOf(ValueOf(eltype(ity)), x0toN)
+    tgt = BlockOf(ValueOf(eltype(ity)), x0toN)
+    Signature(src, tgt)
 end
 
 """
@@ -408,15 +408,16 @@ end
     end
 end
 
-function adapt_tuple(rt::Runtime, @nospecialize input::AbstractShape)
-    ity = eltype(input)
+function adapt_tuple(rt::Runtime, @nospecialize src::AbstractShape)
+    ity = eltype(src)
     @assert ity <: Union{Tuple,NamedTuple}
     lbls = Symbol[]
     if typeof(ity) == DataType && ity <: NamedTuple
         lbls = collect(Symbol, ity.parameters[1])
         ity = ity.parameters[2]
     end
-    TupleOf(lbls, AbstractShape[ValueOf(param) for param in ity.parameters])
+    tgt = TupleOf(lbls, AbstractShape[ValueOf(param) for param in ity.parameters])
+    Signature(src, tgt)
 end
 
 """
@@ -446,8 +447,8 @@ function assert_type(rt::Runtime, input::AbstractVector, T, lbl=nothing)
     output
 end
 
-assert_type(rt::Runtime, @nospecialize(input::AbstractShape), T, lbl=nothing) =
-    eltype(input) <: T ? input : ValueOf(T)
+assert_type(rt::Runtime, @nospecialize(src::AbstractShape), T, lbl=nothing) =
+    Signature(src, eltype(src) <: T ? src : ValueOf(T))
 
 
 #
@@ -464,8 +465,8 @@ pass() = Pipeline(pass)
 pass(rt::Runtime, @nospecialize input::AbstractVector) =
     input
 
-pass(rt::Runtime, @nospecialize input::AbstractShape) =
-    input
+pass(rt::Runtime, @nospecialize ::AbstractShape) =
+    Signature(Passthrough(), Passthrough())
 
 """
     chain_of(p₁::Pipeline, p₂::Pipeline … pₙ::Pipeline) :: Pipeline
@@ -501,12 +502,15 @@ function chain_of(rt::Runtime, @nospecialize(input::AbstractVector), ps)
     output
 end
 
-function chain_of(rt::Runtime, @nospecialize(input::AbstractShape), ps)
-    output = input
+function chain_of(rt::Runtime, @nospecialize(src::AbstractShape), ps)
+    sig = Signature(Passthrough(), Passthrough())
+    tgt = src
     for p in ps
-        output = p(rt, output)
+        sig′ = p(rt, tgt)
+        tgt = propagate(sig′, tgt)
+        sig = unify(sig, sig′)
     end
-    output
+    sig
 end
 
 
@@ -555,11 +559,35 @@ function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls::Vecto
     TupleVector(lbls, len, cols)
 end
 
-tuple_of(rt::Runtime, @nospecialize(input::AbstractShape), lbls::Vector{Symbol}, ps::Vector{Pipeline}) =
-    TupleOf(lbls, AbstractShape[p(input) for p in ps])
+function tuple_of(rt::Runtime, @nospecialize(src::AbstractShape), lbls::Vector{Symbol}, ps::Vector{Pipeline})
+    sig = Signature(Passthrough(), TupleOf(lbls, AbstractShape[Passthrough() for k = eachindex(ps)]))
+    for k = eachindex(ps)
+        p = ps[k]
+        psig = p(rt, src)
+        n = count_passthrough(source(psig))
+        psig = adjust_position(psig, k - 1)
+        srccols = AbstractShape[]
+        tgtcols = AbstractShape[]
+        x = 1
+        for j = eachindex(ps)
+            if j != k
+                push!(srccols, Passthrough(x))
+                push!(tgtcols, Passthrough(x))
+                x += 1
+            else
+                push!(srccols, source(psig))
+                push!(tgtcols, target(psig))
+                x += n
+            end
+        end
+        sig′ = Signature(TupleOf(lbls, srccols), TupleOf(lbls, tgtcols))
+        sig = unify(sig, sig′)
+    end
+    sig
+end
 
-tuple_of(rt::Runtime, @nospecialize(input::AbstractShape), lbls::Vector{Symbol}, width::Int) =
-    TupleOf(lbls, AbstractShape[input for k = 1:width])
+tuple_of(rt::Runtime, @nospecialize(::AbstractShape), lbls::Vector{Symbol}, width::Int) =
+    Signature(Passthrough(), TupleOf(lbls, AbstractShape[Passthrough() for k = 1:width]))
 
 
 """
@@ -575,10 +603,10 @@ function column(rt::Runtime, input::AbstractVector, lbl)
     column(input, j)
 end
 
-function column(rt::Runtime, input::AbstractShape, lbl)
-    @assert input isa TupleOf
-    j = locate(input, lbl)
-    column(input, j)
+function column(rt::Runtime, @nospecialize(src::AbstractShape), lbl)
+    @assert src isa TupleOf
+    j = locate(src, lbl)
+    Signature(TupleOf(labels(src), AbstractShape[Passthrough(k) for k = 1:width(src)]), Passthrough(j))
 end
 
 """
@@ -597,12 +625,28 @@ function with_column(rt::Runtime, input::AbstractVector, lbl, p)
     TupleVector(labels(input), length(input), cols′)
 end
 
-function with_column(rt::Runtime, input::AbstractShape, lbl, p)
-    @assert input isa TupleOf
-    j = locate(input, lbl)
-    cols′ = copy(columns(input))
-    cols′[j] = p(rt, cols′[j])
-    TupleOf(labels(input), cols′)
+function with_column(rt::Runtime, src::AbstractShape, lbl, p)
+    @assert src isa TupleOf
+    lbls = labels(src)
+    j = locate(src, lbl)
+    psig = p(rt, column(src, j))
+    n = count_passthrough(source(psig))
+    psig = adjust_position(psig, j - 1)
+    srccols = AbstractShape[]
+    tgtcols = AbstractShape[]
+    x = 1
+    for k = 1:width(src)
+        if k != j
+            push!(srccols, Passthrough(x))
+            push!(tgtcols, Passthrough(x))
+            x += 1
+        else
+            push!(srccols, source(psig))
+            push!(tgtcols, target(psig))
+            x += n
+        end
+    end
+    Signature(TupleOf(lbls, srccols), TupleOf(lbls, tgtcols))
 end
 
 
@@ -621,8 +665,8 @@ wrap() = Pipeline(wrap)
 wrap(rt::Runtime, input::AbstractVector) =
     BlockVector(:, input, x1to1)
 
-wrap(rt::Runtime, @nospecialize input::AbstractShape) =
-    BlockOf(input, x1to1)
+wrap(rt::Runtime, @nospecialize ::AbstractShape) =
+    Signature(Passthrough(), BlockOf(Passthrough(), x1to1))
 
 
 """
@@ -638,9 +682,11 @@ function with_elements(rt::Runtime, input::AbstractVector, p)
     BlockVector(offsets(input), p(rt, elements(input)), cardinality(input))
 end
 
-function with_elements(rt::Runtime, input::AbstractShape, p)
-    @assert input isa BlockOf
-    BlockOf(p(elements(input)), cardinality(input))
+function with_elements(rt::Runtime, src::AbstractShape, p)
+    @assert src isa BlockOf
+    sig = p(elements(src))
+    card = cardinality(src)
+    Signature(BlockOf(source(sig), card), BlockOf(target(sig), card))
 end
 
 
@@ -670,10 +716,11 @@ _flatten(offs1::OneTo{Int}, offs2::AbstractVector{Int}) = offs2
 
 _flatten(offs1::AbstractVector{Int}, offs2::OneTo{Int}) = offs1
 
-function flatten(rt::Runtime, input::AbstractShape)
-    @assert input isa BlockOf && elements(input) isa BlockOf
-    card = cardinality(input) | cardinality(elements(input))
-    BlockOf(elements(elements(input)), card)
+function flatten(rt::Runtime, src::AbstractShape)
+    @assert src isa BlockOf && elements(src) isa BlockOf
+    card1 = cardinality(src)
+    card2 = cardinality(elements(src))
+    Signature(BlockOf(BlockOf(Passthrough(), card2), card1), BlockOf(Passthrough(), card1|card2))
 end
 
 """
@@ -722,14 +769,23 @@ function _distribute(col::BlockVector, tv::TupleVector, j)
     return BlockVector{card}(offs, TupleVector(lbls, len′, cols′))
 end
 
-function distribute(rt::Runtime, input::AbstractShape, lbl)
-    @assert input isa TupleOf && column(input, lbl) isa BlockOf
-    j = locate(input, lbl)
-    lbls = labels(input)
-    cols′ = copy(columns(input))
-    card = cardinality(cols′[j])
-    cols′[j] = elements(cols′[j])
-    BlockOf(TupleOf(lbls, cols′), card)
+function distribute(rt::Runtime, src::AbstractShape, lbl)
+    @assert src isa TupleOf && column(src, lbl) isa BlockOf
+    j = locate(src, lbl)
+    lbls = labels(src)
+    card = cardinality(column(src, j))
+    srccols = AbstractShape[]
+    dstcols = AbstractShape[]
+    for k = 1:width(src)
+        if k != j
+            push!(srccols, Passthrough(k))
+            push!(dstcols, Passthrough(k))
+        else
+            push!(srccols, BlockOf(Passthrough(k), card))
+            push!(dstcols, Passthrough(k))
+        end
+    end
+    Signature(TupleOf(lbls, srccols), BlockOf(TupleOf(lbls, dstcols), card))
 end
 
 """
@@ -783,17 +839,18 @@ end
     end
 end
 
-function distribute_all(rt::Runtime, input::AbstractShape)
-    @assert input isa TupleOf && all(Bool[col isa BlockOf for col in columns(input)])
-    lbls = labels(input)
-    cols′ = copy(columns(input))
+function distribute_all(rt::Runtime, src::AbstractShape)
+    @assert src isa TupleOf && all(Bool[col isa BlockOf for col in columns(src)])
+    lbls = labels(src)
     card = x1to1
-    for j in eachindex(cols′)
-        col = cols′[j]
-        card |= cardinality(col)
-        cols′[j] = elements(col)
+    srccols = AbstractShape[]
+    dstcols = AbstractShape[]
+    for k = 1:width(src)
+        card |= cardinality(column(src, k))
+        push!(srccols, BlockOf(Passthrough(k), cardinality(column(src, k))))
+        push!(dstcols, Passthrough(k))
     end
-    BlockOf(TupleOf(lbls, cols′), card)
+    Signature(TupleOf(lbls, srccols), BlockOf(TupleOf(lbls, dstcols), card))
 end
 
 """
@@ -830,9 +887,9 @@ _cardinality_error(src_lbl, tgt_lbl, kind) =
           "expected a $kind value",
           src_lbl !== nothing ? ", relative to \"$src_lbl\"" : "")
 
-function block_cardinality(rt::Runtime, input::AbstractShape, card, src_lbl=nothing, tgt_lbl=nothing)
-    @assert input isa BlockOf
-    BlockOf(elements(input), card)
+function block_cardinality(rt::Runtime, src::AbstractShape, card, src_lbl=nothing, tgt_lbl=nothing)
+    @assert src isa BlockOf
+    Signature(BlockOf(Passthrough(), cardinality(src)), BlockOf(Passthrough(), card))
 end
 
 """
@@ -859,9 +916,9 @@ function _block_length(offs::AbstractVector{Int})
     output
 end
 
-function block_length(rt::Runtime, input::AbstractShape)
-    @assert input isa BlockOf
-    ValueOf(Int)
+function block_length(rt::Runtime, src::AbstractShape)
+    @assert src isa BlockOf
+    Signature(BlockOf(Passthrough(), cardinality(src)), ValueOf(Int))
 end
 
 """
@@ -889,9 +946,9 @@ function _block_not_empty(offs::AbstractVector{Int})
     output
 end
 
-function block_not_empty(rt::Runtime, input::AbstractShape)
-    @assert input isa BlockOf
-    ValueOf(Bool)
+function block_not_empty(rt::Runtime, src::AbstractShape)
+    @assert src isa BlockOf
+    Signature(BlockOf(Passthrough(), cardinality(src)), ValueOf(Bool))
 end
 
 """
@@ -926,9 +983,9 @@ function block_any(rt::Runtime, input::AbstractVector)
     return output
 end
 
-function block_any(rt::Runtime, input::AbstractShape)
-    @assert input isa BlockOf && eltype(elements(input)) <: Bool
-    ValueOf(Bool)
+function block_any(rt::Runtime, src::AbstractShape)
+    @assert src isa BlockOf && eltype(elements(src)) <: Bool
+    Signature(src, ValueOf(Bool))
 end
 
 
@@ -972,9 +1029,9 @@ function _sieve_by(@nospecialize(v), bv)
     return BlockVector(offs, v[perm], x0to1)
 end
 
-function sieve_by(rt::Runtime, input::AbstractShape)
-    @assert input isa TupleOf && width(input) == 2 && eltype(column(input, 2)) <: Bool
-    BlockOf(column(input, 1), x0to1)
+function sieve_by(rt::Runtime, src::AbstractShape)
+    @assert src isa TupleOf && width(src) == 2 && eltype(column(src, 2)) <: Bool
+    Signature(TupleOf(Passthrough(), column(src, 2)), BlockOf(Passthrough(), x0to1))
 end
 
 
@@ -1041,9 +1098,9 @@ function get_by(::Runtime, input::AbstractVector, N::Int, card::Cardinality)
     return BlockVector(offs′, elts′, card)
 end
 
-function get_by(rt::Runtime, input::AbstractShape, N::Int, card::Cardinality=x0to1)
-    @assert input isa BlockOf
-    BlockOf(elements(input), card)
+function get_by(rt::Runtime, src::AbstractShape, N::Int, card::Cardinality=x0to1)
+    @assert src isa BlockOf
+    Signature(BlockOf(Passthrough(), cardinality(src)), BlockOf(Passthrough(), card))
 end
 
 """
@@ -1109,14 +1166,14 @@ end
 @inline _get_index(l, r, n) =
     n >= 0 ? l + n - 1 : r + n + 1
 
-function get_by(rt::Runtime, input::AbstractShape)
-    @assert input isa TupleOf
-    cols = columns(input)
+function get_by(rt::Runtime, src::AbstractShape)
+    @assert src isa TupleOf
+    cols = columns(src)
     @assert length(cols) == 2
     vals, Ns = cols
     @assert vals isa BlockOf
     @assert eltype(Ns) <: Int
-    BlockOf(elements(vals), x0to1)
+    Signature(TupleOf(BlockOf(Passthrough(), cardinality(vals)), Ns), BlockOf(Passthrough(), x0to1))
 end
 
 """
@@ -1176,14 +1233,15 @@ function slice_by(rt::Runtime, input::AbstractVector, N::Int, card::Cardinality,
     return BlockVector(offs′, elts′, card)
 end
 
-function slice_by(rt::Runtime, input::AbstractShape, ::Union{Int,Missing}, ::Bool)
-    @assert input isa BlockOf
-    BlockOf(elements(input), cardinality(input)|x0to1)
+function slice_by(rt::Runtime, src::AbstractShape, ::Union{Int,Missing}, ::Bool)
+    @assert src isa BlockOf
+    card = cardinality(src)
+    Signature(BlockOf(Passthrough(), card), BlockOf(Passthrough(), card|x0to1))
 end
 
-function slice_by(rt::Runtime, input::AbstractShape, ::Union{Int,Missing}, card::Cardinality, ::Bool)
-    @assert input isa BlockOf
-    BlockOf(elements(input), card)
+function slice_by(rt::Runtime, src::AbstractShape, ::Union{Int,Missing}, card::Cardinality, ::Bool)
+    @assert src isa BlockOf
+    Signature(BlockOf(Passthrough(), cardinality(src)), BlockOf(Passthrough(), card))
 end
 
 """
@@ -1249,14 +1307,15 @@ end
 @inline _slice_range(::Missing, l::Int, inv::Bool) =
     !inv ? (1, l) : (1, 0)
 
-function slice_by(rt::Runtime, input::AbstractShape, ::Bool)
-    @assert input isa TupleOf
-    cols = columns(input)
+function slice_by(rt::Runtime, src::AbstractShape, ::Bool)
+    @assert src isa TupleOf
+    cols = columns(src)
     @assert length(cols) == 2
     vals, Ns = cols
     @assert vals isa BlockOf
     @assert eltype(Ns) <: Union{Missing,Int}
-    BlockOf(elements(vals), cardinality(vals)|x0to1)
+    card = cardinality(vals)
+    Signature(TupleOf(BlockOf(Passthrough(), card), Ns), BlockOf(Passthrough(), card|x0to1))
 end
 
 
@@ -1308,9 +1367,9 @@ function unique_by(::Runtime, input::AbstractVector)
     BlockVector{card}(offs_outer, elts′)
 end
 
-function unique_by(::Runtime, input::AbstractShape)
-    @assert input isa BlockOf
-    input
+function unique_by(::Runtime, src::AbstractShape)
+    @assert src isa BlockOf
+    Signature(src, src)
 end
 
 group_by() = Pipeline(group_by)
@@ -1455,15 +1514,15 @@ function _partition(offs, sep)
     return (offs_outer, offs_inner)
 end
 
-function group_by(::Runtime, input::AbstractShape)
-    @assert input isa BlockOf
-    card = cardinality(input)
-    elts = elements(input)
+function group_by(::Runtime, src::AbstractShape)
+    @assert src isa BlockOf
+    card = cardinality(src)
+    elts = elements(src)
     @assert elts isa TupleOf
     cols = columns(elts)
     @assert length(cols) == 2
     vals, keys = cols
-    BlockOf(TupleOf(Symbol[], AbstractShape[BlockOf(vals, card&x1toN), keys]), card)
+    Signature(BlockOf(TupleOf(Passthrough(), keys), card), BlockOf(TupleOf(BlockOf(Passthrough(), card&x1toN), keys), card))
 end
 
 

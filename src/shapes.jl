@@ -6,6 +6,7 @@ import Base:
     convert,
     getindex,
     eltype,
+    iterate,
     show
 
 
@@ -43,6 +44,8 @@ labelsyntax(lbl::Symbol) =
 
 show(io::IO, shp::AbstractShape) =
     print_expr(io, quoteof(shp))
+
+iterate(::AbstractShape) = nothing
 
 
 #
@@ -199,6 +202,12 @@ function eltype(shp::TupleOf)
     end
 end
 
+iterate(shp::TupleOf) =
+    iterate(shp, 1)
+
+iterate(shp::TupleOf, j) =
+    j <= length(shp.cols) ? (shp.cols[j], j+1) : nothing
+
 """
     BlockOf(elts::AbstractShape, card::Cardinality=x0toN)
 
@@ -246,6 +255,12 @@ function eltype(shp::BlockOf)
     end
 end
 
+iterate(shp::BlockOf) =
+    iterate(shp, 1)
+
+iterate(shp::BlockOf, j) =
+    j == 1 ? (shp.elts, 2) : nothing
+
 
 #
 # Annotations.
@@ -264,6 +279,15 @@ deannotate(shp::AbstractShape) =
 
 deannotate(shp::Annotation) =
     deannotate(subject(shp))
+
+getindex(shp::Annotation) =
+    shp.sub
+
+iterate(shp::Annotation) =
+    iterate(shp, 1)
+
+iterate(shp::Annotation, j) =
+    j == 1 ? (shp.sub, 2) : nothing
 
 """
     sub |> IsLabeled(::Symbol)
@@ -345,6 +369,39 @@ replace_column(shp::IsScope, f) =
 
 context(shp::IsScope) =
     column(shp.sub, 2)
+
+
+#
+# Pipeline profile.
+#
+
+struct Passthrough <: AbstractShape
+    pos::Int
+end
+
+Passthrough() =
+    Passthrough(1)
+
+quoteof(shp::Passthrough) =
+    Expr(:call, nameof(Passthrough), shp.pos)
+
+syntaxof(shp::Passthrough) =
+    Symbol("_", shp.pos)
+
+position(shp::Passthrough) =
+    shp.pos
+
+count_passthrough(::Passthrough) = 1
+
+count_passthrough(shp::AbstractShape) =
+    sum(count_passthrough, shp, init=0)
+
+struct ShapePathItem
+    idx::Int
+    next::Union{ShapePathItem,Nothing}
+end
+
+const ShapePath = Union{ShapePathItem,Nothing}
 
 
 #
@@ -445,6 +502,140 @@ show(io::IO, sig::Signature) =
 source(sig::Signature) = sig.src
 
 target(sig::Signature) = sig.tgt
+
+function unify(sig1::Signature, sig2::Signature)
+    n1 = count_passthrough(sig1.src)
+    n2 = count_passthrough(sig2.src)
+    repl1 = Union{AbstractShape,Nothing}[]
+    repl2 = Union{AbstractShape,Nothing}[]
+    for k = 1:n1
+        push!(repl1, nothing)
+    end
+    for k = 1:n2
+        push!(repl2, nothing)
+    end
+    unify!(sig1.tgt, sig2.src, repl1, repl2)
+    src = substitute(sig1.src, repl1, true)
+    tgt = substitute(sig2.tgt, repl2)
+    tgt = substitute(tgt, repl1, true)
+    j = 1
+    for k = eachindex(repl1)
+        if repl1[k] === nothing
+            repl1[k] = Passthrough(j)
+            j += 1
+        end
+    end
+    src = substitute(src, repl1)
+    tgt = substitute(tgt, repl1)
+    Signature(src, tgt)
+end
+
+unify!(shp1::AbstractShape, shp2::AbstractShape, repl1, repl2) =
+    error("cannot unify $shp1 and $shp2")
+
+function unify!(shp1::Union{ValueOf,NoShape}, shp2::Union{ValueOf,AnyShape}, repl1, repl2)
+    eltype(shp1) <: eltype(shp2) || error("cannot unify $shp1 and $shp2")
+    nothing
+end
+
+unify!(shp1::NoShape, shp2::NoShape, repl1, repl2) = nothing
+
+unify!(shp1::AnyShape, shp2::AnyShape, repl1, repl2) = nothing
+
+function unify!(shp1::TupleOf, shp2::TupleOf, repl1, repl2)
+    width(shp1) == width(shp2) || error("cannot unify $shp1 and $shp2")
+    for k = 1:width(shp1)
+        unify!(column(shp1, k), column(shp2, k), repl1, repl2)
+    end
+    nothing
+end
+
+function unify!(shp1::BlockOf, shp2::BlockOf, repl1, repl2)
+    fits(cardinality(shp1), cardinality(shp2)) || error("cannot unify $shp1 and $shp2")
+    unify!(elements(shp1), elements(shp2), repl1, repl2)
+end
+
+function unify!(shp1::Passthrough, shp2::Passthrough, repl1, repl2)
+    repl2[position(shp2)] = shp1
+    nothing
+end
+
+function unify!(shp1::AbstractShape, shp2::Passthrough, repl1, repl2)
+    repl2[position(shp2)] = shp1
+    nothing
+end
+
+function unify!(shp1::Passthrough, shp2::Union{ValueOf,AnyShape,NoShape}, repl1, repl2)
+    pos1 = position(shp1)
+    shp1′ = repl1[pos1]
+    shp1′ === nothing || return unify!(shp1′, shp2, repl1, repl2)
+    repl1[pos1] = shp2
+    nothing
+end
+
+function unify!(shp1::Passthrough, shp2::TupleOf, repl1, repl2)
+    pos1 = position(shp1)
+    shp1′ = repl1[pos1]
+    shp1′ === nothing || return unify!(shp1′, shp2, repl1, repl2)
+    cols = AbstractShape[]
+    for j = 1:width(shp2)
+        push!(repl1, nothing)
+        push!(cols, Passthrough(length(repl1)))
+    end
+    shp1′ = TupleOf(labels(shp2), cols)
+    repl1[pos1] = shp1′
+    unify!(shp1′, shp2, repl1, repl2)
+end
+
+function unify!(shp1::Passthrough, shp2::BlockOf, repl1, repl2)
+    pos1 = position(shp1)
+    shp1′ = repl1[pos1]
+    shp1′ === nothing || return unify!(shp1′, shp2, repl1, repl2)
+    push!(repl1, nothing)
+    shp1′ = BlockOf(Passthrough(length(repl1)), cardinality(shp2))
+    repl1[pos1] = shp1′
+    unify!(shp1′, shp2, repl1, repl2)
+end
+
+function propagate(sig::Signature, src::AbstractShape)
+    n = count_passthrough(sig.src)
+    repl = Union{AbstractShape,Nothing}[]
+    for k = 1:n
+        push!(repl, nothing)
+    end
+    unify!(src, sig.src, Union{AbstractShape,Nothing}[], repl)
+    substitute(sig.tgt, repl)
+end
+
+substitute(@nospecialize(shp::AbstractShape), repl, deep=false) = shp
+
+function substitute(shp::Passthrough, repl, deep)
+    shp′ = repl[position(shp)]
+    if shp′ !== nothing
+        shp = shp′
+        if deep
+            shp = substitute(shp, repl, deep)
+        end
+    end
+    shp
+end
+
+substitute(shp::TupleOf, repl, deep) =
+    TupleOf(labels(shp), AbstractShape[substitute(col, repl, deep) for col in columns(shp)])
+
+substitute(shp::BlockOf, repl, deep) =
+    BlockOf(substitute(elements(shp), repl, deep), cardinality(shp))
+
+function adjust_position(sig, x)
+    x != 0 || return sig
+    n = count_passthrough(sig.src)
+    n > 0 || return sig
+    repl = Union{AbstractShape,Nothing}[]
+    for k = 1:n
+        push!(repl, Passthrough(k + x))
+    end
+    Signature(substitute(sig.src, repl), substitute(sig.tgt, repl))
+end
 
 
 #
