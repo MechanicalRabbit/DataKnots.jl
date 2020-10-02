@@ -570,7 +570,7 @@ end
 struct Wire
     node::Node{Wire}
     port::Port
-    branches::Union{Vector{Wire},Nothing}
+    branches::Union{Vector{Union{Wire,Nothing}},Nothing}
 end
 
 Wire(node::Node{Wire}) =
@@ -579,7 +579,7 @@ Wire(node::Node{Wire}) =
 Wire(node::Node{Wire}, port::Port) =
     Wire(node, port, nothing)
 
-Wire(node::Node{Wire}, branches::Vector{Wire}) =
+Wire(node::Node{Wire}, branches::Vector{Union{Wire,Nothing}}) =
     Wire(node, Port(), branches)
 
 show(io::IO, w::Wire) =
@@ -601,7 +601,7 @@ function quoteof!(w::Wire, exs, refs)
         push!(args, quoteof(w.port))
     end
     if w.branches !== nothing
-        push!(args, Expr(:vect, Any[quoteof!(branch, exs, refs) for branch in w.branches]...))
+        push!(args, Expr(:vect, Any[branch !== nothing ? quoteof!(branch, exs, refs) : nothing for branch in w.branches]...))
     end
     Expr(:call, nameof(Wire), args...)
 end
@@ -611,7 +611,7 @@ function get_branches(w::Wire, @nospecialize shp::AbstractShape)
     branches = w.branches
     if branches === nothing
         idxs = collect(Int, w.port)
-        branches = Wire[]
+        branches = Union{Wire,Nothing}[]
         for j = 1:k
             port = Port(j)
             for idx in reverse(idxs)
@@ -642,7 +642,7 @@ function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
     elseif (p ~ pass())
         tgt = src
     elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
-        branches = Wire[]
+        branches = Union{Wire,Nothing}[]
         tgt_cols = AbstractShape[]
         for col in cols
             col_w, col_tgt = trace(col, w, src)
@@ -650,7 +650,10 @@ function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
             push!(tgt_cols, col_tgt)
         end
         p′ = tuple_of(lbls, length(cols))
-        w = Wire(Node(p′, w), branches)
+        sig′ = p′(src)
+        w = Wire(Node{Wire}(p′ |> designate(sig′),
+                            substitute(w, sig′.src, fill(nothing, count_passthrough(sig′.src)))),
+                 branches)
         tgt = TupleOf(lbls, tgt_cols)
     elseif (p ~ with_column(lbl, q))
         @assert src isa TupleOf
@@ -669,7 +672,7 @@ function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
         branches = get_branches(w, src)
         @assert length(branches) == 1
         q_w, q_tgt = trace(q, branches[1], elements(src))
-        w = Wire(w.node, w.port, Wire[q_w])
+        w = Wire(w.node, w.port, Union{Wire,Nothing}[q_w])
         tgt = BlockOf(q_tgt, cardinality(src))
     else
         sig = p(src)
@@ -677,7 +680,7 @@ function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
         k = count_passthrough(sig.src)
         repl = Vector{Wire}(undef, k)
         unify!(w, sig.src, repl)
-        n = Node(p, w)
+        n = Node{Wire}(p |> designate(sig), substitute(w, sig.src, fill(nothing, k)))
         w = Wire(n)
         w = substitute(w, sig.tgt, repl)
     end
@@ -702,7 +705,7 @@ end
 function substitute(w::Wire, @nospecialize(shp::AbstractShape), repl)
     if count_passthrough(shp) > 0
         branches = get_branches(w, shp)
-        branches = Wire[substitute(branches[j], branch(shp, j), repl) for j = eachindex(branches)]
+        branches = Union{Wire,Nothing}[substitute(branches[j], branch(shp, j), repl) for j = eachindex(branches)]
         w = Wire(w.node, w.port, branches)
     end
     w
