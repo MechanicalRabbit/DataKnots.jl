@@ -674,6 +674,20 @@ function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
         q_w, q_tgt = trace(q, branches[1], elements(src))
         w = Wire(w.node, w.port, Union{Wire,Nothing}[q_w])
         tgt = BlockOf(q_tgt, cardinality(src))
+    elseif (p ~ distribute(lbl))
+        @assert src isa TupleOf
+        j = locate(src, lbl)
+        @assert column(src, j) isa BlockOf
+        branches = get_branches(w, src)
+        j_branches = get_branches(branches[j], branch(src, j))
+        @assert length(j_branches) == 1
+        branches′ = copy(branches)
+        branches′[j] = j_branches[1]
+        w = Wire(branches[j].node, branches[j].port, Union{Wire,Nothing}[Wire(w.node, w.port, branches′)])
+        cols′ = copy(columns(src))
+        card = cardinality(cols′[j])
+        cols′[j] = elements(cols′[j])
+        tgt = BlockOf(TupleOf(labels(src), cols′), card)
     else
         sig = p(src)
         tgt = propagate(sig, src)
