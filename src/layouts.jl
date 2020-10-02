@@ -167,6 +167,13 @@ function tile_expr(ex::Expr; precedence=0)
         pair_layout(ilt, olt, sep=(ex.head == :(<:) ? "$(ex.head)" : " $(ex.head) "))
     elseif ex.head == :(...) && length(ex.args) == 1
         tile_expr(ex.args[1]) * literal("...")
+    elseif ex.head == :let && length(ex.args) == 2
+        lts = Meta.isexpr(ex.args[1], :block) ?
+            Layout[tile_expr(arg) for arg in ex.args[1].args] :
+            Layout[tile_expr(ex.args[1])]
+        (literal("let ") * list_layout(lts, par=("", ""))) /
+        (indent(4) * tile_expr(ex.args[2])) /
+        literal("end")
     else
         literal(string(ex))
     end

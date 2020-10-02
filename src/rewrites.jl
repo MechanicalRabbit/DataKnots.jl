@@ -417,6 +417,11 @@ function replace_parts(memo, repl, i, p)
     nothing
 end
 
+
+#
+# Pipeline linearization.
+#
+
 function rewrite_linearize(p::Pipeline; memo=RewriteMemo())::Pipeline
     chain_of(linearize(p)) |> designate(signature(p))
 end
@@ -486,3 +491,223 @@ function delinearize_tuple!(vp::Vector{Pipeline}, lbls, width)::Pipeline
     end
     return tuple_of(lbls, [delinearize!(cv) for cv in slots])
 end
+
+
+#
+# Wire diagram.
+#
+
+struct Port
+    next::Union{Port,Nothing}
+    idx::Int
+
+    Port() = new(nothing, 0)
+    Port(idx::Int, next::Port) = new(next, idx)
+end
+
+Port(head::Int, tail::Int...) =
+    Port(head, Port(tail...))
+
+show(io::IO, port::Port) =
+    print_expr(io, quoteof(port))
+
+quoteof(port::Port) =
+    Expr(:call, nameof(Port), port...)
+
+isempty(port::Port) =
+    port.next === nothing
+
+function iterate(port::Port, state=port)
+    next = state.next
+    next !== nothing ? (state.idx, next) : nothing
+end
+
+Base.IteratorSize(::Type{Port}) = Base.SizeUnknown()
+
+Base.IteratorEltype(::Type{Port}) = Base.HasEltype()
+
+Base.eltype(::Type{Port}) = Int
+
+mutable struct Node{I}
+    p::Pipeline
+    input::Union{I,Nothing}
+end
+
+Node(p) =
+    Node{Wire}(p, nothing)
+
+Node(p, input) =
+    Node{Wire}(p, input)
+
+show(io::IO, n::Node) =
+    print_expr(io, quoteof(n))
+
+function quoteof(n::Node)
+    exs = Expr[]
+    refs = IdDict{typeof(n),Int}()
+    ex = quoteof!(n, exs, refs)
+    if length(refs) <= 1
+        return ex
+    end
+    letexs = Expr[Expr(:(=), Symbol("n", k), exs[k]) for k in eachindex(exs)]
+    Expr(:let, length(letexs) != 1 ? Expr(:block, letexs...) : letexs[1], Symbol("n", refs[n]))
+end
+
+function quoteof!(n::Node, exs, refs)
+    if haskey(refs, n)
+        return exs[refs[n]]
+    end
+    if n.input === nothing
+        ex = Expr(:call, nameof(Node), quoteof(n.p))
+    else
+        ex = Expr(:call, nameof(Node), quoteof(n.p), quoteof!(n.input, exs, refs))
+    end
+    push!(exs, ex)
+    refs[n] = length(exs)
+    ex
+end
+
+struct Wire
+    node::Node{Wire}
+    port::Port
+    branches::Union{Vector{Wire},Nothing}
+end
+
+Wire(node::Node{Wire}) =
+    Wire(node, Port(), nothing)
+
+Wire(node::Node{Wire}, port::Port) =
+    Wire(node, port, nothing)
+
+Wire(node::Node{Wire}, branches::Vector{Wire}) =
+    Wire(node, Port(), branches)
+
+show(io::IO, w::Wire) =
+    print_expr(io, quoteof(w))
+
+function quoteof(w::Wire)
+    exs = Expr[]
+    refs = IdDict{Node{Wire},Int}()
+    ex = quoteof!(w, exs, refs)
+    letexs = Expr[Expr(:(=), Symbol("n", k), exs[k]) for k in eachindex(exs)]
+    Expr(:let, length(letexs) != 1 ? Expr(:block, letexs...) : letexs[1], ex)
+end
+
+function quoteof!(w::Wire, exs, refs)
+    quoteof!(w.node, exs, refs)
+    ref = Symbol("n", refs[w.node])
+    args = Any[ref]
+    if !isempty(w.port)
+        push!(args, quoteof(w.port))
+    end
+    if w.branches !== nothing
+        push!(args, Expr(:vect, Any[quoteof!(branch, exs, refs) for branch in w.branches]...))
+    end
+    Expr(:call, nameof(Wire), args...)
+end
+
+function get_branches(w::Wire, @nospecialize shp::AbstractShape)
+    k = width(shp)
+    branches = w.branches
+    if branches === nothing
+        idxs = collect(Int, w.port)
+        branches = Wire[]
+        for j = 1:k
+            port = Port(j)
+            for idx in reverse(idxs)
+                port = Port(idx, port)
+            end
+            push!(branches, Wire(w.node, port))
+        end
+    end
+    @assert length(branches) == k
+    branches
+end
+
+function trace(p::Pipeline)
+    src = deannotate(source(p))
+    p0 = pass() |> designate(src, src)
+    n0 = Node(p0)
+    w0 = Wire(n0)
+    w, tgt = trace(p, w0, src)
+    w
+end
+
+function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
+    @match_pipeline if (p ~ chain_of(qs))
+        tgt = src
+        for q in qs
+            w, tgt = trace(q, w, tgt)
+        end
+    elseif (p ~ pass())
+        tgt = src
+    elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
+        branches = Wire[]
+        tgt_cols = AbstractShape[]
+        for col in cols
+            col_w, col_tgt = trace(col, w, src)
+            push!(branches, col_w)
+            push!(tgt_cols, col_tgt)
+        end
+        p′ = tuple_of(lbls, length(cols))
+        w = Wire(Node(p′, w), branches)
+        tgt = TupleOf(lbls, tgt_cols)
+    elseif (p ~ with_column(lbl, q))
+        @assert src isa TupleOf
+        branches = get_branches(w, src)
+        @assert length(branches) == width(src)
+        j = locate(src, lbl)
+        q_w, q_tgt = trace(q, branches[j], branch(src, j))
+        branches′ = copy(branches)
+        branches′[j] = q_w
+        w = Wire(w.node, w.port, branches′)
+        cols′ = copy(columns(src))
+        cols′[j] = q_tgt
+        tgt = TupleOf(labels(src), cols′)
+    elseif (p ~ with_elements(q))
+        @assert src isa BlockOf
+        branches = get_branches(w, src)
+        @assert length(branches) == 1
+        q_w, q_tgt = trace(q, branches[1], elements(src))
+        w = Wire(w.node, w.port, Wire[q_w])
+        tgt = BlockOf(q_tgt, cardinality(src))
+    else
+        sig = p(src)
+        tgt = propagate(sig, src)
+        k = count_passthrough(sig.src)
+        repl = Vector{Wire}(undef, k)
+        unify!(w, sig.src, repl)
+        n = Node(p, w)
+        w = Wire(n)
+        w = substitute(w, sig.tgt, repl)
+    end
+    w, tgt
+end
+
+function unify!(w::Wire, @nospecialize(shp::AbstractShape), repl)
+    if count_passthrough(shp) > 0
+        branches = get_branches(w, shp)
+        for j in eachindex(branches)
+            unify!(branches[j], branch(shp, j), repl)
+        end
+    end
+    nothing
+end
+
+function unify!(w::Wire, shp::Passthrough, repl)
+    repl[position(shp)] = w
+    nothing
+end
+
+function substitute(w::Wire, @nospecialize(shp::AbstractShape), repl)
+    if count_passthrough(shp) > 0
+        branches = get_branches(w, shp)
+        branches = Wire[substitute(branches[j], branch(shp, j), repl) for j = eachindex(branches)]
+        w = Wire(w.node, w.port, branches)
+    end
+    w
+end
+
+substitute(w::Wire, shp::Passthrough, repl) =
+    repl[position(shp)]
+

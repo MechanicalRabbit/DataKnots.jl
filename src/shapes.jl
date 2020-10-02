@@ -6,6 +6,7 @@ import Base:
     convert,
     getindex,
     eltype,
+    isempty,
     iterate,
     show
 
@@ -46,6 +47,14 @@ show(io::IO, shp::AbstractShape) =
     print_expr(io, quoteof(shp))
 
 iterate(::AbstractShape) = nothing
+
+width(::AbstractShape) = 0
+
+branch(shp::AbstractShape, j) =
+    (checkbounds(1:0, j); shp)
+
+branch(shp::AbstractShape) =
+    branch(shp, 1)
 
 
 #
@@ -172,6 +181,8 @@ end
 
 width(shp::TupleOf) = length(shp.cols)
 
+branch(shp::TupleOf, j) = shp.cols[j]
+
 columns(shp::TupleOf) = shp.cols
 
 column(shp::TupleOf, j::Int) = shp.cols[j]
@@ -231,6 +242,11 @@ quoteof(shp::BlockOf) =
 syntaxof(shp::BlockOf) =
     Expr(:call, :×, syntaxof(shp.card), syntaxof(shp.elts))
 
+width(::BlockOf) = 1
+
+branch(shp::BlockOf, j) =
+    (checkbounds(1:1, j); shp.elts)
+
 elements(shp::BlockOf) = shp.elts
 
 function replace_elements(shp::BlockOf, f)
@@ -280,8 +296,10 @@ deannotate(shp::AbstractShape) =
 deannotate(shp::Annotation) =
     deannotate(subject(shp))
 
-getindex(shp::Annotation) =
-    shp.sub
+width(::Annotation) = 1
+
+branch(shp::Annotation, j) =
+    (checkbounds(1:1, j); shp.sub)
 
 iterate(shp::Annotation) =
     iterate(shp, 1)
@@ -393,15 +411,13 @@ position(shp::Passthrough) =
 
 count_passthrough(::Passthrough) = 1
 
-count_passthrough(shp::AbstractShape) =
-    sum(count_passthrough, shp, init=0)
-
-struct ShapePathItem
-    idx::Int
-    next::Union{ShapePathItem,Nothing}
+function count_passthrough(@nospecialize shp::AbstractShape)
+    c = 0
+    for j = 1:width(shp)
+        c += count_passthrough(branch(shp, j))
+    end
+    c
 end
-
-const ShapePath = Union{ShapePathItem,Nothing}
 
 
 #
