@@ -497,193 +497,193 @@ end
 # Wire diagram.
 #
 
-struct Port
-    next::Union{Port,Nothing}
-    idx::Int
-
-    Port() = new(nothing, 0)
-    Port(idx::Int, next::Port) = new(next, idx)
+struct InputNode
 end
 
-Port(head::Int, tail::Int...) =
-    Port(head, Port(tail...))
-
-show(io::IO, port::Port) =
-    print_expr(io, quoteof(port))
-
-quoteof(port::Port) =
-    Expr(:call, nameof(Port), port...)
-
-isempty(port::Port) =
-    port.next === nothing
-
-function iterate(port::Port, state=port)
-    next = state.next
-    next !== nothing ? (state.idx, next) : nothing
-end
-
-Base.IteratorSize(::Type{Port}) = Base.SizeUnknown()
-
-Base.IteratorEltype(::Type{Port}) = Base.HasEltype()
-
-Base.eltype(::Type{Port}) = Int
-
-mutable struct Node{I}
+struct EvalNode{N}
     p::Pipeline
-    input::Union{I,Nothing}
+    input::N
 end
 
-Node(p) =
-    Node{Wire}(p, nothing)
+struct HeadNode{N}
+    node::N
+end
 
-Node(p, input) =
-    Node{Wire}(p, input)
+struct SlotNode{N}
+    node::N
+    idx::Int
+end
 
-show(io::IO, n::Node) =
+struct JoinNode{N}
+    head::N
+    slots::Vector{N}
+end
+
+mutable struct NodeRef
+    ref::Union{InputNode,EvalNode{NodeRef},HeadNode{NodeRef},SlotNode{NodeRef},JoinNode{NodeRef},Nothing}
+    shp::AbstractShape
+end
+
+const HOLE = NodeRef(nothing, Passthrough())
+
+function input_node(src::AbstractShape)
+    return NodeRef(InputNode(), src)
+end
+
+function eval_node(p::Pipeline, input::NodeRef=HOLE, tgt=nothing)
+    if tgt === nothing
+        tgt = target(p(input.shp))
+    end
+    ref = EvalNode{NodeRef}(p, input)
+    return NodeRef(ref, tgt)
+end
+
+function head_node(node::NodeRef)
+    shp = node.shp
+    for j = 1:width(shp)
+        shp = replace_branch(shp, j, Passthrough(j))
+    end
+    return NodeRef(HeadNode{NodeRef}(node), shp)
+end
+
+function slot_node(node::NodeRef, idx::Int)
+    shp = node.shp
+    if !(shp isa Passthrough)
+        shp = branch(shp, idx)
+    end
+    return NodeRef(SlotNode{NodeRef}(node, idx), shp)
+end
+
+function join_node(head::NodeRef, slots::Vector{NodeRef})
+    shp = head.shp
+    w = width(shp)
+    @assert w == length(slots)
+    for j = 1:width(shp)
+        shp = replace_branch(shp, j, slots[j].shp)
+    end
+    return NodeRef(JoinNode{NodeRef}(head, slots), shp)
+end
+
+show(io::IO, n::NodeRef) =
     print_expr(io, quoteof(n))
 
-function quoteof(n::Node)
+function quoteof(n::NodeRef)
     exs = Expr[]
-    refs = IdDict{typeof(n),Int}()
-    ex = quoteof!(n, exs, refs)
-    if length(refs) <= 1
+    nidxs = IdDict{Any,Int}()
+    ex = quoteof!(n, exs, nidxs)
+    if isempty(exs)
         return ex
+    elseif length(exs) == 1
+        return exs[1]
     end
-    letexs = Expr[Expr(:(=), Symbol("n", k), exs[k]) for k in eachindex(exs)]
-    Expr(:let, length(letexs) != 1 ? Expr(:block, letexs...) : letexs[1], Symbol("n", refs[n]))
+    letargs = [Expr(:(=), Symbol("n", k), exs[k]) for k in eachindex(exs)]
+    Expr(:let, Expr(:block, letargs...), ex)
 end
 
-function quoteof!(n::Node, exs, refs)
-    if haskey(refs, n)
-        return exs[refs[n]]
+function quoteof!(n::NodeRef, exs, nidxs)
+    if haskey(nidxs, n)
+        return Symbol("n", nidxs[n])
     end
-    if n.input === nothing
-        ex = Expr(:call, nameof(Node), quoteof(n.p))
-    else
-        ex = Expr(:call, nameof(Node), quoteof(n.p), quoteof!(n.input, exs, refs))
+    ref = n.ref
+    if ref === nothing
+        return :HOLE
+    elseif ref isa InputNode
+        ex = Expr(:call, nameof(input_node), quoteof(n.shp))
+    elseif ref isa EvalNode{NodeRef}
+        if ref.input.ref === nothing
+            ex = Expr(:call, nameof(eval_node), quoteof(ref.p))
+        else
+            ex = Expr(:call, nameof(eval_node), quoteof(ref.p), quoteof!(ref.input, exs, nidxs))
+        end
+    elseif ref isa HeadNode{NodeRef}
+        ex = Expr(:call, nameof(head_node), quoteof!(ref.node, exs, nidxs))
+    elseif ref isa SlotNode{NodeRef}
+        ex = Expr(:call, nameof(slot_node), quoteof!(ref.node, exs, nidxs), ref.idx)
+    elseif ref isa JoinNode{NodeRef}
+        slotsex = Expr(:vect, Any[quoteof!(slot, exs, nidxs) for slot in ref.slots]...)
+        ex = Expr(:call, nameof(join_node), quoteof!(ref.head, exs, nidxs), slotsex)
     end
     push!(exs, ex)
-    refs[n] = length(exs)
-    ex
+    nidxs[n] = length(exs)
+    Symbol("n", length(exs))
 end
 
-struct Wire
-    node::Node{Wire}
-    port::Port
-    branches::Union{Vector{Union{Wire,Nothing}},Nothing}
-end
-
-Wire(node::Node{Wire}) =
-    Wire(node, Port(), nothing)
-
-Wire(node::Node{Wire}, port::Port) =
-    Wire(node, port, nothing)
-
-Wire(node::Node{Wire}, branches::Vector{Union{Wire,Nothing}}) =
-    Wire(node, Port(), branches)
-
-show(io::IO, w::Wire) =
-    print_expr(io, quoteof(w))
-
-function quoteof(w::Wire)
-    exs = Expr[]
-    refs = IdDict{Node{Wire},Int}()
-    ex = quoteof!(w, exs, refs)
-    letexs = Expr[Expr(:(=), Symbol("n", k), exs[k]) for k in eachindex(exs)]
-    Expr(:let, length(letexs) != 1 ? Expr(:block, letexs...) : letexs[1], ex)
-end
-
-function quoteof!(w::Wire, exs, refs)
-    quoteof!(w.node, exs, refs)
-    ref = Symbol("n", refs[w.node])
-    args = Any[ref]
-    if !isempty(w.port)
-        push!(args, quoteof(w.port))
+function get_head(n::NodeRef)
+    ref = n.ref
+    if ref isa JoinNode{NodeRef}
+        return ref.head
     end
-    if w.branches !== nothing
-        push!(args, Expr(:vect, Any[branch !== nothing ? quoteof!(branch, exs, refs) : nothing for branch in w.branches]...))
-    end
-    Expr(:call, nameof(Wire), args...)
+    return head_node(n)
 end
 
-function get_branches(w::Wire, @nospecialize shp::AbstractShape)
-    k = width(shp)
-    branches = w.branches
-    if branches === nothing
-        idxs = collect(Int, w.port)
-        branches = Union{Wire,Nothing}[]
-        for j = 1:k
-            port = Port(j)
-            for idx in reverse(idxs)
-                port = Port(idx, port)
-            end
-            push!(branches, Wire(w.node, port))
-        end
+function get_slots(n::NodeRef, @nospecialize shp::AbstractShape)
+    w = width(shp)
+    ref = n.ref
+    if ref isa JoinNode{NodeRef}
+        @assert length(ref.slots) == w
+        return ref.slots
     end
-    @assert length(branches) == k
-    branches
+    return NodeRef[slot_node(n, j) for j = 1:w]
 end
 
 function trace(p::Pipeline)
     src = deannotate(source(p))
-    p0 = pass() |> designate(src, src)
-    n0 = Node(p0)
-    w0 = Wire(n0)
-    w, tgt = trace(p, w0, src)
-    w
+    n0 = input_node(src)
+    n, tgt = trace(p, n0, src)
+    n
 end
 
-function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
+function trace(p::Pipeline, i::NodeRef, @nospecialize src::AbstractShape)
     @match_pipeline if (p ~ chain_of(qs))
+        o = i
         tgt = src
         for q in qs
-            w, tgt = trace(q, w, tgt)
+            o, tgt = trace(q, o, tgt)
         end
     elseif (p ~ pass())
+        o = i
         tgt = src
     elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
-        branches = Union{Wire,Nothing}[]
+        slots = NodeRef[]
         tgt_cols = AbstractShape[]
         for col in cols
-            col_w, col_tgt = trace(col, w, src)
-            push!(branches, col_w)
+            col_o, col_tgt = trace(col, i, src)
+            push!(slots, col_o)
             push!(tgt_cols, col_tgt)
         end
         p′ = tuple_of(lbls, length(cols))
         sig′ = p′(src)
-        w = Wire(Node{Wire}(p′ |> designate(sig′),
-                            substitute(w, sig′.src, fill(nothing, count_passthrough(sig′.src)))),
-                 branches)
+        o = join_node(eval_node(p′, HOLE, target(sig′)), slots)
         tgt = TupleOf(lbls, tgt_cols)
     elseif (p ~ with_column(lbl, q))
         @assert src isa TupleOf
-        branches = get_branches(w, src)
-        @assert length(branches) == width(src)
+        slots = get_slots(i, src)
+        @assert length(slots) == width(src)
         j = locate(src, lbl)
-        q_w, q_tgt = trace(q, branches[j], branch(src, j))
-        branches′ = copy(branches)
-        branches′[j] = q_w
-        w = Wire(w.node, w.port, branches′)
+        q_n, q_tgt = trace(q, slots[j], branch(src, j))
+        slots′ = copy(slots)
+        slots′[j] = q_n
+        o = join_node(get_head(i), slots′)
         cols′ = copy(columns(src))
         cols′[j] = q_tgt
         tgt = TupleOf(labels(src), cols′)
     elseif (p ~ with_elements(q))
         @assert src isa BlockOf
-        branches = get_branches(w, src)
-        @assert length(branches) == 1
-        q_w, q_tgt = trace(q, branches[1], elements(src))
-        w = Wire(w.node, w.port, Union{Wire,Nothing}[q_w])
+        slots = get_slots(i, src)
+        @assert length(slots) == 1
+        q_n, q_tgt = trace(q, slots[1], elements(src))
+        o = join_node(get_head(i), NodeRef[q_n])
         tgt = BlockOf(q_tgt, cardinality(src))
     elseif (p ~ distribute(lbl))
         @assert src isa TupleOf
         j = locate(src, lbl)
         @assert column(src, j) isa BlockOf
-        branches = get_branches(w, src)
-        j_branches = get_branches(branches[j], branch(src, j))
-        @assert length(j_branches) == 1
-        branches′ = copy(branches)
-        branches′[j] = j_branches[1]
-        w = Wire(branches[j].node, branches[j].port, Union{Wire,Nothing}[Wire(w.node, w.port, branches′)])
+        slots = get_slots(i, src)
+        j_slots = get_slots(slots[j], branch(src, j))
+        @assert length(j_slots) == 1
+        slots′ = copy(slots)
+        slots′[j] = j_slots[1]
+        o = join_node(get_head(slots[j]), NodeRef[join_node(get_head(i), slots′)])
         cols′ = copy(columns(src))
         card = cardinality(cols′[j])
         cols′[j] = elements(cols′[j])
@@ -692,39 +692,38 @@ function trace(p::Pipeline, w::Wire, @nospecialize src::AbstractShape)
         sig = p(src)
         tgt = propagate(sig, src)
         k = count_passthrough(sig.src)
-        repl = Vector{Wire}(undef, k)
-        unify!(w, sig.src, repl)
-        n = Node{Wire}(p |> designate(sig), substitute(w, sig.src, fill(nothing, k)))
-        w = Wire(n)
-        w = substitute(w, sig.tgt, repl)
+        repl = Vector{NodeRef}(undef, k)
+        unify!(i, sig.src, repl)
+        n = eval_node(p, substitute(i, sig.src, fill(HOLE, k)), target(sig))
+        o = substitute(n, sig.tgt, repl)
     end
-    w, tgt
+    o, tgt
 end
 
-function unify!(w::Wire, @nospecialize(shp::AbstractShape), repl)
+function unify!(n::NodeRef, @nospecialize(shp::AbstractShape), repl)
     if count_passthrough(shp) > 0
-        branches = get_branches(w, shp)
-        for j in eachindex(branches)
-            unify!(branches[j], branch(shp, j), repl)
+        slots = get_slots(n, shp)
+        for j in eachindex(slots)
+            unify!(slots[j], branch(shp, j), repl)
         end
     end
     nothing
 end
 
-function unify!(w::Wire, shp::Passthrough, repl)
-    repl[position(shp)] = w
+function unify!(n::NodeRef, shp::Passthrough, repl)
+    repl[position(shp)] = n
     nothing
 end
 
-function substitute(w::Wire, @nospecialize(shp::AbstractShape), repl)
+function substitute(n::NodeRef, @nospecialize(shp::AbstractShape), repl)
     if count_passthrough(shp) > 0
-        branches = get_branches(w, shp)
-        branches = Union{Wire,Nothing}[substitute(branches[j], branch(shp, j), repl) for j = eachindex(branches)]
-        w = Wire(w.node, w.port, branches)
+        slots = get_slots(n, shp)
+        slots′ = NodeRef[substitute(slots[j], branch(shp, j), repl) for j = eachindex(slots)]
+        n = join_node(get_head(n), slots′)
     end
-    w
+    n
 end
 
-substitute(w::Wire, shp::Passthrough, repl) =
+substitute(n::NodeRef, shp::Passthrough, repl) =
     repl[position(shp)]
 

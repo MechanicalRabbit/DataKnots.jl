@@ -56,6 +56,8 @@ branch(shp::AbstractShape, j) =
 branch(shp::AbstractShape) =
     branch(shp, 1)
 
+replace_branch(shp::AbstractShape, j::Int, f) =
+    (checkbounds(1:0, j); shp)
 
 #
 # Concrete shapes.
@@ -204,6 +206,9 @@ function replace_column(shp::TupleOf, j::Int, f)
     TupleOf(shp.lbls, cols′)
 end
 
+replace_branch(shp::TupleOf, j::Int, f) =
+    replace_column(shp, j, f)
+
 function eltype(shp::TupleOf)
     t = Tuple{Any[eltype(col) for col in shp.cols]...}
     if isempty(shp.lbls)
@@ -254,6 +259,11 @@ function replace_elements(shp::BlockOf, f)
     BlockOf(elts′, shp.card)
 end
 
+function replace_branch(shp::BlockOf, j::Int, f)
+    checkbounds(1:1, j)
+    replace_elements(shp, f)
+end
+
 cardinality(shp::BlockOf) = shp.card
 
 ismandatory(shp::BlockOf) = ismandatory(shp.card)
@@ -300,6 +310,11 @@ width(::Annotation) = 1
 
 branch(shp::Annotation, j) =
     (checkbounds(1:1, j); shp.sub)
+
+function replace_branch(shp::Annotation, j::Int, f)
+    checkbounds(1:1, j)
+    replace_subject(shp, f)
+end
 
 iterate(shp::Annotation) =
     iterate(shp, 1)
