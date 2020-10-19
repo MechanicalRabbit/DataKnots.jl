@@ -251,7 +251,9 @@ filler(rt::Runtime, input::AbstractVector, val) =
     fill(val, length(input))
 
 filler(rt::Runtime, @nospecialize(::AbstractShape), val) =
-    Signature(Passthrough(), ValueOf(typeof(val)))
+    Signature(SlotShape(),
+              ValueOf(typeof(val)),
+              1, Int[])
 
 """
     null_filler() :: Pipeline
@@ -264,7 +266,9 @@ null_filler(rt::Runtime, input::AbstractVector) =
     BlockVector(fill(1, length(input)+1), Union{}[], x0to1)
 
 null_filler(rt::Runtime, @nospecialize ::AbstractShape) =
-    Signature(Passthrough(), BlockOf(NoShape(), x0to1))
+    Signature(SlotShape(),
+              BlockOf(NoShape(), x0to1),
+              1, Int[])
 
 """
     block_filler(block::AbstractVector, card::Cardinality) :: Pipeline
@@ -290,7 +294,9 @@ function block_filler(rt::Runtime, input::AbstractVector, block::AbstractVector,
 end
 
 block_filler(rt::Runtime, @nospecialize(::AbstractShape), block::AbstractVector, card::Cardinality) =
-    Signature(Passthrough(), BlockOf(shapeof(block), card))
+    Signature(SlotShape(),
+              BlockOf(shapeof(block), card),
+              1, Int[])
 
 
 #
@@ -466,7 +472,7 @@ pass(rt::Runtime, @nospecialize input::AbstractVector) =
     input
 
 pass(rt::Runtime, @nospecialize ::AbstractShape) =
-    Signature(Passthrough(), Passthrough())
+    Signature(SlotShape(), SlotShape(), 1, [1])
 
 """
     chain_of(p₁::Pipeline, p₂::Pipeline … pₙ::Pipeline) :: Pipeline
@@ -503,14 +509,32 @@ function chain_of(rt::Runtime, @nospecialize(input::AbstractVector), ps)
 end
 
 function chain_of(rt::Runtime, @nospecialize(src::AbstractShape), ps)
-    sig = Signature(Passthrough(), Passthrough())
+    sig = pass(rt, src)
     tgt = src
     for p in ps
         sig′ = p(rt, tgt)
-        tgt = propagate(sig′, tgt)
-        sig = unify(sig, sig′)
+        tgt = target(refine_source(tgt, sig′))
+        sig = chain_of(sig, sig′)
     end
     sig
+end
+
+function chain_of(sig1::Signature, sig2::Signature)
+    sig1′ = refine_target(sig1, source(sig2))
+    sig2′ = refine_source(target(sig1′), sig2)
+    bd2′ = bindings(sig2′)
+    if bd2′ !== nothing
+        bd1′ = bindings(sig1′)
+        @assert bd1′ !== nothing && bd1′.tgt_ary == bd2′.src_ary
+        tgt2src = Vector{Int}(undef, bd2′.tgt_ary)
+        for (src_slot, tgt_slot) in bd2′.src2tgt
+            tgt2src[tgt_slot] = bd1′.tgt2src[src_slot]
+        end
+        bd′ = SlotBindings(bd1′.src_ary, tgt2src)
+    else
+        bd′ = bindings(sig1′)
+    end
+    Signature(source(sig1′), target(sig2′), bd′)
 end
 
 
@@ -560,34 +584,43 @@ function tuple_of(rt::Runtime, @nospecialize(input::AbstractVector), lbls::Vecto
 end
 
 function tuple_of(rt::Runtime, @nospecialize(src::AbstractShape), lbls::Vector{Symbol}, ps::Vector{Pipeline})
-    sig = Signature(Passthrough(), TupleOf(lbls, AbstractShape[Passthrough() for k = eachindex(ps)]))
-    for k = eachindex(ps)
-        p = ps[k]
-        psig = p(rt, src)
-        n = count_passthrough(source(psig))
-        psig = adjust_position(psig, k - 1)
-        srccols = AbstractShape[]
-        tgtcols = AbstractShape[]
-        x = 1
-        for j = eachindex(ps)
-            if j != k
-                push!(srccols, Passthrough(x))
-                push!(tgtcols, Passthrough(x))
-                x += 1
-            else
-                push!(srccols, source(psig))
-                push!(tgtcols, target(psig))
-                x += n
-            end
-        end
-        sig′ = Signature(TupleOf(lbls, srccols), TupleOf(lbls, tgtcols))
-        sig = unify(sig, sig′)
+    colsigs = Signature[p(rt, src) for p in ps]
+    return tuple_of(lbls, colsigs)
+end
+
+function tuple_of(lbls::Vector{Symbol}, colsigs::Vector{Signature})
+    src′ = SlotShape()
+    for colsig in colsigs
+        src′, _ = fit_slots(src′, source(colsig))
     end
-    sig
+    colsigs′ = Signature[refine_source(src′, colsig) for colsig in colsigs]
+    cols′ = AbstractShape[target(colsig′) for colsig′ in colsigs′]
+    tgt′ = TupleOf(lbls, cols′)
+    ary = arity(src′)
+    if ary > 0
+        tgt_ary = 0
+        tgt2src = Int[]
+        for colsig′ in colsigs′
+            @assert colsig′.bds !== nothing
+            append!(tgt2src, colsig′.bds.tgt2src)
+            tgt_ary += colsig′.bds.tgt_ary
+        end
+        if tgt_ary > 0
+            tgt′ = HasSlots(tgt′, tgt_ary)
+        end
+        bds′ = SlotBindings(ary, tgt2src)
+    else
+        bds′ = nothing
+    end
+    Signature(src′, tgt′, bds′)
 end
 
 tuple_of(rt::Runtime, @nospecialize(::AbstractShape), lbls::Vector{Symbol}, width::Int) =
-    Signature(Passthrough(), TupleOf(lbls, AbstractShape[Passthrough() for k = 1:width]))
+    Signature(SlotShape(),
+              width > 0 ?
+                TupleOf(lbls, AbstractShape[SlotShape() for k = 1:width]) |> HasSlots(width) :
+                TupleOf(lbls, AbstractShape[]),
+              1, fill(1, width))
 
 
 """
@@ -605,8 +638,11 @@ end
 
 function column(rt::Runtime, @nospecialize(src::AbstractShape), lbl)
     @assert src isa TupleOf
+    w = width(src)
     j = locate(src, lbl)
-    Signature(TupleOf(labels(src), AbstractShape[Passthrough(k) for k = 1:width(src)]), Passthrough(j))
+    Signature(TupleOf(labels(src), AbstractShape[SlotShape() for j = 1:w]) |> HasSlots(w),
+              SlotShape(),
+              w, [j])
 end
 
 """
@@ -629,24 +665,44 @@ function with_column(rt::Runtime, src::AbstractShape, lbl, p)
     @assert src isa TupleOf
     lbls = labels(src)
     j = locate(src, lbl)
-    psig = p(rt, column(src, j))
-    n = count_passthrough(source(psig))
-    psig = adjust_position(psig, j - 1)
-    srccols = AbstractShape[]
-    tgtcols = AbstractShape[]
-    x = 1
-    for k = 1:width(src)
-        if k != j
-            push!(srccols, Passthrough(x))
-            push!(tgtcols, Passthrough(x))
-            x += 1
-        else
-            push!(srccols, source(psig))
-            push!(tgtcols, target(psig))
-            x += n
-        end
+    colsig = p(rt, column(src, j))
+    return with_column(lbls, width(src), j, colsig)
+end
+
+function with_column(lbls, w, j, colsig::Signature)
+    colbds = bindings(colsig)
+    if colbds !== nothing
+        src_ary = w + colbds.src_ary - 1
+        tgt_ary = w + colbds.tgt_ary - 1
+    else
+        src_ary = tgt_ary = w - 1
     end
-    Signature(TupleOf(lbls, srccols), TupleOf(lbls, tgtcols))
+    src = TupleOf(lbls, AbstractShape[k != j ? SlotShape() : source(colsig) for k = 1:w])
+    if src_ary > 0
+        src = HasSlots(src, src_ary)
+    end
+    tgt = TupleOf(lbls, AbstractShape[k != j ? SlotShape() : target(colsig) for k = 1:w])
+    if tgt_ary > 0
+        tgt = HasSlots(tgt, tgt_ary)
+    end
+    if src_ary > 0
+        tgt2src = Vector{Int}(undef, tgt_ary)
+        for k = 1:j-1
+            tgt2src[k] = k
+        end
+        if colbds !== nothing
+            for (tgt_slot, src_slot) in enumerate(colbds.tgt2src)
+                tgt2src[j+tgt_slot-1] = j + src_slot - 1
+            end
+        end
+        for k = j+1:w
+            tgt2src[tgt_ary-w+k] = src_ary - w + k
+        end
+        bds = SlotBindings(src_ary, tgt2src)
+    else
+        bds = nothing
+    end
+    Signature(src, tgt, bds)
 end
 
 
@@ -666,7 +722,9 @@ wrap(rt::Runtime, input::AbstractVector) =
     BlockVector(:, input, x1to1)
 
 wrap(rt::Runtime, @nospecialize ::AbstractShape) =
-    Signature(Passthrough(), BlockOf(Passthrough(), x1to1))
+    Signature(SlotShape(),
+              BlockOf(SlotShape(), x1to1) |> HasSlots,
+              1, [1])
 
 
 """
@@ -685,8 +743,20 @@ end
 function with_elements(rt::Runtime, src::AbstractShape, p)
     @assert src isa BlockOf
     sig = p(elements(src))
-    card = cardinality(src)
-    Signature(BlockOf(source(sig), card), BlockOf(target(sig), card))
+    return with_elements(sig, cardinality(src))
+end
+
+function with_elements(sig::Signature, card)
+    src′ = BlockOf(source(sig), card)
+    tgt′ = BlockOf(target(sig), card)
+    bds′ = bindings(sig)
+    if bds′ !== nothing
+        src′ = HasSlots(src′, bds′.src_ary)
+        if bds′.tgt_ary > 0
+            tgt′ = HasSlots(tgt′, bds′.tgt_ary)
+        end
+    end
+    Signature(src′, tgt′, bds′)
 end
 
 
@@ -720,7 +790,9 @@ function flatten(rt::Runtime, src::AbstractShape)
     @assert src isa BlockOf && elements(src) isa BlockOf
     card1 = cardinality(src)
     card2 = cardinality(elements(src))
-    Signature(BlockOf(BlockOf(Passthrough(), card2), card1), BlockOf(Passthrough(), card1|card2))
+    Signature(BlockOf(BlockOf(SlotShape(), card2) |> HasSlots, card1) |> HasSlots,
+              BlockOf(SlotShape(), card1|card2) |> HasSlots,
+              1, [1])
 end
 
 """
@@ -771,21 +843,16 @@ end
 
 function distribute(rt::Runtime, src::AbstractShape, lbl)
     @assert src isa TupleOf && column(src, lbl) isa BlockOf
+    w = width(src)
     j = locate(src, lbl)
     lbls = labels(src)
     card = cardinality(column(src, j))
-    srccols = AbstractShape[]
-    dstcols = AbstractShape[]
-    for k = 1:width(src)
-        if k != j
-            push!(srccols, Passthrough(k))
-            push!(dstcols, Passthrough(k))
-        else
-            push!(srccols, BlockOf(Passthrough(k), card))
-            push!(dstcols, Passthrough(k))
-        end
-    end
-    Signature(TupleOf(lbls, srccols), BlockOf(TupleOf(lbls, dstcols), card))
+    Signature(TupleOf(lbls, AbstractShape[k != j ?
+                                            SlotShape() :
+                                            BlockOf(SlotShape(), card) |> HasSlots
+                                          for k = 1:w]) |> HasSlots(w),
+              BlockOf(TupleOf(lbls, AbstractShape[SlotShape() for k = 1:w]) |> HasSlots(w), card) |> HasSlots(w),
+              w, collect(1:w))
 end
 
 """
@@ -841,16 +908,17 @@ end
 
 function distribute_all(rt::Runtime, src::AbstractShape)
     @assert src isa TupleOf && all(Bool[col isa BlockOf for col in columns(src)])
+    w = width(src)
     lbls = labels(src)
+    w > 0 || return Signature(TupleOf(lbls), BlockOf(TupleOf(lbls), x1to1))
     card = x1to1
-    srccols = AbstractShape[]
-    dstcols = AbstractShape[]
-    for k = 1:width(src)
+    for k = 1:w
         card |= cardinality(column(src, k))
-        push!(srccols, BlockOf(Passthrough(k), cardinality(column(src, k))))
-        push!(dstcols, Passthrough(k))
     end
-    Signature(TupleOf(lbls, srccols), BlockOf(TupleOf(lbls, dstcols), card))
+    Signature(TupleOf(lbls, AbstractShape[BlockOf(SlotShape(), cardinality(column(src, k))) |> HasSlots
+                                          for k = 1:w]) |> HasSlots(w),
+              BlockOf(TupleOf(lbls, AbstractShape[SlotShape() for k = 1:w]) |> HasSlots(w), card) |> HasSlots(w),
+              w, collect(1:w))
 end
 
 """
@@ -889,7 +957,9 @@ _cardinality_error(src_lbl, tgt_lbl, kind) =
 
 function block_cardinality(rt::Runtime, src::AbstractShape, card, src_lbl=nothing, tgt_lbl=nothing)
     @assert src isa BlockOf
-    Signature(BlockOf(Passthrough(), cardinality(src)), BlockOf(Passthrough(), card))
+    Signature(BlockOf(SlotShape(), cardinality(src)) |> HasSlots,
+              BlockOf(SlotShape(), card) |> HasSlots,
+              1, [1])
 end
 
 """
@@ -918,7 +988,9 @@ end
 
 function block_length(rt::Runtime, src::AbstractShape)
     @assert src isa BlockOf
-    Signature(BlockOf(Passthrough(), cardinality(src)), ValueOf(Int))
+    Signature(BlockOf(SlotShape(), cardinality(src)) |> HasSlots,
+              ValueOf(Int),
+              1, Int[])
 end
 
 """
@@ -948,7 +1020,9 @@ end
 
 function block_not_empty(rt::Runtime, src::AbstractShape)
     @assert src isa BlockOf
-    Signature(BlockOf(Passthrough(), cardinality(src)), ValueOf(Bool))
+    Signature(BlockOf(SlotShape(), cardinality(src)) |> HasSlots,
+              ValueOf(Bool),
+              1, Int[])
 end
 
 """
@@ -1031,7 +1105,9 @@ end
 
 function sieve_by(rt::Runtime, src::AbstractShape)
     @assert src isa TupleOf && width(src) == 2 && eltype(column(src, 2)) <: Bool
-    Signature(TupleOf(Passthrough(), column(src, 2)), BlockOf(Passthrough(), x0to1))
+    Signature(TupleOf(SlotShape(), column(src, 2)) |> HasSlots,
+              BlockOf(SlotShape(), x0to1) |> HasSlots,
+              1, [1])
 end
 
 
@@ -1100,7 +1176,9 @@ end
 
 function get_by(rt::Runtime, src::AbstractShape, N::Int, card::Cardinality=x0to1)
     @assert src isa BlockOf
-    Signature(BlockOf(Passthrough(), cardinality(src)), BlockOf(Passthrough(), card))
+    Signature(BlockOf(SlotShape(), cardinality(src)) |> HasSlots,
+              BlockOf(SlotShape(), card) |> HasSlots,
+              1, [1])
 end
 
 """
@@ -1173,7 +1251,9 @@ function get_by(rt::Runtime, src::AbstractShape)
     vals, Ns = cols
     @assert vals isa BlockOf
     @assert eltype(Ns) <: Int
-    Signature(TupleOf(BlockOf(Passthrough(), cardinality(vals)), Ns), BlockOf(Passthrough(), x0to1))
+    Signature(TupleOf(BlockOf(SlotShape(), cardinality(vals)) |> HasSlots, Ns) |> HasSlots,
+              BlockOf(SlotShape(), x0to1) |> HasSlots,
+              1, [1])
 end
 
 """
@@ -1236,12 +1316,16 @@ end
 function slice_by(rt::Runtime, src::AbstractShape, ::Union{Int,Missing}, ::Bool)
     @assert src isa BlockOf
     card = cardinality(src)
-    Signature(BlockOf(Passthrough(), card), BlockOf(Passthrough(), card|x0to1))
+    Signature(BlockOf(SlotShape(), card) |> HasSlots,
+              BlockOf(SlotShape(), card|x0to1) |> HasSlots,
+              1, [1])
 end
 
 function slice_by(rt::Runtime, src::AbstractShape, ::Union{Int,Missing}, card::Cardinality, ::Bool)
     @assert src isa BlockOf
-    Signature(BlockOf(Passthrough(), cardinality(src)), BlockOf(Passthrough(), card))
+    Signature(BlockOf(SlotShape(), cardinality(src)) |> HasSlots,
+              BlockOf(SlotShape(), card) |> HasSlots,
+              1, [1])
 end
 
 """
@@ -1315,7 +1399,9 @@ function slice_by(rt::Runtime, src::AbstractShape, ::Bool)
     @assert vals isa BlockOf
     @assert eltype(Ns) <: Union{Missing,Int}
     card = cardinality(vals)
-    Signature(TupleOf(BlockOf(Passthrough(), card), Ns), BlockOf(Passthrough(), card|x0to1))
+    Signature(TupleOf(BlockOf(SlotShape(), card) |> HasSlots, Ns) |> HasSlots,
+              BlockOf(SlotShape(), card|x0to1) |> HasSlots,
+              1, [1])
 end
 
 
@@ -1522,7 +1608,9 @@ function group_by(::Runtime, src::AbstractShape)
     cols = columns(elts)
     @assert length(cols) == 2
     vals, keys = cols
-    Signature(BlockOf(TupleOf(Passthrough(), keys), card), BlockOf(TupleOf(BlockOf(Passthrough(), card&x1toN), keys), card))
+    Signature(BlockOf(TupleOf(SlotShape(), keys) |> HasSlots, card) |> HasSlots,
+              BlockOf(TupleOf(BlockOf(SlotShape(), card&x1toN) |> HasSlots, keys) |> HasSlots, card) |> HasSlots,
+              1, [1])
 end
 
 

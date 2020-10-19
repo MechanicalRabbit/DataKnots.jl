@@ -524,7 +524,7 @@ mutable struct NodeRef
     shp::AbstractShape
 end
 
-const HOLE = NodeRef(nothing, Passthrough())
+const HOLE = NodeRef(nothing, SlotShape())
 
 function input_node(src::AbstractShape)
     return NodeRef(InputNode(), src)
@@ -710,7 +710,7 @@ function unify!(n::NodeRef, @nospecialize(shp::AbstractShape), repl)
     nothing
 end
 
-function unify!(n::NodeRef, shp::Passthrough, repl)
+function unify!(n::NodeRef, shp::SlotShape, repl)
     repl[position(shp)] = n
     nothing
 end
@@ -724,6 +724,6 @@ function substitute(n::NodeRef, @nospecialize(shp::AbstractShape), repl)
     n
 end
 
-substitute(n::NodeRef, shp::Passthrough, repl) =
+substitute(n::NodeRef, shp::SlotShape, repl) =
     repl[position(shp)]
 

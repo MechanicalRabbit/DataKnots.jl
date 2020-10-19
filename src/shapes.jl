@@ -403,36 +403,52 @@ replace_column(shp::IsScope, f) =
 context(shp::IsScope) =
     column(shp.sub, 2)
 
+"""
+    sub |> HasSlots(::Int)
 
-#
-# Pipeline profile.
-#
-
-struct Passthrough <: AbstractShape
-    pos::Int
+Indicates that the annotated shape has free slots.
+"""
+struct HasSlots <: Annotation
+    sub::AbstractShape
+    ary::Int
 end
 
-Passthrough() =
-    Passthrough(1)
+HasSlots(sub::AbstractShape) =
+    HasSlots(sub, 1)
 
-quoteof(shp::Passthrough) =
-    Expr(:call, nameof(Passthrough), shp.pos)
+HasSlots(ary::Int) =
+    sub -> HasSlots(sub, ary)
 
-syntaxof(shp::Passthrough) =
-    Symbol("_", shp.pos)
+quoteof(shp::HasSlots) =
+    shp.ary == 1 ?
+        Expr(:call, nameof(|>), quoteof_inner(shp.sub), nameof(HasSlots)) :
+        Expr(:call, nameof(|>), quoteof_inner(shp.sub), Expr(:call, nameof(HasSlots), shp.ary))
 
-position(shp::Passthrough) =
-    shp.pos
+subject(shp::HasSlots) =
+    shp.sub
 
-count_passthrough(::Passthrough) = 1
+arity(shp::HasSlots) =
+    shp.ary
 
-function count_passthrough(@nospecialize shp::AbstractShape)
-    c = 0
-    for j = 1:width(shp)
-        c += count_passthrough(branch(shp, j))
-    end
-    c
+replace_subject(shp::HasSlots, f) =
+    HasSlots(f isa AbstractShape ? f : f(shp.sub), shp.ary)
+
+
+#
+# Open slot.
+#
+
+"""
+    SlotShape()
+
+An open slot.
+"""
+struct SlotShape <: AbstractShape
 end
+
+arity(::SlotShape) = 1
+
+arity(::AbstractShape) = 0
 
 
 #
@@ -489,6 +505,139 @@ fits(shp1::IsScope, shp2::AbstractShape) =
 
 
 #
+# Substituting open slots.
+#
+
+substitute(@nospecialize(shp::AbstractShape), repl) =
+    substitute(shp, repl, 1:length(repl))
+
+function substitute(shp::SlotShape, repl, rng)
+    @assert length(rng) == 1
+    repl[first(rng)]
+end
+
+function substitute(shp::HasSlots, repl, rng)
+    ary = arity(shp)
+    @assert ary == length(rng)
+    sub = subject(shp)
+    w = width(sub)
+    l = 0
+    ary′ = 0
+    for j = 1:w
+        b = branch(sub, j)
+        b_ary = arity(b)
+        if b_ary > 0
+            b = substitute(b, repl, rng[l+1:l+b_ary])
+            sub = replace_branch(sub, j, b)
+            l += b_ary
+            ary′ += arity(b)
+        end
+    end
+    @assert l == length(rng)
+    shp = sub
+    if ary′ > 0
+        shp = shp |> HasSlots(ary′)
+    end
+    shp
+end
+
+function substitute(@nospecialize(shp::AbstractShape), repl, rng)
+    @assert isempty(rng)
+    shp
+end
+
+
+#
+# Fitting open slots.
+#
+
+function fit_slots(@nospecialize(outer_shp::AbstractShape), @nospecialize(inner_shp::AbstractShape))
+    ary = arity(inner_shp)
+    repl = AbstractShape[SlotShape() for j = 1:ary]
+    outer_shp′ = fit_slots!(outer_shp, inner_shp, repl, 1)
+    return (outer_shp′, repl)
+end
+
+fit_slots!(outer_shp::AbstractShape, inner_shp::AbstractShape, repl, shift) =
+    outer_shp
+
+function fit_slots!(outer_shp::AbstractShape, ::SlotShape, repl, shift)
+    repl[shift] = outer_shp
+    outer_shp
+end
+
+function fit_slots!(outer_shp::AbstractShape, inner_shp::HasSlots, repl, shift)
+    outer_w = width(outer_shp)
+    inner_shp = subject(inner_shp)
+    inner_w = width(inner_shp)
+    @assert outer_w == inner_w > 0
+    for j = 1:outer_w
+        outer_b = branch(outer_shp, j)
+        inner_b = branch(inner_shp, j)
+        outer_b′ = fit_slots!(outer_b, inner_b, repl, shift)
+        @assert outer_b === outer_b′
+        shift += arity(inner_b)
+    end
+    outer_shp
+end
+
+fit_slots!(::SlotShape, inner_shp::AbstractShape, repl, shift) =
+    inner_shp
+
+fit_slots!(::SlotShape, inner_shp::SlotShape, repl, shift) =
+    inner_shp
+
+fit_slots!(::SlotShape, inner_shp::HasSlots, repl, shift) =
+    inner_shp
+
+function fit_slots!(outer_shp::HasSlots, inner_shp::AbstractShape, repl, shift)
+    outer_shp = subject(outer_shp)
+    outer_w = width(outer_shp)
+    inner_w = width(inner_shp)
+    @assert outer_w == inner_w > 0
+    for j = 1:outer_w
+        outer_b = branch(outer_shp, j)
+        inner_b = branch(inner_shp, j)
+        @assert arity(inner_b) == 0
+        outer_b′ = fit_slots!(outer_b, inner_b, repl, shift)
+        @assert arity(outer_b′) == 0
+        if outer_b′ !== outer_b
+            outer_shp = replace_branch(outer_shp, j, outer_b′)
+        end
+    end
+    outer_shp
+end
+
+function fit_slots!(outer_shp::HasSlots, ::SlotShape, repl, shift)
+    repl[shift] = outer_shp
+    outer_shp
+end
+
+function fit_slots!(outer_shp::HasSlots, inner_shp::HasSlots, repl, shift)
+    outer_shp = subject(outer_shp)
+    outer_w = width(outer_shp)
+    inner_shp = subject(inner_shp)
+    inner_w = width(inner_shp)
+    @assert outer_w == inner_w > 0
+    ary = 0
+    for j = 1:outer_w
+        outer_b = branch(outer_shp, j)
+        inner_b = branch(inner_shp, j)
+        outer_b′ = fit_slots!(outer_b, inner_b, repl, shift)
+        if outer_b′ !== outer_b
+            outer_shp = replace_branch(outer_shp, j, outer_b′)
+        end
+        shift += arity(inner_b)
+        ary += arity(outer_b′)
+    end
+    if ary > 0
+        outer_shp = outer_shp |> HasSlots(ary)
+    end
+    outer_shp
+end
+
+
+#
 # Guessing the shape of a vector.
 #
 
@@ -509,6 +658,33 @@ fits(v::AbstractVector, shp::AbstractShape) =
 # Signature of a pipeline.
 #
 
+struct SlotBindings
+    src_ary::Int
+    tgt_ary::Int
+    src2tgt::Vector{Tuple{Int,Int}}
+    tgt2src::Vector{Int}
+end
+
+function SlotBindings(src_ary::Int, src2tgt::Vector{Tuple{Int,Int}})
+    tgt_ary = length(src2tgt)
+    tgt2src = Vector{Int}(undef, tgt_ary)
+    for (src_slot, tgt_slot) in src2tgt
+        tgt2src[tgt_slot] = src_slot
+    end
+    SlotBindings(src_ary, tgt_ary, src2tgt, tgt2src)
+end
+
+function SlotBindings(src_ary::Int, tgt2src::Vector{Int})
+    tgt_ary = length(tgt2src)
+    src2tgt = Vector{Tuple{Int,Int}}(undef, tgt_ary)
+    for (tgt_slot, src_slot) in enumerate(tgt2src)
+        src2tgt[tgt_slot] = (src_slot, tgt_slot)
+    end
+    sort!(src2tgt)
+    SlotBindings(src_ary, tgt_ary, src2tgt, tgt2src)
+end
+
+
 """
     Signature(::AbstractShape, ::AbstractShape)
 
@@ -517,12 +693,20 @@ Shapes of a pipeline source and tagret.
 struct Signature
     src::AbstractShape
     tgt::AbstractShape
+    bds::Union{SlotBindings,Nothing}
 end
 
 Signature() = Signature(NoShape(), AnyShape())
 
+Signature(src, tgt) = Signature(src, tgt, nothing)
+
+Signature(src, tgt, src_ary, tgt2src) =
+    Signature(src, tgt, SlotBindings(src_ary, tgt2src))
+
 quoteof(sig::Signature) =
-    Expr(:call, nameof(Signature), quoteof(sig.src), quoteof(sig.tgt))
+    sig.bds === nothing ?
+        Expr(:call, nameof(Signature), quoteof(sig.src), quoteof(sig.tgt)) :
+        Expr(:call, nameof(Signature), quoteof(sig.src), quoteof(sig.tgt), sig.bds.src_ary, quoteof(sig.bds.tgt2src))
 
 syntaxof(sig::Signature) =
     Expr(:(->), syntaxof(sig.src), syntaxof(sig.tgt))
@@ -534,138 +718,71 @@ source(sig::Signature) = sig.src
 
 target(sig::Signature) = sig.tgt
 
-function unify(sig1::Signature, sig2::Signature)
-    n1 = count_passthrough(sig1.src)
-    n2 = count_passthrough(sig2.src)
-    repl1 = Union{AbstractShape,Nothing}[]
-    repl2 = Union{AbstractShape,Nothing}[]
-    for k = 1:n1
-        push!(repl1, nothing)
+bindings(sig::Signature) = sig.bds
+
+function refine_source(@nospecialize(fine_src::AbstractShape), sig::Signature)
+    src′, src_repl = fit_slots(fine_src, source(sig))
+    bds = bindings(sig)
+    if bds !== nothing
+        @assert length(src_repl) == bds.src_ary
+        tgt_repl = AbstractShape[SlotShape() for tgt_slot = 1:bds.tgt_ary]
+        for (src_slot, tgt_slot) in bds.src2tgt
+            tgt_repl[tgt_slot] = src_repl[src_slot]
+        end
+        tgt′ = substitute(target(sig), tgt_repl)
+        repl_ary = Int[arity(shp) for shp in src_repl]
+        bds′ = refine_source(repl_ary, bds)
+    else
+        @assert isempty(src_repl)
+        tgt′ = target(sig)
+        bds′ = nothing
     end
-    for k = 1:n2
-        push!(repl2, nothing)
+    Signature(src′, tgt′, bds′)
+end
+
+function refine_source(repl_ary::Vector{Int}, bds::SlotBindings)
+    @assert length(repl_ary) == bds.src_ary
+    src_slot_ranges = Vector{UnitRange{Int}}(undef, bds.src_ary)
+    src_ary′ = 0
+    for src_slot = 1:bds.src_ary
+        ary = repl_ary[src_slot]
+        src_slot_ranges[src_slot] = src_ary′+1:src_ary′+ary
+        src_ary′ += ary
     end
-    unify!(sig1.tgt, sig2.src, repl1, repl2)
-    src = substitute(sig1.src, repl1, true)
-    tgt = substitute(sig2.tgt, repl2)
-    tgt = substitute(tgt, repl1, true)
-    j = 1
-    for k = eachindex(repl1)
-        if repl1[k] === nothing
-            repl1[k] = Passthrough(j)
-            j += 1
+    src_ary′ > 0 || return nothing
+    tgt2src′ = Int[]
+    for tgt_slot = 1:bds.tgt_ary
+        src_slot = bds.tgt2src[tgt_slot]
+        for src_slot′ in src_slot_ranges[src_slot]
+            push!(tgt2src′, src_slot′)
         end
     end
-    src = substitute(src, repl1)
-    tgt = substitute(tgt, repl1)
-    Signature(src, tgt)
+    SlotBindings(src_ary′, tgt2src′)
 end
 
-unify!(shp1::AbstractShape, shp2::AbstractShape, repl1, repl2) =
-    error("cannot unify $shp1 and $shp2")
-
-function unify!(shp1::Union{ValueOf,NoShape}, shp2::Union{ValueOf,AnyShape}, repl1, repl2)
-    eltype(shp1) <: eltype(shp2) || error("cannot unify $shp1 and $shp2")
-    nothing
-end
-
-unify!(shp1::NoShape, shp2::NoShape, repl1, repl2) = nothing
-
-unify!(shp1::AnyShape, shp2::AnyShape, repl1, repl2) = nothing
-
-function unify!(shp1::TupleOf, shp2::TupleOf, repl1, repl2)
-    width(shp1) == width(shp2) || error("cannot unify $shp1 and $shp2")
-    for k = 1:width(shp1)
-        unify!(column(shp1, k), column(shp2, k), repl1, repl2)
-    end
-    nothing
-end
-
-function unify!(shp1::BlockOf, shp2::BlockOf, repl1, repl2)
-    fits(cardinality(shp1), cardinality(shp2)) || error("cannot unify $shp1 and $shp2")
-    unify!(elements(shp1), elements(shp2), repl1, repl2)
-end
-
-function unify!(shp1::Passthrough, shp2::Passthrough, repl1, repl2)
-    repl2[position(shp2)] = shp1
-    nothing
-end
-
-function unify!(shp1::AbstractShape, shp2::Passthrough, repl1, repl2)
-    repl2[position(shp2)] = shp1
-    nothing
-end
-
-function unify!(shp1::Passthrough, shp2::Union{ValueOf,AnyShape,NoShape}, repl1, repl2)
-    pos1 = position(shp1)
-    shp1′ = repl1[pos1]
-    shp1′ === nothing || return unify!(shp1′, shp2, repl1, repl2)
-    repl1[pos1] = shp2
-    nothing
-end
-
-function unify!(shp1::Passthrough, shp2::TupleOf, repl1, repl2)
-    pos1 = position(shp1)
-    shp1′ = repl1[pos1]
-    shp1′ === nothing || return unify!(shp1′, shp2, repl1, repl2)
-    cols = AbstractShape[]
-    for j = 1:width(shp2)
-        push!(repl1, nothing)
-        push!(cols, Passthrough(length(repl1)))
-    end
-    shp1′ = TupleOf(labels(shp2), cols)
-    repl1[pos1] = shp1′
-    unify!(shp1′, shp2, repl1, repl2)
-end
-
-function unify!(shp1::Passthrough, shp2::BlockOf, repl1, repl2)
-    pos1 = position(shp1)
-    shp1′ = repl1[pos1]
-    shp1′ === nothing || return unify!(shp1′, shp2, repl1, repl2)
-    push!(repl1, nothing)
-    shp1′ = BlockOf(Passthrough(length(repl1)), cardinality(shp2))
-    repl1[pos1] = shp1′
-    unify!(shp1′, shp2, repl1, repl2)
-end
-
-function propagate(sig::Signature, src::AbstractShape)
-    n = count_passthrough(sig.src)
-    repl = Union{AbstractShape,Nothing}[]
-    for k = 1:n
-        push!(repl, nothing)
-    end
-    unify!(src, sig.src, Union{AbstractShape,Nothing}[], repl)
-    substitute(sig.tgt, repl)
-end
-
-substitute(@nospecialize(shp::AbstractShape), repl, deep=false) = shp
-
-function substitute(shp::Passthrough, repl, deep)
-    shp′ = repl[position(shp)]
-    if shp′ !== nothing
-        shp = shp′
-        if deep
-            shp = substitute(shp, repl, deep)
+function refine_target(sig::Signature, @nospecialize(fine_tgt::AbstractShape))
+    _, tgt_repl = fit_slots(fine_tgt, target(sig))
+    bds = bindings(sig)
+    if bds !== nothing
+        src_repl = AbstractShape[SlotShape() for src_slot = 1:bds.src_ary]
+        for (src_slot, tgt_slot) in bds.src2tgt
+            src_repl[src_slot] = fit_slots(src_repl[src_slot], tgt_repl[tgt_slot])[1]
         end
+        src′ = substitute(source(sig), src_repl)
+        tgt_repl = AbstractShape[SlotShape() for tgt_slot = 1:bds.tgt_ary]
+        for (src_slot, tgt_slot) in bds.src2tgt
+            tgt_repl[tgt_slot] = src_repl[src_slot]
+        end
+        tgt′ = substitute(target(sig), tgt_repl)
+        repl_ary = Int[arity(shp) for shp in src_repl]
+        bds′ = refine_source(repl_ary, bds)
+    else
+        @assert isempty(tgt_repl)
+        src′ = source(sig)
+        tgt′ = target(sig)
+        bds′ = nothing
     end
-    shp
-end
-
-substitute(shp::TupleOf, repl, deep) =
-    TupleOf(labels(shp), AbstractShape[substitute(col, repl, deep) for col in columns(shp)])
-
-substitute(shp::BlockOf, repl, deep) =
-    BlockOf(substitute(elements(shp), repl, deep), cardinality(shp))
-
-function adjust_position(sig, x)
-    x != 0 || return sig
-    n = count_passthrough(sig.src)
-    n > 0 || return sig
-    repl = Union{AbstractShape,Nothing}[]
-    for k = 1:n
-        push!(repl, Passthrough(k + x))
-    end
-    Signature(substitute(sig.src, repl), substitute(sig.tgt, repl))
+    Signature(src′, tgt′, bds′)
 end
 
 
