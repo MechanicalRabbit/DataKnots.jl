@@ -509,18 +509,18 @@ struct HeadNode{N}
     node::N
 end
 
-struct SlotNode{N}
+struct PartNode{N}
     node::N
     idx::Int
 end
 
 struct JoinNode{N}
     head::N
-    slots::Vector{N}
+    parts::Vector{N}
 end
 
 mutable struct NodeRef
-    ref::Union{InputNode,EvalNode{NodeRef},HeadNode{NodeRef},SlotNode{NodeRef},JoinNode{NodeRef},Nothing}
+    ref::Union{InputNode,EvalNode{NodeRef},HeadNode{NodeRef},PartNode{NodeRef},JoinNode{NodeRef},Nothing}
     shp::AbstractShape
 end
 
@@ -532,36 +532,46 @@ end
 
 function eval_node(p::Pipeline, input::NodeRef=HOLE, tgt=nothing)
     if tgt === nothing
-        tgt = target(p(input.shp))
+        tgt = target(signature(p))
     end
     ref = EvalNode{NodeRef}(p, input)
     return NodeRef(ref, tgt)
 end
 
 function head_node(node::NodeRef)
-    shp = node.shp
-    for j = 1:width(shp)
-        shp = replace_branch(shp, j, Passthrough(j))
+    shp = deannotate(node.shp)
+    w = width(shp)
+    for j = 1:w
+        shp = replace_branch(shp, j, SlotShape())
+    end
+    if w > 0
+        shp = HasSlots(shp, w)
     end
     return NodeRef(HeadNode{NodeRef}(node), shp)
 end
 
-function slot_node(node::NodeRef, idx::Int)
-    shp = node.shp
-    if !(shp isa Passthrough)
+function part_node(node::NodeRef, idx::Int)
+    shp = deannotate(node.shp)
+    if !(shp isa SlotShape)
         shp = branch(shp, idx)
     end
-    return NodeRef(SlotNode{NodeRef}(node, idx), shp)
+    return NodeRef(PartNode{NodeRef}(node, idx), shp)
 end
 
-function join_node(head::NodeRef, slots::Vector{NodeRef})
-    shp = head.shp
+function join_node(head::NodeRef, parts::Vector{NodeRef})
+    shp = deannotate(head.shp)
     w = width(shp)
-    @assert w == length(slots)
-    for j = 1:width(shp)
-        shp = replace_branch(shp, j, slots[j].shp)
+    ary = 0
+    @assert w == length(parts)
+    for j = 1:w
+        @assert branch(shp, j) isa SlotShape
+        shp = replace_branch(shp, j, parts[j].shp)
+        ary += arity(parts[j].shp)
     end
-    return NodeRef(JoinNode{NodeRef}(head, slots), shp)
+    if ary > 0
+        shp = HasSlots(shp, w)
+    end
+    return NodeRef(JoinNode{NodeRef}(head, parts), shp)
 end
 
 show(io::IO, n::NodeRef) =
@@ -597,11 +607,11 @@ function quoteof!(n::NodeRef, exs, nidxs)
         end
     elseif ref isa HeadNode{NodeRef}
         ex = Expr(:call, nameof(head_node), quoteof!(ref.node, exs, nidxs))
-    elseif ref isa SlotNode{NodeRef}
-        ex = Expr(:call, nameof(slot_node), quoteof!(ref.node, exs, nidxs), ref.idx)
+    elseif ref isa PartNode{NodeRef}
+        ex = Expr(:call, nameof(part_node), quoteof!(ref.node, exs, nidxs), ref.idx)
     elseif ref isa JoinNode{NodeRef}
-        slotsex = Expr(:vect, Any[quoteof!(slot, exs, nidxs) for slot in ref.slots]...)
-        ex = Expr(:call, nameof(join_node), quoteof!(ref.head, exs, nidxs), slotsex)
+        partsex = Expr(:vect, Any[quoteof!(part, exs, nidxs) for part in ref.parts]...)
+        ex = Expr(:call, nameof(join_node), quoteof!(ref.head, exs, nidxs), partsex)
     end
     push!(exs, ex)
     nidxs[n] = length(exs)
@@ -613,117 +623,152 @@ function get_head(n::NodeRef)
     if ref isa JoinNode{NodeRef}
         return ref.head
     end
+    shp = n.shp
+    if shp isa HasSlots
+        shp = subject(shp)
+    end
+    if all(branch(shp, j) isa SlotShape for j = 1:width(shp))
+        return n
+    end
     return head_node(n)
 end
 
-function get_slots(n::NodeRef, @nospecialize shp::AbstractShape)
+function get_parts(n::NodeRef)
+    shp = deannotate(n.shp)
     w = width(shp)
     ref = n.ref
     if ref isa JoinNode{NodeRef}
-        @assert length(ref.slots) == w
-        return ref.slots
+        @assert length(ref.parts) == w
+        return ref.parts
     end
-    return NodeRef[slot_node(n, j) for j = 1:w]
+    return NodeRef[part_node(n, j) for j = 1:w]
+end
+
+substitute(n::NodeRef, repl) =
+    substitute(n, repl, 1:length(repl))
+
+function substitute(n::NodeRef, repl, rng)
+    shp = n.shp
+    if shp isa SlotShape
+        @assert length(rng) == 1
+        n = repl[first(rng)]
+    elseif shp isa HasSlots
+        head = get_head(n)
+        parts = get_parts(n)
+        ary = arity(shp)
+        l = 0
+        parts′ = copy(parts)
+        for j = 1:width(subject(shp))
+            part = parts[j]
+            part_ary = arity(part.shp)
+            if part_ary > 0
+                part′ = substitute(part, repl, rng[l+1:l+part_ary])
+                parts′[j] = part′
+                l += part_ary
+            end
+        end
+        n = join_node(head, parts′)
+    else
+        @assert isempty(rng)
+    end
+    n
+end
+
+function decompose(n::NodeRef, @nospecialize(shp::AbstractShape))
+    ary = arity(shp)
+    repl = NodeRef[HOLE for j = 1:ary]
+    n′ = decompose!(n, shp, repl, 1)
+    (n′, repl)
+end
+
+function decompose!(n::NodeRef, @nospecialize(shp::AbstractShape), repl, shift)
+    if shp isa SlotShape
+        repl[shift] = n
+        n′ = HOLE
+    elseif shp isa HasSlots
+        sub = subject(shp)
+        w = width(sub)
+        parts = get_parts(n)
+        @assert w == length(parts)
+        parts′ = copy(parts)
+        only_holes = true
+        for j = 1:w
+            b = branch(sub, j)
+            parts′[j] = part′ = decompose!(parts[j], b, repl, shift)
+            shift += arity(b)
+            if part′.ref !== nothing
+                only_holes = false
+            end
+        end
+        n′ = get_head(n)
+        if !only_holes
+            n′ = join_node(n′, parts′)
+        end
+    else
+        n′ = n
+    end
+    n′
 end
 
 function trace(p::Pipeline)
     src = deannotate(source(p))
     n0 = input_node(src)
-    n, tgt = trace(p, n0, src)
-    n
+    trace(p, n0)
 end
 
-function trace(p::Pipeline, i::NodeRef, @nospecialize src::AbstractShape)
+function trace(p::Pipeline, i::NodeRef)
     @match_pipeline if (p ~ chain_of(qs))
         o = i
-        tgt = src
         for q in qs
-            o, tgt = trace(q, o, tgt)
+            o = trace(q, o)
         end
     elseif (p ~ pass())
         o = i
-        tgt = src
     elseif (p ~ tuple_of(lbls, cols::Vector{Pipeline}))
-        slots = NodeRef[]
-        tgt_cols = AbstractShape[]
-        for col in cols
-            col_o, col_tgt = trace(col, i, src)
-            push!(slots, col_o)
-            push!(tgt_cols, col_tgt)
-        end
+        parts = NodeRef[trace(col, i) for col in cols]
         p′ = tuple_of(lbls, length(cols))
-        sig′ = p′(src)
-        o = join_node(eval_node(p′, HOLE, target(sig′)), slots)
-        tgt = TupleOf(lbls, tgt_cols)
+        sig′ = p′(i.shp)
+        o = join_node(eval_node(p′ |> designate(sig′)), parts)
     elseif (p ~ with_column(lbl, q))
-        @assert src isa TupleOf
-        slots = get_slots(i, src)
-        @assert length(slots) == width(src)
-        j = locate(src, lbl)
-        q_n, q_tgt = trace(q, slots[j], branch(src, j))
-        slots′ = copy(slots)
-        slots′[j] = q_n
-        o = join_node(get_head(i), slots′)
-        cols′ = copy(columns(src))
-        cols′[j] = q_tgt
-        tgt = TupleOf(labels(src), cols′)
+        @assert i.shp isa TupleOf
+        parts = get_parts(i)
+        @assert length(parts) == width(i.shp)
+        j = locate(i.shp, lbl)
+        q_n = trace(q, parts[j])
+        parts′ = copy(parts)
+        parts′[j] = q_n
+        o = join_node(get_head(i), parts′)
     elseif (p ~ with_elements(q))
-        @assert src isa BlockOf
-        slots = get_slots(i, src)
-        @assert length(slots) == 1
-        q_n, q_tgt = trace(q, slots[1], elements(src))
+        @assert i.shp isa BlockOf
+        parts = get_parts(i)
+        @assert length(parts) == 1
+        q_n = trace(q, parts[1])
         o = join_node(get_head(i), NodeRef[q_n])
-        tgt = BlockOf(q_tgt, cardinality(src))
     elseif (p ~ distribute(lbl))
-        @assert src isa TupleOf
-        j = locate(src, lbl)
-        @assert column(src, j) isa BlockOf
-        slots = get_slots(i, src)
-        j_slots = get_slots(slots[j], branch(src, j))
-        @assert length(j_slots) == 1
-        slots′ = copy(slots)
-        slots′[j] = j_slots[1]
-        o = join_node(get_head(slots[j]), NodeRef[join_node(get_head(i), slots′)])
-        cols′ = copy(columns(src))
-        card = cardinality(cols′[j])
-        cols′[j] = elements(cols′[j])
-        tgt = BlockOf(TupleOf(labels(src), cols′), card)
+        @assert i.shp isa TupleOf
+        parts = get_parts(i)
+        j = locate(i.shp, lbl)
+        @assert parts[j].shp isa BlockOf
+        j_parts = get_parts(parts[j])
+        @assert length(j_parts) == 1
+        parts′ = copy(parts)
+        parts′[j] = j_parts[1]
+        o = join_node(get_head(parts[j]), NodeRef[join_node(get_head(i), parts′)])
     else
-        sig = p(src)
-        tgt = propagate(sig, src)
-        k = count_passthrough(sig.src)
-        repl = Vector{NodeRef}(undef, k)
-        unify!(i, sig.src, repl)
-        n = eval_node(p, substitute(i, sig.src, fill(HOLE, k)), target(sig))
-        o = substitute(n, sig.tgt, repl)
-    end
-    o, tgt
-end
-
-function unify!(n::NodeRef, @nospecialize(shp::AbstractShape), repl)
-    if count_passthrough(shp) > 0
-        slots = get_slots(n, shp)
-        for j in eachindex(slots)
-            unify!(slots[j], branch(shp, j), repl)
+        sig = p(i.shp)
+        i, i_repl = decompose(i, source(sig))
+        n = eval_node(p |> designate(sig), i)
+        bds = bindings(sig)
+        if bds !== nothing
+            o_repl = NodeRef[HOLE for tgt_slot = 1:bds.tgt_ary]
+            for (src_slot, tgt_slot) in bds.src2tgt
+                o_repl[tgt_slot] = i_repl[src_slot]
+            end
+            o = substitute(n, o_repl)
+        else
+            o = n
         end
     end
-    nothing
+    o
 end
-
-function unify!(n::NodeRef, shp::SlotShape, repl)
-    repl[position(shp)] = n
-    nothing
-end
-
-function substitute(n::NodeRef, @nospecialize(shp::AbstractShape), repl)
-    if count_passthrough(shp) > 0
-        slots = get_slots(n, shp)
-        slots′ = NodeRef[substitute(slots[j], branch(shp, j), repl) for j = eachindex(slots)]
-        n = join_node(get_head(n), slots′)
-    end
-    n
-end
-
-substitute(n::NodeRef, shp::SlotShape, repl) =
-    repl[position(shp)]
 
