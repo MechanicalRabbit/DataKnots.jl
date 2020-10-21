@@ -497,7 +497,10 @@ end
 # Wire diagram.
 #
 
-struct InputNode
+struct RootNode
+    cache::Dict{Any,Any}
+
+    RootNode() = new(Dict{Any,Any}())
 end
 
 struct EvalNode{N}
@@ -520,58 +523,72 @@ struct JoinNode{N}
 end
 
 mutable struct NodeRef
-    ref::Union{InputNode,EvalNode{NodeRef},HeadNode{NodeRef},PartNode{NodeRef},JoinNode{NodeRef},Nothing}
+    ref::Union{RootNode,EvalNode{NodeRef},HeadNode{NodeRef},PartNode{NodeRef},JoinNode{NodeRef},Nothing}
     shp::AbstractShape
+    root::RootNode
 end
 
-const HOLE = NodeRef(nothing, SlotShape())
-
-function input_node(src::AbstractShape)
-    return NodeRef(InputNode(), src)
+function root_node(src::AbstractShape)
+    root = RootNode()
+    node = NodeRef(root, src, root)
+    root.cache[()] = node
+    node
 end
 
-function eval_node(p::Pipeline, input::NodeRef=HOLE, tgt=nothing)
-    if tgt === nothing
-        tgt = target(signature(p))
+function hole_node(n::NodeRef)
+    get!(n.root.cache, nothing) do
+        NodeRef(nothing, SlotShape(), n.root)
     end
-    ref = EvalNode{NodeRef}(p, input)
-    return NodeRef(ref, tgt)
+end
+
+function eval_node(p::Pipeline, input::NodeRef)
+    get!(input.root.cache, (input, p.op, p.args)) do
+        ref = EvalNode{NodeRef}(p, input)
+        shp = target(signature(p))
+        NodeRef(ref, shp, input.root)
+    end
 end
 
 function head_node(node::NodeRef)
-    shp = deannotate(node.shp)
-    w = width(shp)
-    for j = 1:w
-        shp = replace_branch(shp, j, SlotShape())
+    get!(node.root.cache, (node, 0)) do
+        shp = deannotate(node.shp)
+        w = width(shp)
+        for j = 1:w
+            shp = replace_branch(shp, j, SlotShape())
+        end
+        if w > 0
+            shp = HasSlots(shp, w)
+        end
+        NodeRef(HeadNode{NodeRef}(node), shp, node.root)
     end
-    if w > 0
-        shp = HasSlots(shp, w)
-    end
-    return NodeRef(HeadNode{NodeRef}(node), shp)
 end
 
 function part_node(node::NodeRef, idx::Int)
-    shp = deannotate(node.shp)
-    if !(shp isa SlotShape)
-        shp = branch(shp, idx)
+    get!(node.root.cache, (node, idx)) do
+        shp = deannotate(node.shp)
+        if !(shp isa SlotShape)
+            shp = branch(shp, idx)
+        end
+        NodeRef(PartNode{NodeRef}(node, idx), shp, node.root)
     end
-    return NodeRef(PartNode{NodeRef}(node, idx), shp)
 end
 
 function join_node(head::NodeRef, parts::Vector{NodeRef})
-    shp = deannotate(head.shp)
-    w = width(shp)
-    ary = 0
-    @assert w == length(parts)
-    for j = 1:w
-        @assert branch(shp, j) isa SlotShape
-        shp = replace_branch(shp, j, parts[j].shp)
-        ary += arity(parts[j].shp)
+    get!(head.root.cache, (head, parts)) do
+        shp = deannotate(head.shp)
+        w = width(shp)
+        ary = 0
+        @assert w == length(parts)
+        for j = 1:w
+            @assert branch(shp, j) isa SlotShape
+            shp = replace_branch(shp, j, parts[j].shp)
+            ary += arity(parts[j].shp)
+        end
+        if ary > 0
+            shp = HasSlots(shp, w)
+        end
+        NodeRef(JoinNode{NodeRef}(head, parts), shp, head.root)
     end
-    if ary > 0
-        shp = HasSlots(shp, w)
-    end
-    return NodeRef(JoinNode{NodeRef}(head, parts), shp)
 end
 
 show(io::IO, n::NodeRef) =
@@ -596,15 +613,11 @@ function quoteof!(n::NodeRef, exs, nidxs)
     end
     ref = n.ref
     if ref === nothing
-        return :HOLE
-    elseif ref isa InputNode
-        ex = Expr(:call, nameof(input_node), quoteof(n.shp))
+        ex = Expr(:call, nameof(hole_node), quoteof!(n.root.cache[()], exs, nidxs))
+    elseif ref isa RootNode
+        ex = Expr(:call, nameof(root_node), quoteof(n.shp))
     elseif ref isa EvalNode{NodeRef}
-        if ref.input.ref === nothing
-            ex = Expr(:call, nameof(eval_node), quoteof(ref.p))
-        else
-            ex = Expr(:call, nameof(eval_node), quoteof(ref.p), quoteof!(ref.input, exs, nidxs))
-        end
+        ex = Expr(:call, nameof(eval_node), quoteof(ref.p), quoteof!(ref.input, exs, nidxs))
     elseif ref isa HeadNode{NodeRef}
         ex = Expr(:call, nameof(head_node), quoteof!(ref.node, exs, nidxs))
     elseif ref isa PartNode{NodeRef}
@@ -675,8 +688,9 @@ function substitute(n::NodeRef, repl, rng)
 end
 
 function decompose(n::NodeRef, @nospecialize(shp::AbstractShape))
+    hole = hole_node(n)
     ary = arity(shp)
-    repl = NodeRef[HOLE for j = 1:ary]
+    repl = fill(hole, ary)
     n′ = decompose!(n, shp, repl, 1)
     (n′, repl)
 end
@@ -684,7 +698,7 @@ end
 function decompose!(n::NodeRef, @nospecialize(shp::AbstractShape), repl, shift)
     if shp isa SlotShape
         repl[shift] = n
-        n′ = HOLE
+        n′ = hole_node(n)
     elseif shp isa HasSlots
         sub = subject(shp)
         w = width(sub)
@@ -712,7 +726,7 @@ end
 
 function trace(p::Pipeline)
     src = deannotate(source(p))
-    n0 = input_node(src)
+    n0 = root_node(src)
     trace(p, n0)
 end
 
@@ -728,7 +742,7 @@ function trace(p::Pipeline, i::NodeRef)
         parts = NodeRef[trace(col, i) for col in cols]
         p′ = tuple_of(lbls, length(cols))
         sig′ = p′(i.shp)
-        o = join_node(eval_node(p′ |> designate(sig′)), parts)
+        o = join_node(eval_node(p′ |> designate(sig′), hole_node(i)), parts)
     elseif (p ~ with_column(lbl, q))
         @assert i.shp isa TupleOf
         parts = get_parts(i)
@@ -760,7 +774,8 @@ function trace(p::Pipeline, i::NodeRef)
         n = eval_node(p |> designate(sig), i)
         bds = bindings(sig)
         if bds !== nothing
-            o_repl = NodeRef[HOLE for tgt_slot = 1:bds.tgt_ary]
+            hole = hole_node(i)
+            o_repl = fill(hole, bds.tgt_ary)
             for (src_slot, tgt_slot) in bds.src2tgt
                 o_repl[tgt_slot] = i_repl[src_slot]
             end
