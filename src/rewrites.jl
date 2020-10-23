@@ -907,3 +907,19 @@ function unwrap_node(n::NodeRef)
     n
 end
 
+function untrace(n::NodeRef)
+    chain = Pipeline[]
+    untrace!(chain, n)
+    delinearize!(chain)
+end
+
+function untrace!(chain::Vector{Pipeline}, n::NodeRef)
+    ref = n.ref
+    if ref isa EvalNode{NodeRef}
+        untrace!(chain, ref.input)
+        push!(chain, ref.p)
+    else
+        @assert ref === nothing || ref isa RootNode
+    end
+end
+
