@@ -909,15 +909,42 @@ end
 
 function untrace(n::NodeRef)
     chain = Pipeline[]
-    untrace!(chain, n)
+    loose = Dict{NodeRef,Int}()
+    untrace!(chain, n, loose)
+    @assert isempty(loose)
     delinearize!(chain)
 end
 
-function untrace!(chain::Vector{Pipeline}, n::NodeRef)
+function untrace!(chain::Vector{Pipeline}, n::NodeRef, loose)
+    c = get(loose, n, 0)
+    if c > 0
+        if c == 1
+            delete!(loose, n)
+        else
+            loose[n] = c - 1
+        end
+        return
+    end
     ref = n.ref
     if ref isa EvalNode{NodeRef}
-        untrace!(chain, ref.input)
+        untrace!(chain, ref.input, loose)
         push!(chain, ref.p)
+    elseif ref isa JoinNode{NodeRef}
+        untrace!(chain, ref.head, loose)
+        top = length(chain)
+        for part in ref.parts
+            untrace!(chain, part, loose)
+        end
+        shp = deannotate(ref.head.shp)
+        @assert shp isa BlockOf
+        for k = top+1:length(chain)
+            chain[k] = with_elements(chain[k])
+        end
+    elseif ref isa HeadNode{NodeRef}
+        for part in get_parts(ref.node)
+            loose[part] = get(loose, part, 0) + 1
+        end
+        untrace!(chain, ref.node, loose)
     else
         @assert ref === nothing || ref isa RootNode
     end
