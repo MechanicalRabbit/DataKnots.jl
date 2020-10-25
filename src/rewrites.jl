@@ -782,6 +782,7 @@ function trace(p::Pipeline, i::NodeRef)
         @assert length(parts) == 1
         q_n = trace(q, parts[1])
         o = join_node(get_head(i), NodeRef[q_n])
+    #=
     elseif (p ~ distribute(lbl))
         @assert i.shp isa TupleOf
         parts = get_parts(i)
@@ -792,6 +793,7 @@ function trace(p::Pipeline, i::NodeRef)
         parts′ = copy(parts)
         parts′[j] = j_parts[1]
         o = join_node(get_head(parts[j]), NodeRef[join_node(get_head(i), parts′)])
+    =#
     else
         sig = p(i.shp)
         i, i_repl = decompose(i, source(sig))
@@ -909,44 +911,61 @@ end
 
 function untrace(n::NodeRef)
     chain = Pipeline[]
-    loose = Dict{NodeRef,Int}()
-    untrace!(chain, n, loose)
+    loose = untrace!(chain, n, n.root.cache[()])
     @assert isempty(loose)
     delinearize!(chain)
 end
 
-function untrace!(chain::Vector{Pipeline}, n::NodeRef, loose)
-    c = get(loose, n, 0)
-    if c > 0
-        if c == 1
-            delete!(loose, n)
-        else
-            loose[n] = c - 1
-        end
-        return
-    end
+function untrace!(chain::Vector{Pipeline}, n::NodeRef, guard)
     ref = n.ref
-    if ref isa EvalNode{NodeRef}
-        untrace!(chain, ref.input, loose)
+    shp = deannotate(n.shp)
+    ary = arity(n.shp)
+    if get_head(n) === get_head(guard)
+        _, loose′ = decompose(guard, n.shp)
+    elseif ref === nothing
+        loose′ = NodeRef[guard]
+    elseif ref isa EvalNode{NodeRef}
+        loose = untrace!(chain, ref.input, guard)
         push!(chain, ref.p)
-    elseif ref isa JoinNode{NodeRef}
-        untrace!(chain, ref.head, loose)
-        top = length(chain)
-        for part in ref.parts
-            untrace!(chain, part, loose)
+        if ary > 0
+            bds = bindings(signature(ref.p))
+            @assert bds !== nothing
+            loose′ = NodeRef[loose[bds.tgt2src[j]] for j = 1:ary]
+        else
+            loose′ = NodeRef[]
         end
-        shp = deannotate(ref.head.shp)
-        @assert shp isa BlockOf
-        for k = top+1:length(chain)
-            chain[k] = with_elements(chain[k])
+    elseif ref isa JoinNode{NodeRef}
+        loose_head = untrace!(chain, ref.head, guard)
+        @assert length(loose_head) == length(ref.parts)
+        top = length(chain)
+        loose′ = NodeRef[]
+        for j in eachindex(ref.parts)
+            loose_part = untrace!(chain, ref.parts[j], loose_head[j])
+            append!(loose′, loose_part)
+            @assert shp isa BlockOf || shp isa TupleOf
+            for k = top+1:length(chain)
+                if shp isa BlockOf
+                    chain[k] = with_elements(chain[k])
+                elseif shp isa TupleOf
+                    chain[k] = with_column(j, chain[k])
+                end
+            end
+            top = length(chain)
         end
     elseif ref isa HeadNode{NodeRef}
+        loose = untrace!(chain, ref.node, guard)
+        parts = get_parts(ref.node)
+        shift = 0
+        loose′ = NodeRef[]
         for part in get_parts(ref.node)
-            loose[part] = get(loose, part, 0) + 1
+            part_ary = arity(part.shp)
+            push!(loose′, substitute(part, loose[1+shift:part_ary+shift]))
+            shift += part_ary
         end
-        untrace!(chain, ref.node, loose)
     else
-        @assert ref === nothing || ref isa RootNode
+        @assert ref === nothing
+        loose′ = NodeRef[get_hole(n)]
     end
+    loose′
 end
 
