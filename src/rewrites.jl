@@ -580,6 +580,9 @@ function part_node(node::NodeRef, idx::Int, into=nothing)
         if !(shp isa SlotShape)
             shp = branch(shp, idx)
         end
+        if shp isa SlotShape
+            return hole_node(node)
+        end
         new_node(PartNode{NodeRef}(node, idx), shp, node.root, into)
     end
 end
@@ -609,7 +612,7 @@ function join_node(head::NodeRef, parts::Vector{NodeRef}, into=nothing)
             ary += arity(parts[j].shp)
         end
         if ary > 0
-            shp = HasSlots(shp, w)
+            shp = HasSlots(shp, ary)
         end
         new_node(JoinNode{NodeRef}(head, parts), shp, head.root, into)
     end
@@ -829,7 +832,7 @@ function rewrite_nodes_with(seen, n, f)
         elseif ref isa HeadNode{NodeRef}
             node′ = rewrite_nodes_with(seen, ref.node, f)
             if node′ !== ref.node
-                n = head_node(node′, n)
+                n = get_head(node′)
             end
         elseif ref isa PartNode{NodeRef}
             node′ = rewrite_nodes_with(seen, ref.node, f)
@@ -904,6 +907,17 @@ function unwrap_node(n::NodeRef)
             if changed
                 return eval_node(ref.p, join_node(get_head(ref.input), parts), n)
             end
+        elseif (ref.p ~ distribute(j))
+            parts = get_parts(ref.input)
+            head = get_head(parts[j])
+            head_ref = head.ref
+            if head_ref isa EvalNode{NodeRef} && (head_ref.p ~ wrap())
+                parts′ = copy(parts)
+                j_parts = get_parts(parts[j])
+                @assert length(j_parts) == 1
+                parts′[j] = j_parts[1]
+                return join_node(head, NodeRef[join_node(get_head(ref.input), parts′)])
+            end
         end
     end
     n
@@ -920,8 +934,14 @@ function untrace!(chain::Vector{Pipeline}, n::NodeRef, guard)
     ref = n.ref
     shp = deannotate(n.shp)
     ary = arity(n.shp)
-    if get_head(n) === get_head(guard)
+    if isguard(n, guard)
         _, loose′ = decompose(guard, n.shp)
+    elseif guard.shp isa TupleOf && width(guard.shp) >= 1 && isguard(n, get_parts(guard)[1])
+        push!(chain, column(1))
+        _, loose′ = decompose(get_parts(guard)[1], n.shp)
+    elseif guard.shp isa TupleOf && width(guard.shp) >= 2 && isguard(n, get_parts(guard)[2])
+        push!(chain, column(2))
+        _, loose′ = decompose(get_parts(guard)[2], n.shp)
     elseif ref === nothing
         loose′ = NodeRef[guard]
     elseif ref isa EvalNode{NodeRef}
@@ -962,10 +982,52 @@ function untrace!(chain::Vector{Pipeline}, n::NodeRef, guard)
             push!(loose′, substitute(part, loose[1+shift:part_ary+shift]))
             shift += part_ary
         end
+    elseif ref isa PartNode{NodeRef}
+        node_shp = deannotate(ref.node.shp)
+        @assert node_shp isa TupleOf
+        loose = untrace!(chain, ref.node, guard)
+        push!(chain, column(!isempty(node_shp.lbls) ? node_shp.lbls[ref.idx] : ref.idx))
+        ary = arity(column(node_shp, ref.idx))
+        if ary > 0
+            shift = 0
+            for k = 1:ref.idx-1
+                shift += arity(column(node_shp, k))
+            end
+            loose′ = loose[1+shift:ary+shift]
+        else
+            loose′ = NodeRef[]
+        end
+
     else
         @assert ref === nothing
         loose′ = NodeRef[get_hole(n)]
     end
     loose′
+end
+
+function isguard(n, guard)
+    if n === guard || n.ref === nothing
+        return true
+    end
+    if get_head(n) === get_head(guard)
+        parts = get_parts(n)
+        guard_parts = get_parts(guard)
+        @assert length(parts) == length(guard_parts)
+        for (part, guard_part) in zip(parts, guard_parts)
+            if !isguard(part, guard_part)
+                return false
+            end
+        end
+        return true
+    else
+        return false
+    end
+end
+
+function rewrite_retrace(p::Pipeline)
+    n = trace(p)
+    n′ = rewrite_unwrap(n)
+    p′ = untrace(n′)
+    p′ |> designate(signature(p))
 end
 
