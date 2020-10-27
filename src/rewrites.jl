@@ -936,12 +936,12 @@ function untrace!(chain::Vector{Pipeline}, n::NodeRef, guard)
     ary = arity(n.shp)
     if isguard(n, guard)
         _, loose′ = decompose(guard, n.shp)
-    elseif guard.shp isa TupleOf && width(guard.shp) >= 1 && isguard(n, get_parts(guard)[1])
-        push!(chain, column(1))
-        _, loose′ = decompose(get_parts(guard)[1], n.shp)
-    elseif guard.shp isa TupleOf && width(guard.shp) >= 2 && isguard(n, get_parts(guard)[2])
-        push!(chain, column(2))
-        _, loose′ = decompose(get_parts(guard)[2], n.shp)
+    elseif (path = isnestedguard(n, guard); path !== nothing)
+        for idx in path
+            push!(chain, column(!isempty(guard.shp.lbls) ? guard.shp.lbls[idx] : idx))
+            guard = get_parts(guard)[idx]
+        end
+        _, loose′ = decompose(guard, n.shp)
     elseif ref === nothing
         loose′ = NodeRef[guard]
     elseif ref isa EvalNode{NodeRef}
@@ -1022,6 +1022,22 @@ function isguard(n, guard)
     else
         return false
     end
+end
+
+function isnestedguard(n, guard)
+    guard.shp isa TupleOf || return
+    parts = get_parts(guard)
+    for idx in 1:width(guard.shp)
+        if isguard(n, parts[idx])
+            return [idx]
+        end
+        path = isnestedguard(n, parts[idx])
+        if path !== nothing
+            pushfirst!(path, idx)
+            return path
+        end
+    end
+    return nothing
 end
 
 function rewrite_retrace(p::Pipeline)
