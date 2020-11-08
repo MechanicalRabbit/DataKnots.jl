@@ -522,21 +522,19 @@ struct JoinNode{N}
     parts::Vector{N}
 end
 
-mutable struct NodeRef
-    ref::Union{RootNode,EvalNode{NodeRef},HeadNode{NodeRef},PartNode{NodeRef},JoinNode{NodeRef},Nothing}
-    shp::AbstractShape
-    root::RootNode
+struct SlotNode{N}
+    node::N
 end
 
-function new_node(ref, shp, root, into=nothing)
-    if into === nothing
-        NodeRef(ref, shp, root)
-    else
-        into.ref = ref
-        into.shp = shp
-        into.root = root
-        into
-    end
+struct FillNode{N}
+    slot::N
+    fill::N
+end
+
+mutable struct NodeRef
+    ref::Union{RootNode,EvalNode{NodeRef},HeadNode{NodeRef},PartNode{NodeRef},JoinNode{NodeRef},SlotNode{NodeRef},FillNode{NodeRef}}
+    shp::AbstractShape
+    root::RootNode
 end
 
 function root_node(src::AbstractShape)
@@ -546,62 +544,66 @@ function root_node(src::AbstractShape)
     node
 end
 
-function hole_node(n::NodeRef)
-    get!(n.root.cache, nothing) do
-        NodeRef(nothing, SlotShape(), n.root)
-    end
-end
-
-function eval_node(p::Pipeline, input::NodeRef, into=nothing)
+function eval_node(p::Pipeline, input::NodeRef)
     get!(input.root.cache, (input, p.op, p.args)) do
         ref = EvalNode{NodeRef}(p, input)
         shp = target(signature(p))
-        new_node(ref, shp, input.root, into)
+        NodeRef(ref, shp, input.root)
     end
 end
 
-function head_node(node::NodeRef, into=nothing)
+function head_node(node::NodeRef)
     get!(node.root.cache, (node, 0)) do
+        ref = node.ref
+        if ref isa JoinNode{NodeRef} && ref.head.ref isa HeadNode{NodeRef}
+            return ref.head
+        end
         shp = deannotate(node.shp)
         w = width(shp)
+        all_slots = true
         for j = 1:w
-            shp = replace_branch(shp, j, SlotShape())
+            if !(branch(shp, j) isa SlotShape)
+                shp = replace_branch(shp, j, SlotShape())
+                all_slots = false
+            end
+        end
+        if all_slots
+            return node
         end
         if w > 0
             shp = HasSlots(shp, w)
         end
-        new_node(HeadNode{NodeRef}(node), shp, node.root, into)
+        NodeRef(HeadNode{NodeRef}(node), shp, node.root)
     end
 end
 
-function part_node(node::NodeRef, idx::Int, into=nothing)
+
+function part_node(node::NodeRef, idx::Int)
     get!(node.root.cache, (node, idx)) do
+        ref = node.ref
+        if ref isa JoinNode{NodeRef} && ref.head.ref isa HeadNode{NodeRef}
+            return ref.parts[idx]
+        end
         shp = deannotate(node.shp)
-        if !(shp isa SlotShape)
-            shp = branch(shp, idx)
-        end
-        if shp isa SlotShape
-            return hole_node(node)
-        end
-        new_node(PartNode{NodeRef}(node, idx), shp, node.root, into)
+        shp = branch(shp, idx)
+        NodeRef(PartNode{NodeRef}(node, idx), shp, node.root)
     end
 end
 
-function skip_join(head::NodeRef, parts::Vector{NodeRef})
-    head_ref = head.ref
-    head_ref isa HeadNode{NodeRef} || return nothing
-    parent = head_ref.node
-    for j in eachindex(parts)
-        part_ref = parts[j].ref
-        part_ref isa PartNode{NodeRef} && part_ref.node === parent && part_ref.idx == j || return nothing
-    end
-    parent
-end
-
-function join_node(head::NodeRef, parts::Vector{NodeRef}, into=nothing)
+function join_node(head::NodeRef, parts::Vector{NodeRef})
     get!(head.root.cache, (head, parts)) do
-        parent = skip_join(head, parts)
-        parent === nothing || return parent
+        head_ref = head.ref
+        if head_ref isa HeadNode{NodeRef}
+            parent = head_ref.node
+            for j in eachindex(parts)
+                part_ref = parts[j].ref
+                if !(part_ref isa PartNode{NodeRef} && part_ref.node === parent && part_ref.idx == j)
+                    parent = nothing
+                    break
+                end
+            end
+            parent === nothing || return parent
+        end
         shp = deannotate(head.shp)
         w = width(shp)
         ary = 0
@@ -614,7 +616,25 @@ function join_node(head::NodeRef, parts::Vector{NodeRef}, into=nothing)
         if ary > 0
             shp = HasSlots(shp, ary)
         end
-        new_node(JoinNode{NodeRef}(head, parts), shp, head.root, into)
+        NodeRef(JoinNode{NodeRef}(head, parts), shp, head.root)
+    end
+end
+
+function slot_node(node::NodeRef)
+    get!(node.root.cache, (node, nothing)) do
+        if node.shp isa SlotShape
+            return node
+        end
+        NodeRef(SlotNode{NodeRef}(node), SlotShape(), node.root)
+    end
+end
+
+function fill_node(slot::NodeRef, fill::NodeRef)
+    get!(slot.root.cache, (slot, fill)) do
+        if slot.ref isa SlotNode{NodeRef} && slot.ref.node === fill
+            return fill
+        end
+        NodeRef(FillNode{NodeRef}(slot, fill), fill.shp, slot.root)
     end
 end
 
@@ -639,9 +659,7 @@ function quoteof!(n::NodeRef, exs, nidxs)
         return Symbol("n", nidxs[n])
     end
     ref = n.ref
-    if ref === nothing
-        ex = Expr(:call, nameof(hole_node), quoteof!(n.root.cache[()], exs, nidxs))
-    elseif ref isa RootNode
+    if ref isa RootNode
         ex = Expr(:call, nameof(root_node), quoteof(n.shp))
     elseif ref isa EvalNode{NodeRef}
         ex = Expr(:call, nameof(eval_node), quoteof(ref.p), quoteof!(ref.input, exs, nidxs))
@@ -652,40 +670,24 @@ function quoteof!(n::NodeRef, exs, nidxs)
     elseif ref isa JoinNode{NodeRef}
         partsex = Expr(:vect, Any[quoteof!(part, exs, nidxs) for part in ref.parts]...)
         ex = Expr(:call, nameof(join_node), quoteof!(ref.head, exs, nidxs), partsex)
+    elseif ref isa SlotNode{NodeRef}
+        ex = Expr(:call, nameof(slot_node), quoteof!(ref.node, exs, nidxs))
+    elseif ref isa FillNode{NodeRef}
+        ex = Expr(:call, nameof(fill_node), quoteof!(ref.slot, exs, nidxs), quoteof!(ref.fill, exs, nidxs))
     end
     push!(exs, ex)
     nidxs[n] = length(exs)
     Symbol("n", length(exs))
 end
 
-function get_head(n::NodeRef)
-    ref = n.ref
-    if ref isa JoinNode{NodeRef}
-        return ref.head
+function substitute(n::NodeRef, repl)
+    if n.shp isa SlotShape
+        @assert length(repl) == 1
+        fill_node(n, repl[1])
+    else
+        substitute(n, repl, 1:length(repl))
     end
-    shp = n.shp
-    if shp isa HasSlots
-        shp = subject(shp)
-    end
-    if all(branch(shp, j) isa SlotShape for j = 1:width(shp))
-        return n
-    end
-    return head_node(n)
 end
-
-function get_parts(n::NodeRef)
-    shp = deannotate(n.shp)
-    w = width(shp)
-    ref = n.ref
-    if ref isa JoinNode{NodeRef}
-        @assert length(ref.parts) == w
-        return ref.parts
-    end
-    return NodeRef[part_node(n, j) for j = 1:w]
-end
-
-substitute(n::NodeRef, repl) =
-    substitute(n, repl, 1:length(repl))
 
 function substitute(n::NodeRef, repl, rng)
     shp = n.shp
@@ -693,19 +695,22 @@ function substitute(n::NodeRef, repl, rng)
         @assert length(rng) == 1
         n = repl[first(rng)]
     elseif shp isa HasSlots
-        head = get_head(n)
-        parts = get_parts(n)
+        head = head_node(n)
         ary = arity(shp)
         l = 0
-        parts′ = copy(parts)
-        for j = 1:width(subject(shp))
-            part = parts[j]
+        parts′ = NodeRef[]
+        sub = subject(shp)
+        w = width(sub)
+        for j = 1:w
+            part = part_node(n, j)
             part_ary = arity(part.shp)
             if part_ary > 0
                 part′ = substitute(part, repl, rng[l+1:l+part_ary])
-                parts′[j] = part′
                 l += part_ary
+            else
+                part′ = part
             end
+            push!(parts′, part′)
         end
         n = join_node(head, parts′)
     else
@@ -714,36 +719,50 @@ function substitute(n::NodeRef, repl, rng)
     n
 end
 
-function decompose(n::NodeRef, @nospecialize(shp::AbstractShape))
-    hole = hole_node(n)
-    ary = arity(shp)
-    repl = fill(hole, ary)
-    n′ = decompose!(n, shp, repl, 1)
+function decompose(n::NodeRef, @nospecialize(shp::AbstractShape), error=true)
+    if shp isa SlotShape
+        n′ = slot_node(n)
+        repl = NodeRef[n]
+    elseif shp isa HasSlots
+        ary = arity(shp)
+        repl = Vector{NodeRef}(undef, ary)
+        n′ = decompose!(n, shp, repl, 1, error)
+    else
+        repl = NodeRef[]
+        n′ = n
+    end
     (n′, repl)
 end
 
-function decompose!(n::NodeRef, @nospecialize(shp::AbstractShape), repl, shift)
+function decompose!(n::NodeRef, @nospecialize(shp::AbstractShape), repl, shift, error)
     if shp isa SlotShape
         repl[shift] = n
-        n′ = hole_node(n)
+        n′ = slot_node(n)
     elseif shp isa HasSlots
         sub = subject(shp)
         w = width(sub)
-        parts = get_parts(n)
-        @assert w == length(parts)
-        parts′ = copy(parts)
-        only_holes = true
-        for j = 1:w
-            b = branch(sub, j)
-            parts′[j] = part′ = decompose!(parts[j], b, repl, shift)
-            shift += arity(b)
-            if part′.ref !== nothing
-                only_holes = false
-            end
+        if error
+            @assert w == width(deannotate(n.shp))
         end
-        n′ = get_head(n)
-        if !only_holes
-            n′ = join_node(n′, parts′)
+        if w != width(deannotate(n.shp))
+            return nothing
+        end
+        if all(branch(sub, j) isa SlotShape for j = 1:w)
+            n′ = head_node(n)
+            for j = 1:w
+                repl[shift] = part_node(n, j)
+                shift += 1
+            end
+        else
+            parts′ = NodeRef[part_node(n, j) for j = 1:w]
+            for j = 1:w
+                b = branch(sub, j)
+                part′ = decompose!(parts′[j], b, repl, shift, error)
+                part′ !== nothing || return nothing
+                parts′[j] = part′
+                shift += arity(b)
+            end
+            n′ = join_node(head_node(n), parts′)
         end
     else
         n′ = n
@@ -769,22 +788,19 @@ function trace(p::Pipeline, i::NodeRef)
         parts = NodeRef[trace(col, i) for col in cols]
         p′ = tuple_of(lbls, length(cols))
         sig′ = p′(i.shp)
-        o = join_node(eval_node(p′ |> designate(sig′), hole_node(i)), parts)
+        o = join_node(eval_node(p′ |> designate(sig′), slot_node(i)), parts)
     elseif (p ~ with_column(lbl, q))
         @assert i.shp isa TupleOf
-        parts = get_parts(i)
-        @assert length(parts) == width(i.shp)
         j = locate(i.shp, lbl)
-        q_n = trace(q, parts[j])
-        parts′ = copy(parts)
+        q_n = trace(q, part_node(i, j))
+        parts′ = NodeRef[part_node(i, j) for j = 1:width(i.shp)]
         parts′[j] = q_n
-        o = join_node(get_head(i), parts′)
+        o = join_node(head_node(i), parts′)
     elseif (p ~ with_elements(q))
         @assert i.shp isa BlockOf
-        parts = get_parts(i)
-        @assert length(parts) == 1
-        q_n = trace(q, parts[1])
-        o = join_node(get_head(i), NodeRef[q_n])
+        part = part_node(i, 1)
+        q_n = trace(q, part)
+        o = join_node(head_node(i), NodeRef[q_n])
     #=
     elseif (p ~ distribute(lbl))
         @assert i.shp isa TupleOf
@@ -803,8 +819,8 @@ function trace(p::Pipeline, i::NodeRef)
         n = eval_node(p |> designate(sig), i)
         bds = bindings(sig)
         if bds !== nothing
-            hole = hole_node(i)
-            o_repl = fill(hole, bds.tgt_ary)
+            slot = slot_node(i)
+            o_repl = fill(slot, bds.tgt_ary)
             for (src_slot, tgt_slot) in bds.src2tgt
                 o_repl[tgt_slot] = i_repl[src_slot]
             end
@@ -827,17 +843,17 @@ function rewrite_nodes_with(seen, n, f)
         if ref isa EvalNode{NodeRef}
             input′ = rewrite_nodes_with(seen, ref.input, f)
             if input′ !== ref.input
-                n = eval_node(ref.p, input′, n)
+                n = eval_node(ref.p, input′)
             end
         elseif ref isa HeadNode{NodeRef}
             node′ = rewrite_nodes_with(seen, ref.node, f)
             if node′ !== ref.node
-                n = get_head(node′)
+                n = head_node(node′)
             end
         elseif ref isa PartNode{NodeRef}
             node′ = rewrite_nodes_with(seen, ref.node, f)
             if node′ !== ref.node
-                n = part_node(node′, ref.idx, n)
+                n = part_node(node′, ref.idx)
             end
         elseif ref isa JoinNode{NodeRef}
             head′ = rewrite_nodes_with(seen, ref.head, f)
@@ -852,12 +868,18 @@ function rewrite_nodes_with(seen, n, f)
                 end
             end
             if changed
-                n = join_node(head′, parts, n)
-            else
-                parent = skip_join(ref.head, ref.parts)
-                if parent !== nothing
-                    n = parent
-                end
+                n = join_node(head′, parts)
+            end
+        elseif ref isa SlotNode{NodeRef}
+            node′ = rewrite_nodes_with(seen, ref.node, f)
+            if node′ !== ref.node
+                n = slot_node(node′)
+            end
+        elseif ref isa FillNode{NodeRef}
+            slot′ = rewrite_nodes_with(seen, ref.slot, f)
+            fill′ = rewrite_nodes_with(seen, ref.fill, f)
+            if slot′ !== ref.slot || fill′ !== ref.fill
+                n = fill_node(slot′, fill′)
             end
         end
         f(n)
@@ -870,53 +892,45 @@ end
 
 function unwrap_node(n::NodeRef)
     ref = n.ref
+    if ref isa HeadNode{NodeRef}
+        if ref.node.ref isa JoinNode{NodeRef}
+            head_ref = ref.node.ref.head.ref
+            if head_ref isa EvalNode{NodeRef} &&
+                @match_pipeline(head_ref.p ~ wrap()) &&
+                (head_ref.input.ref isa SlotNode{NodeRef})
+                return ref.node.ref.head
+            end
+        end
+    end
+    if ref isa PartNode{NodeRef}
+        if ref.node.ref isa JoinNode{NodeRef}
+            head_ref = ref.node.ref.head.ref
+            if head_ref isa EvalNode{NodeRef} &&
+                @match_pipeline(head_ref.p ~ wrap()) &&
+                (head_ref.input.ref isa SlotNode{NodeRef})
+                return ref.node.ref.parts[ref.idx]
+            end
+        end
+    end
     if ref isa EvalNode{NodeRef}
-        @match_pipeline if (ref.p ~ flatten())
-            head = get_head(ref.input)
-            part = get_parts(ref.input)[1]
-            head_ref = head.ref
-            part_ref = part.ref
-            if head_ref isa EvalNode{NodeRef} && (head_ref.p ~ wrap())
-                return part
-            elseif part_ref isa EvalNode{NodeRef} && (part_ref.p ~ wrap())
-                return head
-            end
-        elseif (ref.p ~ block_any())
-            head = get_head(ref.input)
-            head_ref = head.ref
-            if head_ref isa EvalNode{NodeRef} && (head_ref.p ~ wrap())
-                return get_parts(ref.input)[1]
-            end
-        elseif (ref.p ~ lift(_...))
-            head = get_head(ref.input)
-            head_ref = head.ref
-            if head_ref isa EvalNode{NodeRef} && (head_ref.p ~ wrap())
-                return eval_node(ref.p, get_parts(ref.input)[1], n)
-            end
-        elseif (ref.p ~ tuple_lift(_...))
-            parts = copy(get_parts(ref.input))
-            changed = false
-            for j in eachindex(parts)
-                part_head = get_head(parts[j])
-                part_head_ref = part_head.ref
-                if part_head_ref isa EvalNode{NodeRef} && (part_head_ref.p ~ wrap())
-                    parts[j] = get_parts(parts[j])[1]
-                    changed = true
+        if @match_pipeline(ref.p ~ flatten())
+            if ref.input.ref isa JoinNode{NodeRef}
+                head_ref = ref.input.ref.head.ref
+                if head_ref isa EvalNode{NodeRef} &&
+                    @match_pipeline(head_ref.p ~ wrap()) &&
+                    (head_ref.input.ref isa SlotNode{NodeRef})
+                    return ref.input.ref.parts[1]
                 end
             end
-            if changed
-                return eval_node(ref.p, join_node(get_head(ref.input), parts), n)
-            end
-        elseif (ref.p ~ distribute(j))
-            parts = get_parts(ref.input)
-            head = get_head(parts[j])
-            head_ref = head.ref
-            if head_ref isa EvalNode{NodeRef} && (head_ref.p ~ wrap())
-                parts′ = copy(parts)
-                j_parts = get_parts(parts[j])
-                @assert length(j_parts) == 1
-                parts′[j] = j_parts[1]
-                return join_node(head, NodeRef[join_node(get_head(ref.input), parts′)])
+        end
+        if @match_pipeline(ref.p ~ lift(_...))
+            if ref.input.ref isa JoinNode{NodeRef}
+                head_ref = ref.input.ref.head.ref
+                if head_ref isa EvalNode{NodeRef} &&
+                    @match_pipeline(head_ref.p ~ wrap()) &&
+                    (head_ref.input.ref isa SlotNode{NodeRef})
+                    return eval_node(ref.p, ref.input.ref.parts[1])
+                end
             end
         end
     end
@@ -934,16 +948,8 @@ function untrace!(chain::Vector{Pipeline}, n::NodeRef, guard)
     ref = n.ref
     shp = deannotate(n.shp)
     ary = arity(n.shp)
-    if isguard(n, guard)
-        _, loose′ = decompose(guard, n.shp)
-    elseif (path = isnestedguard(n, guard); path !== nothing)
-        for idx in path
-            push!(chain, column(!isempty(guard.shp.lbls) ? guard.shp.lbls[idx] : idx))
-            guard = get_parts(guard)[idx]
-        end
-        _, loose′ = decompose(guard, n.shp)
-    elseif ref === nothing
-        loose′ = NodeRef[guard]
+    guard′, loose′ = decompose(guard, n.shp, false)
+    if n === guard′
     elseif ref isa EvalNode{NodeRef}
         loose = untrace!(chain, ref.input, guard)
         push!(chain, ref.p)
@@ -974,70 +980,25 @@ function untrace!(chain::Vector{Pipeline}, n::NodeRef, guard)
         end
     elseif ref isa HeadNode{NodeRef}
         loose = untrace!(chain, ref.node, guard)
-        parts = get_parts(ref.node)
+        parts = NodeRef[part_node(ref.node, j) for j = 1:width(deannotate(ref.node.shp))]
         shift = 0
         loose′ = NodeRef[]
-        for part in get_parts(ref.node)
+        for part in parts
             part_ary = arity(part.shp)
             push!(loose′, substitute(part, loose[1+shift:part_ary+shift]))
             shift += part_ary
         end
-    elseif ref isa PartNode{NodeRef}
-        node_shp = deannotate(ref.node.shp)
-        @assert node_shp isa TupleOf
+    elseif ref isa FillNode{NodeRef}
+        loose_slot = untrace!(chain, ref.slot, guard)
+        @assert length(loose_slot) == 1
+        loose′ = untrace!(chain, ref.fill, loose_slot[1])
+    elseif ref isa SlotNode{NodeRef}
         loose = untrace!(chain, ref.node, guard)
-        push!(chain, column(!isempty(node_shp.lbls) ? node_shp.lbls[ref.idx] : ref.idx))
-        ary = arity(column(node_shp, ref.idx))
-        if ary > 0
-            shift = 0
-            for k = 1:ref.idx-1
-                shift += arity(column(node_shp, k))
-            end
-            loose′ = loose[1+shift:ary+shift]
-        else
-            loose′ = NodeRef[]
-        end
-
+        loose′ = NodeRef[substitute(ref.node, loose)]
     else
         @assert ref === nothing
-        loose′ = NodeRef[get_hole(n)]
     end
     loose′
-end
-
-function isguard(n, guard)
-    if n === guard || n.ref === nothing
-        return true
-    end
-    if get_head(n) === get_head(guard)
-        parts = get_parts(n)
-        guard_parts = get_parts(guard)
-        @assert length(parts) == length(guard_parts)
-        for (part, guard_part) in zip(parts, guard_parts)
-            if !isguard(part, guard_part)
-                return false
-            end
-        end
-        return true
-    else
-        return false
-    end
-end
-
-function isnestedguard(n, guard)
-    guard.shp isa TupleOf || return
-    parts = get_parts(guard)
-    for idx in 1:width(guard.shp)
-        if isguard(n, parts[idx])
-            return [idx]
-        end
-        path = isnestedguard(n, parts[idx])
-        if path !== nothing
-            pushfirst!(path, idx)
-            return path
-        end
-    end
-    return nothing
 end
 
 function rewrite_retrace(p::Pipeline)
