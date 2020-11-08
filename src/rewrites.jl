@@ -1024,14 +1024,45 @@ function rewrite_unwrap(n::DataNode)
 end
 
 function unwrap_node(n::DataNode)
-    @match_node if (n ~ head_node(join_node(head ~ eval_node(wrap(), slot_node(_)), _)))
-        return head
-    elseif (n ~ part_node(join_node(eval_node(wrap(), slot_node(_)), parts), idx))
-        return parts[idx]
-    elseif (n ~ eval_node(flatten(), join_node(eval_node(wrap(), slot_node(_)), [part])))
-        return part
-    elseif (n ~ eval_node(p ~ lift(_...), join_node(eval_node(wrap(), slot_node(_)), [part])))
-        return eval_node(p, part)
+    @match_node begin
+        if (n ~ head_node(join_node(head ~ eval_node(wrap(), slot_node(_)), _)))
+            return head
+        end
+        if (n ~ part_node(join_node(eval_node(wrap(), slot_node(_)), parts), idx))
+            return parts[idx]
+        end
+        if (n ~ eval_node(flatten(), join_node(eval_node(wrap(), slot_node(_)), [part])))
+            return part
+        end
+        if (n ~ eval_node(flatten(), join_node(head, [eval_node(wrap(), slot_node(_))])))
+            return head
+        end
+        if (n ~ eval_node(p ~ lift(_...), join_node(eval_node(wrap(), slot_node(_)), [part])))
+            p = p |> designate(part.shp, target(p))
+            return eval_node(p, part)
+        end
+        if (n ~ eval_node(p ~ tuple_lift(_...), join_node(head, parts)))
+            parts′ = copy(parts)
+            changed = false
+            for j in eachindex(parts)
+                part = parts[j]
+                if (part ~ join_node(eval_node(wrap(), slot_node(_)), [part′]))
+                    parts′[j] = part′
+                    changed = true
+                end
+            end
+            if changed
+                input = join_node(head, parts′)
+                p = p |> designate(input.shp, target(p))
+                return eval_node(p, input)
+            end
+        end
+        if (n ~ eval_node(distribute(j::Int), join_node(head, parts)))
+            part = parts[j]
+            if (part ~ eval_node(p ~ wrap(), slot_node(_)))
+                return join_node(eval_node(p, slot_node(head)), DataNode[head])
+            end
+        end
     end
     n
 end
