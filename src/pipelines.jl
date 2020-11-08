@@ -1659,6 +1659,10 @@ function _match_pipeline!(val, pat, cs, as)
         push!(cs, :($val isa $ty))
         _match_pipeline!(val, pat, cs, as)
         return
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] == :~
+        _match_pipeline!(val, pat.args[2], cs, as)
+        _match_pipeline!(val, pat.args[3], cs, as)
+        return
     elseif Meta.isexpr(pat, :call) && length(pat.args) >= 1 && pat.args[1] isa Symbol
         fn = pat.args[1]
         args = pat.args[2:end]

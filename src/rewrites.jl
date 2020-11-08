@@ -696,6 +696,123 @@ end
 quoteof!(form::FillForm, exs, nidxs) =
     Expr(:call, nameof(fill_node), quoteof!(form.slot, exs, nidxs), quoteof!(form.fill, exs, nidxs))
 
+macro match_node(ex)
+    return esc(_match_node(ex))
+end
+
+function _match_node(@nospecialize ex)
+    if Meta.isexpr(ex, :call, 3) && ex.args[1] == :~
+        val = gensym()
+        p = ex.args[2]
+        pat = ex.args[3]
+        cs = Expr[]
+        as = Expr[]
+        _match_node!(val, pat, cs, as)
+        c = foldl((l, r) -> :($l && $r), cs)
+        quote
+            local $val = $p
+            if $c
+                $(as...)
+                true
+            else
+                false
+            end
+        end
+    elseif ex isa Expr
+        Expr(ex.head, Any[_match_node(arg) for arg in ex.args]...)
+    else
+        ex
+    end
+end
+
+function _match_node!(val, pat, cs, as)
+    if pat === :_
+        return
+    elseif pat isa Symbol
+        push!(as, :(local $pat = $val))
+        return
+    elseif Meta.isexpr(pat, :(::), 2)
+        ty = pat.args[2]
+        pat = pat.args[1]
+        push!(cs, :($val isa $ty))
+        _match_node!(val, pat, cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :~
+        _match_node!(val, pat.args[2], cs, as)
+        _match_node!(val, pat.args[3], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :root_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.RootForm))
+        _match_node!(:($val.form.src), pat.args[2], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :eval_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.EvalForm))
+        _match_pipeline!(:($val.form.p), pat.args[2], cs, as)
+        _match_node!(:($val.form.input), pat.args[3], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :head_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.HeadForm))
+        _match_node!(:($val.form.node), pat.args[2], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :part_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.PartForm))
+        _match_node!(:($val.form.node), pat.args[2], cs, as)
+        _match_node!(:($val.form.idx), pat.args[3], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :join_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.JoinForm))
+        _match_node!(:($val.form.head), pat.args[2], cs, as)
+        _match_node!(:($val.form.parts), pat.args[3], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :slot_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.SlotForm))
+        _match_node!(:($val.form.node), pat.args[2], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :fill_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.form isa $DataKnots.FillForm))
+        _match_node!(:($val.form.slot), pat.args[2], cs, as)
+        _match_node!(:($val.form.fill), pat.args[3], cs, as)
+        return
+    elseif Meta.isexpr(pat, :vect)
+        push!(cs, :($val isa Vector{$DataKnots.DataNode}))
+        _match_node!(val, pat.args, cs, as)
+        return
+    end
+    error("expected a node pattern; got $(repr(pat))")
+end
+
+function _match_node!(val, pats::Vector{Any}, cs, as)
+    minlen = 0
+    varlen = false
+    for pat in pats
+        if Meta.isexpr(pat, :..., 1)
+            !varlen || error("duplicate vararg pattern in $(repr(:([$pat])))")
+            varlen = true
+        else
+            minlen += 1
+        end
+    end
+    push!(cs, !varlen ? :(length($val) == $minlen) : :(length($val) >= $minlen))
+    nearend = false
+    for (k, pat) in enumerate(pats)
+        if Meta.isexpr(pat, :..., 1)
+            pat = pat.args[1]
+            k = Expr(:call, :(:), k, Expr(:call, :-, :end, minlen-k+1))
+            nearend = true
+        elseif nearend
+            k = Expr(:call, :-, :end, minlen-k+1)
+        end
+        _match_node!(:($val[$k]), pat, cs, as)
+    end
+end
+
 function substitute(n::DataNode, repl)
     if n.shp isa SlotShape
         @assert length(repl) == 1
@@ -907,48 +1024,14 @@ function rewrite_unwrap(n::DataNode)
 end
 
 function unwrap_node(n::DataNode)
-    form = n.form
-    if form isa HeadForm
-        if form.node.form isa JoinForm
-            head_form = form.node.form.head.form
-            if head_form isa EvalForm &&
-                @match_pipeline(head_form.p ~ wrap()) &&
-                (head_form.input.form isa SlotForm)
-                return form.node.form.head
-            end
-        end
-    end
-    if form isa PartForm
-        if form.node.form isa JoinForm
-            head_form = form.node.form.head.form
-            if head_form isa EvalForm &&
-                @match_pipeline(head_form.p ~ wrap()) &&
-                (head_form.input.form isa SlotForm)
-                return form.node.form.parts[form.idx]
-            end
-        end
-    end
-    if form isa EvalForm
-        if @match_pipeline(form.p ~ flatten())
-            if form.input.form isa JoinForm
-                head_form = form.input.form.head.form
-                if head_form isa EvalForm &&
-                    @match_pipeline(head_form.p ~ wrap()) &&
-                    (head_form.input.form isa SlotForm)
-                    return form.input.form.parts[1]
-                end
-            end
-        end
-        if @match_pipeline(form.p ~ lift(_...))
-            if form.input.form isa JoinForm
-                head_form = form.input.form.head.form
-                if head_form isa EvalForm &&
-                    @match_pipeline(head_form.p ~ wrap()) &&
-                    (head_form.input.form isa SlotForm)
-                    return eval_node(form.p, form.input.form.parts[1])
-                end
-            end
-        end
+    @match_node if (n ~ head_node(join_node(head ~ eval_node(wrap(), slot_node(_)), _)))
+        return head
+    elseif (n ~ part_node(join_node(eval_node(wrap(), slot_node(_)), parts), idx))
+        return parts[idx]
+    elseif (n ~ eval_node(flatten(), join_node(eval_node(wrap(), slot_node(_)), [part])))
+        return part
+    elseif (n ~ eval_node(p ~ lift(_...), join_node(eval_node(wrap(), slot_node(_)), [part])))
+        return eval_node(p, part)
     end
     n
 end
@@ -961,28 +1044,27 @@ function untrace(n::DataNode)
 end
 
 function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
-    form = n.form
-    shp = deannotate(n.shp)
-    ary = arity(n.shp)
     guard′, loose′ = decompose(guard, n.shp, false)
-    if n === guard′
-    elseif form isa EvalForm
-        loose = untrace!(chain, form.input, guard)
-        push!(chain, form.p)
+    n !== guard′ || return loose′
+    @match_node if (n ~ eval_node(p, input))
+        loose = untrace!(chain, input, guard)
+        push!(chain, p)
+        ary = arity(n.shp)
         if ary > 0
-            bds = bindings(signature(form.p))
+            bds = bindings(signature(p))
             @assert bds !== nothing
             loose′ = DataNode[loose[bds.tgt2src[j]] for j = 1:ary]
         else
             loose′ = DataNode[]
         end
-    elseif form isa JoinForm
-        loose_head = untrace!(chain, form.head, guard)
-        @assert length(loose_head) == length(form.parts)
+    elseif (n ~ join_node(head, parts))
+        loose_head = untrace!(chain, head, guard)
+        @assert length(loose_head) == length(parts)
+        shp = deannotate(n.shp)
         top = length(chain)
         loose′ = DataNode[]
-        for j in eachindex(form.parts)
-            loose_part = untrace!(chain, form.parts[j], loose_head[j])
+        for j in eachindex(parts)
+            loose_part = untrace!(chain, parts[j], loose_head[j])
             append!(loose′, loose_part)
             @assert shp isa BlockOf || shp isa TupleOf
             for k = top+1:length(chain)
@@ -994,9 +1076,9 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
             end
             top = length(chain)
         end
-    elseif form isa HeadForm
-        loose = untrace!(chain, form.node, guard)
-        parts = DataNode[part_node(form.node, j) for j = 1:width(deannotate(form.node.shp))]
+    elseif (n ~ head_node(node))
+        loose = untrace!(chain, node, guard)
+        parts = DataNode[part_node(node, j) for j = 1:width(deannotate(node.shp))]
         shift = 0
         loose′ = DataNode[]
         for part in parts
@@ -1004,15 +1086,15 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
             push!(loose′, substitute(part, loose[1+shift:part_ary+shift]))
             shift += part_ary
         end
-    elseif form isa FillForm
-        loose_slot = untrace!(chain, form.slot, guard)
+    elseif (n ~ fill_node(slot, fill))
+        loose_slot = untrace!(chain, slot, guard)
         @assert length(loose_slot) == 1
-        loose′ = untrace!(chain, form.fill, loose_slot[1])
-    elseif form isa SlotForm
-        loose = untrace!(chain, form.node, guard)
-        loose′ = DataNode[substitute(form.node, loose)]
+        loose′ = untrace!(chain, fill, loose_slot[1])
+    elseif (n ~ slot_node(node))
+        loose = untrace!(chain, node, guard)
+        loose′ = DataNode[substitute(node, loose)]
     else
-        @assert form === nothing
+        @assert n.form === nothing
     end
     loose′
 end
