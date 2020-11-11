@@ -503,6 +503,7 @@ mutable struct DataNode
     form::AbstractForm
     shp::AbstractShape
     root::AbstractForm
+    loose::Vector{DataNode}
 end
 
 show(io::IO, n::DataNode) =
@@ -540,7 +541,7 @@ end
 
 function root_node(@nospecialize src::AbstractShape)
     root = RootForm(src)
-    node = DataNode(root, src, root)
+    node = DataNode(root, src, root, DataNode[])
     root.cache[()] = node
     node
 end
@@ -557,8 +558,17 @@ function eval_node(p::Pipeline, input::DataNode)
     root = input.root::RootForm
     get!(root.cache, (input, p.op, p.args)) do
         form = EvalForm(p, input)
-        shp = target(signature(p))
-        DataNode(form, shp, root)
+        sig = signature(p)
+        shp = target(sig)
+        ary = arity(shp)
+        if ary > 0
+            bds = bindings(sig)
+            @assert bds !== nothing
+            loose = DataNode[input.loose[bds.tgt2src[j]] for j = 1:ary]
+        else
+            loose = DataNode[]
+        end
+        DataNode(form, shp, root, loose)
     end
 end
 
@@ -572,10 +582,6 @@ end
 function head_node(node::DataNode)
     root = node.root::RootForm
     get!(root.cache, (node, 0)) do
-        form = node.form
-        if form isa JoinForm && form.head.form isa HeadForm
-            return form.head
-        end
         shp = deannotate(node.shp)
         w = width(shp)
         all_slots = true
@@ -591,7 +597,8 @@ function head_node(node::DataNode)
         if w > 0
             shp = HasSlots(shp, w)
         end
-        DataNode(HeadForm(node), shp, root)
+        loose = DataNode[part_node(node, j) for j = 1:w]
+        DataNode(HeadForm(node), shp, root, loose)
     end
 end
 
@@ -606,13 +613,15 @@ end
 function part_node(node::DataNode, idx::Int)
     root = node.root::RootForm
     get!(root.cache, (node, idx)) do
-        form = node.form
-        if form isa JoinForm && form.head.form isa HeadForm
-            return form.parts[idx]
+        node_shp = deannotate(node.shp)
+        shp = branch(node_shp, idx)
+        shift = 1
+        for j = 1:idx-1
+            shift += arity(branch(node_shp, j))
         end
-        shp = deannotate(node.shp)
-        shp = branch(shp, idx)
-        DataNode(PartForm(node, idx), shp, root)
+        ary = arity(shp)
+        loose = node.loose[shift:shift+ary-1]
+        DataNode(PartForm(node, idx), shp, root, loose)
     end
 end
 
@@ -627,18 +636,6 @@ end
 function join_node(head::DataNode, parts::Vector{DataNode})
     root = head.root::RootForm
     get!(root.cache, (head, parts)) do
-        head_form = head.form
-        if head_form isa HeadForm
-            parent = head_form.node
-            for j in eachindex(parts)
-                part_form = parts[j].form
-                if !(part_form isa PartForm && part_form.node === parent && part_form.idx == j)
-                    parent = nothing
-                    break
-                end
-            end
-            parent === nothing || return parent
-        end
         shp = deannotate(head.shp)
         w = width(shp)
         ary = 0
@@ -651,7 +648,11 @@ function join_node(head::DataNode, parts::Vector{DataNode})
         if ary > 0
             shp = HasSlots(shp, ary)
         end
-        DataNode(JoinForm(head, parts), shp, root)
+        loose = DataNode[]
+        for part in parts
+            append!(loose, part.loose)
+        end
+        DataNode(JoinForm(head, parts), shp, root, loose)
     end
 end
 
@@ -670,7 +671,7 @@ function slot_node(node::DataNode)
         if node.shp isa SlotShape
             return node
         end
-        DataNode(SlotForm(node), SlotShape(), root)
+        DataNode(SlotForm(node), SlotShape(), root, DataNode[node])
     end
 end
 
@@ -685,11 +686,7 @@ end
 function fill_node(slot::DataNode, fill::DataNode)
     root = slot.root::RootForm
     get!(root.cache, (slot, fill)) do
-        slot_form = slot.form
-        if slot_form isa SlotForm && slot_form.node === fill
-            return fill
-        end
-        DataNode(FillForm(slot, fill), fill.shp, root)
+        DataNode(FillForm(slot, fill), fill.shp, root, fill.loose)
     end
 end
 
@@ -1069,34 +1066,22 @@ end
 
 function untrace(n::DataNode)
     chain = Pipeline[]
-    loose = untrace!(chain, n, n.root.cache[()])
-    @assert isempty(loose)
+    untrace!(chain, n, n.root.cache[()])
     delinearize!(chain)
 end
 
 function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
-    guard′, loose′ = decompose(guard, n.shp, false)
-    n !== guard′ || return loose′
+    n !== guard || return
     @match_node if (n ~ eval_node(p, input))
-        loose = untrace!(chain, input, guard)
+        untrace!(chain, input, guard)
         push!(chain, p)
-        ary = arity(n.shp)
-        if ary > 0
-            bds = bindings(signature(p))
-            @assert bds !== nothing
-            loose′ = DataNode[loose[bds.tgt2src[j]] for j = 1:ary]
-        else
-            loose′ = DataNode[]
-        end
     elseif (n ~ join_node(head, parts))
-        loose_head = untrace!(chain, head, guard)
-        @assert length(loose_head) == length(parts)
+        untrace!(chain, head, guard)
+        @assert length(head.loose) == length(parts)
         shp = deannotate(n.shp)
         top = length(chain)
-        loose′ = DataNode[]
         for j in eachindex(parts)
-            loose_part = untrace!(chain, parts[j], loose_head[j])
-            append!(loose′, loose_part)
+            untrace!(chain, parts[j], head.loose[j])
             @assert shp isa BlockOf || shp isa TupleOf
             for k = top+1:length(chain)
                 if shp isa BlockOf
@@ -1108,32 +1093,22 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
             top = length(chain)
         end
     elseif (n ~ head_node(node))
-        loose = untrace!(chain, node, guard)
-        parts = DataNode[part_node(node, j) for j = 1:width(deannotate(node.shp))]
-        shift = 0
-        loose′ = DataNode[]
-        for part in parts
-            part_ary = arity(part.shp)
-            push!(loose′, substitute(part, loose[1+shift:part_ary+shift]))
-            shift += part_ary
-        end
+        untrace!(chain, node, guard)
     elseif (n ~ fill_node(slot, fill))
-        loose_slot = untrace!(chain, slot, guard)
-        @assert length(loose_slot) == 1
-        loose′ = untrace!(chain, fill, loose_slot[1])
+        untrace!(chain, slot, guard)
+        @assert length(slot.loose) == 1
+        untrace!(chain, fill, slot.loose[1])
     elseif (n ~ slot_node(node))
-        loose = untrace!(chain, node, guard)
-        loose′ = DataNode[substitute(node, loose)]
+        untrace!(chain, node, guard)
     else
-        @assert n.form === nothing
+        error("failed to untrace from:\n$n\nto:\n$guard")
     end
-    loose′
 end
 
 function rewrite_retrace(p::Pipeline)
     n = trace(p)
-    n′ = rewrite_unwrap(n)
-    p′ = untrace(n′)
+    #n′ = rewrite_unwrap(n)
+    p′ = untrace(n)
     p′ |> designate(signature(p))
 end
 
