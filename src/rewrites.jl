@@ -962,36 +962,36 @@ function trace(p::Pipeline, i::DataNode)
     o
 end
 
-function rewrite_nodes_with(n::DataNode, f)
+function rewrite_nodes_with(f, n::DataNode)
     seen = Dict{DataNode,DataNode}()
-    rewrite_nodes_with(seen, n, f)
+    rewrite_nodes_with(f, n, seen)
 end
 
-function rewrite_nodes_with(seen, n, f)
+function rewrite_nodes_with(f, n, seen)
     get!(seen, n) do
         form = n.form
         if form isa EvalForm
-            input′ = rewrite_nodes_with(seen, form.input, f)
+            input′ = rewrite_nodes_with(f, form.input, seen)
             if input′ !== form.input
                 n = eval_node(form.p, input′)
             end
         elseif form isa HeadForm
-            node′ = rewrite_nodes_with(seen, form.node, f)
+            node′ = rewrite_nodes_with(f, form.node, seen)
             if node′ !== form.node
                 n = head_node(node′)
             end
         elseif form isa PartForm
-            node′ = rewrite_nodes_with(seen, form.node, f)
+            node′ = rewrite_nodes_with(f, form.node, seen)
             if node′ !== form.node
                 n = part_node(node′, form.idx)
             end
         elseif form isa JoinForm
-            head′ = rewrite_nodes_with(seen, form.head, f)
+            head′ = rewrite_nodes_with(f, form.head, seen)
             changed = head′ !== form.head
             parts = form.parts
             for j = eachindex(parts)
                 part = parts[j]
-                part′ = rewrite_nodes_with(seen, part, f)
+                part′ = rewrite_nodes_with(f, part, seen)
                 if part′ !== part
                     parts[j] = part′
                     changed = true
@@ -1001,13 +1001,13 @@ function rewrite_nodes_with(seen, n, f)
                 n = join_node(head′, parts)
             end
         elseif form isa SlotForm
-            node′ = rewrite_nodes_with(seen, form.node, f)
+            node′ = rewrite_nodes_with(f, form.node, seen)
             if node′ !== form.node
                 n = slot_node(node′)
             end
         elseif form isa FillForm
-            slot′ = rewrite_nodes_with(seen, form.slot, f)
-            fill′ = rewrite_nodes_with(seen, form.fill, f)
+            slot′ = rewrite_nodes_with(f, form.slot, seen)
+            fill′ = rewrite_nodes_with(f, form.fill, seen)
             if slot′ !== form.slot || fill′ !== form.fill
                 n = fill_node(slot′, fill′)
             end
@@ -1016,17 +1016,53 @@ function rewrite_nodes_with(seen, n, f)
     end
 end
 
-function rewrite_unwrap(n::DataNode)
-    rewrite_nodes_with(n, unwrap_node)
+function rewrite_retrace(n::DataNode)
+    rewrite_nodes_with(retrace_node, n)
 end
 
-function unwrap_node(n::DataNode)
+function retrace_node(n::DataNode)
     @match_node begin
-        if (n ~ head_node(join_node(head ~ eval_node(wrap(), slot_node(_)), _)))
+        if (n ~ join_node(head, parts))
+            if (head ~ head_node(parent))
+                matched = true
+                for j in eachindex(parts)
+                    part = parts[j]
+                    if !((part ~ part_node(node, idx)) && node === parent && idx == j)
+                        matched = false
+                    end
+                end
+                if matched
+                    return parent
+                end
+            end
+        end
+        if (n ~ head_node(join_node(head, _)))
             return head
         end
-        if (n ~ part_node(join_node(eval_node(wrap(), slot_node(_)), parts), idx))
+        if (n ~ part_node(join_node(_, parts), idx))
             return parts[idx]
+        end
+        if (n ~ slot_node(node))
+            node′ = node
+            while true
+                if (node′ ~ eval_node(_, input))
+                    node′ = input
+                elseif (node′ ~ head_node(parent))
+                    node′ = parent
+                elseif (node′ ~ join_node(head, _))
+                    node′ = head
+                elseif (node′ ~ slot_node(parent))
+                    node′ = parent
+                elseif (node′ ~ fill_node(slot, _))
+                    node′ = slot
+                else
+                    break
+                end
+            end
+            if node′ !== node
+                n = slot_node(node′)
+            end
+            return n
         end
         if (n ~ eval_node(flatten(), join_node(eval_node(wrap(), slot_node(_)), [part])))
             return part
@@ -1107,8 +1143,8 @@ end
 
 function rewrite_retrace(p::Pipeline)
     n = trace(p)
-    #n′ = rewrite_unwrap(n)
-    p′ = untrace(n)
+    n′ = rewrite_retrace(n)
+    p′ = untrace(n′)
     p′ |> designate(signature(p))
 end
 
