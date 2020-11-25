@@ -42,6 +42,29 @@ if VERSION < v"1.6.0-DEV"
     Base.show_datatype(io::IO, x::Type{Vector{T}}) where {T} = print(io, "Vector{$T}")
 end
 
+# Normalize printing of type parameters.
+if VERSION < v"1.6.0-DEV"
+    function Base.show_datatype(io::IO, x::DataType)
+        istuple = x.name === Tuple.name
+        if (!isempty(x.parameters) || istuple) && x !== Tuple
+            n = length(x.parameters)::Int
+            if istuple && n > 3 && all(i -> (x.parameters[1] === i), x.parameters)
+                print(io, "NTuple{", n, ", ", x.parameters[1], "}")
+            else
+                Base.show_type_name(io, x.name)
+                print(io, '{')
+                for (i, p) in enumerate(x.parameters)
+                    show(io, p)
+                    i < n && print(io, ", ")
+                end
+                print(io, '}')
+            end
+        else
+            Base.show_type_name(io, x.name)
+        end
+    end
+end
+
 # Set the width to 72 so that MD->PDF via pandoc fits the page.
 ENV["COLUMNS"] = "72"
 

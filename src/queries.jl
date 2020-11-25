@@ -183,7 +183,7 @@ Lift(+, (Lift(*, (Lift(2), Get(:x))), Lift(1)))
 ```
 """
 macro query(ex)
-    return :( translate($__module__, $(Expr(:quote, ex)) ) )
+    return :( translate($__module__, $(esc(Expr(:quote, ex))) ) )
 end
 
 """
@@ -202,7 +202,7 @@ macro query(db, exs...)
         if Meta.isexpr(ex, :(=), 2)
             esc(Expr(:kw, ex.args...))
         else
-            :( Each(translate($__module__, $(Expr(:quote, ex)) )) )
+            :( Each(translate($__module__, $(esc(Expr(:quote, ex))) )) )
         end
     end
     return quote

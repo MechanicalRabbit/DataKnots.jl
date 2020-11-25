@@ -1223,13 +1223,13 @@ We can then export this data.
     highly_compensated |> DataFrame
     #=>
     4×4 DataFrame
-    │ Row │ name      │ department │ position          │ salary │
-    │     │ String    │ String     │ String            │ Int64? │
-    ├─────┼───────────┼────────────┼───────────────────┼────────┤
-    │ 1   │ JEFFERY A │ POLICE     │ SERGEANT          │ 101442 │
-    │ 2   │ JAMES A   │ FIRE       │ FIRE ENGINEER-EMT │ 103350 │
-    │ 3   │ DANIEL A  │ FIRE       │ FIREFIGHTER-EMT   │ 95484  │
-    │ 4   │ ROBERT K  │ FIRE       │ FIREFIGHTER-EMT   │ 103272 │
+     Row │ name       department  position           salary
+         │ String     String      String             Int64?
+    ─────┼──────────────────────────────────────────────────
+       1 │ JEFFERY A  POLICE      SERGEANT           101442
+       2 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350
+       3 │ DANIEL A   FIRE        FIREFIGHTER-EMT     95484
+       4 │ ROBERT K   FIRE        FIREFIGHTER-EMT    103272
     =#
 
 ## Restructuring Imported Data

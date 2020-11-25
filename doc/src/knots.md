@@ -114,15 +114,15 @@ This knot could then be queried and exported to a `DataFrame`.
            ] |> DataFrame
     #=>
     6×3 DataFrame
-    │ Row │ name      │ department │ salary  │
-    │     │ String    │ String     │ Int64?  │
-    ├─────┼───────────┼────────────┼─────────┤
-    │ 1   │ JEFFERY A │ POLICE     │ 101442  │
-    │ 2   │ NANCY A   │ POLICE     │ 80016   │
-    │ 3   │ JAMES A   │ FIRE       │ 103350  │
-    │ 4   │ DANIEL A  │ FIRE       │ 95484   │
-    │ 5   │ LAKENYA A │ OEMC       │ missing │
-    │ 6   │ DORIS A   │ OEMC       │ missing │
+     Row │ name       department  salary
+         │ String     String      Int64?
+    ─────┼────────────────────────────────
+       1 │ JEFFERY A  POLICE       101442
+       2 │ NANCY A    POLICE        80016
+       3 │ JAMES A    FIRE         103350
+       4 │ DANIEL A   FIRE          95484
+       5 │ LAKENYA A  OEMC        missing
+       6 │ DORIS A    OEMC        missing
     =#
 
 ## API Reference
