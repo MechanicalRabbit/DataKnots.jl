@@ -365,12 +365,12 @@ we can convert a `TupleVector` instance to a `DataFrame`.
     tv |> DataFrame |> display
     #=>
     3×2 DataFrame
-    │ Row │ name      │ salary │
-    │     │ String    │ Int64  │
-    ├─────┼───────────┼────────┤
-    │ 1   │ GARRY M   │ 260004 │
-    │ 2   │ ANTHONY R │ 185364 │
-    │ 3   │ DANA A    │ 170112 │
+     Row │ name       salary
+         │ String     Int64
+    ─────┼───────────────────
+       1 │ GARRY M    260004
+       2 │ ANTHONY R  185364
+       3 │ DANA A     170112
     =#
 
 
