@@ -422,6 +422,10 @@ end
 # Pipeline linearization.
 #
 
+function rewrite_compact(p::Pipeline; memo=RewriteMemo())::Pipeline
+    delinearize!(linearize(p)) |> designate(signature(p))
+end
+
 function rewrite_linearize(p::Pipeline; memo=RewriteMemo())::Pipeline
     chain_of(linearize(p)) |> designate(signature(p))
 end
@@ -1064,6 +1068,9 @@ function retrace_node(n::DataNode)
             end
             return n
         end
+        if (n ~ fill_node(slot_node(_), fill))
+            return fill
+        end
         if (n ~ eval_node(flatten(), join_node(eval_node(wrap(), slot_node(_)), [part])))
             return part
         end
@@ -1093,8 +1100,11 @@ function retrace_node(n::DataNode)
         if (n ~ eval_node(distribute(j::Int), join_node(head, parts)))
             part = parts[j]
             if (part ~ eval_node(p ~ wrap(), slot_node(_)))
-                return join_node(eval_node(p, slot_node(head)), DataNode[head])
+                return join_node(eval_node(p, retrace_node(slot_node(head))), DataNode[head])
             end
+        end
+        if (n ~ fill_node(eval_node(column(_), eval_node(tuple_of(_, _), slot_node(_))), fill))
+            return fill
         end
     end
     n
