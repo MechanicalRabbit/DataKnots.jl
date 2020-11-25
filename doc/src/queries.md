@@ -1368,7 +1368,7 @@ Regular and named tuples also support attribute lookup.
     chicago[Q]
     #=>
     ERROR: cannot find "ssn" at
-    (1:1) × NamedTuple{(:name, :position, :salary),Tuple{String,String,Int64}}
+    (1:1) × NamedTuple{(:name, :position, :salary), Tuple{String, String, Int64}}
     =#
 
     Q = Lift(("JEFFERY A", "SERGEANT", 101442)) >>
@@ -1386,7 +1386,7 @@ Regular and named tuples also support attribute lookup.
     chicago[Q]
     #=>
     ERROR: cannot find "Z" at
-    (1:1) × Tuple{String,String,Int64}
+    (1:1) × Tuple{String, String, Int64}
     =#
 
 When applied to a dictionary with string keys, `Get(name)` extracts the value

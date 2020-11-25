@@ -868,7 +868,7 @@ such as addition (`+`) have a lower precedence.
 This expectation mismatch could lead a user to write:
 
     unitknot[Lift(1:3) >> It .+ It]
-    #-> ERROR: cannot apply + to Tuple{Vector{Int64},Tuple{}}⋮
+    #-> ERROR: cannot apply + to Tuple{Vector{Int64}, Tuple{}}⋮
 
 To fix this query, we add parentheses.
 
@@ -914,7 +914,7 @@ When they are lifted, native vectors are automatically converted
 into our block vector. However, native tuples are left unwrapped.
 
     DataKnots.shape(unitknot[Lift((msg="Hello",))])
-    #-> BlockOf(NamedTuple{(:msg,),Tuple{String}}, x1to1)
+    #-> BlockOf(NamedTuple{(:msg,), Tuple{String}}, x1to1)
 
 That said, tuple entries can be directly accessed using `It`.
 
