@@ -507,7 +507,6 @@ mutable struct DataNode
     form::AbstractForm
     shp::AbstractShape
     root::AbstractForm
-    loose::Vector{DataNode}
 end
 
 show(io::IO, n::DataNode) =
@@ -545,7 +544,7 @@ end
 
 function root_node(@nospecialize src::AbstractShape)
     root = RootForm(src)
-    node = DataNode(root, src, root, DataNode[])
+    node = DataNode(root, src, root)
     root.cache[()] = node
     node
 end
@@ -564,15 +563,7 @@ function eval_node(p::Pipeline, input::DataNode)
         form = EvalForm(p, input)
         sig = signature(p)
         shp = target(sig)
-        ary = arity(shp)
-        if ary > 0
-            bds = bindings(sig)
-            @assert bds !== nothing
-            loose = DataNode[input.loose[bds.tgt2src[j]] for j = 1:ary]
-        else
-            loose = DataNode[]
-        end
-        DataNode(form, shp, root, loose)
+        DataNode(form, shp, root)
     end
 end
 
@@ -601,8 +592,7 @@ function head_node(node::DataNode)
         if w > 0
             shp = HasSlots(shp, w)
         end
-        loose = DataNode[part_node(node, j) for j = 1:w]
-        DataNode(HeadForm(node), shp, root, loose)
+        DataNode(HeadForm(node), shp, root)
     end
 end
 
@@ -619,13 +609,7 @@ function part_node(node::DataNode, idx::Int)
     get!(root.cache, (node, idx)) do
         node_shp = deannotate(node.shp)
         shp = branch(node_shp, idx)
-        shift = 1
-        for j = 1:idx-1
-            shift += arity(branch(node_shp, j))
-        end
-        ary = arity(shp)
-        loose = node.loose[shift:shift+ary-1]
-        DataNode(PartForm(node, idx), shp, root, loose)
+        DataNode(PartForm(node, idx), shp, root)
     end
 end
 
@@ -652,11 +636,7 @@ function join_node(head::DataNode, parts::Vector{DataNode})
         if ary > 0
             shp = HasSlots(shp, ary)
         end
-        loose = DataNode[]
-        for part in parts
-            append!(loose, part.loose)
-        end
-        DataNode(JoinForm(head, parts), shp, root, loose)
+        DataNode(JoinForm(head, parts), shp, root)
     end
 end
 
@@ -675,7 +655,7 @@ function slot_node(node::DataNode)
         if node.shp isa SlotShape
             return node
         end
-        DataNode(SlotForm(node), SlotShape(), root, DataNode[node])
+        DataNode(SlotForm(node), SlotShape(), root)
     end
 end
 
@@ -690,7 +670,7 @@ end
 function fill_node(slot::DataNode, fill::DataNode)
     root = slot.root::RootForm
     get!(root.cache, (slot, fill)) do
-        DataNode(FillForm(slot, fill), fill.shp, root, fill.loose)
+        DataNode(FillForm(slot, fill), fill.shp, root)
     end
 end
 
@@ -1112,22 +1092,67 @@ end
 
 function untrace(n::DataNode)
     chain = Pipeline[]
-    untrace!(chain, n, n.root.cache[()])
+    tails = Dict{DataNode,Vector{DataNode}}()
+    tails!(tails, n)
+    untrace!(chain, n, n.root.cache[()], tails)
     delinearize!(chain)
 end
 
-function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
+function tails!(tails, n)
+    get!(tails, n) do
+        @match_node if (n ~ root_node(_))
+            DataNode[]
+        elseif (n ~ eval_node(p, input))
+            input_tail = tails!(tails, input)
+            bds = bindings(signature(p))
+            bds !== nothing ?
+                DataNode[input_tail[bds.tgt2src[j]] for j in 1:bds.tgt_ary] :
+                DataNode[]
+        elseif (n ~ head_node(node))
+            node_tail = tails!(tails, node)
+            shp = deannotate(node.shp)
+            w = width(shp)
+            shift = 0
+            for j = 1:w
+                ary = arity(branch(shp, j))
+                tails[part_node(node, j)] = node_tail[1+shift:ary+shift]
+            end
+            DataNode[node for j = 1:w]
+        elseif (n ~ part_node(node, idx))
+            error()
+        elseif (n ~ join_node(head, parts))
+            tails!(tails, head)
+            tail′ = DataNode[]
+            for part in parts
+                part_tail = tails!(tails, part)
+                append!(tail′, part_tail)
+            end
+            tail′
+        elseif (n ~ slot_node(node))
+            tails!(tails, node)
+            DataNode[node]
+        elseif (n ~ fill_node(slot, fill))
+            tails!(tails, slot)
+            tails′ = tails!(tails, fill)
+            tails′
+        else
+            error()
+        end
+    end
+end
+
+function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
     n !== guard || return
     @match_node if (n ~ eval_node(p, input))
-        untrace!(chain, input, guard)
+        tails = untrace!(chain, input, guard, tails)
         push!(chain, p)
     elseif (n ~ join_node(head, parts))
-        untrace!(chain, head, guard)
-        @assert length(head.loose) == length(parts)
+        untrace!(chain, head, guard, tails)
+        head_tail = tails[head]
         shp = deannotate(n.shp)
         top = length(chain)
         for j in eachindex(parts)
-            untrace!(chain, parts[j], head.loose[j])
+            untrace!(chain, parts[j], head_tail[j], tails)
             @assert shp isa BlockOf || shp isa TupleOf
             for k = top+1:length(chain)
                 if shp isa BlockOf
@@ -1139,13 +1164,17 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
             top = length(chain)
         end
     elseif (n ~ head_node(node))
-        untrace!(chain, node, guard)
+        untrace!(chain, node, guard, tails)
+    elseif (n ~ part_node(node, _))
+        @assert node === guard
+        untrace!(chain, node, guard, tails)
     elseif (n ~ fill_node(slot, fill))
-        untrace!(chain, slot, guard)
-        @assert length(slot.loose) == 1
-        untrace!(chain, fill, slot.loose[1])
+        untrace!(chain, slot, guard, tails)
+        slot_tail = tails[slot]
+        @assert length(slot_tail) == 1
+        untrace!(chain, fill, slot_tail[1], tails)
     elseif (n ~ slot_node(node))
-        untrace!(chain, node, guard)
+        untrace!(chain, node, guard, tails)
     else
         error("failed to untrace from:\n$n\nto:\n$guard")
     end
