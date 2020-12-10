@@ -6,7 +6,7 @@ combinators.*
 
 **Documentation** | **Build Status** | **Process**
 :---: | :---: | :---:
-[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Linux/OSX Build Status][travis-img]][travis-url] [![Windows Build Status][appveyor-img]][appveyor-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Chat on Gitter][gitter-img]][gitter-url] [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
+[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Build Status][ci-img]][ci-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Chat on Gitter][gitter-img]][gitter-url] [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
 
 DataKnots is designed to let data analysts and other
 accidental programmers query and analyze complex
@@ -118,10 +118,9 @@ https://gitter.im/rbt-lang/rbt-proto
 Current documentation could be found at:
 https://rbt-lang.github.io/DataKnots.jl/stable/
 
-[travis-img]: https://travis-ci.org/rbt-lang/DataKnots.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/rbt-lang/DataKnots.jl
-[appveyor-img]: https://ci.appveyor.com/api/projects/status/github/rbt-lang/DataKnots.jl?branch=master&svg=true
-[appveyor-url]: https://ci.appveyor.com/project/rbt-lang/dataknots-jl/branch/master
+
+[ci-img]: https://github.com/rbt-lang/DataKnots.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/rbt-lang/DataKnots.jl/actions?query=workflow%3ACI+branch%3Amaster
 [codecov-img]: https://codecov.io/gh/rbt-lang/DataKnots.jl/branch/master/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/rbt-lang/DataKnots.jl
 [issues-img]: https://img.shields.io/github/issues/rbt-lang/DataKnots.jl.svg
