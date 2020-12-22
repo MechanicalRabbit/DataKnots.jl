@@ -501,181 +501,160 @@ end
 # Data graph.
 #
 
-abstract type AbstractForm end
+@enum DataNodeKind ROOT_NODE PIPE_NODE HEAD_NODE PART_NODE JOIN_NODE SLOT_NODE FILL_NODE EXIT_NODE DEAD_NODE
 
 mutable struct DataNode
-    form::AbstractForm
+    kind::DataNodeKind
+    refs::Vector{DataNode}
+    more::Union{Int,Pipeline,Nothing}
     shp::AbstractShape
-    root::AbstractForm
+    root::Union{DataNode,Nothing}
+    uses::Vector{Tuple{DataNode,Int}}
 end
+
+function root_node(@nospecialize src::AbstractShape)
+    DataNode(ROOT_NODE, DataNode[], nothing, src, nothing, Tuple{DataNode,Int}[])
+end
+
+function pipe_node(p::Pipeline, input::DataNode)
+    shp = target(signature(p))
+    n = DataNode(PIPE_NODE, DataNode[input], p, shp, get_root(input), Tuple{DataNode,Int}[])
+    push!(input.uses, (n, 1))
+    n
+end
+
+function head_node(base::DataNode)
+    shp = deannotate(base.shp)
+    w = width(shp)
+    all_slots = true
+    for j = 1:w
+        if !(branch(shp, j) isa SlotShape)
+            shp = replace_branch(shp, j, SlotShape())
+            all_slots = false
+        end
+    end
+    if all_slots
+        return base
+    end
+    if w > 0
+        shp = HasSlots(shp, w)
+    end
+    n = DataNode(HEAD_NODE, DataNode[base], nothing, shp, get_root(base), Tuple{DataNode,Int}[])
+    push!(base.uses, (n, 1))
+    n
+end
+
+function part_node(base::DataNode, idx::Int)
+    shp = branch(deannotate(base.shp), idx)
+    n = DataNode(PART_NODE, DataNode[base], idx, shp, get_root(base), Tuple{DataNode,Int}[])
+    push!(base.uses, (n, 1))
+    n
+end
+
+function join_node(head::DataNode, parts::Vector{DataNode})
+    shp = deannotate(head.shp)
+    w = width(shp)
+    ary = 0
+    @assert w == length(parts)
+    for j = 1:w
+        @assert branch(shp, j) isa SlotShape
+        shp = replace_branch(shp, j, parts[j].shp)
+        ary += arity(parts[j].shp)
+    end
+    if ary > 0
+        shp = HasSlots(shp, ary)
+    end
+    refs = DataNode[head]
+    append!(refs, parts)
+    n = DataNode(JOIN_NODE, refs, nothing, shp, get_root(head), Tuple{DataNode,Int}[])
+    for (k, ref) in enumerate(refs)
+        push!(ref.uses, (n, k))
+    end
+    n
+end
+
+function slot_node(base::DataNode)
+    if base.shp isa SlotShape
+        return base
+    end
+    n = DataNode(SLOT_NODE, DataNode[base], nothing, SlotShape(), get_root(base), Tuple{DataNode,Int}[])
+    push!(base.uses, (n, 1))
+    n
+end
+
+function fill_node(slot::DataNode, fill::DataNode)
+    n = DataNode(FILL_NODE, DataNode[slot, fill], nothing, fill.shp, get_root(slot), Tuple{DataNode,Int}[])
+    push!(slot.uses, (n, 1))
+    push!(fill.uses, (n, 2))
+    n
+end
+
+function exit_node(base::DataNode)
+    n = DataNode(EXIT_NODE, DataNode[base], nothing, base.shp, get_root(base), Tuple{DataNode,Int}[])
+    push!(base.uses, (n, 1))
+    n
+end
+
+get_root(n::DataNode) =
+    n.root !== nothing ? n.root : n
 
 show(io::IO, n::DataNode) =
     print_expr(io, quoteof(n))
 
-function quoteof(n::DataNode)
-    exs = Expr[]
-    nidxs = IdDict{Any,Int}()
-    ex = quoteof!(n, exs, nidxs)
-    if isempty(exs)
-        return ex
-    elseif length(exs) == 1
-        return exs[1]
-    end
-    letargs = [Expr(:(=), Symbol("n", k), exs[k]) for k in eachindex(exs)]
-    Expr(:let, Expr(:block, letargs...), ex)
-end
-
-function quoteof!(n::DataNode, exs, nidxs)
-    if haskey(nidxs, n)
-        return Symbol("n", nidxs[n])
-    end
-    ex = quoteof!(n.form, exs, nidxs)
-    push!(exs, ex)
-    nidxs[n] = length(exs)
-    Symbol("n", length(exs))
-end
-
-struct RootForm <: AbstractForm
-    src::AbstractShape
-    cache::Dict{Any,Any}
-
-    RootForm(@nospecialize src) = new(src, Dict{Any,Any}())
-end
-
-function root_node(@nospecialize src::AbstractShape)
-    root = RootForm(src)
-    node = DataNode(root, src, root)
-    root.cache[()] = node
-    node
-end
-
-quoteof!(form::RootForm, exs, nidxs) =
-    Expr(:call, nameof(root_node), quoteof(form.src))
-
-struct EvalForm <: AbstractForm
-    p::Pipeline
-    input::DataNode
-end
-
-function eval_node(p::Pipeline, input::DataNode)
-    root = input.root::RootForm
-    get!(root.cache, (input, p.op, p.args)) do
-        form = EvalForm(p, input)
-        sig = signature(p)
-        shp = target(sig)
-        DataNode(form, shp, root)
-    end
-end
-
-quoteof!(form::EvalForm, exs, nidxs) =
-    Expr(:call, nameof(eval_node), quoteof(form.p), quoteof!(form.input, exs, nidxs))
-
-struct HeadForm <: AbstractForm
-    node::DataNode
-end
-
-function head_node(node::DataNode)
-    root = node.root::RootForm
-    get!(root.cache, (node, 0)) do
-        shp = deannotate(node.shp)
-        w = width(shp)
-        all_slots = true
-        for j = 1:w
-            if !(branch(shp, j) isa SlotShape)
-                shp = replace_branch(shp, j, SlotShape())
-                all_slots = false
+function sequence(root::DataNode)
+    @assert isempty(root.refs)
+    seq = DataNode[]
+    seen = Set{DataNode}()
+    stk = [(root, 1)]
+    while !isempty(stk)
+        node, k = pop!(stk)
+        if k > length(node.uses)
+            push!(seq, node)
+        else
+            push!(stk, (node, k+1))
+            u = node.uses[k][1]
+            if !(u in seen)
+                push!(seen, u)
+                push!(stk, (u, 1))
             end
         end
-        if all_slots
-            return node
-        end
-        if w > 0
-            shp = HasSlots(shp, w)
-        end
-        DataNode(HeadForm(node), shp, root)
+    end
+    reverse!(seq)
+end
+
+function quoteof(n::DataNode)
+    seq = sequence(get_root(n))
+    vars = Dict{DataNode,Symbol}()
+    exs = Expr[]
+    for (k, node) in enumerate(seq)
+        vars[node] = Symbol("n", k)
+        ex =
+            if node.kind == ROOT_NODE
+                Expr(:call, nameof(root_node), quoteof(node.shp))
+            elseif node.kind == PIPE_NODE
+                Expr(:call, nameof(pipe_node), node.more, vars[node.refs[1]])
+            elseif node.kind == HEAD_NODE
+                Expr(:call, nameof(head_node), vars[node.refs[1]])
+            elseif node.kind == PART_NODE
+                Expr(:call, nameof(part_node), vars[node.refs[1]], node.more)
+            elseif node.kind == JOIN_NODE
+                Expr(:call, nameof(join_node), vars[node.refs[1]], Expr(:vect, [vars[node.refs[j]] for j = 2:length(node.refs)]...))
+            elseif node.kind == SLOT_NODE
+                Expr(:call, nameof(slot_node), vars[node.refs[1]])
+            elseif node.kind == FILL_NODE
+                Expr(:call, nameof(fill_node), vars[node.refs[1]], vars[node.refs[2]])
+            elseif node.kind == EXIT_NODE
+                Expr(:call, nameof(exit_node), vars[node.refs[1]])
+            end
+        push!(exs, ex)
+    end
+    if length(seq) == 1
+        exs[1]
+    else
+        lets = [Expr(:(=), vars[node], exs[k]) for (k, node) in enumerate(seq)]
+        Expr(:let, Expr(:block, lets...), vars[n])
     end
 end
-
-quoteof!(form::HeadForm, exs, nidxs) =
-    Expr(:call, nameof(head_node), quoteof!(form.node, exs, nidxs))
-
-struct PartForm <: AbstractForm
-    node::DataNode
-    idx::Int
-end
-
-function part_node(node::DataNode, idx::Int)
-    root = node.root::RootForm
-    get!(root.cache, (node, idx)) do
-        node_shp = deannotate(node.shp)
-        shp = branch(node_shp, idx)
-        DataNode(PartForm(node, idx), shp, root)
-    end
-end
-
-quoteof!(form::PartForm, exs, nidxs) =
-    Expr(:call, nameof(part_node), quoteof!(form.node, exs, nidxs), form.idx)
-
-struct JoinForm <: AbstractForm
-    head::DataNode
-    parts::Vector{DataNode}
-end
-
-function join_node(head::DataNode, parts::Vector{DataNode})
-    root = head.root::RootForm
-    get!(root.cache, (head, parts)) do
-        shp = deannotate(head.shp)
-        w = width(shp)
-        ary = 0
-        @assert w == length(parts)
-        for j = 1:w
-            @assert branch(shp, j) isa SlotShape
-            shp = replace_branch(shp, j, parts[j].shp)
-            ary += arity(parts[j].shp)
-        end
-        if ary > 0
-            shp = HasSlots(shp, ary)
-        end
-        DataNode(JoinForm(head, parts), shp, root)
-    end
-end
-
-function quoteof!(form::JoinForm, exs, nidxs)
-    partsex = Expr(:vect, Any[quoteof!(part, exs, nidxs) for part in form.parts]...)
-    Expr(:call, nameof(join_node), quoteof!(form.head, exs, nidxs), partsex)
-end
-
-struct SlotForm <: AbstractForm
-    node::DataNode
-end
-
-function slot_node(node::DataNode)
-    root = node.root::RootForm
-    get!(root.cache, (node, nothing)) do
-        if node.shp isa SlotShape
-            return node
-        end
-        DataNode(SlotForm(node), SlotShape(), root)
-    end
-end
-
-quoteof!(form::SlotForm, exs, nidxs) =
-    Expr(:call, nameof(slot_node), quoteof!(form.node, exs, nidxs))
-
-struct FillForm <: AbstractForm
-    slot::DataNode
-    fill::DataNode
-end
-
-function fill_node(slot::DataNode, fill::DataNode)
-    root = slot.root::RootForm
-    get!(root.cache, (slot, fill)) do
-        DataNode(FillForm(slot, fill), fill.shp, root)
-    end
-end
-
-quoteof!(form::FillForm, exs, nidxs) =
-    Expr(:call, nameof(fill_node), quoteof!(form.slot, exs, nidxs), quoteof!(form.fill, exs, nidxs))
 
 macro match_node(ex)
     return esc(_match_node(ex))
@@ -724,42 +703,47 @@ function _match_node!(val, pat, cs, as)
         return
     elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :root_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.RootForm))
-        _match_node!(:($val.form.src), pat.args[2], cs, as)
+        push!(cs, :($val.kind == $DataKnots.ROOT_NODE))
+        _match_node!(:($val.shp), pat.args[2], cs, as)
         return
-    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :eval_node
+    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :pipe_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.EvalForm))
-        _match_pipeline!(:($val.form.p), pat.args[2], cs, as)
-        _match_node!(:($val.form.input), pat.args[3], cs, as)
+        push!(cs, :($val.kind == $DataKnots.PIPE_NODE))
+        _match_pipeline!(:($val.more::$DataKnots.Pipeline), pat.args[2], cs, as)
+        _match_node!(:($val.refs[1]), pat.args[3], cs, as)
         return
     elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :head_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.HeadForm))
-        _match_node!(:($val.form.node), pat.args[2], cs, as)
+        push!(cs, :($val.kind == $DataKnots.HEAD_NODE))
+        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
         return
     elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :part_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.PartForm))
-        _match_node!(:($val.form.node), pat.args[2], cs, as)
-        _match_node!(:($val.form.idx), pat.args[3], cs, as)
+        push!(cs, :($val.kind == $DataKnots.PART_NODE))
+        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
+        _match_node!(:($val.more::Int), pat.args[3], cs, as)
         return
     elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :join_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.JoinForm))
-        _match_node!(:($val.form.head), pat.args[2], cs, as)
-        _match_node!(:($val.form.parts), pat.args[3], cs, as)
+        push!(cs, :($val.kind == $DataKnots.JOIN_NODE))
+        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
+        _match_node!(:($val.refs[2:end]), pat.args[3], cs, as)
         return
     elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :slot_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.SlotForm))
-        _match_node!(:($val.form.node), pat.args[2], cs, as)
+        push!(cs, :($val.kind == $DataKnots.SLOT_NODE))
+        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
         return
     elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :fill_node
         push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.form isa $DataKnots.FillForm))
-        _match_node!(:($val.form.slot), pat.args[2], cs, as)
-        _match_node!(:($val.form.fill), pat.args[3], cs, as)
+        push!(cs, :($val.kind == $DataKnots.FILL_NODE))
+        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
+        _match_node!(:($val.refs[2]), pat.args[3], cs, as)
+        return
+    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :exit_node
+        push!(cs, :($val isa $DataKnots.DataNode))
+        push!(cs, :($val.kind == $DataKnots.EXIT_NODE))
+        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
         return
     elseif Meta.isexpr(pat, :vect)
         push!(cs, :($val isa Vector{$DataKnots.DataNode}))
@@ -794,6 +778,32 @@ function _match_node!(val, pats::Vector{Any}, cs, as)
     end
 end
 
+function merge_into!(node_from, node_to)
+    node_from !== node_to || return
+    for (n, idx) in node_from.uses
+        @assert n.refs[idx] === node_from
+        n.refs[idx] = node_to
+        push!(node_to.uses, (n, idx))
+    end
+    empty!(node_from.uses)
+    garbage = [node_from]
+    while !isempty(garbage)
+        garbage_node = pop!(garbage)
+        for (idx, ref) in enumerate(garbage_node.refs)
+            k = 1
+            while k <= length(ref.uses) && (ref.uses[k][1] !== garbage_node || ref.uses[k][2] != idx)
+                k += 1
+            end
+            @assert k <= length(ref.uses)
+            ref.uses[k] = ref.uses[end]
+            pop!(ref.uses)
+            if isempty(ref.uses)
+                push!(garbage, ref)
+            end
+        end
+    end
+end
+
 function substitute(n::DataNode, repl)
     if n.shp isa SlotShape
         @assert length(repl) == 1
@@ -816,13 +826,18 @@ function substitute(n::DataNode, repl, rng)
         sub = subject(shp)
         w = width(sub)
         for j = 1:w
-            part = part_node(n, j)
-            part_ary = arity(part.shp)
-            if part_ary > 0
-                part′ = substitute(part, repl, rng[l+1:l+part_ary])
-                l += part_ary
+            if branch(sub, j) isa SlotShape
+                part′ = repl[l+1]
+                l += 1
             else
-                part′ = part
+                part = part_node(n, j)
+                part_ary = arity(part.shp)
+                if part_ary > 0
+                    part′ = substitute(part, repl, rng[l+1:l+part_ary])
+                    l += part_ary
+                else
+                    part′ = part
+                end
             end
             push!(parts′, part′)
         end
@@ -833,14 +848,14 @@ function substitute(n::DataNode, repl, rng)
     n
 end
 
-function decompose(n::DataNode, @nospecialize(shp::AbstractShape), error=true)
+function decompose(n::DataNode, @nospecialize(shp::AbstractShape))
     if shp isa SlotShape
         n′ = slot_node(n)
         repl = DataNode[n]
     elseif shp isa HasSlots
         ary = arity(shp)
         repl = Vector{DataNode}(undef, ary)
-        n′ = decompose!(n, shp, repl, 1, error)
+        n′ = decompose!(n, shp, repl, 1)
     else
         repl = DataNode[]
         n′ = n
@@ -848,19 +863,14 @@ function decompose(n::DataNode, @nospecialize(shp::AbstractShape), error=true)
     (n′, repl)
 end
 
-function decompose!(n::DataNode, @nospecialize(shp::AbstractShape), repl, shift, error)
+function decompose!(n::DataNode, @nospecialize(shp::AbstractShape), repl, shift)
     if shp isa SlotShape
         repl[shift] = n
         n′ = slot_node(n)
     elseif shp isa HasSlots
         sub = subject(shp)
         w = width(sub)
-        if error
-            @assert w == width(deannotate(n.shp))
-        end
-        if w != width(deannotate(n.shp))
-            return nothing
-        end
+        @assert w == width(deannotate(n.shp))
         if all(branch(sub, j) isa SlotShape for j = 1:w)
             n′ = head_node(n)
             for j = 1:w
@@ -871,8 +881,7 @@ function decompose!(n::DataNode, @nospecialize(shp::AbstractShape), repl, shift,
             parts′ = DataNode[part_node(n, j) for j = 1:w]
             for j = 1:w
                 b = branch(sub, j)
-                part′ = decompose!(parts′[j], b, repl, shift, error)
-                part′ !== nothing || return nothing
+                part′ = decompose!(parts′[j], b, repl, shift)
                 parts′[j] = part′
                 shift += arity(b)
             end
@@ -887,7 +896,8 @@ end
 function trace(p::Pipeline)
     src = deannotate(source(p))
     n0 = root_node(src)
-    trace(p, n0)
+    n = trace(p, n0)
+    exit_node(n)
 end
 
 function trace(p::Pipeline, i::DataNode)
@@ -902,7 +912,7 @@ function trace(p::Pipeline, i::DataNode)
         parts = DataNode[trace(col, i) for col in cols]
         p′ = tuple_of(lbls, length(cols))
         sig′ = p′(i.shp)
-        o = join_node(eval_node(p′ |> designate(sig′), slot_node(i)), parts)
+        o = join_node(pipe_node(p′ |> designate(sig′), slot_node(i)), parts)
     elseif (p ~ with_column(lbl, q))
         @assert i.shp isa TupleOf
         j = locate(i.shp, lbl)
@@ -930,14 +940,10 @@ function trace(p::Pipeline, i::DataNode)
     else
         sig = p(i.shp)
         i, i_repl = decompose(i, source(sig))
-        n = eval_node(p |> designate(sig), i)
+        n = pipe_node(p |> designate(sig), i)
         bds = bindings(sig)
         if bds !== nothing
-            slot = slot_node(i)
-            o_repl = fill(slot, bds.tgt_ary)
-            for (src_slot, tgt_slot) in bds.src2tgt
-                o_repl[tgt_slot] = i_repl[src_slot]
-            end
+            o_repl = DataNode[i_repl[bds.tgt2src[tgt_slot]] for tgt_slot = 1:bds.tgt_ary]
             o = substitute(n, o_repl)
         else
             o = n
@@ -946,155 +952,11 @@ function trace(p::Pipeline, i::DataNode)
     o
 end
 
-function rewrite_nodes_with(f, n::DataNode)
-    seen = Dict{DataNode,DataNode}()
-    rewrite_nodes_with(f, n, seen)
-end
-
-function rewrite_nodes_with(f, n, seen)
-    get!(seen, n) do
-        form = n.form
-        if form isa EvalForm
-            input′ = rewrite_nodes_with(f, form.input, seen)
-            if input′ !== form.input
-                n = eval_node(form.p, input′)
-            end
-        elseif form isa HeadForm
-            node′ = rewrite_nodes_with(f, form.node, seen)
-            if node′ !== form.node
-                n = head_node(node′)
-            end
-        elseif form isa PartForm
-            node′ = rewrite_nodes_with(f, form.node, seen)
-            if node′ !== form.node
-                n = part_node(node′, form.idx)
-            end
-        elseif form isa JoinForm
-            head′ = rewrite_nodes_with(f, form.head, seen)
-            changed = head′ !== form.head
-            parts = form.parts
-            for j = eachindex(parts)
-                part = parts[j]
-                part′ = rewrite_nodes_with(f, part, seen)
-                if part′ !== part
-                    parts[j] = part′
-                    changed = true
-                end
-            end
-            if changed
-                n = join_node(head′, parts)
-            end
-        elseif form isa SlotForm
-            node′ = rewrite_nodes_with(f, form.node, seen)
-            if node′ !== form.node
-                n = slot_node(node′)
-            end
-        elseif form isa FillForm
-            slot′ = rewrite_nodes_with(f, form.slot, seen)
-            fill′ = rewrite_nodes_with(f, form.fill, seen)
-            if slot′ !== form.slot || fill′ !== form.fill
-                n = fill_node(slot′, fill′)
-            end
-        end
-        f(n)
-    end
-end
-
-function rewrite_retrace(n::DataNode)
-    rewrite_nodes_with(retrace_node, n)
-end
-
-function retrace_node(n::DataNode)
-    @match_node begin
-        if (n ~ join_node(head, parts))
-            if (head ~ head_node(parent))
-                matched = true
-                for j in eachindex(parts)
-                    part = parts[j]
-                    if !((part ~ part_node(node, idx)) && node === parent && idx == j)
-                        matched = false
-                    end
-                end
-                if matched
-                    return parent
-                end
-            end
-        end
-        if (n ~ head_node(join_node(head, _)))
-            return head
-        end
-        if (n ~ part_node(join_node(_, parts), idx))
-            return parts[idx]
-        end
-        if (n ~ slot_node(node))
-            node′ = node
-            while true
-                if (node′ ~ eval_node(_, input))
-                    node′ = input
-                elseif (node′ ~ head_node(parent))
-                    node′ = parent
-                elseif (node′ ~ join_node(head, _))
-                    node′ = head
-                elseif (node′ ~ slot_node(parent))
-                    node′ = parent
-                elseif (node′ ~ fill_node(slot, _))
-                    node′ = slot
-                else
-                    break
-                end
-            end
-            if node′ !== node
-                n = slot_node(node′)
-            end
-            return n
-        end
-        if (n ~ fill_node(slot_node(_), fill))
-            return fill
-        end
-        if (n ~ eval_node(flatten(), join_node(eval_node(wrap(), slot_node(_)), [part])))
-            return part
-        end
-        if (n ~ eval_node(flatten(), join_node(head, [eval_node(wrap(), slot_node(_))])))
-            return head
-        end
-        if (n ~ eval_node(p ~ lift(_...), join_node(eval_node(wrap(), slot_node(_)), [part])))
-            p = p |> designate(part.shp, target(p))
-            return eval_node(p, part)
-        end
-        if (n ~ eval_node(p ~ tuple_lift(_...), join_node(head, parts)))
-            parts′ = copy(parts)
-            changed = false
-            for j in eachindex(parts)
-                part = parts[j]
-                if (part ~ join_node(eval_node(wrap(), slot_node(_)), [part′]))
-                    parts′[j] = part′
-                    changed = true
-                end
-            end
-            if changed
-                input = join_node(head, parts′)
-                p = p |> designate(input.shp, target(p))
-                return eval_node(p, input)
-            end
-        end
-        if (n ~ eval_node(distribute(j::Int), join_node(head, parts)))
-            part = parts[j]
-            if (part ~ eval_node(p ~ wrap(), slot_node(_)))
-                return join_node(eval_node(p, retrace_node(slot_node(head))), DataNode[head])
-            end
-        end
-        if (n ~ fill_node(eval_node(column(_), eval_node(tuple_of(_, _), slot_node(_))), fill))
-            return fill
-        end
-    end
-    n
-end
-
 function untrace(n::DataNode)
     chain = Pipeline[]
     tails = Dict{DataNode,Vector{DataNode}}()
     tails!(tails, n)
-    untrace!(chain, n, n.root.cache[()], tails)
+    untrace!(chain, n, get_root(n), tails)
     delinearize!(chain)
 end
 
@@ -1102,24 +964,27 @@ function tails!(tails, n)
     get!(tails, n) do
         @match_node if (n ~ root_node(_))
             DataNode[]
-        elseif (n ~ eval_node(p, input))
+        elseif (n ~ pipe_node(p, input))
             input_tail = tails!(tails, input)
             bds = bindings(signature(p))
             bds !== nothing ?
                 DataNode[input_tail[bds.tgt2src[j]] for j in 1:bds.tgt_ary] :
                 DataNode[]
         elseif (n ~ head_node(node))
+            tails!(tails, node)
+            shp = deannotate(node.shp)
+            w = width(shp)
+            DataNode[node for j = 1:w]
+        elseif (n ~ part_node(node, idx))
             node_tail = tails!(tails, node)
             shp = deannotate(node.shp)
             w = width(shp)
             shift = 0
-            for j = 1:w
-                ary = arity(branch(shp, j))
-                tails[part_node(node, j)] = node_tail[1+shift:ary+shift]
+            for j = 1:idx-1
+                shift += arity(branch(shp, j))
             end
-            DataNode[node for j = 1:w]
-        elseif (n ~ part_node(node, idx))
-            error()
+            ary = arity(branch(shp, idx))
+            node_tail[1+shift:ary+shift]
         elseif (n ~ join_node(head, parts))
             tails!(tails, head)
             tail′ = DataNode[]
@@ -1135,6 +1000,8 @@ function tails!(tails, n)
             tails!(tails, slot)
             tails′ = tails!(tails, fill)
             tails′
+        elseif (n ~ exit_node(base))
+            tails!(tails, base)
         else
             error()
         end
@@ -1143,7 +1010,7 @@ end
 
 function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
     n !== guard || return
-    @match_node if (n ~ eval_node(p, input))
+    @match_node if (n ~ pipe_node(p, input))
         tails = untrace!(chain, input, guard, tails)
         push!(chain, p)
     elseif (n ~ join_node(head, parts))
@@ -1175,6 +1042,8 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
         untrace!(chain, fill, slot_tail[1], tails)
     elseif (n ~ slot_node(node))
         untrace!(chain, node, guard, tails)
+    elseif (n ~ exit_node(base))
+        untrace!(chain, base, guard, tails)
     else
         error("failed to untrace from:\n$n\nto:\n$guard")
     end
@@ -1182,8 +1051,161 @@ end
 
 function rewrite_retrace(p::Pipeline)
     n = trace(p)
-    n′ = rewrite_retrace(n)
-    p′ = untrace(n′)
+    for pass! in rewrite_passes(n)
+        pass!(n)
+    end
+    p′ = untrace(n)
     p′ |> designate(signature(p))
+end
+
+function forward_pass(f, node::DataNode, args...)
+    seen = Set{DataNode}()
+    stk = [(node, 1)]
+    while !isempty(stk)
+        node, k = pop!(stk)
+        if k > length(node.refs)
+            f(node, args...)
+        else
+            push!(stk, (node, k+1))
+            u = node.refs[k]
+            if !(u in seen)
+                push!(seen, u)
+                push!(stk, (u, 1))
+            end
+        end
+    end
+end
+
+function backward_pass(f, node::DataNode, args...)
+    seen = Set{DataNode}()
+    stk = [(get_root(node), 1)]
+    while !isempty(stk)
+        node, k = pop!(stk)
+        if k > length(node.uses)
+            f(node, args...)
+        else
+            push!(stk, (node, k+1))
+            u = node.uses[k][1]
+            if !(u in seen)
+                push!(seen, u)
+                push!(stk, (u, 1))
+            end
+        end
+    end
+end
+
+rewrite_passes(@nospecialize ::Any) =
+    Pair{Int,Function}[]
+
+rewrite_passes(::Val{(:DataKnots,)}) =
+    Pair{Int,Function}[
+        1 => rewrite_simplify!,
+    ]
+
+function rewrite_passes(node::DataNode)
+    mods = Set{Module}()
+    forward_pass(node, mods) do node, mods
+        @match_node if (node ~ pipe_node(p, _))
+            push!(mods, parentmodule(p.op))
+        end
+    end
+    passes = Pair{Int,Function}[]
+    for mod in mods
+        append!(passes, rewrite_passes(Val(fullname(mod))))
+    end
+    sort!(passes, by=((w, f)) -> (w, nameof(f)))
+    Function[last(pass) for pass in passes]
+end
+
+function rewrite_simplify!(node::DataNode)
+    forward_pass(node) do n
+        @match_node begin
+            # Tighten a join loop.
+            if (n ~ join_node(head, parts))
+                if (head ~ head_node(base))
+                    matched = true
+                    for j in eachindex(parts)
+                        part = parts[j]
+                        if !((part ~ part_node(part_base, idx)) && part_base === base && idx == j)
+                            matched = false
+                        end
+                    end
+                    if matched
+                        return merge_into!(n, base)
+                    end
+                end
+            end
+            # Tighten a fill loop.
+            if (n ~ fill_node(slot_node(_), fill))
+                return merge_into!(n, fill)
+            end
+            # Eliminate a join.
+            if (n ~ head_node(join_node(head, _)))
+                return merge_into!(n, head)
+            end
+            if (n ~ part_node(join_node(_, parts), idx))
+                return merge_into!(n, parts[idx])
+            end
+            # Slide a slot backward.
+            if (n ~ slot_node(base))
+                base′ = base
+                while true
+                    if (base′ ~ pipe_node(_, input))
+                        base′ = input
+                    elseif (base′ ~ head_node(head_base))
+                        base′ = head_base
+                    elseif (base′ ~ join_node(head, _))
+                        base′ = head
+                    elseif (base′ ~ slot_node(slot_base))
+                        base′ = slot_base
+                    elseif (base′ ~ fill_node(slot, _))
+                        base′ = slot
+                    else
+                        break
+                    end
+                end
+                if base′ !== base
+                    return merge_into!(n, slot_node(base′))
+                end
+            end
+            # Eliminate a tuple.
+            if (n ~ pipe_node(column(_), pipe_node(tuple_of(_, _), base)))
+                return merge_into!(n, base)
+            end
+            # Eliminate a wrap.
+            if (n ~ pipe_node(flatten(), join_node(pipe_node(wrap(), slot_node(_)), [part])))
+                return merge_into!(n, part)
+            end
+            if (n ~ pipe_node(flatten(), join_node(head, [pipe_node(wrap(), slot_node(_))])))
+                return merge_into!(n, head)
+            end
+            if (n ~ pipe_node(p ~ lift(_...), join_node(pipe_node(wrap(), slot_node(_)), [part])))
+                p = p |> designate(part.shp, target(p))
+                return merge_into!(n, pipe_node(p, part))
+            end
+            if (n ~ pipe_node(p ~ tuple_lift(_...), join_node(head, parts)))
+                parts′ = copy(parts)
+                changed = false
+                for j in eachindex(parts)
+                    part = parts[j]
+                    if (part ~ join_node(pipe_node(wrap(), slot_node(_)), [part′]))
+                        parts′[j] = part′
+                        changed = true
+                    end
+                end
+                if changed
+                    input = join_node(head, parts′)
+                    p = p |> designate(input.shp, target(p))
+                    return merge_into!(n, pipe_node(p, input))
+                end
+            end
+            if (n ~ pipe_node(distribute(j::Int), join_node(head, parts)))
+                part = parts[j]
+                if (part ~ pipe_node(p ~ wrap(), slot_node(_)))
+                    return merge_into!(n, join_node(pipe_node(p, slot_node(head)), DataNode[head]))
+                end
+            end
+        end
+    end
 end
 
