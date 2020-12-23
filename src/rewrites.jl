@@ -778,7 +778,8 @@ function _match_node!(val, pats::Vector{Any}, cs, as)
     end
 end
 
-function merge_into!(node_from, node_to)
+function rewrite!(p::Pair{DataNode,DataNode})
+    node_from, node_to = p
     node_from !== node_to || return
     for (n, idx) in node_from.uses
         @assert n.refs[idx] === node_from
@@ -803,6 +804,12 @@ function merge_into!(node_from, node_to)
         end
         empty!(garbage_node.refs)
         garbage_node.kind = DEAD_NODE
+    end
+end
+
+function rewrite!(ps::Vector{Pair{DataNode,DataNode}})
+    for p in ps
+        rewrite!(p)
     end
 end
 
@@ -1137,20 +1144,20 @@ function rewrite_simplify!(node::DataNode)
                         end
                     end
                     if matched
-                        return merge_into!(n, base)
+                        return rewrite!(n => base)
                     end
                 end
             end
             # Tighten a fill loop.
             if (n ~ fill_node(slot_node(_), fill))
-                return merge_into!(n, fill)
+                return rewrite!(n => fill)
             end
             # Eliminate a join.
             if (n ~ head_node(join_node(head, _)))
-                return merge_into!(n, head)
+                return rewrite!(n => head)
             end
             if (n ~ part_node(join_node(_, parts), idx))
-                return merge_into!(n, parts[idx])
+                return rewrite!(n => parts[idx])
             end
             # Slide a slot backward.
             if (n ~ slot_node(base))
@@ -1171,23 +1178,23 @@ function rewrite_simplify!(node::DataNode)
                     end
                 end
                 if base′ !== base
-                    return merge_into!(n, slot_node(base′))
+                    return rewrite!(n => slot_node(base′))
                 end
             end
             # Eliminate a tuple.
             if (n ~ pipe_node(column(_), pipe_node(tuple_of(_, _), base)))
-                return merge_into!(n, base)
+                return rewrite!(n => base)
             end
             # Eliminate a wrap.
             if (n ~ pipe_node(flatten(), join_node(pipe_node(wrap(), slot_node(_)), [part])))
-                return merge_into!(n, part)
+                return rewrite!(n => part)
             end
             if (n ~ pipe_node(flatten(), join_node(head, [pipe_node(wrap(), slot_node(_))])))
-                return merge_into!(n, head)
+                return rewrite!(n => head)
             end
             if (n ~ pipe_node(p ~ lift(_...), join_node(pipe_node(wrap(), slot_node(_)), [part])))
                 p = p |> designate(part.shp, target(p))
-                return merge_into!(n, pipe_node(p, part))
+                return rewrite!(n => pipe_node(p, part))
             end
             if (n ~ pipe_node(p ~ tuple_lift(_...), join_node(head, parts)))
                 parts′ = copy(parts)
@@ -1202,13 +1209,13 @@ function rewrite_simplify!(node::DataNode)
                 if changed
                     input = join_node(head, parts′)
                     p = p |> designate(input.shp, target(p))
-                    return merge_into!(n, pipe_node(p, input))
+                    return rewrite!(n => pipe_node(p, input))
                 end
             end
             if (n ~ pipe_node(distribute(j::Int), join_node(head, parts)))
                 part = parts[j]
                 if (part ~ pipe_node(p ~ wrap(), slot_node(_)))
-                    return merge_into!(n, join_node(pipe_node(p, slot_node(head)), DataNode[head]))
+                    return rewrite!(n => join_node(pipe_node(p, slot_node(head)), DataNode[head]))
                 end
             end
         end
