@@ -1667,12 +1667,16 @@ function _match_pipeline!(val, pat, cs, as)
         fn = pat.args[1]
         args = pat.args[2:end]
         push!(cs, :($val isa $DataKnots.Pipeline))
-        push!(cs, :($val.op === $DataKnots.$fn))
+        push!(cs, :($val.op === $fn))
         _match_pipeline!(:($val.args), args, cs, as)
         return
     elseif Meta.isexpr(pat, :vect)
         push!(cs, :($val isa Vector{$DataKnots.Pipeline}))
         _match_pipeline!(val, pat.args, cs, as)
+        return
+    elseif Meta.isexpr(pat, :ref) && length(pat.args) >= 1 && pat.args[1] isa Symbol
+        push!(cs, :($val isa Vector{$(pat.args[1])}))
+        _match_pipeline!(val, pat.args[2:end], cs, as)
         return
     end
     error("expected a pipeline pattern; got $(repr(pat))")

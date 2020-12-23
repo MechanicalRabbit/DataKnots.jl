@@ -801,6 +801,8 @@ function merge_into!(node_from, node_to)
                 push!(garbage, ref)
             end
         end
+        empty!(garbage_node.refs)
+        garbage_node.kind = DEAD_NODE
     end
 end
 
@@ -1051,11 +1053,15 @@ end
 
 function rewrite_retrace(p::Pipeline)
     n = trace(p)
+    rewrite_retrace!(n)
+    p′ = untrace(n)
+    p′ |> designate(signature(p))
+end
+
+function rewrite_retrace!(n::DataNode)
     for pass! in rewrite_passes(n)
         pass!(n)
     end
-    p′ = untrace(n)
-    p′ |> designate(signature(p))
 end
 
 function forward_pass(f, node::DataNode, args...)
@@ -1113,7 +1119,7 @@ function rewrite_passes(node::DataNode)
     for mod in mods
         append!(passes, rewrite_passes(Val(fullname(mod))))
     end
-    sort!(passes, by=((w, f)) -> (w, nameof(f)))
+    sort!(passes, by=(p -> (first(p), nameof(last(p)))))
     Function[last(pass) for pass in passes]
 end
 
