@@ -778,16 +778,9 @@ function _match_node!(val, pats::Vector{Any}, cs, as)
     end
 end
 
-function rewrite!(p::Pair{DataNode,DataNode})
-    node_from, node_to = p
-    node_from !== node_to || return
-    for (n, idx) in node_from.uses
-        @assert n.refs[idx] === node_from
-        n.refs[idx] = node_to
-        push!(node_to.uses, (n, idx))
-    end
-    empty!(node_from.uses)
-    garbage = [node_from]
+function garbage!(n::DataNode)
+    n.kind != DEAD_NODE && isempty(n.uses) || return
+    garbage = [n]
     while !isempty(garbage)
         garbage_node = pop!(garbage)
         for (idx, ref) in enumerate(garbage_node.refs)
@@ -805,6 +798,22 @@ function rewrite!(p::Pair{DataNode,DataNode})
         empty!(garbage_node.refs)
         garbage_node.kind = DEAD_NODE
     end
+end
+
+function garbage!(ns::Vector{DataNode})
+    foreach(garbage!, ns)
+end
+
+function rewrite!(p::Pair{DataNode,DataNode})
+    node_from, node_to = p
+    node_from !== node_to || return
+    for (n, idx) in node_from.uses
+        @assert n.refs[idx] === node_from
+        n.refs[idx] = node_to
+        push!(node_to.uses, (n, idx))
+    end
+    empty!(node_from.uses)
+    garbage!(node_from)
 end
 
 function rewrite!(ps::Vector{Pair{DataNode,DataNode}})
@@ -1029,13 +1038,8 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
         top = length(chain)
         for j in eachindex(parts)
             untrace!(chain, parts[j], head_tail[j], tails)
-            @assert shp isa BlockOf || shp isa TupleOf
             for k = top+1:length(chain)
-                if shp isa BlockOf
-                    chain[k] = with_elements(chain[k])
-                elseif shp isa TupleOf
-                    chain[k] = with_column(j, chain[k])
-                end
+                chain[k] = with_branch(typeof(shp), j, chain[k])
             end
             top = length(chain)
         end
@@ -1112,6 +1116,7 @@ rewrite_passes(@nospecialize ::Any) =
 
 rewrite_passes(::Val{(:DataKnots,)}) =
     Pair{Int,Function}[
+        0 => rewrite_garbage!,
         1 => rewrite_simplify!,
     ]
 
@@ -1128,6 +1133,16 @@ function rewrite_passes(node::DataNode)
     end
     sort!(passes, by=(p -> (first(p), nameof(last(p)))))
     Function[last(pass) for pass in passes]
+end
+
+function rewrite_garbage!(node::DataNode)
+    gs = DataNode[]
+    backward_pass(node, gs) do n, gs
+        if isempty(n.uses) && n.kind != EXIT_NODE
+            push!(gs, n)
+        end
+    end
+    garbage!(gs)
 end
 
 function rewrite_simplify!(node::DataNode)
@@ -1191,6 +1206,9 @@ function rewrite_simplify!(node::DataNode)
             end
             if (n ~ pipe_node(flatten(), join_node(head, [pipe_node(wrap(), slot_node(_))])))
                 return rewrite!(n => head)
+            end
+            if (n ~ pipe_node(block_any(), join_node(pipe_node(wrap(), slot_node(_)), [part])))
+                return rewrite!(n => part)
             end
             if (n ~ pipe_node(p ~ lift(_...), join_node(pipe_node(wrap(), slot_node(_)), [part])))
                 p = p |> designate(part.shp, target(p))
