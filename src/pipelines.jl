@@ -705,6 +705,10 @@ function with_column(lbls, w, j, colsig::Signature)
     Signature(src, tgt, bds)
 end
 
+function with_branch(::Type{TupleOf}, j, p)
+    with_column(j, p)
+end
+
 
 #
 # Operations on block vectors.
@@ -757,6 +761,11 @@ function with_elements(sig::Signature, card)
         end
     end
     Signature(src′, tgt′, bds′)
+end
+
+function with_branch(::Type{BlockOf}, j, p)
+    @assert j == 1
+    with_elements(p)
 end
 
 
