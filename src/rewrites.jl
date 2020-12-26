@@ -632,7 +632,7 @@ function quoteof(n::DataNode)
             if node.kind == ROOT_NODE
                 Expr(:call, nameof(root_node), quoteof(node.shp))
             elseif node.kind == PIPE_NODE
-                Expr(:call, nameof(pipe_node), node.more, vars[node.refs[1]])
+                Expr(:call, nameof(pipe_node), quoteof(node.more), vars[node.refs[1]])
             elseif node.kind == HEAD_NODE
                 Expr(:call, nameof(head_node), vars[node.refs[1]])
             elseif node.kind == PART_NODE
