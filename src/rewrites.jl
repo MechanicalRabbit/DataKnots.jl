@@ -1174,6 +1174,12 @@ function rewrite_simplify!(node::DataNode)
             if (n ~ part_node(join_node(_, parts), idx))
                 return rewrite!(n => parts[idx])
             end
+            if (n ~ head_node(fill_node(slot, join_node(head, _))))
+                return rewrite!(n => fill_node(slot, head))
+            end
+            if (n ~ part_node(fill_node(slot, join_node(_, parts)), idx))
+                return rewrite!(n => parts[idx])
+            end
             # Slide a slot backward.
             if (n ~ slot_node(base))
                 base′ = base
@@ -1199,6 +1205,9 @@ function rewrite_simplify!(node::DataNode)
             # Eliminate a tuple.
             if (n ~ pipe_node(column(_), pipe_node(tuple_of(_, _), base)))
                 return rewrite!(n => base)
+            end
+            if (n ~ pipe_node(column(_), fill_node(slot, pipe_node(tuple_of(_, _), base))))
+                return rewrite!(n => fill_node(slot, base))
             end
             # Eliminate a wrap.
             if (n ~ pipe_node(flatten(), join_node(pipe_node(wrap(), slot_node(_)), [part])))
