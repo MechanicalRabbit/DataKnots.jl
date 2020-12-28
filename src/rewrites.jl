@@ -1116,8 +1116,9 @@ rewrite_passes(@nospecialize ::Any) =
 
 rewrite_passes(::Val{(:DataKnots,)}) =
     Pair{Int,Function}[
-        0 => rewrite_garbage!,
-        1 => rewrite_simplify!,
+        10 => rewrite_garbage!,
+        30 => rewrite_simplify!,
+        20 => rewrite_dedup!,
     ]
 
 function rewrite_passes(node::DataNode)
@@ -1245,6 +1246,24 @@ function rewrite_simplify!(node::DataNode)
                     return rewrite!(n => join_node(pipe_node(p, slot_node(head)), DataNode[head]))
                 end
             end
+        end
+    end
+end
+
+function rewrite_dedup!(node::DataNode)
+    node_cache = Dict{Any,Any}()
+    forward_pass(node) do node
+        more = node.more
+        if more isa Int
+            key = (node.kind, node.refs, more)
+        elseif more isa Pipeline
+            key = (node.kind, node.refs, more.op, more.args)
+        else
+            key = (node.kind, node.refs)
+        end
+        node′ = get!(node_cache, key, node)
+        if node′ !== node
+            rewrite!(node => node′)
         end
     end
 end
