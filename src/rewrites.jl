@@ -944,6 +944,11 @@ function trace(p::Pipeline, i::DataNode)
         q_n = trace(q, part)
         o = join_node(head_node(i), DataNode[q_n])
     #=
+    elseif (p ~ column(lbl))
+        j = locate(deannotate(i.shp), lbl)
+        o = part_node(i, j)
+    =#
+    #=
     elseif (p ~ distribute(lbl))
         @assert i.shp isa TupleOf
         parts = get_parts(i)
@@ -972,27 +977,27 @@ end
 
 function untrace(n::DataNode)
     chain = Pipeline[]
-    tails = Dict{DataNode,Vector{DataNode}}()
+    tails = Dict{DataNode,Vector{Tuple{DataNode,Bool}}}()
     tails!(tails, n)
-    untrace!(chain, n, get_root(n), tails)
+    untrace!(chain, n, (get_root(n), true), tails)
     delinearize!(chain)
 end
 
 function tails!(tails, n)
     get!(tails, n) do
         @match_node if (n ~ root_node(_))
-            DataNode[]
+            Tuple{DataNode,Bool}[]
         elseif (n ~ pipe_node(p, input))
             input_tail = tails!(tails, input)
             bds = bindings(signature(p))
             bds !== nothing ?
-                DataNode[input_tail[bds.tgt2src[j]] for j in 1:bds.tgt_ary] :
-                DataNode[]
+                Tuple{DataNode,Bool}[input_tail[bds.tgt2src[j]] for j in 1:bds.tgt_ary] :
+                Tuple{DataNode,Bool}[]
         elseif (n ~ head_node(node))
             tails!(tails, node)
             shp = deannotate(node.shp)
             w = width(shp)
-            DataNode[node for j = 1:w]
+            Tuple{DataNode,Bool}[(node, false) for j = 1:w]
         elseif (n ~ part_node(node, idx))
             node_tail = tails!(tails, node)
             shp = deannotate(node.shp)
@@ -1005,7 +1010,7 @@ function tails!(tails, n)
             node_tail[1+shift:ary+shift]
         elseif (n ~ join_node(head, parts))
             tails!(tails, head)
-            tail′ = DataNode[]
+            tail′ = Tuple{DataNode,Bool}[]
             for part in parts
                 part_tail = tails!(tails, part)
                 append!(tail′, part_tail)
@@ -1013,7 +1018,7 @@ function tails!(tails, n)
             tail′
         elseif (n ~ slot_node(node))
             tails!(tails, node)
-            DataNode[node]
+            Tuple{DataNode,Bool}[(node, true)]
         elseif (n ~ fill_node(slot, fill))
             tails!(tails, slot)
             tails′ = tails!(tails, fill)
@@ -1027,9 +1032,14 @@ function tails!(tails, n)
 end
 
 function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
-    n !== guard || return
+    guard_node, guard_is_slot = guard
+    if guard_is_slot
+        n !== guard_node || return
+    else
+        n.kind != PART_NODE || n.refs[1] !== guard_node || return
+    end
     @match_node if (n ~ pipe_node(p, input))
-        tails = untrace!(chain, input, guard, tails)
+        untrace!(chain, input, guard, tails)
         push!(chain, p)
     elseif (n ~ join_node(head, parts))
         untrace!(chain, head, guard, tails)
@@ -1039,15 +1049,16 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
         for j in eachindex(parts)
             untrace!(chain, parts[j], head_tail[j], tails)
             for k = top+1:length(chain)
-                chain[k] = with_branch(typeof(shp), j, chain[k])
+                chain[k] = with_branch(shp, j, chain[k])
             end
             top = length(chain)
         end
     elseif (n ~ head_node(node))
         untrace!(chain, node, guard, tails)
-    elseif (n ~ part_node(node, _))
-        @assert node === guard
+    elseif (n ~ part_node(node, j))
         untrace!(chain, node, guard, tails)
+        shp = deannotate(node.shp)
+        push!(chain, extract_branch(shp, j))
     elseif (n ~ fill_node(slot, fill))
         untrace!(chain, slot, guard, tails)
         slot_tail = tails[slot]
@@ -1117,8 +1128,9 @@ rewrite_passes(@nospecialize ::Any) =
 rewrite_passes(::Val{(:DataKnots,)}) =
     Pair{Int,Function}[
         10 => rewrite_garbage!,
-        30 => rewrite_simplify!,
         20 => rewrite_dedup!,
+        30 => rewrite_simplify!,
+        40 => rewrite_dedup!,
     ]
 
 function rewrite_passes(node::DataNode)
@@ -1203,6 +1215,12 @@ function rewrite_simplify!(node::DataNode)
                     return rewrite!(n => slot_node(base′))
                 end
             end
+            # Eliminate a column.
+            #=
+            if (n ~ fill_node(pipe_node(column(_), head_node(base)), part ~ part_node(base′, _))) && base === base′
+                return rewrite!(n => part)
+            end
+            =#
             # Eliminate a tuple.
             if (n ~ pipe_node(column(_), pipe_node(tuple_of(_, _), base)))
                 return rewrite!(n => base)
@@ -1210,6 +1228,12 @@ function rewrite_simplify!(node::DataNode)
             if (n ~ pipe_node(column(_), fill_node(slot, pipe_node(tuple_of(_, _), base))))
                 return rewrite!(n => fill_node(slot, base))
             end
+            # Eliminate a fill.
+            #=
+            if (n ~ fill_node(pipe_node(_, head_node(parent)), part ~ part_node(parent′, _))) && parent === parent′
+                return rewrite!(n => part)
+            end
+            =#
             # Eliminate a wrap.
             if (n ~ pipe_node(flatten(), join_node(pipe_node(wrap(), slot_node(_)), [part])))
                 return rewrite!(n => part)
@@ -1246,6 +1270,12 @@ function rewrite_simplify!(node::DataNode)
                     return rewrite!(n => join_node(pipe_node(p, slot_node(head)), DataNode[head]))
                 end
             end
+            # Eliminate distribute.
+            #=
+            if (n ~ head_node(pipe_node(distribute(j::Int), join_node(_, parts))))
+                return rewrite!(n => head_node(parts[j]))
+            end
+            =#
         end
     end
 end

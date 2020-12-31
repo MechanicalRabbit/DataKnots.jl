@@ -645,6 +645,10 @@ function column(rt::Runtime, @nospecialize(src::AbstractShape), lbl)
               w, [j])
 end
 
+function extract_branch(shp::TupleOf, j)
+    column(!isempty(shp.lbls) ? shp.lbls[j] : j)
+end
+
 """
     with_column(lbl::Union{Int,Symbol}, p::Pipeline) :: Pipeline
 
@@ -705,8 +709,8 @@ function with_column(lbls, w, j, colsig::Signature)
     Signature(src, tgt, bds)
 end
 
-function with_branch(::Type{TupleOf}, j, p)
-    with_column(j, p)
+function with_branch(shp::TupleOf, j, p)
+    with_column(!isempty(shp.lbls) ? shp.lbls[j] : j, p)
 end
 
 
@@ -763,7 +767,7 @@ function with_elements(sig::Signature, card)
     Signature(src′, tgt′, bds′)
 end
 
-function with_branch(::Type{BlockOf}, j, p)
+function with_branch(::BlockOf, j, p)
     @assert j == 1
     with_elements(p)
 end
