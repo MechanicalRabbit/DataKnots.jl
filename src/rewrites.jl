@@ -510,15 +510,16 @@ mutable struct DataNode
     shp::AbstractShape
     root::Union{DataNode,Nothing}
     uses::Vector{Tuple{DataNode,Int}}
+    memo::Any
 end
 
 function root_node(@nospecialize src::AbstractShape)
-    DataNode(ROOT_NODE, DataNode[], nothing, src, nothing, Tuple{DataNode,Int}[])
+    DataNode(ROOT_NODE, DataNode[], nothing, src, nothing, Tuple{DataNode,Int}[], nothing)
 end
 
 function pipe_node(p::Pipeline, input::DataNode)
     shp = target(signature(p))
-    n = DataNode(PIPE_NODE, DataNode[input], p, shp, get_root(input), Tuple{DataNode,Int}[])
+    n = DataNode(PIPE_NODE, DataNode[input], p, shp, get_root(input), Tuple{DataNode,Int}[], nothing)
     push!(input.uses, (n, 1))
     n
 end
@@ -539,14 +540,14 @@ function head_node(base::DataNode)
     if w > 0
         shp = HasSlots(shp, w)
     end
-    n = DataNode(HEAD_NODE, DataNode[base], nothing, shp, get_root(base), Tuple{DataNode,Int}[])
+    n = DataNode(HEAD_NODE, DataNode[base], nothing, shp, get_root(base), Tuple{DataNode,Int}[], nothing)
     push!(base.uses, (n, 1))
     n
 end
 
 function part_node(base::DataNode, idx::Int)
     shp = branch(deannotate(base.shp), idx)
-    n = DataNode(PART_NODE, DataNode[base], idx, shp, get_root(base), Tuple{DataNode,Int}[])
+    n = DataNode(PART_NODE, DataNode[base], idx, shp, get_root(base), Tuple{DataNode,Int}[], nothing)
     push!(base.uses, (n, 1))
     n
 end
@@ -566,7 +567,7 @@ function join_node(head::DataNode, parts::Vector{DataNode})
     end
     refs = DataNode[head]
     append!(refs, parts)
-    n = DataNode(JOIN_NODE, refs, nothing, shp, get_root(head), Tuple{DataNode,Int}[])
+    n = DataNode(JOIN_NODE, refs, nothing, shp, get_root(head), Tuple{DataNode,Int}[], nothing)
     for (k, ref) in enumerate(refs)
         push!(ref.uses, (n, k))
     end
@@ -577,20 +578,20 @@ function slot_node(base::DataNode)
     if base.shp isa SlotShape
         return base
     end
-    n = DataNode(SLOT_NODE, DataNode[base], nothing, SlotShape(), get_root(base), Tuple{DataNode,Int}[])
+    n = DataNode(SLOT_NODE, DataNode[base], nothing, SlotShape(), get_root(base), Tuple{DataNode,Int}[], nothing)
     push!(base.uses, (n, 1))
     n
 end
 
 function fill_node(slot::DataNode, fill::DataNode)
-    n = DataNode(FILL_NODE, DataNode[slot, fill], nothing, fill.shp, get_root(slot), Tuple{DataNode,Int}[])
+    n = DataNode(FILL_NODE, DataNode[slot, fill], nothing, fill.shp, get_root(slot), Tuple{DataNode,Int}[], nothing)
     push!(slot.uses, (n, 1))
     push!(fill.uses, (n, 2))
     n
 end
 
 function exit_node(base::DataNode)
-    n = DataNode(EXIT_NODE, DataNode[base], nothing, base.shp, get_root(base), Tuple{DataNode,Int}[])
+    n = DataNode(EXIT_NODE, DataNode[base], nothing, base.shp, get_root(base), Tuple{DataNode,Int}[], nothing)
     push!(base.uses, (n, 1))
     n
 end
@@ -975,63 +976,60 @@ function trace(p::Pipeline, i::DataNode)
     o
 end
 
+const TailMemo = Vector{Tuple{DataNode,Bool}}
+
 function untrace(n::DataNode)
     chain = Pipeline[]
-    tails = Dict{DataNode,Vector{Tuple{DataNode,Bool}}}()
-    tails!(tails, n)
-    untrace!(chain, n, (get_root(n), true), tails)
+    tails!(n)
+    untrace!(chain, n, (get_root(n), true))
     delinearize!(chain)
 end
 
-function tails!(tails, n)
-    get!(tails, n) do
+function tails!(n)
+    forward_pass(n) do n
         @match_node if (n ~ root_node(_))
-            Tuple{DataNode,Bool}[]
+            n.memo = TailMemo()
         elseif (n ~ pipe_node(p, input))
-            input_tail = tails!(tails, input)
+            input_tail = input.memo::TailMemo
             bds = bindings(signature(p))
-            bds !== nothing ?
-                Tuple{DataNode,Bool}[input_tail[bds.tgt2src[j]] for j in 1:bds.tgt_ary] :
-                Tuple{DataNode,Bool}[]
-        elseif (n ~ head_node(node))
-            tails!(tails, node)
-            shp = deannotate(node.shp)
+            n.memo =
+                bds !== nothing ?
+                    Tuple{DataNode,Bool}[input_tail[bds.tgt2src[j]] for j in 1:bds.tgt_ary] :
+                    Tuple{DataNode,Bool}[]
+        elseif (n ~ head_node(base))
+            shp = deannotate(base.shp)
             w = width(shp)
-            Tuple{DataNode,Bool}[(node, false) for j = 1:w]
-        elseif (n ~ part_node(node, idx))
-            node_tail = tails!(tails, node)
-            shp = deannotate(node.shp)
+            n.memo = Tuple{DataNode,Bool}[(base, false) for j = 1:w]
+        elseif (n ~ part_node(base, idx))
+            base_tail = base.memo::TailMemo
+            shp = deannotate(base.shp)
             w = width(shp)
             shift = 0
             for j = 1:idx-1
                 shift += arity(branch(shp, j))
             end
             ary = arity(branch(shp, idx))
-            node_tail[1+shift:ary+shift]
+            n.memo = base_tail[1+shift:ary+shift]
         elseif (n ~ join_node(head, parts))
-            tails!(tails, head)
-            tail′ = Tuple{DataNode,Bool}[]
+            tail′ = TailMemo()
             for part in parts
-                part_tail = tails!(tails, part)
+                part_tail = part.memo::TailMemo
                 append!(tail′, part_tail)
             end
-            tail′
-        elseif (n ~ slot_node(node))
-            tails!(tails, node)
-            Tuple{DataNode,Bool}[(node, true)]
+            n.memo = tail′
+        elseif (n ~ slot_node(base))
+            n.memo = Tuple{DataNode,Bool}[(base, true)]
         elseif (n ~ fill_node(slot, fill))
-            tails!(tails, slot)
-            tails′ = tails!(tails, fill)
-            tails′
+            n.memo = fill.memo
         elseif (n ~ exit_node(base))
-            tails!(tails, base)
+            n.memo = nothing
         else
             error()
         end
     end
 end
 
-function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
+function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
     guard_node, guard_is_slot = guard
     if guard_is_slot
         n !== guard_node || return
@@ -1039,35 +1037,35 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard, tails)
         n.kind != PART_NODE || n.refs[1] !== guard_node || return
     end
     @match_node if (n ~ pipe_node(p, input))
-        untrace!(chain, input, guard, tails)
+        untrace!(chain, input, guard)
         push!(chain, p)
     elseif (n ~ join_node(head, parts))
-        untrace!(chain, head, guard, tails)
-        head_tail = tails[head]
+        untrace!(chain, head, guard)
+        head_tail = head.memo::TailMemo
         shp = deannotate(n.shp)
         top = length(chain)
         for j in eachindex(parts)
-            untrace!(chain, parts[j], head_tail[j], tails)
+            untrace!(chain, parts[j], head_tail[j])
             for k = top+1:length(chain)
                 chain[k] = with_branch(shp, j, chain[k])
             end
             top = length(chain)
         end
     elseif (n ~ head_node(node))
-        untrace!(chain, node, guard, tails)
+        untrace!(chain, node, guard)
     elseif (n ~ part_node(node, j))
-        untrace!(chain, node, guard, tails)
+        untrace!(chain, node, guard)
         shp = deannotate(node.shp)
         push!(chain, extract_branch(shp, j))
     elseif (n ~ fill_node(slot, fill))
-        untrace!(chain, slot, guard, tails)
-        slot_tail = tails[slot]
+        untrace!(chain, slot, guard)
+        slot_tail = slot.memo::TailMemo
         @assert length(slot_tail) == 1
-        untrace!(chain, fill, slot_tail[1], tails)
+        untrace!(chain, fill, slot_tail[1])
     elseif (n ~ slot_node(node))
-        untrace!(chain, node, guard, tails)
+        untrace!(chain, node, guard)
     elseif (n ~ exit_node(base))
-        untrace!(chain, base, guard, tails)
+        untrace!(chain, base, guard)
     else
         error("failed to untrace from:\n$n\nto:\n$guard")
     end
