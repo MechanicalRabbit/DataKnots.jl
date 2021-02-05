@@ -2,6 +2,81 @@
 # Optimizing pipelines.
 #
 
+function dissect(mod::Module, scr::Symbol, ::Type{Pipeline}, @nospecialize pats::Tuple{Any,Any})
+    op_pat, args_pat = pats
+    op_ex = dissect(mod, :($scr.op), op_pat)
+    args_ex = dissect(mod, :($scr.args), args_pat)
+    :($scr isa Pipeline && $op_ex && $args_ex)
+end
+
+dissect(mod::Module, scr::Symbol, ::typeof(pass), ::Tuple{}) =
+    dissect(mod, scr, Pipeline, (pass, :([])))
+
+function dissect(mod::Module, scr::Symbol, ::typeof(chain_of), @nospecialize pats::Tuple{Any})
+    ps_pat, = pats
+    dissect(mod, scr, Pipeline, (chain_of, :([$ps_pat::$(Vector{Pipeline})])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(with_column), @nospecialize pats::Tuple{Any,Any})
+    lbl_pat, p_pat = pats
+    dissect(mod, scr, Pipeline, (with_column, :([$lbl_pat::$(Union{Int,Symbol}), $p_pat::$Pipeline])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(with_elements), @nospecialize pats::Tuple{Any})
+    p_pat, = pats
+    dissect(mod, scr, Pipeline, (with_elements, :([$p_pat::$Pipeline])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(tuple_of), @nospecialize pats::Tuple{Any,Any})
+    lbls_pat, ps_pat, = pats
+    dissect(mod, scr, Pipeline, (tuple_of, :([$lbls_pat::$(Vector{Symbol}), $ps_pat::$(Union{Vector{Pipeline},Int})])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(filler), @nospecialize pats::Tuple{Any})
+    val_pat, = pats
+    dissect(mod, scr, Pipeline, (filler, :([$val_pat])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(block_filler), @nospecialize pats::Tuple{Any,Any})
+    blk_pat, card_pat = pats
+    dissect(mod, scr, Pipeline, (block_filler, :([$blk_pat, $card_pat::Cardinality])))
+end
+
+dissect(mod::Module, scr::Symbol, ::typeof(null_filler), ::Tuple{}) =
+    dissect(mod, scr, Pipeline, (null_filler, :([])))
+
+function dissect(mod::Module, scr::Symbol, ::typeof(column), @nospecialize pats::Tuple{Any})
+    lbl_pat, = pats
+    dissect(mod, scr, Pipeline, (column, :([$lbl_pat::$(Union{Int,Symbol})])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(lift), @nospecialize pats::Tuple{Any})
+    f_pat, = pats
+    dissect(mod, scr, Pipeline, (lift, :([$f_pat])))
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(tuple_lift), @nospecialize pats::Tuple{Any})
+    f_pat, = pats
+    dissect(mod, scr, Pipeline, (tuple_lift, :([$f_pat])))
+end
+
+dissect(mod::Module, scr::Symbol, ::typeof(wrap), ::Tuple{}) =
+    dissect(mod, scr, Pipeline, (wrap, :([])))
+
+dissect(mod::Module, scr::Symbol, ::typeof(flatten), ::Tuple{}) =
+    dissect(mod, scr, Pipeline, (flatten, :([])))
+
+function dissect(mod::Module, scr::Symbol, ::typeof(distribute), @nospecialize pats::Tuple{Any})
+    lbl_pat, = pats
+    dissect(mod, scr, Pipeline, (distribute, :([$lbl_pat::$(Union{Int,Symbol})])))
+end
+
+dissect(mod::Module, scr::Symbol, ::typeof(sieve_by), ::Tuple{}) =
+    dissect(mod, scr, Pipeline, (sieve_by, :([])))
+
+dissect(mod::Module, scr::Symbol, ::typeof(block_any), ::Tuple{}) =
+    dissect(mod, scr, Pipeline, (block_any, :([])))
+
 struct RewriteMemo
     op_map::Dict{Any,Dict{Vector{Any},Pipeline}}
 
@@ -17,13 +92,13 @@ function (memo::RewriteMemo)(p::Pipeline)
     end
 end
 
-function (memo::RewriteMemo)(ps::Vector{Pipeline})
+function (memo::RewriteMemo)(ps::AbstractVector{Pipeline})
     if isempty(ps)
         memo(pass())
     elseif length(ps) == 1
         memo(ps[1])
     else
-        memo(chain_of(ps))
+        memo(chain_of(ps isa Vector{Pipeline} ? ps : collect(Pipeline, ps)))
     end
 end
 
@@ -42,7 +117,7 @@ function rewrite_all(p::Pipeline; memo=RewriteMemo())::Pipeline
 end
 
 @inline function rewrite_with(f, memo, p)
-    @match_pipeline if (p ~ chain_of(qs))
+    @dissect if (p ~ chain_of(qs))
         chain = Pipeline[]
         for q in qs
             append!(chain, unchain(f(memo, q)))
@@ -63,14 +138,14 @@ function rewrite_simplify(p::Pipeline; memo=RewriteMemo())::Pipeline
 end
 
 function rewrite_simplify(memo::RewriteMemo, p::Pipeline)
-    @match_pipeline if (p ~ chain_of(_))
+    @dissect if (p ~ chain_of(_))
         chain = Pipeline[]
         simplify_and_push!(memo, chain, p)
         return memo(chain)
     end
     p′ = rewrite_with(rewrite_simplify, memo, p)
     # with_column(N, pass()) => pass()
-    @match_pipeline if (p′ ~ with_column(_, pass()))
+    @dissect if (p′ ~ with_column(_, pass()))
         p′ =  memo(pass())
     # with_elements(pass()) => pass()
     elseif (p′ ~ with_elements(pass()))
@@ -86,7 +161,7 @@ rewrite_simplify(memo::RewriteMemo, @nospecialize other) = other
 
 function simplify_and_push!(memo::RewriteMemo, chain::Vector{Pipeline}, p::Pipeline)
     top = !isempty(chain) ? chain[end] : memo(pass())
-    @match_pipeline if (p ~ pass())
+    @dissect if (p ~ pass())
     elseif (p ~ chain_of(qs))
         for q in qs
             if (q ~ chain_of(_))
@@ -243,7 +318,7 @@ function rewrite_common(p::Pipeline; memo=RewriteMemo())::Pipeline
 end
 
 function rewrite_common(memo::RewriteMemo, p::Pipeline)
-    @match_pipeline if (p ~ tuple_of(_, _))
+    @dissect if (p ~ tuple_of(_, _))
         chain = Pipeline[]
         l, r = pull_common(memo, p)
         append!(chain, unchain(rewrite_common(memo, l)))
@@ -262,7 +337,7 @@ rewrite_common(memo::RewriteMemo, @nospecialize other) = other
 function pull_common(memo::RewriteMemo, p::Pipeline)
     l = memo(pass())
     r = p
-    @match_pipeline if (p ~ tuple_of(lbls, cols)) && length(cols) > 1
+    @dissect if (p ~ tuple_of(lbls, cols)) && length(cols) > 1
         i = l
         deps = Dict{Pipeline,Vector{Pipeline}}(i => Pipeline[], p => cols)
         seen = Set{Pipeline}()
@@ -325,7 +400,7 @@ function pull_common(memo::RewriteMemo, p::Pipeline)
 end
 
 function collect_parts!(memo, parts, deps, i, p)
-    @match_pipeline if (p ~ pass())
+    @dissect if (p ~ pass())
         o = i
     elseif (p ~ chain_of(qs))
         o = i
@@ -372,7 +447,7 @@ function replace_parts(memo, repl, i, p)
     if o in keys(repl)
         return repl[o]
     end
-    @match_pipeline if (p ~ chain_of(qs))
+    @dissect if (p ~ chain_of(qs))
         chain′ = unchain(i)
         append!(chain′, qs)
         for k in reverse(eachindex(qs))
@@ -432,7 +507,7 @@ end
 
 function linearize(p::Pipeline)::Vector{Pipeline}
     retval = Pipeline[]
-    @match_pipeline if (p ~ pass())
+    @dissect if (p ~ pass())
         nothing
     elseif (p ~ chain_of(qs))
         for q in qs
@@ -462,7 +537,7 @@ end
 function delinearize!(vp::Vector{Pipeline})::Pipeline
     chain = Vector{Pipeline}()
     while length(vp) > 0
-        @match_pipeline if (vp[1] ~ with_elements(arg))
+        @dissect if (vp[1] ~ with_elements(arg))
             push!(chain, delinearize_block!(vp))
         elseif (vp[1] ~ tuple_of(lbls, width::Int))
             push!(chain, delinearize_tuple!(vp, lbls, width))
@@ -475,7 +550,7 @@ end
 
 function delinearize_block!(vp::Vector{Pipeline})::Pipeline
     chain = Vector{Pipeline}()
-    @match_pipeline while (vp ~ [with_elements(p), _...])
+    @dissect while (vp ~ [with_elements(p), _...])
         popfirst!(vp)
         push!(chain, p)
     end
@@ -485,7 +560,7 @@ end
 function delinearize_tuple!(vp::Vector{Pipeline}, lbls, width)::Pipeline
     popfirst!(vp) # drop the `tuple_of`
     slots = [Pipeline[] for x in 1:width]
-    @match_pipeline while (vp ~ [with_column(idx, p), _...])
+    @dissect while (vp ~ [with_column(idx, p), _...])
         popfirst!(vp)
         if !isa(idx, Int)
             idx = findfirst(==(idx), lbls)
@@ -623,7 +698,7 @@ function sequence(root::DataNode)
     reverse!(seq)
 end
 
-function quoteof(n::DataNode)
+function quoteof(f, n::DataNode)
     seq = sequence(get_root(n))
     vars = Dict{DataNode,Symbol}()
     exs = Expr[]
@@ -653,130 +728,69 @@ function quoteof(n::DataNode)
         exs[1]
     else
         lets = [Expr(:(=), vars[node], exs[k]) for (k, node) in enumerate(seq)]
-        Expr(:let, Expr(:block, lets...), vars[n])
+        Expr(:let, Expr(:block, lets...), f(vars))
     end
 end
 
-macro match_node(ex)
-    return esc(_match_node(ex))
-end
-
-function _match_node(@nospecialize ex)
-    if Meta.isexpr(ex, :call, 3) && ex.args[1] == :~
-        val = gensym()
-        p = ex.args[2]
-        pat = ex.args[3]
-        cs = Expr[]
-        as = Expr[]
-        _match_node!(val, pat, cs, as)
-        c = foldl((l, r) -> :($l && $r), cs)
-        quote
-            local $val = $p
-            if $c
-                $(as...)
-                true
-            else
-                false
-            end
-        end
-    elseif ex isa Expr
-        Expr(ex.head, Any[_match_node(arg) for arg in ex.args]...)
-    else
-        ex
+function quoteof(n::DataNode)
+    quoteof(n) do vars
+        vars[n]
     end
 end
 
-function _match_node!(val, pat, cs, as)
-    if pat === :_
-        return
-    elseif pat isa Symbol
-        push!(as, :(local $pat = $val))
-        return
-    elseif Meta.isexpr(pat, :(::), 2)
-        ty = pat.args[2]
-        pat = pat.args[1]
-        push!(cs, :($val isa $ty))
-        _match_node!(val, pat, cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :~
-        _match_node!(val, pat.args[2], cs, as)
-        _match_node!(val, pat.args[3], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :root_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.ROOT_NODE))
-        _match_node!(:($val.shp), pat.args[2], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :pipe_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.PIPE_NODE))
-        _match_pipeline!(:($val.more::$DataKnots.Pipeline), pat.args[2], cs, as)
-        _match_node!(:($val.refs[1]), pat.args[3], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :head_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.HEAD_NODE))
-        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :part_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.PART_NODE))
-        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
-        _match_node!(:($val.more::Int), pat.args[3], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :join_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.JOIN_NODE))
-        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
-        _match_node!(:($val.refs[2:end]), pat.args[3], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :slot_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.SLOT_NODE))
-        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 3) && pat.args[1] === :fill_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.FILL_NODE))
-        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
-        _match_node!(:($val.refs[2]), pat.args[3], cs, as)
-        return
-    elseif Meta.isexpr(pat, :call, 2) && pat.args[1] === :exit_node
-        push!(cs, :($val isa $DataKnots.DataNode))
-        push!(cs, :($val.kind == $DataKnots.EXIT_NODE))
-        _match_node!(:($val.refs[1]), pat.args[2], cs, as)
-        return
-    elseif Meta.isexpr(pat, :vect)
-        push!(cs, :($val isa Vector{$DataKnots.DataNode}))
-        _match_node!(val, pat.args, cs, as)
-        return
-    end
-    error("expected a node pattern; got $(repr(pat))")
+function dissect(mod::Module, scr::Symbol, ::typeof(root_node), @nospecialize pats::Tuple{Any})
+    shp_pat, = pats
+    shp_ex = dissect(mod, :($scr.shp), shp_pat)
+    :($scr isa DataNode && $scr.kind == $ROOT_NODE && $shp_ex)
 end
 
-function _match_node!(val, pats::Vector{Any}, cs, as)
-    minlen = 0
-    varlen = false
-    for pat in pats
-        if Meta.isexpr(pat, :..., 1)
-            !varlen || error("duplicate vararg pattern in $(repr(:([$pat])))")
-            varlen = true
-        else
-            minlen += 1
-        end
-    end
-    push!(cs, !varlen ? :(length($val) == $minlen) : :(length($val) >= $minlen))
-    nearend = false
-    for (k, pat) in enumerate(pats)
-        if Meta.isexpr(pat, :..., 1)
-            pat = pat.args[1]
-            k = Expr(:call, :(:), k, Expr(:call, :-, :end, minlen-k+1))
-            nearend = true
-        elseif nearend
-            k = Expr(:call, :-, :end, minlen-k+1)
-        end
-        _match_node!(:($val[$k]), pat, cs, as)
-    end
+function dissect(mod::Module, scr::Symbol, ::typeof(pipe_node), @nospecialize pats::Tuple{Any,Any})
+    p_pat, input_pat = pats
+    p_ex = dissect(mod, :($scr.more::$Pipeline), p_pat)
+    input_ex = dissect(mod, :($scr.refs[1]), input_pat)
+    :($scr isa DataNode && $scr.kind == $PIPE_NODE && $p_ex && $input_ex)
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(head_node), @nospecialize pats::Tuple{Any})
+    base_pat, = pats
+    base_ex = dissect(mod, :($scr.refs[1]), base_pat)
+    :($scr isa DataNode && $scr.kind == $HEAD_NODE && $base_ex)
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(slot_node), @nospecialize pats::Tuple{Any})
+    base_pat, = pats
+    base_ex = dissect(mod, :($scr.refs[1]), base_pat)
+    :($scr isa DataNode && $scr.kind == $SLOT_NODE && $base_ex)
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(part_node), @nospecialize pats::Tuple{Any,Any})
+    base_pat, idx_pat = pats
+    base_ex = dissect(mod, :($scr.refs[1]), base_pat)
+    idx_ex = dissect(mod, :($scr.more::$Int), idx_pat)
+    :($scr isa DataNode && $scr.kind == $PART_NODE && $base_ex && $idx_ex)
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(join_node), @nospecialize pats::Tuple{Any,Any})
+    head_pat, parts_pat = pats
+    refs_pat =
+        Meta.isexpr(parts_pat, :vect) ?
+            :([$head_pat, $(parts_pat.args...)]) :
+            :([$head_pat, $parts_pat...])
+    refs_ex = dissect(mod, :($scr.refs), refs_pat)
+    :($scr isa DataNode && $scr.kind == $JOIN_NODE && $refs_ex)
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(fill_node), @nospecialize pats::Tuple{Any,Any})
+    slot_pat, fill_pat = pats
+    slot_ex = dissect(mod, :($scr.refs[1]), slot_pat)
+    fill_ex = dissect(mod, :($scr.refs[2]), fill_pat)
+    :($scr isa DataNode && $scr.kind == $FILL_NODE && $slot_ex && $fill_ex)
+end
+
+function dissect(mod::Module, scr::Symbol, ::typeof(exit_node), @nospecialize pats::Tuple{Any})
+    base_pat, = pats
+    base_ex = dissect(mod, :($scr.refs[1]), base_pat)
+    :($scr isa DataNode && $scr.kind == $EXIT_NODE && $base_ex)
 end
 
 function garbage!(n::DataNode)
@@ -920,7 +934,7 @@ function trace(p::Pipeline)
 end
 
 function trace(p::Pipeline, i::DataNode)
-    @match_pipeline if (p ~ chain_of(qs))
+    @dissect if (p ~ chain_of(qs))
         o = i
         for q in qs
             o = trace(q, o)
@@ -987,7 +1001,7 @@ end
 
 function tails!(n)
     forward_pass(n) do n
-        @match_node if (n ~ root_node(_))
+        @dissect if (n ~ root_node(_))
             n.memo = TailMemo()
         elseif (n ~ pipe_node(p, input))
             input_tail = input.memo::TailMemo
@@ -1019,8 +1033,8 @@ function tails!(n)
             n.memo = tail′
         elseif (n ~ slot_node(base))
             n.memo = Tuple{DataNode,Bool}[(base, true)]
-        elseif (n ~ fill_node(slot, fill))
-            n.memo = fill.memo
+        elseif (n ~ fill_node(slot, fill_))
+            n.memo = fill_.memo
         elseif (n ~ exit_node(base))
             n.memo = nothing
         else
@@ -1036,7 +1050,7 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
     else
         n.kind != PART_NODE || n.refs[1] !== guard_node || return
     end
-    @match_node if (n ~ pipe_node(p, input))
+    @dissect if (n ~ pipe_node(p, input))
         untrace!(chain, input, guard)
         push!(chain, p)
     elseif (n ~ join_node(head, parts))
@@ -1057,11 +1071,11 @@ function untrace!(chain::Vector{Pipeline}, n::DataNode, guard)
         untrace!(chain, node, guard)
         shp = deannotate(node.shp)
         push!(chain, extract_branch(shp, j))
-    elseif (n ~ fill_node(slot, fill))
+    elseif (n ~ fill_node(slot, fill_))
         untrace!(chain, slot, guard)
         slot_tail = slot.memo::TailMemo
         @assert length(slot_tail) == 1
-        untrace!(chain, fill, slot_tail[1])
+        untrace!(chain, fill_, slot_tail[1])
     elseif (n ~ slot_node(node))
         untrace!(chain, node, guard)
     elseif (n ~ exit_node(base))
@@ -1134,7 +1148,7 @@ rewrite_passes(::Val{(:DataKnots,)}) =
 function rewrite_passes(node::DataNode)
     mods = Set{Module}()
     forward_pass(node, mods) do node, mods
-        @match_node if (node ~ pipe_node(p, _))
+        @dissect if (node ~ pipe_node(p, _))
             push!(mods, parentmodule(p.op))
         end
     end
@@ -1158,7 +1172,7 @@ end
 
 function rewrite_simplify!(node::DataNode)
     forward_pass(node) do n
-        @match_node begin
+        @dissect begin
             # Tighten a join loop.
             if (n ~ join_node(head, parts))
                 if (head ~ head_node(base))
@@ -1175,8 +1189,8 @@ function rewrite_simplify!(node::DataNode)
                 end
             end
             # Tighten a fill loop.
-            if (n ~ fill_node(slot_node(_), fill))
-                return rewrite!(n => fill)
+            if (n ~ fill_node(slot_node(_), fill_))
+                return rewrite!(n => fill_)
             end
             # Eliminate a join.
             if (n ~ head_node(join_node(head, _)))

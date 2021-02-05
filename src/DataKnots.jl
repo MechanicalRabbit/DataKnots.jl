@@ -40,6 +40,7 @@ export
     Unique,
     unitknot
 
+include("dissect.jl")
 include("layouts.jl")
 include("vectors.jl")
 include("shapes.jl")
