@@ -6,7 +6,7 @@ combinators.*
 
 **Documentation** | **Build Status** | **Process**
 :---: | :---: | :---:
-[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Build Status][ci-img]][ci-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Chat on Gitter][gitter-img]][gitter-url] [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
+[![Stable Documentation][doc-rel-img]][doc-rel-url] [![Development Documentation][doc-dev-img]][doc-dev-url] | [![Build Status][ci-img]][ci-url] [![Code Coverage Status][codecov-img]][codecov-url] | [![Chat on Zulip][chat-img]][chat-url] [![Open Issues][issues-img]][issues-url] [![MIT License][license-img]][license-url]
 
 DataKnots is designed to let data analysts and other
 accidental programmers query and analyze complex
@@ -112,8 +112,8 @@ significant advantages over the state of the art:
 At this time, while we welcome feedback and contributions,
 DataKnots is not yet usable for general audiences.
 
-Our development chat is currently hosted on Gitter:
-https://gitter.im/rbt-lang/rbt-proto
+Our development chat is currently hosted on Zulip:
+https://julialang.zulipchat.com/#narrow/stream/247484-dataknots.2Ejl
 
 Current documentation could be found at:
 https://mechanicalrabbit.github.io/DataKnots.jl/stable/
@@ -131,6 +131,6 @@ https://mechanicalrabbit.github.io/DataKnots.jl/stable/
 [doc-rel-url]: https://mechanicalrabbit.github.io/DataKnots.jl/stable/
 [license-img]: https://img.shields.io/badge/license-MIT-brightgreen.svg
 [license-url]: https://raw.githubusercontent.com/MechanicalRabbit/DataKnots.jl/master/LICENSE.md
-[gitter-img]: https://img.shields.io/gitter/room/rbt-lang/rbt-proto.svg?color=%23753a88
-[gitter-url]: https://gitter.im/rbt-lang/rbt-proto/
+[chat-img]: https://img.shields.io/badge/chat-julia--zulip-blue
+[chat-url]: https://julialang.zulipchat.com/#narrow/stream/247484-dataknots.2Ejl
 [Query Combinators]: https://arxiv.org/abs/1702.08409
