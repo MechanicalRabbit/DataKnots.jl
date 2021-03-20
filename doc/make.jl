@@ -40,5 +40,5 @@ makedocs(
     modules = [DataKnots])
 
 deploydocs(
-    repo = "github.com/rbt-lang/DataKnots.jl.git",
+    repo = "github.com/MechanicalRabbit/DataKnots.jl.git",
 )

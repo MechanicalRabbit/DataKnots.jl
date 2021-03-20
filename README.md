@@ -116,21 +116,21 @@ Our development chat is currently hosted on Gitter:
 https://gitter.im/rbt-lang/rbt-proto
 
 Current documentation could be found at:
-https://rbt-lang.github.io/DataKnots.jl/stable/
+https://mechanicalrabbit.github.io/DataKnots.jl/stable/
 
 
-[ci-img]: https://github.com/rbt-lang/DataKnots.jl/workflows/CI/badge.svg
-[ci-url]: https://github.com/rbt-lang/DataKnots.jl/actions?query=workflow%3ACI+branch%3Amaster
-[codecov-img]: https://codecov.io/gh/rbt-lang/DataKnots.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/rbt-lang/DataKnots.jl
-[issues-img]: https://img.shields.io/github/issues/rbt-lang/DataKnots.jl.svg
-[issues-url]: https://github.com/rbt-lang/DataKnots.jl/issues
+[ci-img]: https://github.com/MechanicalRabbit/DataKnots.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/MechanicalRabbit/DataKnots.jl/actions?query=workflow%3ACI+branch%3Amaster
+[codecov-img]: https://codecov.io/gh/MechanicalRabbit/DataKnots.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/MechanicalRabbit/DataKnots.jl
+[issues-img]: https://img.shields.io/github/issues/MechanicalRabbit/DataKnots.jl.svg
+[issues-url]: https://github.com/MechanicalRabbit/DataKnots.jl/issues
 [doc-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [doc-rel-img]: https://img.shields.io/badge/docs-stable-green.svg
-[doc-dev-url]: https://rbt-lang.github.io/DataKnots.jl/dev/
-[doc-rel-url]: https://rbt-lang.github.io/DataKnots.jl/stable/
+[doc-dev-url]: https://mechanicalrabbit.github.io/DataKnots.jl/dev/
+[doc-rel-url]: https://mechanicalrabbit.github.io/DataKnots.jl/stable/
 [license-img]: https://img.shields.io/badge/license-MIT-brightgreen.svg
-[license-url]: https://raw.githubusercontent.com/rbt-lang/DataKnots.jl/master/LICENSE.md
+[license-url]: https://raw.githubusercontent.com/MechanicalRabbit/DataKnots.jl/master/LICENSE.md
 [gitter-img]: https://img.shields.io/gitter/room/rbt-lang/rbt-proto.svg?color=%23753a88
 [gitter-url]: https://gitter.im/rbt-lang/rbt-proto/
 [Query Combinators]: https://arxiv.org/abs/1702.08409
