@@ -34,7 +34,8 @@ going into all of the details.
 
 ```@contents
 Pages = [
-    "highlypaid.md"
+    "highlypaid.md",
+    "queryjson.md"
 ]
 Depth=2
 ```
