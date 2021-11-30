@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Who is Highly Paid? · DataKnots.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">DataKnots.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../overview/">Queries for Data Analysts</a></li><li><span class="tocitem">Tutorials</span><ul><li class="is-active"><a class="tocitem" href>Who is Highly Paid?</a><ul class="internal"><li><a class="tocitem" href="#Problem-Statement"><span>Problem Statement</span></a></li><li><a class="tocitem" href="#Basic-Queries"><span>Basic Queries</span></a></li><li><a class="tocitem" href="#What-is-a-DataKnot?"><span>What is a DataKnot?</span></a></li><li><a class="tocitem" href="#Hierarchical-Transformations"><span>Hierarchical Transformations</span></a></li><li><a class="tocitem" href="#Query-Context"><span>Query Context</span></a></li></ul></li></ul></li><li><span class="tocitem">Reference Manual</span><ul><li><a class="tocitem" href="../primer/">Thinking in Queries</a></li><li><a class="tocitem" href="../tutorial/">Embedded Query Interface</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul></li><li><span class="tocitem">Implementer&#39;s Guide</span><ul><li><a class="tocitem" href="../vectors/">Column Store</a></li><li><a class="tocitem" href="../pipelines/">Pipeline Algebra</a></li><li><a class="tocitem" href="../shapes/">Shapes and Signatures</a></li><li><a class="tocitem" href="../knots/">Data Knots</a></li><li><a class="tocitem" href="../queries/">Query Algebra</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Who is Highly Paid?</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Who is Highly Paid?</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/master/doc/src/highlypaid.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Who-is-Highly-Paid?"><a class="docs-heading-anchor" href="#Who-is-Highly-Paid?">Who is Highly Paid?</a><a id="Who-is-Highly-Paid?-1"></a><a class="docs-heading-anchor-permalink" href="#Who-is-Highly-Paid?" title="Permalink"></a></h1><p>This tutorial is intended for new users of DataKnots. It does not give an exhaustive account of all the features, just the ones you are likely to use right away.</p><h2 id="Problem-Statement"><a class="docs-heading-anchor" href="#Problem-Statement">Problem Statement</a><a id="Problem-Statement-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Statement" title="Permalink"></a></h2><p>Let&#39;s discuss a particular inquiry: <em>Which City of Chicago employees have salary higher than the average for their department?</em></p><p>We use a tiny selection of public data from the City of Chicago. This dataset includes employees and their annual salary.</p><pre><code class="language-julia">using CSV
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Who is Highly Paid? · DataKnots.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">DataKnots.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../overview/">Queries for Data Analysts</a></li><li><span class="tocitem">Tutorials</span><ul><li class="is-active"><a class="tocitem" href>Who is Highly Paid?</a><ul class="internal"><li><a class="tocitem" href="#Problem-Statement"><span>Problem Statement</span></a></li><li><a class="tocitem" href="#Basic-Queries"><span>Basic Queries</span></a></li><li><a class="tocitem" href="#What-is-a-DataKnot?"><span>What is a DataKnot?</span></a></li><li><a class="tocitem" href="#Hierarchical-Transformations"><span>Hierarchical Transformations</span></a></li><li><a class="tocitem" href="#Query-Context"><span>Query Context</span></a></li></ul></li></ul></li><li><span class="tocitem">Reference Manual</span><ul><li><a class="tocitem" href="../primer/">Thinking in Queries</a></li><li><a class="tocitem" href="../tutorial/">Embedded Query Interface</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul></li><li><span class="tocitem">Implementer&#39;s Guide</span><ul><li><a class="tocitem" href="../vectors/">Column Store</a></li><li><a class="tocitem" href="../pipelines/">Pipeline Algebra</a></li><li><a class="tocitem" href="../shapes/">Shapes and Signatures</a></li><li><a class="tocitem" href="../knots/">Data Knots</a></li><li><a class="tocitem" href="../queries/">Query Algebra</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Who is Highly Paid?</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Who is Highly Paid?</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/master/doc/src/highlypaid.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Who-is-Highly-Paid?"><a class="docs-heading-anchor" href="#Who-is-Highly-Paid?">Who is Highly Paid?</a><a id="Who-is-Highly-Paid?-1"></a><a class="docs-heading-anchor-permalink" href="#Who-is-Highly-Paid?" title="Permalink"></a></h1><p>This tutorial is intended for new users of DataKnots. It does not give an exhaustive account of all the features, just the ones you are likely to use right away.</p><h2 id="Problem-Statement"><a class="docs-heading-anchor" href="#Problem-Statement">Problem Statement</a><a id="Problem-Statement-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Statement" title="Permalink"></a></h2><p>Let&#39;s discuss a particular inquiry: <em>Which City of Chicago employees have salary higher than the average for their department?</em></p><p>We use a tiny selection of public data from the City of Chicago. This dataset includes employees and their annual salary.</p><pre><code class="language-julia hljs">using CSV
 
 employee_csv = &quot;&quot;&quot;
     name,department,position,salary
@@ -9,9 +9,9 @@ employee_csv = &quot;&quot;&quot;
     &quot;JEFFERY A&quot;,&quot;POLICE&quot;,&quot;SERGEANT&quot;,101442
     &quot;NANCY A&quot;,&quot;POLICE&quot;,&quot;POLICE OFFICER&quot;,80016
     &quot;ROBERT K&quot;,&quot;FIRE&quot;,&quot;FIRE FIGHTER-EMT&quot;,103272
-    &quot;&quot;&quot; |&gt; IOBuffer |&gt; CSV.File</code></pre><p>To query this employee data, we convert it to a <code>DataKnot</code>, or just <em>knot</em>. In the <code>DataKnot</code> constructor, <code>employee_csv</code> is provided a label of <code>employee</code>.</p><pre><code class="language-julia">using DataKnots
+    &quot;&quot;&quot; |&gt; IOBuffer |&gt; CSV.File</code></pre><p>To query this employee data, we convert it to a <code>DataKnot</code>, or just <em>knot</em>. In the <code>DataKnot</code> constructor, <code>employee_csv</code> is provided a label of <code>employee</code>.</p><pre><code class="language-julia hljs">using DataKnots
 
-chicago = DataKnot(:employee =&gt; employee_csv)</code></pre><p>Then, to answer this inquiry, we query <code>chicago</code> as follows.</p><pre><code class="language-julia">using Statistics: mean
+chicago = DataKnot(:employee =&gt; employee_csv)</code></pre><p>Then, to answer this inquiry, we query <code>chicago</code> as follows.</p><pre><code class="language-julia hljs">using Statistics: mean
 
 @query chicago begin
     employee
@@ -27,7 +27,7 @@ end
 1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
 2 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
 3 │ JEFFERY A  POLICE      SERGEANT           101442 │
-=#</code></pre><p>This overview will proceed by incrementally reconstructing this query, showing how an analyst could explore data and independently arrive at the answer above.</p><h2 id="Basic-Queries"><a class="docs-heading-anchor" href="#Basic-Queries">Basic Queries</a><a id="Basic-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Queries" title="Permalink"></a></h2><p>DataKnots implements an algebra of queries. This algebra&#39;s elements, or <em>queries</em>, represent relationships among class entities and datatypes. Nouns, such as <code>employee</code>, <code>department</code>, and <code>salary</code>, are <em>query primitives</em>.</p><p>Let&#39;s query the <code>chicago</code> knot to list <code>employee</code> records.</p><pre><code class="language-julia">@query chicago employee
+=#</code></pre><p>This overview will proceed by incrementally reconstructing this query, showing how an analyst could explore data and independently arrive at the answer above.</p><h2 id="Basic-Queries"><a class="docs-heading-anchor" href="#Basic-Queries">Basic Queries</a><a id="Basic-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Basic-Queries" title="Permalink"></a></h2><p>DataKnots implements an algebra of queries. This algebra&#39;s elements, or <em>queries</em>, represent relationships among class entities and datatypes. Nouns, such as <code>employee</code>, <code>department</code>, and <code>salary</code>, are <em>query primitives</em>.</p><p>Let&#39;s query the <code>chicago</code> knot to list <code>employee</code> records.</p><pre><code class="language-julia hljs">@query chicago employee
 #=&gt;
   │ employee                                         │
   │ name       department  position           salary │
@@ -38,11 +38,11 @@ end
 4 │ JEFFERY A  POLICE      SERGEANT           101442 │
 5 │ NANCY A    POLICE      POLICE OFFICER      80016 │
 6 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
-=#</code></pre><p>Verbs, such as <code>group</code>, <code>keep</code>, <code>mean</code>, and <code>filter</code> are <em>query combinators</em>. Combinators build new queries from existing ones. For example, <code>count</code> is a combinator.</p><pre><code class="language-julia">@query chicago count(employee)
+=#</code></pre><p>Verbs, such as <code>group</code>, <code>keep</code>, <code>mean</code>, and <code>filter</code> are <em>query combinators</em>. Combinators build new queries from existing ones. For example, <code>count</code> is a combinator.</p><pre><code class="language-julia hljs">@query chicago count(employee)
 #=&gt;
 ┼───┼
 │ 6 │
-=#</code></pre><p>Query <em>composition</em> (<code>.</code>) is also a combinator, it builds a query that applies the output of one query as the input to another. The query <code>employee.name</code> lists all employee names.</p><pre><code class="language-julia">@query chicago employee.name
+=#</code></pre><p>Query <em>composition</em> (<code>.</code>) is also a combinator, it builds a query that applies the output of one query as the input to another. The query <code>employee.name</code> lists all employee names.</p><pre><code class="language-julia hljs">@query chicago employee.name
 #=&gt;
   │ name      │
 ──┼───────────┼
@@ -52,10 +52,10 @@ end
 4 │ JEFFERY A │
 5 │ NANCY A   │
 6 │ ROBERT K  │
-=#</code></pre><p>Within a multi-line macro block, each individual statement is composed with its predecessor. Hence, we could write the query above without the period delimiter.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>Within a multi-line macro block, each individual statement is composed with its predecessor. Hence, we could write the query above without the period delimiter.</p><pre><code class="language-julia hljs">@query chicago begin
     employee
     name
-end</code></pre><p>Often it&#39;s helpful to see the combined output from correlated queries. The <em>record</em> combinator, which is delimited with a pair of curly braces <code>{}</code>, is used to build queries that produce parallel results.</p><pre><code class="language-julia">@query chicago employee{name, salary}
+end</code></pre><p>Often it&#39;s helpful to see the combined output from correlated queries. The <em>record</em> combinator, which is delimited with a pair of curly braces <code>{}</code>, is used to build queries that produce parallel results.</p><pre><code class="language-julia hljs">@query chicago employee{name, salary}
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -66,7 +66,7 @@ end</code></pre><p>Often it&#39;s helpful to see the combined output from correl
 4 │ JEFFERY A  101442 │
 5 │ NANCY A     80016 │
 6 │ ROBERT K   103272 │
-=#</code></pre><p>Within a <code>@query</code> macro, constants, such as <code>100_000</code> are treated as query primitives. These constant queries produce the same output regardless of the input they receive.</p><pre><code class="language-julia">@query chicago employee{name, salary, threshold =&gt; 100_000}
+=#</code></pre><p>Within a <code>@query</code> macro, constants, such as <code>100_000</code> are treated as query primitives. These constant queries produce the same output regardless of the input they receive.</p><pre><code class="language-julia hljs">@query chicago employee{name, salary, threshold =&gt; 100_000}
 #=&gt;
   │ employee                     │
   │ name       salary  threshold │
@@ -77,7 +77,7 @@ end</code></pre><p>Often it&#39;s helpful to see the combined output from correl
 4 │ JEFFERY A  101442     100000 │
 5 │ NANCY A     80016     100000 │
 6 │ ROBERT K   103272     100000 │
-=#</code></pre><p>Functions, such as <code>titlecase</code>, and operators, such as greater-than (<code>&gt;</code>), are treated as query combinators; that is, they are used to build queries from component queries.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>Functions, such as <code>titlecase</code>, and operators, such as greater-than (<code>&gt;</code>), are treated as query combinators; that is, they are used to build queries from component queries.</p><pre><code class="language-julia hljs">@query chicago begin
     employee
     {name =&gt; titlecase(name), highly_paid =&gt; salary &gt; 100_000}
 end
@@ -91,7 +91,7 @@ end
 4 │ Jeffery A         true │
 5 │ Nancy A          false │
 6 │ Robert K          true │
-=#</code></pre><p>Since <code>salary &gt; 100_000</code> is a predicate query, we can use the <code>filter</code> combinator to build the query <code>filter(salary &gt; 100_000)</code>.</p><pre><code class="language-julia">@query chicago employee.filter(salary &gt; 100_000)
+=#</code></pre><p>Since <code>salary &gt; 100_000</code> is a predicate query, we can use the <code>filter</code> combinator to build the query <code>filter(salary &gt; 100_000)</code>.</p><pre><code class="language-julia hljs">@query chicago employee.filter(salary &gt; 100_000)
 #=&gt;
   │ employee                                         │
   │ name       department  position           salary │
@@ -99,7 +99,7 @@ end
 1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
 2 │ JEFFERY A  POLICE      SERGEANT           101442 │
 3 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
-=#</code></pre><p>In this section, we have built a query that produces highly-compensated employees. More broadly, we&#39;ve demonstrated how an algebra of queries permits us to combine previously proven queries in an intuitive way.</p><p>Before moving on to the original inquiry, we need to discuss how queries see their input.</p><h2 id="What-is-a-DataKnot?"><a class="docs-heading-anchor" href="#What-is-a-DataKnot?">What is a DataKnot?</a><a id="What-is-a-DataKnot?-1"></a><a class="docs-heading-anchor-permalink" href="#What-is-a-DataKnot?" title="Permalink"></a></h2><p>Input and output of queries are serialized as <code>DataKnot</code> objects. A DataKnot is a container that stores a hierarchy of labeled elements, where each element is either a scalar value, such as an integer or a string, or a collection of nested elements.</p><p>Recall the knot produced by the query <code>employee{name, salary}</code>.</p><pre><code class="language-julia">@query chicago employee{name, salary}
+=#</code></pre><p>In this section, we have built a query that produces highly-compensated employees. More broadly, we&#39;ve demonstrated how an algebra of queries permits us to combine previously proven queries in an intuitive way.</p><p>Before moving on to the original inquiry, we need to discuss how queries see their input.</p><h2 id="What-is-a-DataKnot?"><a class="docs-heading-anchor" href="#What-is-a-DataKnot?">What is a DataKnot?</a><a id="What-is-a-DataKnot?-1"></a><a class="docs-heading-anchor-permalink" href="#What-is-a-DataKnot?" title="Permalink"></a></h2><p>Input and output of queries are serialized as <code>DataKnot</code> objects. A DataKnot is a container that stores a hierarchy of labeled elements, where each element is either a scalar value, such as an integer or a string, or a collection of nested elements.</p><p>Recall the knot produced by the query <code>employee{name, salary}</code>.</p><pre><code class="language-julia hljs">@query chicago employee{name, salary}
 #=&gt;
   │ employee          │
   │ name       salary │
@@ -110,7 +110,7 @@ end
 4 │ JEFFERY A  101442 │
 5 │ NANCY A     80016 │
 6 │ ROBERT K   103272 │
-=#</code></pre><p>This knot contains 6 composite elements labeled <code>employee</code>, each employee having elements labeled <code>name</code> and <code>salary</code>. This element hierarchy can be visualized using show(::DataKnot, as=:flow)</p><pre><code class="language-literal">    show(as=:flow, @query chicago employee{name, salary})
+=#</code></pre><p>This knot contains 6 composite elements labeled <code>employee</code>, each employee having elements labeled <code>name</code> and <code>salary</code>. This element hierarchy can be visualized using show(::DataKnot, as=:flow)</p><pre><code class="language-literal hljs">    show(as=:flow, @query chicago employee{name, salary})
     #=&gt;
     6-element DataKnot:
       employee:
@@ -120,21 +120,21 @@ end
         name: &quot;DANIEL A&quot;
         salary: 95484
       ⋮
-    =#</code></pre><p>The structure of a DataKnot is called its <em>shape</em>. In this case, the shape describes a hierarchy with 2 levels: zero or more elements with label <code>employee</code>, each employee element containing exactly one string element labeled <code>name</code> and exactly one integer element labeled <code>salary</code>.</p><pre><code class="language-julia">show(as=:shape, @query chicago employee{name, salary})
+    =#</code></pre><p>The structure of a DataKnot is called its <em>shape</em>. In this case, the shape describes a hierarchy with 2 levels: zero or more elements with label <code>employee</code>, each employee element containing exactly one string element labeled <code>name</code> and exactly one integer element labeled <code>salary</code>.</p><pre><code class="language-julia hljs">show(as=:shape, @query chicago employee{name, salary})
 #=&gt;
 6-element DataKnot:
   employee  0:N
   ├╴name    1:1 × String
   └╴salary  1:1 × Int64
-=#</code></pre><p>Not all knots have exactly two levels. Recall the query `count(employee) which produces a single, unlabeled numeric value.</p><pre><code class="language-julia">@query chicago count(employee)
+=#</code></pre><p>Not all knots have exactly two levels. Recall the query `count(employee) which produces a single, unlabeled numeric value.</p><pre><code class="language-julia hljs">@query chicago count(employee)
 #=&gt;
 ┼───┼
 │ 6 │
-=#</code></pre><p>The shape of the knot reflects this structure. Here <code>#</code> is used in place of the missing label.</p><pre><code class="language-julia">show(as=:shape, @query chicago count(employee))
+=#</code></pre><p>The shape of the knot reflects this structure. Here <code>#</code> is used in place of the missing label.</p><pre><code class="language-julia hljs">show(as=:shape, @query chicago count(employee))
 #=&gt;
 1-element DataKnot:
   #  1:1 × Int64
-=#</code></pre><p>Our <code>chicago</code> knot has a hierarchy of <em>three</em> levels: a single unlabeled root element, branch level of <code>employee</code> elements, and a leaf level with <code>name</code>, <code>department</code>, <code>position</code>, and <code>salary</code>.</p><pre><code class="language-julia">show(as=:shape, chicago)
+=#</code></pre><p>Our <code>chicago</code> knot has a hierarchy of <em>three</em> levels: a single unlabeled root element, branch level of <code>employee</code> elements, and a leaf level with <code>name</code>, <code>department</code>, <code>position</code>, and <code>salary</code>.</p><pre><code class="language-julia hljs">show(as=:shape, chicago)
 #=&gt;
 1-element DataKnot:
   #               1:1
@@ -143,7 +143,7 @@ end
     ├╴department  String
     ├╴position    String
     └╴salary      Int64
-=#</code></pre><p>This knot could be shown as a hierarchy of elements. Observe that <code>chicago</code> has a single, unlabeled root element.</p><pre><code class="language-literal">    show(as=:flow, chicago)
+=#</code></pre><p>This knot could be shown as a hierarchy of elements. Observe that <code>chicago</code> has a single, unlabeled root element.</p><pre><code class="language-literal hljs">    show(as=:flow, chicago)
     #=&gt;
     1-element DataKnot:
       #:
@@ -158,12 +158,12 @@ end
           position: &quot;FIRE FIGHTER-EMT&quot;
           salary: 95484
         ⋮
-    =#</code></pre><p>When a knot is displayed, its hierarchy is projected to a tabular form. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: employees are delimited by a semi-colon; and nested attributes are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate labels within a pair of curly braces.</p><pre><code class="language-julia">chicago
+    =#</code></pre><p>When a knot is displayed, its hierarchy is projected to a tabular form. For <code>chicago</code>, the root element gets its own row with <code>employee</code> elements packed into a single cell: employees are delimited by a semi-colon; and nested attributes are separated by a comma. For packed cells, such as <code>employee</code>, the header shows the subordinate labels within a pair of curly braces.</p><pre><code class="language-julia hljs">chicago
 #=&gt;
 │ employee{name,department,position,salary}                           │
 ┼─────────────────────────────────────────────────────────────────────┼
 │ ANTHONY A, POLICE, POLICE OFFICER, 72510; DANIEL A, FIRE, FIRE FIGH…│
-=#</code></pre><p>In this section, we have seen how DataKnots sees data as a hierarchical flow of labeled elements. In the next section, we show how hierarchies can be collapsed and created.</p><h2 id="Hierarchical-Transformations"><a class="docs-heading-anchor" href="#Hierarchical-Transformations">Hierarchical Transformations</a><a id="Hierarchical-Transformations-1"></a><a class="docs-heading-anchor-permalink" href="#Hierarchical-Transformations" title="Permalink"></a></h2><p>DataKnots&#39; combinators implement hierarchical transformations. Summary combinators, such as <code>count</code>, build queries that collapse a subtree into a single value. For example, we can compute average salary across employees with <code>mean(employee.salary)</code>.</p><pre><code class="language-julia">using Statistics: mean
+=#</code></pre><p>In this section, we have seen how DataKnots sees data as a hierarchical flow of labeled elements. In the next section, we show how hierarchies can be collapsed and created.</p><h2 id="Hierarchical-Transformations"><a class="docs-heading-anchor" href="#Hierarchical-Transformations">Hierarchical Transformations</a><a id="Hierarchical-Transformations-1"></a><a class="docs-heading-anchor-permalink" href="#Hierarchical-Transformations" title="Permalink"></a></h2><p>DataKnots&#39; combinators implement hierarchical transformations. Summary combinators, such as <code>count</code>, build queries that collapse a subtree into a single value. For example, we can compute average salary across employees with <code>mean(employee.salary)</code>.</p><pre><code class="language-julia hljs">using Statistics: mean
 
 @query chicago begin
     mean_salary =&gt; mean(employee.salary)
@@ -172,13 +172,13 @@ end
 │ mean_salary │
 ┼─────────────┼
 │     92679.0 │
-=#</code></pre><p>The <code>group</code> combinator builds queries that introduce a new level in the hierarchy by constructing grouping records for each unique element produced by its argument. For example, we could <code>group</code> employees by <code>department</code>.</p><pre><code class="language-julia">@query chicago employee.group(department)
+=#</code></pre><p>The <code>group</code> combinator builds queries that introduce a new level in the hierarchy by constructing grouping records for each unique element produced by its argument. For example, we could <code>group</code> employees by <code>department</code>.</p><pre><code class="language-julia hljs">@query chicago employee.group(department)
 #=&gt;
   │ department  employee{name,department,position,salary}             │
 ──┼───────────────────────────────────────────────────────────────────┼
 1 │ FIRE        DANIEL A, FIRE, FIRE FIGHTER-EMT, 95484; JAMES A, FIR…│
 2 │ POLICE      ANTHONY A, POLICE, POLICE OFFICER, 72510; JEFFERY A, …│
-=#</code></pre><p>In this tabular layout, grouping records are represented as table rows, and the corresponding employees are packed into a single cell. To see the knot in an unpacked form, we can display it as an element hierarchy.</p><pre><code class="language-literal">    show(as=:shape, @query chicago employee.group(department))
+=#</code></pre><p>In this tabular layout, grouping records are represented as table rows, and the corresponding employees are packed into a single cell. To see the knot in an unpacked form, we can display it as an element hierarchy.</p><pre><code class="language-literal hljs">    show(as=:shape, @query chicago employee.group(department))
     #=&gt;
     2-element DataKnot:
       #:
@@ -207,7 +207,7 @@ end
           position: &quot;FIRE ENGINEER-EMT&quot;
           salary: 103350
         ⋮
-    =#</code></pre><p>Once constructed, grouping records can be used as any other input. In this next query, we show salaries of employees by department. Since each department in our reduced dataset happens to have 3 employees, our output has 3 salary entries.</p><pre><code class="language-julia">@query chicago begin
+    =#</code></pre><p>Once constructed, grouping records can be used as any other input. In this next query, we show salaries of employees by department. Since each department in our reduced dataset happens to have 3 employees, our output has 3 salary entries.</p><pre><code class="language-julia hljs">@query chicago begin
     employee
     group(department)
     {department, employee.salary}
@@ -217,7 +217,7 @@ end
 ──┼───────────────────────────────────┼
 1 │ FIRE        95484; 103350; 103272 │
 2 │ POLICE      72510; 101442; 80016  │
-=#</code></pre><p>We can use summary operations relative to grouping records. In this next example, <code>mean(employee.salary)</code> is computed for each department.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>We can use summary operations relative to grouping records. In this next example, <code>mean(employee.salary)</code> is computed for each department.</p><pre><code class="language-julia hljs">@query chicago begin
     employee
     group(department)
     {department, mean_salary =&gt; mean(employee.salary)}
@@ -227,11 +227,11 @@ end
 ──┼─────────────────────────┼
 1 │ FIRE           100702.0 │
 2 │ POLICE          84656.0 │
-=#</code></pre><p>In this section, we have built a query that computes the average employee compensation for each department. Further, we&#39;ve shown how <code>group</code> is used to transform hierarchies. Finally, we&#39;ve demonstrated that grouping and summary combinators are independent, yet work fluidly together.</p><p>We&#39;re close to answering our original inquiry. We&#39;ve built a query that filters employees. We&#39;ve built a query that produces average salary by department. We need only connect these queries.</p><h2 id="Query-Context"><a class="docs-heading-anchor" href="#Query-Context">Query Context</a><a id="Query-Context-1"></a><a class="docs-heading-anchor-permalink" href="#Query-Context" title="Permalink"></a></h2><p>DataKnots&#39; queries are interpreted contextually, relative to the input that they receive. We&#39;ve seen this earlier: depending where it is placed, <code>mean(employee.salary)</code> can produce either the average salary over the entire dataset, or averages within each department.</p><p>For our inquiry, we need to compare each employee&#39;s salary with the average salary. However, we cannot evaluate both <code>salary</code> and <code>mean_salary</code> in the same context.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>In this section, we have built a query that computes the average employee compensation for each department. Further, we&#39;ve shown how <code>group</code> is used to transform hierarchies. Finally, we&#39;ve demonstrated that grouping and summary combinators are independent, yet work fluidly together.</p><p>We&#39;re close to answering our original inquiry. We&#39;ve built a query that filters employees. We&#39;ve built a query that produces average salary by department. We need only connect these queries.</p><h2 id="Query-Context"><a class="docs-heading-anchor" href="#Query-Context">Query Context</a><a id="Query-Context-1"></a><a class="docs-heading-anchor-permalink" href="#Query-Context" title="Permalink"></a></h2><p>DataKnots&#39; queries are interpreted contextually, relative to the input that they receive. We&#39;ve seen this earlier: depending where it is placed, <code>mean(employee.salary)</code> can produce either the average salary over the entire dataset, or averages within each department.</p><p>For our inquiry, we need to compare each employee&#39;s salary with the average salary. However, we cannot evaluate both <code>salary</code> and <code>mean_salary</code> in the same context.</p><pre><code class="language-julia hljs">@query chicago begin
     employee
     {name, salary, mean_salary =&gt; mean(employee.salary)}
 end
-#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>To evaluate an expression in one context and then make the value available in subsequent contexts, we could use the <code>keep</code> combinator. The next query computes <code>mean_salary</code> with respect to the entire dataset, and then uses this value in the context of each employee.</p><pre><code class="language-julia">@query chicago begin
+#-&gt; ERROR: cannot find &quot;employee&quot; ⋮</code></pre><p>To evaluate an expression in one context and then make the value available in subsequent contexts, we could use the <code>keep</code> combinator. The next query computes <code>mean_salary</code> with respect to the entire dataset, and then uses this value in the context of each employee.</p><pre><code class="language-julia hljs">@query chicago begin
     keep(mean_salary =&gt; mean(employee.salary))
     employee
     {name, salary, mean_salary}
@@ -246,7 +246,7 @@ end
 4 │ JEFFERY A  101442      92679.0 │
 5 │ NANCY A     80016      92679.0 │
 6 │ ROBERT K   103272      92679.0 │
-=#</code></pre><p>However, the inquiry asks us to use average salary <em>by department</em> not across all employees. To adapt the previous query, we need to place our <code>keep</code> in the context of <code>employee.group(department)</code>.</p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>However, the inquiry asks us to use average salary <em>by department</em> not across all employees. To adapt the previous query, we need to place our <code>keep</code> in the context of <code>employee.group(department)</code>.</p><pre><code class="language-julia hljs">@query chicago begin
     employee
     group(department)
     keep(mean_salary =&gt; mean(employee.salary))
@@ -263,7 +263,7 @@ end
 4 │ ANTHONY A   72510      84656.0 │
 5 │ JEFFERY A  101442      84656.0 │
 6 │ NANCY A     80016      84656.0 │
-=#</code></pre><p>We just need to add a <code>filter</code> to answer our initial inquiry: <em>which employees have a salary that is higher than the average for their department?</em></p><pre><code class="language-julia">@query chicago begin
+=#</code></pre><p>We just need to add a <code>filter</code> to answer our initial inquiry: <em>which employees have a salary that is higher than the average for their department?</em></p><pre><code class="language-julia hljs">@query chicago begin
     employee
     group(department)
     keep(mean_salary =&gt; mean(employee.salary))
@@ -277,4 +277,4 @@ end
 1 │ JAMES A    FIRE        FIRE ENGINEER-EMT  103350 │
 2 │ ROBERT K   FIRE        FIRE FIGHTER-EMT   103272 │
 3 │ JEFFERY A  POLICE      SERGEANT           101442 │
-=#</code></pre><p>In this section, we&#39;ve completed our query. Let&#39;s talk more about mechanics, how these queries operate.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../overview/">« Queries for Data Analysts</a><a class="docs-footer-nextpage" href="../primer/">Thinking in Queries »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 18 April 2021 03:20">Sunday 18 April 2021</span>. Using Julia version 1.6.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+=#</code></pre><p>In this section, we&#39;ve completed our query. Let&#39;s talk more about mechanics, how these queries operate.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../overview/">« Queries for Data Analysts</a><a class="docs-footer-nextpage" href="../primer/">Thinking in Queries »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Tuesday 30 November 2021 16:19">Tuesday 30 November 2021</span>. Using Julia version 1.6.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
