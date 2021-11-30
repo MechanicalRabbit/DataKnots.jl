@@ -29,6 +29,7 @@ transformations.  We will use the following definitions:
         pass,
         sieve_by,
         slice_by,
+        sort_by,
         tuple_lift,
         tuple_of,
         unique_by,
@@ -662,7 +663,7 @@ number of elements to keep.
     #-> @VectorTree (0:N) × String [["GARRY M"], ["JOSE S"], []]
 
 
-### Grouping
+### Sorting and Grouping
 
 The pipeline `unique_by()` transforms a block vector by keeping one copy of
 each distinct value in each block.
@@ -678,9 +679,29 @@ Compositve values are also supported.
     p(@VectorTree [(0:1)String] [["POLICE", "FIRE", missing, "OEMC", "POLICE", missing]])
     #-> @VectorTree (0:N) × ((0:1) × String) [[missing, "FIRE", "OEMC", "POLICE"]]
 
-The pipeline `group_by()` expects a block vector of pairs two columns values
-and keys.  The values are further partitioned into blocks by grouping the
-values with equal keys.
+The pipeline `sort_by()` expects a block vector of pairs of values and keys.
+The output of `sort_by()` is the vector of values sorted by the corresponding
+keys.
+
+    p = sort_by()
+    #-> sort_by()
+
+    p(@VectorTree [(String, String)] [[("DANIEL A", "FIRE"), ("JEFFERY A", "POLICE"), ("JAMES A", "FIRE"), ("NANCY A", "POLICE")]])
+    #-> @VectorTree (0:N) × String [["DANIEL A", "JAMES A", "JEFFERY A", "NANCY A"]]
+
+The keys could be assembled from tuples and blocks.
+
+    p(@VectorTree [(String, (0:1)((0:1)Int, (0:1)Int))] [[("JEFFERY A", (10, missing)), ("NANCY A", (8, missing))], [("JAMES A", (10, missing)), ("DANIEL A", (10, missing))], [("LAKENYA A", (missing, 2)), ("DORIS A", (missing, 2)), ("ASKEW A", (6, missing)), ("MARY Z", missing)], []])
+    #-> @VectorTree (0:N) × String [["NANCY A", "JEFFERY A"], ["JAMES A", "DANIEL A"], ["MARY Z", "LAKENYA A", "DORIS A", "ASKEW A"], []]
+
+Plural blocks could also serve as keys.
+
+    p(@VectorTree [(String, [String])] [[("ANTONIO", ["POLICE", "OEMC"]), ("DOLORES", ["FINANCE"]), ("MARY", ["FINANCE"]), ("CRYSTAL", ["POLICE", "OEMC"]), ("PIA", ["POLICE"]), ("CALVIN", [])]])
+    #-> @VectorTree (0:N) × String [["CALVIN", "DOLORES", "MARY", "PIA", "ANTONIO", "CRYSTAL"]]
+
+The pipeline `group_by()` expects a block vector of pairs of values and keys.
+The values are further partitioned into blocks by grouping the values with
+equal keys.
 
     p = group_by()
     #-> group_by()

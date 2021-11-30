@@ -1100,6 +1100,30 @@ function unique_by(::Runtime, input::AbstractVector)
     BlockVector{card}(offs_outer, elts′)
 end
 
+sort_by() = Pipeline(sort_by)
+
+function sort_by(::Runtime, input::AbstractVector)
+    @assert input isa BlockVector
+    card = cardinality(input)
+    offs = offsets(input)
+    elts = elements(input)
+    @assert elts isa TupleVector
+    cols = columns(elts)
+    @assert length(cols) == 2
+    vals, keys = cols
+    len = length(elts)
+    perm = collect(1:len)
+    sep = falses(len+1)
+    for off in offs
+        sep[off] = true
+    end
+    if len > 1
+        _group_by!(keys, sep, perm, OneTo(len))
+    end
+    output = BlockVector{card}(offs, vals[perm])
+    output
+end
+
 group_by() = Pipeline(group_by)
 
 function group_by(::Runtime, input::AbstractVector)
