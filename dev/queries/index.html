@@ -31,6 +31,7 @@
     Mix,
     Nth,
     Record,
+    Sort,
     Sum,
     Tag,
     Take,
@@ -189,7 +190,7 @@ chain_of(with_elements(chain_of(column(:department),
 1 │ JEFFERY A  SERGEANT           101442       │
 2 │ JAMES A    FIRE ENGINEER-EMT  103350       │
 3 │ ROBERT K   FIREFIGHTER-EMT    103272       │
-=#</code></pre><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">Environment()</code></pre><p>Query compilation state.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/7cbed6441648183d05d856edc86907cc9bc62ee0/src/queries.jl#L289-L293">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="nohighlight hljs">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/7cbed6441648183d05d856edc86907cc9bc62ee0/src/queries.jl#L18-L35">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot, Any}" href="#Base.getindex-Tuple{DataKnot, Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/7cbed6441648183d05d856edc86907cc9bc62ee0/src/queries.jl#L118-L122">source</a></section></article><h2 id="Test-Suite"><a class="docs-heading-anchor" href="#Test-Suite">Test Suite</a><a id="Test-Suite-1"></a><a class="docs-heading-anchor-permalink" href="#Test-Suite" title="Permalink"></a></h2><h3 id="Querying"><a class="docs-heading-anchor" href="#Querying">Querying</a><a id="Querying-1"></a><a class="docs-heading-anchor-permalink" href="#Querying" title="Permalink"></a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia hljs">Q = Count(It.department)
+=#</code></pre><h2 id="API-Reference"><a class="docs-heading-anchor" href="#API-Reference">API Reference</a><a id="API-Reference-1"></a><a class="docs-heading-anchor-permalink" href="#API-Reference" title="Permalink"></a></h2><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Environment" href="#DataKnots.Environment"><code>DataKnots.Environment</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">Environment()</code></pre><p>Query compilation state.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/ac522106a245db75bda38c5e8fca4d2281fcbd08/src/queries.jl#L289-L293">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="DataKnots.Query" href="#DataKnots.Query"><code>DataKnots.Query</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">Query(op, args...)</code></pre><p>A query is implemented as a pipeline transformation that preserves pipeline source.  Specifically, a query takes the input pipeline that maps the <em>source</em> to the <em>input target</em> and generates a pipeline that maps the <em>source</em> to the <em>output target</em>.</p><p>Parameter <code>op</code> is a function that performs the transformation; <code>args</code> are extra arguments passed to the function.</p><p>The query transforms an input pipeline <code>p</code> by invoking <code>op</code> with the following arguments:</p><pre><code class="nohighlight hljs">op(env::Environment, q::Pipeline, args...)</code></pre><p>The result of <code>op</code> must be the output pipeline.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/ac522106a245db75bda38c5e8fca4d2281fcbd08/src/queries.jl#L18-L35">source</a></section></article><article class="docstring"><header><a class="docstring-binding" id="Base.getindex-Tuple{DataKnot, Any}" href="#Base.getindex-Tuple{DataKnot, Any}"><code>Base.getindex</code></a> — <span class="docstring-category">Method</span></header><section><div><pre><code class="language-julia hljs">db::DataKnot[F::Query; params...] :: DataKnot</code></pre><p>Queries <code>db</code> with <code>F</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/ac522106a245db75bda38c5e8fca4d2281fcbd08/src/queries.jl#L118-L122">source</a></section></article><h2 id="Test-Suite"><a class="docs-heading-anchor" href="#Test-Suite">Test Suite</a><a id="Test-Suite-1"></a><a class="docs-heading-anchor-permalink" href="#Test-Suite" title="Permalink"></a></h2><h3 id="Querying"><a class="docs-heading-anchor" href="#Querying">Querying</a><a id="Querying-1"></a><a class="docs-heading-anchor-permalink" href="#Querying" title="Permalink"></a></h3><p>A <code>Query</code> is applied to a <code>DataKnot</code> using the array indexing syntax.</p><pre><code class="language-julia hljs">Q = Count(It.department)
 
 chicago[Q]
 #=&gt;
@@ -1506,7 +1507,7 @@ shape(@query chicago is0toN(department.name.take(1)))
 #-&gt; BlockOf(String) |&gt; IsLabeled(:name)
 
 shape(@query chicago is1toN(department.name.take(1)))
-#-&gt; BlockOf(String, x1toN) |&gt; IsLabeled(:name)</code></pre><h3 id="Unique-and-Group"><a class="docs-heading-anchor" href="#Unique-and-Group"><code>Unique</code> and <code>Group</code></a><a id="Unique-and-Group-1"></a><a class="docs-heading-anchor-permalink" href="#Unique-and-Group" title="Permalink"></a></h3><p>We use the <code>Unique</code> combinator to produce unique elements of a collection.</p><pre><code class="language-julia hljs">Q = It.department &gt;&gt;
+#-&gt; BlockOf(String, x1toN) |&gt; IsLabeled(:name)</code></pre><h3 id="Unique,-Sort,-and-Group"><a class="docs-heading-anchor" href="#Unique,-Sort,-and-Group"><code>Unique</code>, <code>Sort</code>, and <code>Group</code></a><a id="Unique,-Sort,-and-Group-1"></a><a class="docs-heading-anchor-permalink" href="#Unique,-Sort,-and-Group" title="Permalink"></a></h3><p>We use the <code>Unique</code> combinator to produce unique elements of a collection.</p><pre><code class="language-julia hljs">Q = It.department &gt;&gt;
     Record(It.name, Unique(It.employee.position))
 #-&gt; It.department &gt;&gt; Record(It.name, Unique(It.employee.position))
 
@@ -1537,8 +1538,89 @@ chicago[Q]
 Get(:department) &gt;&gt; Record(Get(:name),
                            Unique(Get(:employee) &gt;&gt; Get(:position)))
 =#</code></pre><p>The aggregate query form of <code>Unique</code> is written as <code>unique()</code>.</p><pre><code class="language-julia hljs">@query department.employee.position.unique()
+#-&gt; Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Get(:position) &gt;&gt; Then(Unique)</code></pre><p>The <code>Sort</code> combinator sorts the input by the given key.</p><pre><code class="language-julia hljs">Q = It.department.employee &gt;&gt;
+    Sort(It.position)
+#-&gt; It.department.employee &gt;&gt; Sort(It.position)
+
+chicago[Q]
 #=&gt;
-Get(:department) &gt;&gt; Get(:employee) &gt;&gt; Get(:position) &gt;&gt; Then(Unique)
+   │ employee                                       │
+   │ name       position              salary  rate  │
+───┼────────────────────────────────────────────────┼
+ 1 │ LAKENYA A  CROSSING GUARD                17.68 │
+ 2 │ DORIS A    CROSSING GUARD                19.38 │
+ 3 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+ 4 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+ 5 │ ROBERT K   FIREFIGHTER-EMT       103272        │
+ 6 │ ALBA M     POLICE CADET                   9.46 │
+ 7 │ NANCY A    POLICE OFFICER         80016        │
+ 8 │ ANTHONY A  POLICE OFFICER         72510        │
+ 9 │ JEFFERY A  SERGEANT              101442        │
+10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+=#</code></pre><p>Arbitrary key expressions are supported.</p><pre><code class="language-julia hljs">Q = It.department &gt;&gt;
+    Sort(Count(It.employee)) &gt;&gt;
+    Record(It.name, :size =&gt; Count(It.employee))
+#=&gt;
+It.department &gt;&gt;
+Sort(Count(It.employee)) &gt;&gt;
+Record(It.name, :size =&gt; Count(It.employee))
+=#
+
+chicago[Q]
+#=&gt;
+  │ department   │
+  │ name    size │
+──┼──────────────┼
+1 │ FIRE       3 │
+2 │ OEMC       3 │
+3 │ POLICE     4 │
+=#</code></pre><p>Empty keys are placed on top.</p><pre><code class="language-julia hljs">Q = It.department.employee &gt;&gt;
+    Sort(It.salary)
+#-&gt; It.department.employee &gt;&gt; Sort(It.salary)
+
+chicago[Q]
+#=&gt;
+   │ employee                                       │
+   │ name       position              salary  rate  │
+───┼────────────────────────────────────────────────┼
+ 1 │ ALBA M     POLICE CADET                   9.46 │
+ 2 │ LAKENYA A  CROSSING GUARD                17.68 │
+ 3 │ DORIS A    CROSSING GUARD                19.38 │
+ 4 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+ 5 │ ANTHONY A  POLICE OFFICER         72510        │
+ 6 │ NANCY A    POLICE OFFICER         80016        │
+ 7 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+ 8 │ JEFFERY A  SERGEANT              101442        │
+ 9 │ ROBERT K   FIREFIGHTER-EMT       103272        │
+10 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+=#</code></pre><p>More than one key column could be provided.</p><pre><code class="language-julia hljs">Q = It.department.employee &gt;&gt;
+    Sort(It.rate, It.salary)
+#-&gt; It.department.employee &gt;&gt; Sort(It.rate, It.salary)
+
+chicago[Q]
+#=&gt;
+   │ employee                                       │
+   │ name       position              salary  rate  │
+───┼────────────────────────────────────────────────┼
+ 1 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+ 2 │ ANTHONY A  POLICE OFFICER         72510        │
+ 3 │ NANCY A    POLICE OFFICER         80016        │
+ 4 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+ 5 │ JEFFERY A  SERGEANT              101442        │
+ 6 │ ROBERT K   FIREFIGHTER-EMT       103272        │
+ 7 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+ 8 │ ALBA M     POLICE CADET                   9.46 │
+ 9 │ LAKENYA A  CROSSING GUARD                17.68 │
+10 │ DORIS A    CROSSING GUARD                19.38 │
+=#</code></pre><p>In <code>@query</code> notation, <code>Sort</code> combinator is written <code>sort()</code>.</p><pre><code class="language-julia hljs">@query begin
+    department
+    collect(size =&gt; count(employee))
+    sort(size)
+end
+#=&gt;
+Get(:department) &gt;&gt;
+Collect(Count(Get(:employee)) &gt;&gt; Label(:size)) &gt;&gt;
+Sort(Get(:size))
 =#</code></pre><p>We use the <code>Group</code> combinator to group the input by the given key.</p><pre><code class="language-julia hljs">Q = It.department.employee &gt;&gt;
     Group(It.position)
 #-&gt; It.department.employee &gt;&gt; Group(It.position)
@@ -1554,7 +1636,7 @@ chicago[Q]
 5 │ POLICE OFFICER        NANCY A, POLICE OFFICER, 80016, missing; AN…│
 6 │ SERGEANT              JEFFERY A, SERGEANT, 101442, missing        │
 7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, miss…│
-=#</code></pre><p>Arbitrary key expressions are supported.</p><pre><code class="language-julia hljs">Q = It.department &gt;&gt;
+=#</code></pre><p>Just like with <code>Sort</code>, arbitrary key expressions are supported.</p><pre><code class="language-julia hljs">Q = It.department &gt;&gt;
     Group(:size =&gt; Count(It.employee)) &gt;&gt;
     Record(It.size, :count =&gt; Count(It.department))
 
@@ -1598,4 +1680,4 @@ end
 Get(:department) &gt;&gt;
 Group(Count(Get(:employee)) &gt;&gt; Label(:size)) &gt;&gt;
 Record(Get(:size), Count(Get(:department)) &gt;&gt; Label(:count))
-=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../knots/">« Data Knots</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Tuesday 30 November 2021 16:31">Tuesday 30 November 2021</span>. Using Julia version 1.6.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../knots/">« Data Knots</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Tuesday 30 November 2021 20:33">Tuesday 30 November 2021</span>. Using Julia version 1.6.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
