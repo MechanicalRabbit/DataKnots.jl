@@ -306,8 +306,13 @@ Public = false
 
 Labels could be specified by strings.
 
+    #? VERSION < v"1.8.0-DEV"
     TupleVector(:salary => [260004, 185364, 170112], "#B" => [true, false, false])
     #-> @VectorTree (salary = Int64, "#B" = Bool) [(salary = 260004, #B = 1) … ]
+
+    #? VERSION >= v"1.8.0-DEV"
+    TupleVector(:salary => [260004, 185364, 170112], "#B" => [true, false, false])
+    #-> @VectorTree (salary = Int64, "#B" = Bool) [(salary = 260004, var"#B" = 1) … ]
 
 It is also possible to construct a `TupleVector` without labels.
 

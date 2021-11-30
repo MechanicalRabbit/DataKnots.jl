@@ -1003,18 +1003,42 @@ Functions of multiple arguments are also supported.
 
 Just as functions with no arguments.
 
+    Q = Lift(rand, ())
+    #-> Lift(rand, ())
+
+    #? VERSION < v"1.7.0-DEV"
     using Random: seed!
 
     seed!(0)
-
-    Q = Lift(rand, ())
-    #-> Lift(rand, ())
 
     chicago[Q]
     #=>
     ┼──────────┼
     │ 0.823648 │
     =#
+
+    #? v"1.7.0-DEV" <= VERSION < v"1.8.0-DEV"
+    using Random: seed!
+
+    seed!(0)
+
+    chicago[Q]
+    #=>
+    ┼──────────┼
+    │ 0.787765 │
+    =#
+
+    #? VERSION >= v"1.8.0-DEV"
+    using Random: seed!
+
+    seed!(0)
+
+    chicago[Q]
+    #=>
+    ┼──────────┼
+    │ 0.405699 │
+    =#
+
 
 Functions with vector arguments are supported.
 
