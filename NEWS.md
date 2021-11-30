@@ -1,5 +1,13 @@
 # Release Notes
 
+## v0.10.3
+
+* Added `Sort` combinator.
+
+## v0.10.2
+
+* Upgraded dependencies.
+
 ## v0.10.1
 
 - Lookup in string dictionaries.
