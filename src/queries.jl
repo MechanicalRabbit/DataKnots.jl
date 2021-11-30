@@ -2149,7 +2149,7 @@ translate(mod::Module, ::Val{:drop}, (arg,)::Tuple{Any}) =
 
 
 #
-# Unique and Group combinators.
+# Unique, Sort, and Group combinators.
 #
 
 function assemble_unique(p::Pipeline, x::Pipeline)
@@ -2201,6 +2201,44 @@ translate(mod::Module, ::Val{:unique}, (arg,)::Tuple{Any}) =
 
 translate(mod::Module, ::Val{:unique}, ::Tuple{}) =
     Then(Unique)
+
+function assemble_sort(p::Pipeline, xs::Vector{Pipeline})
+    ks = Pipeline[]
+    for x in xs
+        x = uncover(x)
+        x = relabel(x, nothing)
+        push!(ks, x)
+    end
+    q = chain_of(p, with_elements(tuple_of(pass(), tuple_of(Symbol[], ks))), sort_by())
+    q |> designate(source(p), target(p))
+end
+
+"""
+    Sort(X₁, X₂ … Xₙ) :: Query
+
+This query sorts the input data by the keys `X₁`, `X₂` … `Xₙ`.
+
+```jldoctest
+julia> unitknot[Lift(1:5) >> Sort(isodd.(It))]
+──┼───┼
+1 │ 2 │
+2 │ 4 │
+3 │ 1 │
+4 │ 3 │
+5 │ 5 │
+```
+"""
+Sort(Xs...) =
+    Query(Sort, Xs...)
+
+function Sort(env::Environment, p::Pipeline, Xs...)
+    p0 = target_pipe(p)
+    xs = Pipeline[assemble(env, p0, convert(AbstractQuery, X)) for X in Xs]
+    assemble_sort(p, xs)
+end
+
+translate(mod::Module, ::Val{:sort}, args::Tuple) =
+    Sort(Any[translate(mod, arg) for arg in args]...)
 
 function assemble_group(p::Pipeline, xs::Vector{Pipeline})
     lbls = Symbol[]

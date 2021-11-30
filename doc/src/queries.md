@@ -35,6 +35,7 @@ We will need the following definitions.
         Mix,
         Nth,
         Record,
+        Sort,
         Sum,
         Tag,
         Take,
@@ -2176,7 +2177,7 @@ In `@query` notation, these operations are written as `is0to1()`, `is0toN()`,
     shape(@query chicago is1toN(department.name.take(1)))
     #-> BlockOf(String, x1toN) |> IsLabeled(:name)
 
-### `Unique` and `Group`
+### `Unique`, `Sort`, and `Group`
 
 We use the `Unique` combinator to produce unique elements of a collection.
 
@@ -2223,8 +2224,109 @@ In `@query` notation, `Unique(X)` is written as `unique(X)`.
 The aggregate query form of `Unique` is written as `unique()`.
 
     @query department.employee.position.unique()
+    #-> Get(:department) >> Get(:employee) >> Get(:position) >> Then(Unique)
+
+The `Sort` combinator sorts the input by the given key.
+
+    Q = It.department.employee >>
+        Sort(It.position)
+    #-> It.department.employee >> Sort(It.position)
+
+    chicago[Q]
     #=>
-    Get(:department) >> Get(:employee) >> Get(:position) >> Then(Unique)
+       │ employee                                       │
+       │ name       position              salary  rate  │
+    ───┼────────────────────────────────────────────────┼
+     1 │ LAKENYA A  CROSSING GUARD                17.68 │
+     2 │ DORIS A    CROSSING GUARD                19.38 │
+     3 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+     4 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+     5 │ ROBERT K   FIREFIGHTER-EMT       103272        │
+     6 │ ALBA M     POLICE CADET                   9.46 │
+     7 │ NANCY A    POLICE OFFICER         80016        │
+     8 │ ANTHONY A  POLICE OFFICER         72510        │
+     9 │ JEFFERY A  SERGEANT              101442        │
+    10 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+    =#
+
+Arbitrary key expressions are supported.
+
+    Q = It.department >>
+        Sort(Count(It.employee)) >>
+        Record(It.name, :size => Count(It.employee))
+    #=>
+    It.department >>
+    Sort(Count(It.employee)) >>
+    Record(It.name, :size => Count(It.employee))
+    =#
+
+    chicago[Q]
+    #=>
+      │ department   │
+      │ name    size │
+    ──┼──────────────┼
+    1 │ FIRE       3 │
+    2 │ OEMC       3 │
+    3 │ POLICE     4 │
+    =#
+
+Empty keys are placed on top.
+
+    Q = It.department.employee >>
+        Sort(It.salary)
+    #-> It.department.employee >> Sort(It.salary)
+
+    chicago[Q]
+    #=>
+       │ employee                                       │
+       │ name       position              salary  rate  │
+    ───┼────────────────────────────────────────────────┼
+     1 │ ALBA M     POLICE CADET                   9.46 │
+     2 │ LAKENYA A  CROSSING GUARD                17.68 │
+     3 │ DORIS A    CROSSING GUARD                19.38 │
+     4 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+     5 │ ANTHONY A  POLICE OFFICER         72510        │
+     6 │ NANCY A    POLICE OFFICER         80016        │
+     7 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+     8 │ JEFFERY A  SERGEANT              101442        │
+     9 │ ROBERT K   FIREFIGHTER-EMT       103272        │
+    10 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+    =#
+
+More than one key column could be provided.
+
+    Q = It.department.employee >>
+        Sort(It.rate, It.salary)
+    #-> It.department.employee >> Sort(It.rate, It.salary)
+
+    chicago[Q]
+    #=>
+       │ employee                                       │
+       │ name       position              salary  rate  │
+    ───┼────────────────────────────────────────────────┼
+     1 │ BRENDA B   TRAFFIC CONTROL AIDE   64392        │
+     2 │ ANTHONY A  POLICE OFFICER         72510        │
+     3 │ NANCY A    POLICE OFFICER         80016        │
+     4 │ DANIEL A   FIREFIGHTER-EMT        95484        │
+     5 │ JEFFERY A  SERGEANT              101442        │
+     6 │ ROBERT K   FIREFIGHTER-EMT       103272        │
+     7 │ JAMES A    FIRE ENGINEER-EMT     103350        │
+     8 │ ALBA M     POLICE CADET                   9.46 │
+     9 │ LAKENYA A  CROSSING GUARD                17.68 │
+    10 │ DORIS A    CROSSING GUARD                19.38 │
+    =#
+
+In `@query` notation, `Sort` combinator is written `sort()`.
+
+    @query begin
+        department
+        collect(size => count(employee))
+        sort(size)
+    end
+    #=>
+    Get(:department) >>
+    Collect(Count(Get(:employee)) >> Label(:size)) >>
+    Sort(Get(:size))
     =#
 
 We use the `Group` combinator to group the input by the given key.
@@ -2246,7 +2348,7 @@ We use the `Group` combinator to group the input by the given key.
     7 │ TRAFFIC CONTROL AIDE  BRENDA B, TRAFFIC CONTROL AIDE, 64392, miss…│
     =#
 
-Arbitrary key expressions are supported.
+Just like with `Sort`, arbitrary key expressions are supported.
 
     Q = It.department >>
         Group(:size => Count(It.employee)) >>

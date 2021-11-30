@@ -34,6 +34,7 @@ export
     Mix,
     Nth,
     Record,
+    Sort,
     Sum,
     Tag,
     Take,
