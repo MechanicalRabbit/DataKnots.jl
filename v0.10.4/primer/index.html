@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Thinking in Queries · DataKnots.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">DataKnots.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../overview/">Queries for Data Analysts</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../highlypaid/">Who is Highly Paid?</a></li></ul></li><li><span class="tocitem">Reference Manual</span><ul><li class="is-active"><a class="tocitem" href>Thinking in Queries</a><ul class="internal"><li><a class="tocitem" href="#Query-Algebra"><span>Query Algebra</span></a></li><li><a class="tocitem" href="#The-Shape-of-Data"><span>The Shape of Data</span></a></li><li><a class="tocitem" href="#Pipeline-Processing"><span>Pipeline Processing</span></a></li><li><a class="tocitem" href="#Combinators"><span>Combinators</span></a></li><li><a class="tocitem" href="#Julia-Integration"><span>Julia Integration</span></a></li></ul></li><li><a class="tocitem" href="../tutorial/">Embedded Query Interface</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul></li><li><span class="tocitem">Implementer&#39;s Guide</span><ul><li><a class="tocitem" href="../vectors/">Column Store</a></li><li><a class="tocitem" href="../pipelines/">Pipeline Algebra</a></li><li><a class="tocitem" href="../shapes/">Shapes and Signatures</a></li><li><a class="tocitem" href="../knots/">Data Knots</a></li><li><a class="tocitem" href="../queries/">Query Algebra</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Reference Manual</a></li><li class="is-active"><a href>Thinking in Queries</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Thinking in Queries</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/MechanicalRabbit/DataKnots.jl/blob/master/doc/src/primer.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Thinking-in-Queries"><a class="docs-heading-anchor" href="#Thinking-in-Queries">Thinking in Queries</a><a id="Thinking-in-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Thinking-in-Queries" title="Permalink"></a></h1><p>DataKnots is a Julia library for building database queries. This conceptual guide provides a deeper look at DataKnots beyond what is available in the tutorial. We&#39;ll start with a quick overview of the query algebra, then we&#39;ll move on to the structure of knots, then pipelines, and finally back to query combinators.</p><p>There are four layers in the DataKnots package. At the lowest level are <code>DataKnot</code> objects, which are the input and output of a <code>Query</code>. At the highest level are combinators, such as <code>Count</code>, which are used to build queries from other queries. The <code>Pipeline</code> layer is an implementation detail, pipelines can be seen as a detailed query plan describing just how data should be processed. This layer helpful for explaining the semantics of queries and is helpful for those building custom queries and combinators.</p><table><tr><th style="text-align: left">Layer</th><th style="text-align: left">Function</th></tr><tr><td style="text-align: left"><code>Combinator</code></td><td style="text-align: left">builds a <code>Query</code> from other queries</td></tr><tr><td style="text-align: left"><code>Query</code></td><td style="text-align: left">assembles <code>Pipeline</code> extensions</td></tr><tr><td style="text-align: left"><code>Pipeline</code></td><td style="text-align: left">transforms one <code>DataKnot</code> to another</td></tr><tr><td style="text-align: left"><code>DataKnot</code></td><td style="text-align: left">provides block-oriented storage model</td></tr></table><p>To start working with DataKnots, we import the package:</p><pre><code class="language-julia hljs">using DataKnots</code></pre><p>This statement imports common query constructors such as <code>Lift</code>, and combinators, such as <code>Count</code>. Further, it imports the constructor for <code>DataKnot</code> objects. That said, pipeline functions, such as <code>DataKnots.assemble</code> are not imported, but they would only be used by those curious about the workings of queries.</p><h2 id="Query-Algebra"><a class="docs-heading-anchor" href="#Query-Algebra">Query Algebra</a><a id="Query-Algebra-1"></a><a class="docs-heading-anchor-permalink" href="#Query-Algebra" title="Permalink"></a></h2><p>In DataKnots, queries are assembled algebraically: they either come from a set of atomic <em>primitives</em> or are built from other queries using <em>combinators</em>.</p><h3 id="The-Unit-Knot"><a class="docs-heading-anchor" href="#The-Unit-Knot">The Unit Knot</a><a id="The-Unit-Knot-1"></a><a class="docs-heading-anchor-permalink" href="#The-Unit-Knot" title="Permalink"></a></h3><p>A <code>DataKnot</code>, or just <em>knot</em>, is a container for structured, vectorized data. The <code>unitknot</code> is a trivial knot used as the starting point for constructing other knots.</p><pre><code class="language-julia hljs">unitknot
+#=&gt;
+┼──┼
+│  │
+=#</code></pre><p>The unit knot has a single value, an empty tuple. You could get the value of any knot using Julia&#39;s <code>get</code> function.</p><pre><code class="language-julia hljs">get(unitknot)
+#-&gt; ()</code></pre><h3 id="Constant-Queries"><a class="docs-heading-anchor" href="#Constant-Queries">Constant Queries</a><a id="Constant-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Constant-Queries" title="Permalink"></a></h3><p>Any Julia value could be converted to a <em>query</em> using the <code>Lift</code> constructor. Queries constructed this way are constant: for each input element they receive, they output the given value. Consider the query <code>Hello</code>, lifted from the string value <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia hljs">Hello = Lift(&quot;Hello World&quot;)</code></pre><p>To query <code>unitknot</code> with <code>Hello</code>, we use indexing notation <code>unitknot[Hello]</code>. In this case, <code>Hello</code> receives <code>()</code> from <code>unitknot</code> and produces the value, <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia hljs">unitknot[Hello]
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>A <code>Tuple</code> lifted to a constant query is displayed as a table.</p><pre><code class="language-julia hljs">unitknot[Lift((name=&quot;DataKnots&quot;, version=&quot;0.1&quot;))]
+#=&gt;
+│ name       version │
+┼────────────────────┼
+│ DataKnots  0.1     │
+=#</code></pre><p>A <code>missing</code> value lifted to a constant query produces no output.</p><pre><code class="language-julia hljs">unitknot[Lift(missing)]
+#=&gt;
+(empty)
+=#</code></pre><p>A <code>Vector</code> lifted to a constant query will produce plural output.</p><pre><code class="language-julia hljs">unitknot[Lift(&#39;a&#39;:&#39;c&#39;)]
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+=#</code></pre><p>We call queries constructed this way primitives, as they do not rely upon any other query. There are also combinators, which build new queries from existing ones.</p><h3 id="Composition-and-Identity"><a class="docs-heading-anchor" href="#Composition-and-Identity">Composition &amp; Identity</a><a id="Composition-and-Identity-1"></a><a class="docs-heading-anchor-permalink" href="#Composition-and-Identity" title="Permalink"></a></h3><p>Two queries can be connected sequentially using the <em>composition</em> combinator (<code>&gt;&gt;</code>). Consider the composition <code>Lift(1:3) &gt;&gt; Hello</code>. Since <code>Hello</code> produces a value for each input element, preceding it with <code>Lift(1:3)</code> generates three copies of <code>&quot;Hello World&quot;</code>.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Hello]
+#=&gt;
+──┼─────────────┼
+1 │ Hello World │
+2 │ Hello World │
+3 │ Hello World │
+=#</code></pre><p>If we compose two plural queries, <code>Lift(1:2)</code> and <code>Lift(&#39;a&#39;:&#39;c&#39;)</code>, the output will contain the elements of <code>&#39;a&#39;:&#39;c&#39;</code> repeated twice.</p><pre><code class="language-julia hljs">unitknot[Lift(1:2) &gt;&gt; Lift(&#39;a&#39;:&#39;c&#39;)]
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+4 │ a │
+5 │ b │
+6 │ c │
+=#</code></pre><p>The <em>identity</em> with respect to query composition is called <code>It</code>. This primitive can be composed with any query without changing the query&#39;s output.</p><pre><code class="language-julia hljs">unitknot[Hello &gt;&gt; It]
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>The identity primitive, <code>It</code>, can be used to construct queries which rely upon the output from previous processing.</p><pre><code class="language-julia hljs">Increment = It .+ 1
+unitknot[Lift(1:3) &gt;&gt; Increment]
+#=&gt;
+──┼───┼
+1 │ 2 │
+2 │ 3 │
+3 │ 4 │
+=#</code></pre><p>In DataKnots, queries are built algebraically, starting with query primitives, such as constants (<code>Lift</code>) or the identity (<code>It</code>), and then arranged with with combinators, such as composition (<code>&gt;&gt;</code>). This lets us define sophisticated query components and remix them in creative ways.</p><h2 id="The-Shape-of-Data"><a class="docs-heading-anchor" href="#The-Shape-of-Data">The Shape of Data</a><a id="The-Shape-of-Data-1"></a><a class="docs-heading-anchor-permalink" href="#The-Shape-of-Data" title="Permalink"></a></h2><p>To discuss the structure and function of queries, we must first describe the <em>shape</em> of <code>DataKnot</code> objects. Shapes are used to track value types, cardinality constraints, field labels, and other properties.</p><p>To obtain the shape of a knot, use the <code>shape</code> function.</p><pre><code class="language-julia hljs">DataKnots.shape(unitknot)
+#-&gt; BlockOf(TupleOf(), x1to1)</code></pre><p>Here we discover that the shape of the <code>unitknot</code> is a singular block of empty tuples.</p><h3 id="Blocks"><a class="docs-heading-anchor" href="#Blocks">Blocks</a><a id="Blocks-1"></a><a class="docs-heading-anchor-permalink" href="#Blocks" title="Permalink"></a></h3><p>A <em>block</em> is a collection of elements of a particular type, with the number of its elements satisfying a certain cardinality constraint. Query results are always packaged as a block.</p><p>Consider the knot produced by the query <code>Lift(&#39;a&#39;:&#39;c&#39;)</code>.</p><pre><code class="language-julia hljs">abc = unitknot[Lift(&#39;a&#39;:&#39;c&#39;)]
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+=#</code></pre><p>The knot <code>abc</code> contains several character elements wrapped in a single block.</p><pre><code class="language-julia hljs">DataKnots.shape(abc)
+#-&gt; BlockOf(Char)</code></pre><p>Now consider the output of a singular query.</p><pre><code class="language-julia hljs">hello = unitknot[Lift(&quot;Hello World&quot;)]
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>This knot contains a single string wrapped in a block. Since this block contains exactly one element, its cardinality is <code>:x1to1</code>.</p><pre><code class="language-julia hljs">DataKnots.shape(hello)
+#-&gt; BlockOf(String, x1to1)</code></pre><h3 id="Cardinality"><a class="docs-heading-anchor" href="#Cardinality">Cardinality</a><a id="Cardinality-1"></a><a class="docs-heading-anchor-permalink" href="#Cardinality" title="Permalink"></a></h3><p><em>Cardinality</em> restricts the possible number of elements per block: <em>singular</em> means there is at most one value in each block; <em>mandatory</em> means there must be at least one value in each block.</p><table><tr><th style="text-align: left">Cardinality</th><th style="text-align: left">Mandatory</th><th style="text-align: left">Singular</th><th style="text-align: right">Description</th></tr><tr><td style="text-align: left"><code>:x0to1</code></td><td style="text-align: left"><em>no</em></td><td style="text-align: left"><em>yes</em></td><td style="text-align: right">optional, singular value</td></tr><tr><td style="text-align: left"><code>:x0toN</code></td><td style="text-align: left"><em>no</em></td><td style="text-align: left"><em>no</em></td><td style="text-align: right">optional, plural values</td></tr><tr><td style="text-align: left"><code>:x1to1</code></td><td style="text-align: left"><em>yes</em></td><td style="text-align: left"><em>yes</em></td><td style="text-align: right">exactly one value</td></tr><tr><td style="text-align: left"><code>:x1toN</code></td><td style="text-align: left"><em>yes</em></td><td style="text-align: left"><em>no</em></td><td style="text-align: right">at least one plural value</td></tr></table><p>When an <code>AbstractVector</code> is converted to queries via <code>Lift</code>, the default cardinality is <code>:x0toN</code>. Values of <code>Missing</code> type are treated as <code>:x0to1</code>. Otherwise, the cardinality is <code>:x1to1</code>.</p><p>For more detail on how <code>Lift</code> constructs queries, see the section entitled <a href="#Cardinality-of-Lift-1">cardinality of lift</a>.</p><h3 id="Values"><a class="docs-heading-anchor" href="#Values">Values</a><a id="Values-1"></a><a class="docs-heading-anchor-permalink" href="#Values" title="Permalink"></a></h3><p>So that we could declare the use of native Julia values as block elements, we wrap their type in a <em>value</em> shape. In particular, <code>BlockOf(String)</code> abbreviates <code>BlockOf(ValueOf(String))</code>.</p><pre><code class="language-julia hljs">DataKnots.BlockOf(DataKnots.ValueOf(String))
+#-&gt; BlockOf(String)</code></pre><p>When a Julia value is lifted to queries, the outer <code>Vector</code> is used to represent block elements. Its element type is then wrapped with <code>ValueOf</code> to become the block&#39;s shape. Hence, a block of <code>Vector</code> could be constructed:</p><pre><code class="language-julia hljs">numbers = unitknot[Lift([[1,2],[3]])]
+#=&gt;
+──┼──────┼
+1 │ 1; 2 │
+2 │ 3    │
+=#</code></pre><p>The shape of <code>numbers</code> this is a block of <code>ValueOf(Vector)</code>.</p><pre><code class="language-julia hljs">DataKnots.shape(numbers)
+#-&gt; BlockOf(Vector{Int64})</code></pre><p>Once could also construct this shape directly.</p><pre><code class="language-julia hljs">DataKnots.BlockOf(DataKnots.ValueOf(Vector{Int64}))
+#-&gt; BlockOf(Vector{Int64})</code></pre><p>Some queries may produce empty output, that is, a single block that happens to not have any values in it.</p><pre><code class="language-julia hljs">empty = unitknot[Lift(missing)]
+#=&gt;
+(empty)
+=#</code></pre><p>The shape of this <code>empty</code> knot indicates its block could have at most one value (<code>:x0to1</code>). Further, <code>missing</code> is treated as the lack of value. Hence, rather than a <code>ValueOf(Missing)</code> shape, it has the bottom shape, <code>NoShape()</code>.</p><pre><code class="language-julia hljs">DataKnots.shape(empty)
+#-&gt; BlockOf(NoShape(), x0to1)</code></pre><h3 id="Labels"><a class="docs-heading-anchor" href="#Labels">Labels</a><a id="Labels-1"></a><a class="docs-heading-anchor-permalink" href="#Labels" title="Permalink"></a></h3><p>Shape is also used to track query labels. A label can be given to a query using the <code>Label</code> primitive.</p><pre><code class="language-julia hljs">labeled = unitknot[Lift(&quot;Hello World&quot;) &gt;&gt; Label(:message)]
+#=&gt;
+│ message     │
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>When the <code>Label</code> primitive is composed with a query, it doesn&#39;t change how data is processed, but instead modifies output shape.</p><pre><code class="language-julia hljs">DataKnots.shape(labeled)
+#-&gt; BlockOf(String, x1to1) |&gt; IsLabeled(:message)</code></pre><p>We use the <code>Pair</code> constructor as a convenient syntax for the assignment of labels.</p><pre><code class="language-julia hljs">unitknot[:message =&gt; &quot;Hello World&quot;]
+#=&gt;
+│ message     │
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>The label shape is used when displaying titles. It also is used by the <code>Record</code> combinator when constructing tuples.</p><h3 id="Tuples"><a class="docs-heading-anchor" href="#Tuples">Tuples</a><a id="Tuples-1"></a><a class="docs-heading-anchor-permalink" href="#Tuples" title="Permalink"></a></h3><p>Besides blocks that structure data sequentially, data could also be organized in parallel as a named <em>tuple</em>.</p><pre><code class="language-julia hljs">message = unitknot[Record(:message=&gt;&quot;Hello World&quot;)]
+#=&gt;
+│ message     │
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>The <code>Record</code> combinator converts query labels, such as <code>message</code>, into field names. In a tuple constructed by <code>Record</code>, field values are always wrapped in a block. Hence, the shape of this query is a block of tuples, with elements being a block of strings.</p><pre><code class="language-julia hljs">DataKnots.shape(message)
+#-&gt; BlockOf(TupleOf(:message =&gt; BlockOf(String, x1to1)), x1to1)</code></pre><p>The only structural difference between this query and a table is the cardinality of the outer block.</p><pre><code class="language-julia hljs">table = unitknot[Lift(1:3) &gt;&gt; Record(:n =&gt; It, :n² =&gt; It .* It)]
+#=&gt;
+  │ n  n² │
+──┼───────┼
+1 │ 1   1 │
+2 │ 2   4 │
+3 │ 3   9 │
+=#
+
+DataKnots.shape(table)
+#=&gt;
+BlockOf(TupleOf(:n =&gt; BlockOf(Int64, x1to1),
+                :n² =&gt; BlockOf(Int64, x1to1)))
+=#</code></pre><p>The combination of blocks, values, labels, and tuples permit structured hierararchies to be represented as a <code>DataKnot</code>.</p><h2 id="Pipeline-Processing"><a class="docs-heading-anchor" href="#Pipeline-Processing">Pipeline Processing</a><a id="Pipeline-Processing-1"></a><a class="docs-heading-anchor-permalink" href="#Pipeline-Processing" title="Permalink"></a></h2><p>So far we&#39;ve discussed knots, queries and combinators. What we&#39;ve not discussed are pipelines, which transform one knot to another. Normally one doesn&#39;t interact with pipelines unless you are building novel query combinators.</p><p>To start, how does <code>unitknot[Lift(&quot;Hello&quot;)]</code> function?</p><h3 id="Assembling-Pipelines"><a class="docs-heading-anchor" href="#Assembling-Pipelines">Assembling Pipelines</a><a id="Assembling-Pipelines-1"></a><a class="docs-heading-anchor-permalink" href="#Assembling-Pipelines" title="Permalink"></a></h3><p>Before we can assemble a pipeline, we first need the shape of the input source. Since we&#39;re going to be running our query against the <code>unitknot</code>, let&#39;s obtain its shape.</p><pre><code class="language-julia hljs">unitshape = DataKnots.shape(unitknot)
+#-&gt; BlockOf(TupleOf(), x1to1)</code></pre><p>We could then assemble the pipeline for <code>Lift(&quot;Hello&quot;)</code>.</p><pre><code class="language-julia hljs">hello_pipe = DataKnots.assemble(unitshape, Lift(&quot;Hello&quot;))
+#-&gt; with_elements(filler(&quot;Hello&quot;))</code></pre><p>This pipeline has two phases: it loops though each element of the input block (<code>with_elements</code>); then, for each of those elements, it produces the string value <code>&quot;Hello&quot;</code> (<code>filler</code>).</p><p>Once assembled, we could run the pipeline against the <code>unitknot</code>.</p><pre><code class="language-julia hljs">hello_pipe(unitknot)
+#=&gt;
+┼───────┼
+│ Hello │
+=#</code></pre><p>Observe that pipeline assembly doesn&#39;t depend upon the exact input data, but it does depends upon shape of the input source.</p><h3 id="Pipeline-Signature"><a class="docs-heading-anchor" href="#Pipeline-Signature">Pipeline Signature</a><a id="Pipeline-Signature-1"></a><a class="docs-heading-anchor-permalink" href="#Pipeline-Signature" title="Permalink"></a></h3><p>A pipeline is a function that maps data blocks from an input <em>source</em> to blocks in its output <em>target</em>. We could inquire about the pipeline&#39;s input and output shapes.</p><pre><code class="language-julia hljs">DataKnots.source(hello_pipe)
+#-&gt; BlockOf(TupleOf(), x1to1)
+
+DataKnots.target(hello_pipe)
+#-&gt; BlockOf(String, x1to1)</code></pre><p>One needs both the <code>source</code> and the <code>target</code> shapes to define the signature of the pipeline function.</p><pre><code class="language-julia hljs">DataKnots.signature(hello_pipe)
+#-&gt; Signature(BlockOf(TupleOf(), x1to1), BlockOf(String, x1to1))</code></pre><p>Here we see that <code>hello_pipe</code> expects its input source to provide an empty tuple, and that it&#39;ll produce a string.</p><h3 id="Trivial-Pipelines"><a class="docs-heading-anchor" href="#Trivial-Pipelines">Trivial Pipelines</a><a id="Trivial-Pipelines-1"></a><a class="docs-heading-anchor-permalink" href="#Trivial-Pipelines" title="Permalink"></a></h3><p>Internally, any <code>DataKnot</code> can be converted into a <code>Pipeline</code> capable of reproducing itself.</p><pre><code class="language-julia hljs">unitpipe = DataKnots.trivial_pipe(unitknot)
+#-&gt; pass()</code></pre><p>The signature of a <code>trivial</code> pipeline has both the source and the target being the shape of the knot it was derived from.</p><pre><code class="language-julia hljs">DataKnots.signature(unitpipe)
+#=&gt;
+Signature(BlockOf(TupleOf(), x1to1),
+          BlockOf(TupleOf(), x1to1) |&gt; IsFlow)
+=#</code></pre><p>We could use this <code>unitpipe</code> on itself.</p><pre><code class="language-julia hljs">unitpipe(unitknot)
+#=&gt;
+┼──┼
+│  │
+=#</code></pre><h3 id="Queries-are-Pipeline-Extensions"><a class="docs-heading-anchor" href="#Queries-are-Pipeline-Extensions">Queries are Pipeline Extensions</a><a id="Queries-are-Pipeline-Extensions-1"></a><a class="docs-heading-anchor-permalink" href="#Queries-are-Pipeline-Extensions" title="Permalink"></a></h3><p>Previously we saw how we could assemble a <code>Query</code> to a <code>Pipeline</code> by providing a given shape. In the more nominal case, one builds pipelines by extending previous pipelines. Let&#39;s recall our <code>unitpipe</code>.</p><pre><code class="language-julia hljs">unitpipe = DataKnots.trivial_pipe(unitknot)
+#-&gt; pass()</code></pre><p>Let&#39;s extend the this pipeline with the query <code>Lift(&quot;Hello&quot;)</code>.</p><pre><code class="language-julia hljs">hello_pipe = DataKnots.assemble(nothing, unitpipe, Lift(&quot;Hello&quot;))
+#-&gt; chain_of(with_elements(chain_of(filler(&quot;Hello&quot;), wrap())), flatten())</code></pre><p>This pipeline could then be run.</p><pre><code class="language-julia hljs">hello_pipe(unitknot)
+#=&gt;
+┼───────┼
+│ Hello │
+=#</code></pre><h2 id="Combinators"><a class="docs-heading-anchor" href="#Combinators">Combinators</a><a id="Combinators-1"></a><a class="docs-heading-anchor-permalink" href="#Combinators" title="Permalink"></a></h2><p>Now that we&#39;ve covered shapes and pipelines, we could go further into detail how things work at a higher level.</p><h3 id="Lifting-Functions"><a class="docs-heading-anchor" href="#Lifting-Functions">Lifting Functions</a><a id="Lifting-Functions-1"></a><a class="docs-heading-anchor-permalink" href="#Lifting-Functions" title="Permalink"></a></h3><p>Any function could be used in a query. Consider the function <code>double(x)</code> that, when applied to a <code>Number</code>, produces a <code>Number</code>:</p><pre><code class="language-julia hljs">double(x) = 2x
+double(3) #-&gt; 6</code></pre><p>What we want is an analogue to <code>double</code> which, instead of operating on numbers, operates on queries. Such functions are called query combinators. We can convert any function to a combinator by passing the function and its arguments to <code>Lift</code>.</p><pre><code class="language-julia hljs">Double(X) = Lift(double, (X,))</code></pre><p>For a given query <code>X</code>, the combinator <code>Double(X)</code> evaluates <code>X</code> and then runs each output element though the <code>double</code> function.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Double(It)]
+#=&gt;
+──┼───┼
+1 │ 2 │
+2 │ 4 │
+3 │ 6 │
+=#</code></pre><p>Alternatively, instead of <code>Lift</code> we could use broadcasting. For example, <code>double.(It)</code> is equivalent to <code>Lift(double, (It,))</code>.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; double.(It)]
+#=&gt;
+──┼───┼
+1 │ 2 │
+2 │ 4 │
+3 │ 6 │
+=#</code></pre><p>Broadcasting also works with operators.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; (It .+ 1)]
+#=&gt;
+──┼───┼
+1 │ 2 │
+2 │ 3 │
+3 │ 4 │
+=#</code></pre><p>Unary operators can be broadcast as well.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; (√).(It)]
+#=&gt;
+──┼─────────┼
+1 │ 1.0     │
+2 │ 1.41421 │
+3 │ 1.73205 │
+=#</code></pre><p>Broadcasting could only be used when at least one argument is a query. For this reason, when defining a combinator, it is recommended to use <code>Lift</code> over broadcasting.</p><pre><code class="language-julia hljs">Sqrt(X) = Lift(√, (X,))
+
+unitknot[Sqrt(2)]
+#=&gt;
+┼─────────┼
+│ 1.41421 │
+=#</code></pre><p>Vector-valued functions give rise to plural queries. Here, the unit range constructor is lifted to a query combinator that builds plural queries.</p><pre><code class="language-julia hljs">OneTo(X) = Lift(:, (1, X))
+
+unitknot[OneTo(3)]
+#=&gt;
+──┼───┼
+1 │ 1 │
+2 │ 2 │
+3 │ 3 │
+=#</code></pre><p>Since later in this guide we&#39;ll want to enumerate the alphabet, let&#39;s define a combinator for that as well. In this definition, anonymous function syntax (<code>-&gt;</code>) is used to build an expression that is then lifted to queries.</p><pre><code class="language-julia hljs">Chars(N) = Lift(n -&gt; &#39;a&#39;:&#39;a&#39;+n-1, (N,))
+
+unitknot[Chars(3)]
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ b │
+3 │ c │
+=#</code></pre><p>Lifting lets us use rich statistical and data processing functions from within our queries.</p><h3 id="Aggregate-Queries"><a class="docs-heading-anchor" href="#Aggregate-Queries">Aggregate Queries</a><a id="Aggregate-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Aggregate-Queries" title="Permalink"></a></h3><p>So far queries have been <em>elementwise</em>; that is, for each input element, they produce zero or more output elements. Consider the <code>Count</code> primitive; it returns the number of its input elements.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Count]
+#=&gt;
+┼───┼
+│ 3 │
+=#</code></pre><p>An <em>aggregate</em> query such as <code>Count</code> is computed over the input as a whole, and not for each individual element. The semantics of aggregates require discussion. Consider <code>Lift(1:3) &gt;&gt; OneTo(It)</code>.</p><pre><code class="language-julia hljs">OneTo(X) = Lift(:, (1, X))
+
+unitknot[Lift(1:3) &gt;&gt; OneTo(It)]
+#=&gt;
+──┼───┼
+1 │ 1 │
+2 │ 1 │
+3 │ 2 │
+4 │ 1 │
+5 │ 2 │
+6 │ 3 │
+=#</code></pre><p>By appending <code>&gt;&gt; Sum</code> we could aggregate the entire input flow, producing a single output element.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; OneTo(It) &gt;&gt; Sum]
+#=&gt;
+┼────┼
+│ 10 │
+=#</code></pre><p>What if we wanted to produce sums by the outer query, <code>Lift(1:3)</code>? Since query composition (<code>&gt;&gt;</code>) is associative, adding parenthesis around <code>OneTo(It) &gt;&gt; Sum</code> will not change the result.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; (OneTo(It) &gt;&gt; Sum)]
+#=&gt;
+┼────┼
+│ 10 │
+=#</code></pre><p>We could use <code>Record</code> to create this elementwise barrier. However, it introduces an intermediate, unwanted structure: we asked for sums, not a table with sums.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt;
+         Record(:data =&gt; OneTo(It),
+                :sum =&gt; OneTo(It) &gt;&gt; Sum)]
+#=&gt;
+  │ data     sum │
+──┼──────────────┼
+1 │ 1          1 │
+2 │ 1; 2       3 │
+3 │ 1; 2; 3    6 │
+=#</code></pre><p>We need the <code>Each</code> combinator, which much the same as <code>Record</code>, acts as an elementwise barrier. For each input element, <code>Each</code> evaluates its argument, and then collects the outputs.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Each(OneTo(It) &gt;&gt; Sum)]
+#=&gt;
+──┼───┼
+1 │ 1 │
+2 │ 3 │
+3 │ 6 │
+=#</code></pre><p>Normally, one wouldn&#39;t need to use <code>Each</code> — for aggregates such as <code>Sum</code> or <code>Count</code>, the query <code>Y &gt;&gt; Each(X &gt;&gt; Count)</code> is equivalent to <code>Y &gt;&gt; Count(X)</code>. Hence, we could use the combinator form of <code>Sum</code> to do this relative summation.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Sum(OneTo(It))]
+#=&gt;
+──┼───┼
+1 │ 1 │
+2 │ 3 │
+3 │ 6 │
+=#</code></pre><p>Julia functions taking a vector argument, such as <code>mean</code>, can be lifted to a combinator taking a plural query. When performed, the plural output is converted into the function&#39;s vector argument.</p><pre><code class="language-julia hljs">using Statistics
+Mean(X) = mean.(X)
+
+unitknot[Mean(Lift(1:3) &gt;&gt; Sum(OneTo(It)))]
+#=&gt;
+┼─────────┼
+│ 3.33333 │
+=#</code></pre><p>To use <code>Mean</code> as a query primitive, we use <code>Then</code> to build a query that aggregates elements from its input. Next, we register this query aggregate so it is used when <code>Mean</code> is treated as a query.</p><pre><code class="language-julia hljs">DataKnots.Lift(::typeof(Mean)) = DataKnots.Then(Mean)</code></pre><p>Once these are done, one could take an average of sums as follows:</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Sum(OneTo(It)) &gt;&gt; Mean]
+#=&gt;
+┼─────────┼
+│ 3.33333 │
+=#</code></pre><p>In DataKnots, summary operations are expressed as aggregate query primitives or as query combinators taking a plural query argument. Moreover, custom aggregates can be constructed from native Julia functions and lifted into the query algebra.</p><h3 id="Take"><a class="docs-heading-anchor" href="#Take">Take</a><a id="Take-1"></a><a class="docs-heading-anchor-permalink" href="#Take" title="Permalink"></a></h3><p>Unlike <code>Filter</code> which evaluates its argument for each input element, the argument to <code>Take</code> is evaluated once, and in the context of the input&#39;s <em>source</em>.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; Each(Lift(&#39;a&#39;:&#39;c&#39;) &gt;&gt; Take(It))]
+#=&gt;
+──┼───┼
+1 │ a │
+2 │ a │
+3 │ b │
+4 │ a │
+5 │ b │
+6 │ c │
+=#</code></pre><p>In this example, the argument of <code>Take</code> evaluates in the context of <code>Lift(1:3)</code>. Therefore, <code>Take</code> will be performed three times, where <code>It</code> has the values <code>1</code>, <code>2</code>, and <code>3</code>.</p><h3 id="Group"><a class="docs-heading-anchor" href="#Group">Group</a><a id="Group-1"></a><a class="docs-heading-anchor-permalink" href="#Group" title="Permalink"></a></h3><p>Before we can demonstrate <code>Group</code>, we need an interesting dataset. Let&#39;s create a flat list of numbers with two characteristics.</p><pre><code class="language-julia hljs">DataRow = :data=&gt; Record(:no =&gt; It,
+                         :even =&gt; iseven.(It),
+                         :char =&gt; Char.((It .+ 2) .% 3 .+ 97))
+DataSet = Lift(1:9) &gt;&gt; DataRow
+
+unitknot[DataSet]
+#=&gt;
+  │ data            │
+  │ no  even   char │
+──┼─────────────────┼
+1 │  1  false  a    │
+2 │  2   true  b    │
+3 │  3  false  c    │
+4 │  4   true  a    │
+5 │  5  false  b    │
+6 │  6   true  c    │
+7 │  7  false  a    │
+8 │  8   true  b    │
+9 │  9  false  c    │
+=#</code></pre><p>The <code>Group</code> combinator rearranges the dataset to bucket unique values of a particular expression together with its matching data.</p><pre><code class="language-julia hljs">unitknot[DataSet &gt;&gt; Group(It.char)]
+#=&gt;
+  │ char  data{no,even,char}                   │
+──┼────────────────────────────────────────────┼
+1 │ a     1, false, a; 4, true, a; 7, false, a │
+2 │ b     2, true, b; 5, false, b; 8, true, b  │
+3 │ c     3, false, c; 6, true, c; 9, false, c │
+=#</code></pre><p>With this rearrangement, we could summarize data with respect to the grouping expression.</p><pre><code class="language-julia hljs">unitknot[DataSet &gt;&gt;
+         Group(It.char) &gt;&gt;
+         Record(It.char,
+                It.data.no,
+                :count =&gt; Count(It.data),
+                :mean =&gt; mean.(It.data.no))]
+#=&gt;
+  │ char  no       count  mean │
+──┼────────────────────────────┼
+1 │ a     1; 4; 7      3   4.0 │
+2 │ b     2; 5; 8      3   5.0 │
+3 │ c     3; 6; 9      3   6.0 │
+=#</code></pre><p>It&#39;s possible to group by more than one expression.</p><pre><code class="language-julia hljs">unitknot[DataSet &gt;&gt;
+         Group(It.even, It.char) &gt;&gt;
+         Record(It.even, It.char, It.data.no)]
+#=&gt;
+  │ even   char  no   │
+──┼───────────────────┼
+1 │ false  a     1; 7 │
+2 │ false  b     5    │
+3 │ false  c     3; 9 │
+4 │  true  a     4    │
+5 │  true  b     2; 8 │
+6 │  true  c     6    │
+=#</code></pre><p>The <code>Group</code> combinator lets you adapt the structure of a dataset to form a hierarchy suitable to a particular analysis.</p><h3 id="Query-Parameters"><a class="docs-heading-anchor" href="#Query-Parameters">Query Parameters</a><a id="Query-Parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Query-Parameters" title="Permalink"></a></h3><p>With DataKnots, parameters can be provided so that static data can be used within query expressions. By convention, we use upper case, singular labels for query parameters.</p><pre><code class="language-julia hljs">unitknot[&quot;Hello &quot; .* Get(:WHO), WHO=&quot;World&quot;]
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>To make <code>Get</code> convenient, <code>It</code> provides a shorthand syntax.</p><pre><code class="language-julia hljs">unitknot[&quot;Hello &quot; .* It.WHO, WHO=&quot;World&quot;]
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>Query parameters are available anywhere in the query. They could, for example be used within a filter.</p><pre><code class="language-julia hljs">query = OneTo(6) &gt;&gt; Filter(It .&gt; It.START)
+
+unitknot[query, START=3]
+#=&gt;
+──┼───┼
+1 │ 4 │
+2 │ 5 │
+3 │ 6 │
+=#</code></pre><p>Parameters can also be defined as part of a query using <code>Given</code>. This combinator takes set of pairs (<code>=&gt;</code>) that map symbols (<code>:name</code>) onto query expressions. The subsequent argument is then evaluated in a naming context where the defined parameters are available for reuse.</p><pre><code class="language-julia hljs">unitknot[Given(:WHO =&gt; &quot;World&quot;, &quot;Hello &quot; .* Get(:WHO))]
+#=&gt;
+┼─────────────┼
+│ Hello World │
+=#</code></pre><p>Query parameters can be especially useful when managing aggregates, or with expressions that one may wish to repeat more than once.</p><pre><code class="language-julia hljs">GreaterThanAverage(X) =
+  Given(:AVG =&gt; Mean(X),
+        X &gt;&gt; Filter(It .&gt; Get(:AVG)))
+
+unitknot[GreaterThanAverage(OneTo(6))]
+#=&gt;
+──┼───┼
+1 │ 4 │
+2 │ 5 │
+3 │ 6 │
+=#</code></pre><p>With <code>Given</code> the parameter provided, <code>AVG</code> does not leak into the surrounding context.</p><pre><code class="language-julia hljs">unitknot[GreaterThanAverage(OneTo(6)) &gt;&gt; It.AVG]
+#-&gt; ERROR: cannot find &quot;AVG&quot; at ⋮</code></pre><p>In DataKnots, query parameters permit external data to be used within query expressions. Parameters that are defined with <code>Given</code> can be used to remember values and reuse them.</p><h2 id="Julia-Integration"><a class="docs-heading-anchor" href="#Julia-Integration">Julia Integration</a><a id="Julia-Integration-1"></a><a class="docs-heading-anchor-permalink" href="#Julia-Integration" title="Permalink"></a></h2><p>DataKnots is a query algebra embedded in the Julia programming language. We should discuss the interaction between the semantics of the query algebra and the semantics of Julia.</p><h3 id="Precedence-of-Composition"><a class="docs-heading-anchor" href="#Precedence-of-Composition">Precedence of Composition</a><a id="Precedence-of-Composition-1"></a><a class="docs-heading-anchor-permalink" href="#Precedence-of-Composition" title="Permalink"></a></h3><p>DataKnots uses Julia&#39;s bitshift operator (<code>&gt;&gt;</code>) for composition.</p><p>This works visually, but the <em>precedence</em> of this operator does not match user expectations. Specifically, common binary operators such as addition (<code>+</code>) have a lower precedence.</p><p>This expectation mismatch could lead a user to write:</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; It .+ It]
+#-&gt; ERROR: cannot apply + to Tuple{Vector{Int64}, Tuple{}}⋮</code></pre><p>To fix this query, we add parentheses.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; (It .+ It)]
+#=&gt;
+──┼───┼
+1 │ 2 │
+2 │ 4 │
+3 │ 6 │
+=#</code></pre><h3 id="Composition-of-Queries"><a class="docs-heading-anchor" href="#Composition-of-Queries">Composition of Queries</a><a id="Composition-of-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Composition-of-Queries" title="Permalink"></a></h3><p>For bitshift operator (<code>&gt;&gt;</code>) to work as composition, the first operand must be a query.</p><pre><code class="language-julia hljs">unitknot[1:3 &gt;&gt; &quot;Hello&quot;]
+#-&gt; ERROR: MethodError: no method matching &gt;&gt;(::Int64, ::String)⋮</code></pre><p>To fix this query, we use <code>Lift</code> to convert the first operand to a query.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; &quot;Hello&quot;]
+#=&gt;
+──┼───────┼
+1 │ Hello │
+2 │ Hello │
+3 │ Hello │
+=#</code></pre><h3 id="Support-for-Tuple"><a class="docs-heading-anchor" href="#Support-for-Tuple">Support for <code>Tuple</code></a><a id="Support-for-Tuple-1"></a><a class="docs-heading-anchor-permalink" href="#Support-for-Tuple" title="Permalink"></a></h3><p>A <code>Tuple</code> lifted to a constant query is displayed as a table.</p><pre><code class="language-julia hljs">unitknot[Lift((msg=&quot;Hello&quot;,))]
+#=&gt;
+│ msg   │
+┼───────┼
+│ Hello │
+=#</code></pre><p>When they are lifted, native vectors are automatically converted into our block vector. However, native tuples are left unwrapped.</p><pre><code class="language-julia hljs">DataKnots.shape(unitknot[Lift((msg=&quot;Hello&quot;,))])
+#-&gt; BlockOf(NamedTuple{(:msg,), Tuple{String}}, x1to1)</code></pre><p>That said, tuple entries can be directly accessed using <code>It</code>.</p><pre><code class="language-julia hljs">unitknot[Lift((msg=&quot;Hello&quot;,)) &gt;&gt; It.msg]
+#=&gt;
+│ msg   │
+┼───────┼
+│ Hello │
+=#</code></pre><p>Although it looks the same visually, this has a different shape.</p><pre><code class="language-julia hljs">DataKnots.shape(unitknot[Lift((msg=&quot;Hello&quot;,)) &gt;&gt; It.msg])
+#-&gt; BlockOf(String, x1to1) |&gt; IsLabeled(:msg)</code></pre><h3 id="Cardinality-of-Lift"><a class="docs-heading-anchor" href="#Cardinality-of-Lift">Cardinality of Lift</a><a id="Cardinality-of-Lift-1"></a><a class="docs-heading-anchor-permalink" href="#Cardinality-of-Lift" title="Permalink"></a></h3><p>For constant queries produced by <code>Lift</code>, the cardinality is guessed based upon the type of the underlying data.  If the type is <code>Missing</code>, then it is <code>x0to1</code>. If the type is a kind of <code>AbstractVector</code>, then <code>Lift</code> guesses it should be unconstrained (<code>:x0toN</code>). All other data types are assumed to have a mandatory, singular cardinality (<code>:x1to1</code>).</p><table><tr><th style="text-align: left">Type</th><th style="text-align: left">Cardinality</th><th style="text-align: left">Mandatory</th><th style="text-align: left">Singular</th></tr><tr><td style="text-align: left"><code>Missing</code></td><td style="text-align: left"><code>:x0to1</code></td><td style="text-align: left"><em>no</em></td><td style="text-align: left"><em>yes</em></td></tr><tr><td style="text-align: left"><code>AbstractVector</code></td><td style="text-align: left"><code>:x0toN</code></td><td style="text-align: left"><em>no</em></td><td style="text-align: left"><em>no</em></td></tr><tr><td style="text-align: left"><code>Any</code></td><td style="text-align: left"><code>:x1to1</code></td><td style="text-align: left"><em>yes</em></td><td style="text-align: left"><em>yes</em></td></tr><tr><td style="text-align: left"></td><td style="text-align: left"><code>:x1toN</code></td><td style="text-align: left"><em>yes</em></td><td style="text-align: left"><em>no</em></td></tr></table><p>We can cause a constant query produced by <code>Lift</code> to produce knots having a specific cardinality.</p><pre><code class="language-julia hljs">greetings = unitknot[Lift([&quot;Hello&quot;], :x1toN)]
+#=&gt;
+──┼───────┼
+1 │ Hello │
+=#</code></pre><p>The shape of the <code>greetings</code> knot will then indicate that it has a plural block with at least one element.</p><pre><code class="language-julia hljs">DataKnots.shape(greetings)
+#-&gt; BlockOf(String, x1toN)</code></pre><p>Observe that specifying the cardinality works even for singular values, even if the value lifted happens to be a vector.</p><pre><code class="language-julia hljs">greeting = unitknot[Lift([&quot;Hello&quot;], :x1to1)]
+#=&gt;
+┼───────┼
+│ Hello │
+=#
+
+DataKnots.shape(greeting)
+#-&gt; BlockOf(String, x1to1)</code></pre><p>Just because a <code>Vector</code> is automatically converted into a block doesn&#39;t mean a block can&#39;t contain a vector.</p><pre><code class="language-julia hljs">opaque = [&quot;HELLO&quot;, &quot;WORLD&quot;]
+
+single = unitknot[Lift([opaque], :x1to1)]
+#=&gt;
+┼──────────────┼
+│ HELLO; WORLD │
+=#</code></pre><p>The value of this knot is actually a <code>Vector</code>, even if it may be shown in a convenient way.</p><pre><code class="language-julia hljs">DataKnots.shape(single)
+#-&gt; BlockOf(Vector{String}, x1to1)</code></pre><p>This value can be retrieved using <code>get</code>.</p><pre><code class="language-julia hljs">get(single)
+#-&gt; [&quot;HELLO&quot;, &quot;WORLD&quot;]</code></pre><h3 id="Broadcasting-over-Queries"><a class="docs-heading-anchor" href="#Broadcasting-over-Queries">Broadcasting over Queries</a><a id="Broadcasting-over-Queries-1"></a><a class="docs-heading-anchor-permalink" href="#Broadcasting-over-Queries" title="Permalink"></a></h3><p>Broadcasting can be used to convert function calls into query expressions. For broadcasting to build a query, at least one argument must be a query.</p><p>Even when the argument isn&#39;t a query, the result often works as expected.</p><pre><code class="language-julia hljs">unitknot[iseven.(2)]
+#=&gt;
+┼──────┼
+│ true │
+=#</code></pre><p>In this case, <code>iseven.(2)</code> is evaluated to the constant <code>true</code>, which is automatically lifted to a constant query.</p><p>For some functions this may lead to unexpected results. Suppose we need to generate 3 random characters.</p><pre><code class="language-julia hljs">using Random: seed!, rand
+seed!(1)
+
+#? VERSION &lt; v&quot;1.5.0-DEV&quot;
+rand(&#39;a&#39;:&#39;z&#39;)
+#-&gt; &#39;o&#39;</code></pre><p>We could try to make the following query.</p><pre><code class="language-julia hljs">#? VERSION &lt; v&quot;1.5.0-DEV&quot;
+unitknot[Lift(1:3) &gt;&gt; rand(&#39;a&#39;:&#39;z&#39;)]
+#=&gt;
+──┼───┼
+1 │ c │
+2 │ c │
+3 │ c │
+=#</code></pre><p>Unfortunately, the function <code>rand</code> evaluated once, which gives us the same value repeated 3 times. Let&#39;s try broadcasting.</p><pre><code class="language-julia hljs">unitknot[Lift(1:3) &gt;&gt; rand.(&#39;a&#39;:&#39;z&#39;)]
+#-&gt; ERROR: ArgumentError: Sampler for this object is not defined⋮</code></pre><p>For broadcasting to generate a query, we need at least one argument to be a query. If we don&#39;t have a query argument, we could make one using <code>Lift</code>.</p><pre><code class="language-julia hljs">#? VERSION &lt; v&quot;1.5.0-DEV&quot;
+unitknot[Lift(1:3) &gt;&gt; rand.(Lift(&#39;a&#39;:&#39;z&#39;))]
+#=&gt;
+──┼───┼
+1 │ h │
+2 │ b │
+3 │ v │
+=#</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../highlypaid/">« Who is Highly Paid?</a><a class="docs-footer-nextpage" href="../tutorial/">Embedded Query Interface »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.10 on <span class="colophon-date" title="Friday 14 January 2022 14:11">Friday 14 January 2022</span>. Using Julia version 1.7.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
