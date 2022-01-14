@@ -1018,18 +1018,7 @@ Just as functions with no arguments.
     │ 0.823648 │
     =#
 
-    #? v"1.7.0-DEV" <= VERSION < v"1.8.0-DEV"
-    using Random: seed!
-
-    seed!(0)
-
-    chicago[Q]
-    #=>
-    ┼──────────┼
-    │ 0.787765 │
-    =#
-
-    #? VERSION >= v"1.8.0-DEV"
+    #? VERSION >= v"1.7.0-DEV"
     using Random: seed!
 
     seed!(0)
