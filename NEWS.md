@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.10.4
+
+* Compatibility with `PrettyPrinting` v0.4.
+
 ## v0.10.3
 
 * Added `Sort` combinator.
