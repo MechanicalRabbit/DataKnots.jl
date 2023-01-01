@@ -1038,6 +1038,7 @@ We could try to make the following query.
 Unfortunately, the function `rand` evaluated once, which gives us
 the same value repeated 3 times. Let's try broadcasting.
 
+    #? VERSION < v"1.9.0-DEV"
     unitknot[Lift(1:3) >> rand.('a':'z')]
     #-> ERROR: ArgumentError: Sampler for this object is not defined⋮
 
